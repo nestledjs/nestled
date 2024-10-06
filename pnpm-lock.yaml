@@ -11,6 +11,9 @@ importers:
       '@nx/devkit':
         specifier: 19.8.4
         version: 19.8.4(nx@19.8.4(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.5.4))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
+      yargs:
+        specifier: ^17.7.2
+        version: 17.7.2
     devDependencies:
       '@eslint/js':
         specifier: ^9.8.0
@@ -51,6 +54,9 @@ importers:
       '@types/node':
         specifier: 18.16.9
         version: 18.16.9
+      '@types/yargs':
+        specifier: ^17.0.33
+        version: 17.0.33
       eslint:
         specifier: ^9.8.0
         version: 9.12.0
