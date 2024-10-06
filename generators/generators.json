@@ -1,5 +1,10 @@
 {
   "generators": {
+    "project-config": {
+      "factory": "./src/project-config/generator",
+      "schema": "./src/project-config/schema.json",
+      "description": "Generates Top Level Project Config"
+    },
     "app-setup": {
       "factory": "./src/app-setup/generator",
       "schema": "./src/app-setup/schema.json",
