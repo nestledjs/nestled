@@ -1,12 +1,12 @@
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
-import { Tree, readProjectConfiguration } from '@nx/devkit';
+import { readProjectConfiguration, Tree } from '@nx/devkit';
 
 import { appSetupGenerator } from './generator';
 import { AppSetupGeneratorSchema } from './schema';
 
 describe('app-setup generator', () => {
   let tree: Tree;
-  const options: AppSetupGeneratorSchema = { name: 'test' };
+  const options: AppSetupGeneratorSchema = { setupType: 'both' };
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace();

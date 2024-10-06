@@ -1,18 +1,24 @@
 {
-  "$schema": "https://json-schema.org/schema",
+  "$schema": "http://json-schema.org/schema",
+  "cli": "nx",
   "$id": "AppSetup",
   "title": "",
   "type": "object",
   "properties": {
-    "name": {
+    "setupType": {
       "type": "string",
-      "description": "",
-      "$default": {
-        "$source": "argv",
-        "index": 0
-      },
-      "x-prompt": "What name would you like to use?"
+      "description": "Type of setup to create",
+      "enum": ["api", "web", "both"],
+      "x-prompt": {
+        "message": "What type of setup do you want to create?",
+        "type": "list",
+        "items": [
+          { "value": "api", "label": "API (Nest.js)" },
+          { "value": "web", "label": "Web (Remix)" },
+          { "value": "both", "label": "Both API and Web" }
+        ]
+      }
     }
   },
-  "required": ["name"]
+  "required": ["setupType"]
 }

@@ -1,3 +1,3 @@
 export interface AppSetupGeneratorSchema {
-  name: string;
+  setupType: 'api' | 'web' | 'both';
 }
