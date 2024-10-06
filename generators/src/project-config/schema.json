@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "cli": "nx",
+  "$id": "ProjectConfig",
+  "type": "object",
+  "properties": {
+    "overwritePrettier": {
+      "type": "boolean",
+      "description": "Overwrite existing .prettierrc file",
+      "default": false,
+      "x-prompt": "Do you want to overwrite the existing .prettierrc file? (y/N)"
+    },
+    "generateEnv": {
+      "type": "boolean",
+      "description": "Generate .env.example file",
+      "default": true,
+      "x-prompt": "Do you want to generate a .env.example file? (Y/n)"
+    },
+    "generateDocker": {
+      "type": "boolean",
+      "description": "Generate Dockerfile and docker-compose.yml",
+      "default": true,
+      "x-prompt": "Do you want to generate Dockerfile and docker-compose.yml? (Y/n)"
+    }
+  },
+  "required": []
+}

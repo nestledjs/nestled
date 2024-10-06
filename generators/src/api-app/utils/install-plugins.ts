@@ -10,6 +10,8 @@ export async function installPlugins(tree: Tree, options: AppSetupGeneratorSchem
   dependencies['@nestjs/core'] = 'latest'
   dependencies['@nestjs/config'] = 'latest'
   dependencies['cookie-parser'] = 'latest'
+  devDependencies['@types/cookie-parser'] = 'latest'
+  devDependencies['@types/express'] = 'latest'
   dependencies['express'] = 'latest'
   dependencies['joi'] = 'latest'
 
