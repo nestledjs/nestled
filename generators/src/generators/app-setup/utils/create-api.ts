@@ -1,4 +1,4 @@
-import { Tree, generateFiles, joinPathFragments } from '@nx/devkit';
+import { Tree } from '@nx/devkit';
 import { applicationGenerator } from '@nx/nest';
 
 export async function createApi(tree: Tree) {
