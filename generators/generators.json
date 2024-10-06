@@ -1,8 +1,8 @@
 {
   "generators": {
     "app-setup": {
-      "factory": "./src/generators/app-setup/generator",
-      "schema": "./src/generators/app-setup/schema.json",
+      "factory": "./src/app-setup/generator",
+      "schema": "./src/app-setup/schema.json",
       "description": "app-setup generator"
     }
   }
