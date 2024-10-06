@@ -3,7 +3,17 @@
     "app-setup": {
       "factory": "./src/app-setup/generator",
       "schema": "./src/app-setup/schema.json",
-      "description": "app-setup generator"
+      "description": "Generates All Requested Apps"
+    },
+    "api-app": {
+      "factory": "./src/api-app/generator",
+      "schema": "./src/api-app/schema.json",
+      "description": "Generates Basic Nest API App"
+    },
+    "remix-app": {
+      "factory": "./src/remix-app/generator",
+      "schema": "./src/remix-app/schema.json",
+      "description": "Generates Basic Remix App"
     }
   }
 }

@@ -1,0 +1,26 @@
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
+import { LoggerMiddleware } from './applogger.middleware'
+import { ConfigModule } from '@nestjs/config'
+import { appConfig, validationSchema } from './app.config'
+
+// Add Imports Here
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      load: [appConfig],
+      validationSchema: validationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
+      isGlobal: true,
+    }),
+    // Add Modules Here
+  ],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(LoggerMiddleware).forRoutes('*', { path: '*', method: RequestMethod.ALL })
+  }
+}
