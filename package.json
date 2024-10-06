@@ -6,15 +6,19 @@
     "publish-local": "npx ts-node ./tools/scripts/publish-local.ts"
   },
   "private": true,
+  "dependencies": {
+    "@nx/devkit": "19.8.4",
+    "@nx/nest": "^19.8.4",
+    "@nx/remix": "^19.8.4",
+    "yargs": "^17.7.2"
+  },
   "devDependencies": {
     "@eslint/js": "^9.8.0",
     "@nx/eslint": "19.8.4",
     "@nx/eslint-plugin": "19.8.4",
     "@nx/jest": "19.8.4",
     "@nx/js": "19.8.4",
-    "@nx/nest": "^19.8.4",
     "@nx/plugin": "^19.8.4",
-    "@nx/remix": "^19.8.4",
     "@nx/workspace": "19.8.4",
     "@swc-node/register": "~1.9.1",
     "@swc/cli": "~0.3.12",
@@ -35,10 +39,6 @@
     "typescript": "~5.5.2",
     "typescript-eslint": "^8.0.0",
     "verdaccio": "^5.0.4"
-  },
-  "dependencies": {
-    "@nx/devkit": "19.8.4",
-    "yargs": "^17.7.2"
   },
   "nx": {
     "includedScripts": []
