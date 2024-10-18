@@ -3,7 +3,8 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "publish-local": "npx ts-node ./tools/scripts/publish-local.ts"
+    "publish-local": "npx ts-node ./tools/scripts/publish-local.ts",
+    "serve-docs": "docsify serve ./docs --port 3020"
   },
   "private": true,
   "dependencies": {
