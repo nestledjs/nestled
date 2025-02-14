@@ -1,0 +1,25 @@
+import { <%= className %>CoreDataAccessModule } from '@<%= npmScope %>/<%= name %>/core/data-access'
+import { <%= className %>CoreFeatureModule } from '@<%= npmScope %>/<%= name %>/core/feature'
+import { Module } from '@nestjs/common'
+import { HttpModule } from '@nestjs/axios'
+import { JwtModule } from '@nestjs/jwt'
+import { PassportModule } from '@nestjs/passport'
+import { <%= className %>AuthDataAccessService } from './<%= name %>-auth-data-access.service'
+import { JwtStrategy } from './strategies/jwt.strategy'
+import { <%= className %>MailerDataAccessModule } from '@<%= npmScope %>/<%= name %>/mailer/data-access'
+
+@Module({
+  imports: [
+    <%= className %>CoreDataAccessModule,
+    <%= className %>CoreFeatureModule,
+    <%= className %>MailerDataAccessModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    HttpModule,
+    JwtModule.register({
+      secret: process.env.JWT_SECRET,
+    }),
+  ],
+  exports: [<%= className %>AuthDataAccessService],
+  providers: [<%= className %>AuthDataAccessService, JwtStrategy],
+})
+export class <%= className %>AuthDataAccessModule {}

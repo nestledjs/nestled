@@ -3,17 +3,25 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "publish-local": "npx ts-node ./tools/scripts/publish-local.ts",
+    "publish-local": "npx ts-node ./tools/scripts/publish-local.ts --targetPath ../test-workspace",
     "serve-docs": "docsify serve ./docs --port 3020"
   },
   "private": true,
   "dependencies": {
-    "@nx/devkit": "19.8.4",
-    "@nx/nest": "^19.8.4",
-    "@nx/remix": "^19.8.4",
-    "yargs": "^17.7.2"
+
   },
   "devDependencies": {
+    "@nx/devkit": "19.8.4",
+    "@nx/linter": "^19.8.4",
+    "@nx/nest": "^19.8.4",
+    "@nx/react": "^20.0.2",
+    "@nx/remix": "^19.8.4",
+    "@prisma/client": "^5.21.1",
+    "bcryptjs": "^2.4.3",
+    "chalk": "^5.3.0",
+    "fs-extra": "^11.2.0",
+    "pg": "^8.13.0",
+    "yargs": "^17.7.2",
     "@eslint/js": "^9.8.0",
     "@nx/eslint": "19.8.4",
     "@nx/eslint-plugin": "19.8.4",

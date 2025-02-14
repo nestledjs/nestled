@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "cli": "nx",
+  "$id": "web-admin-crud",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Library name",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      }
+    },
+    "plural": {
+      "type": "string",
+      "description": "Plural of name (default just adds s)",
+      "alias": "p"
+    },
+    "primaryField": {
+      "type": "string",
+      "description": "Name of the primary field to add by default (i.e. Title or Name)",
+      "alias": "n",
+      "default": "name"
+    }
+  },
+  "required": ["name"]
+}

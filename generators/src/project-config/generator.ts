@@ -5,6 +5,7 @@ interface ConfigGeneratorSchema {
   overwritePrettier: boolean
   generateEnv: boolean
   generateDocker: boolean
+  ignoreEnv: boolean
   // Add other options as needed
 }
 
@@ -35,4 +36,19 @@ export default async function (tree: Tree, schema: ConfigGeneratorSchema) {
   }
 
   await formatFiles(tree)
+
+  if (schema.ignoreEnv) {
+    // Add .env to the .gitignore file if not already present
+    const gitignorePath = '.gitignore'
+
+    // Check if the .gitignore file exists and add .env
+    if (tree.exists(gitignorePath)) {
+      let gitignoreContent = tree.read(gitignorePath, 'utf-8')
+
+      if (!gitignoreContent.includes('.env')) {
+        gitignoreContent += '\n.env\n' // Add .env to the end of the file
+        tree.write(gitignorePath, gitignoreContent)
+      }
+    }
+  }
 }

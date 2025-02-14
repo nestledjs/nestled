@@ -1,0 +1,20 @@
+query Admin<%= className %>($<%= propertyName %>Id: String!) {
+  <%= propertyName %>: admin<%= className %>(<%= propertyName %>Id: $<%= propertyName %>Id) {
+    ...Admin<%= className %>Details
+  }
+}
+
+query Admin<%= pluralClassName %>($input: AdminList<%= className %>Input) {
+  <%= pluralPropertyName %>: admin<%= pluralClassName %>(input: $input) {
+    ...Admin<%= className %>Basics
+  }
+  counters: adminCount<%= pluralClassName %>(input: $input) {
+    ...CorePagingDetails
+  }
+}
+
+query Admin<%= pluralClassName %>List($input: AdminList<%= className %>Input) {
+  <%= pluralPropertyName %>: admin<%= pluralClassName %>(input: $input) {
+    ...Admin<%= className %>Basics
+  }
+}

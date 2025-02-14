@@ -1,0 +1,17 @@
+mutation adminCreate<%= className %>($input: AdminCreate<%= className %>Input!) {
+  create<%= className %>: adminCreate<%= className %>(input: $input) {
+    ...Admin<%= className %>Basics
+  }
+}
+
+mutation adminDelete<%= className %>($<%= propertyName %>Id: String!) {
+  delete<%= className %>: adminDelete<%= className %>(<%= propertyName %>Id: $<%= propertyName %>Id) {
+    id
+  }
+}
+
+mutation adminUpdate<%= className %>($<%= propertyName %>Id: String!, $input: AdminUpdate<%= className %>Input!) {
+  update<%= className %>: adminUpdate<%= className %>(<%= propertyName %>Id: $<%= propertyName %>Id, input: $input) {
+    ...Admin<%= className %>Basics
+  }
+}

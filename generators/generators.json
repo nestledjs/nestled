@@ -19,6 +19,91 @@
       "factory": "./src/remix-app/generator",
       "schema": "./src/remix-app/schema.json",
       "description": "Generates Basic Remix App"
+    },
+    "api-crud": {
+      "factory": "./src/api-crud/generator",
+      "schema": "./src/api-crud/schema.json",
+      "description": "Generates API CRUD operations"
+    },
+    "api-feature": {
+      "factory": "./src/api-feature/generator",
+      "schema": "./src/api-feature/schema.json",
+      "description": "Generates API Feature Modules"
+    },
+    "api-lib-account": {
+      "factory": "./src/api-lib-account/generator",
+      "schema": "./src/api-lib-account/schema.json",
+      "description": "Generates Account Library for API"
+    },
+    "api-lib-auth": {
+      "factory": "./src/api-lib-auth/generator",
+      "schema": "./src/api-lib-auth/schema.json",
+      "description": "Generates Authentication Library for API"
+    },
+    "api-lib-core": {
+      "factory": "./src/api-lib-core/generator",
+      "schema": "./src/api-lib-core/schema.json",
+      "description": "Generates Core Library for API"
+    },
+    "api-lib-mailer": {
+      "factory": "./src/api-lib-mailer/generator",
+      "schema": "./src/api-lib-mailer/schema.json",
+      "description": "Generates Mailer Library for API"
+    },
+    "api-lib-user": {
+      "factory": "./src/api-lib-user/generator",
+      "schema": "./src/api-lib-user/schema.json",
+      "description": "Generates User Management Library for API"
+    },
+    "prisma-seed": {
+      "factory": "./src/prisma-seed/generator",
+      "schema": "./src/prisma-seed/schema.json",
+      "description": "Generates Prisma Seed Script"
+    },
+    "crud": {
+      "factory": "./src/crud/generator",
+      "schema": "./src/crud/schema.json",
+      "description": "Generates Full CRUD Operations"
+    },
+    "shared": {
+      "factory": "./src/shared/generator",
+      "schema": "./src/shared/schema.json",
+      "description": "Generates Shared Utilities and Modules"
+    },
+    "web-admin-crud": {
+      "factory": "./src/web-admin-crud/generator",
+      "schema": "./src/web-admin-crud/schema.json",
+      "description": "Generates Admin CRUD Operations for Web"
+    },
+    "web-admin-crud-helper": {
+      "factory": "./src/web-admin-crud-helper/generator",
+      "schema": "./src/web-admin-crud-helper/schema.json",
+      "description": "Generates Helper Functions for Admin CRUD"
+    },
+    "web-component": {
+      "factory": "./src/web-component/generator",
+      "schema": "./src/web-component/schema.json",
+      "description": "Generates Web Components"
+    },
+    "web-feature": {
+      "factory": "./src/web-feature/generator",
+      "schema": "./src/web-feature/schema.json",
+      "description": "Generates Feature Modules for Web"
+    },
+    "web-module": {
+      "factory": "./src/web-module/generator",
+      "schema": "./src/web-module/schema.json",
+      "description": "Generates Web Module"
+    },
+    "web-user-crud": {
+      "factory": "./src/web-user-crud/generator",
+      "schema": "./src/web-user-crud/schema.json",
+      "description": "Generates User CRUD Operations for Web"
+    },
+    "workspace-setup": {
+      "factory": "./src/workspace-setup/generator",
+      "schema": "./src/workspace-setup/schema.json",
+      "description": "Generates Workspace Setup"
     }
   }
 }

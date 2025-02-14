@@ -1,0 +1,49 @@
+import { BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
+import { PrismaClient, Role } from '@prisma/client'
+
+@Injectable()
+export class ApiCoreDataAccessService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  constructor() {
+    super()
+  }
+
+  public async onModuleDestroy() {
+    await this.$disconnect()
+  }
+
+  public async onModuleInit() {
+    await this.$connect()
+  }
+
+ search(conditions: any[], searchQuery: string, searchFields: string[]) {
+     const query = searchQuery.trim()
+     const terms: string[] = query?.includes(' ') ? query.split(' ') : [query].filter(Boolean)
+     const searchFilters = terms.map((term) => ({
+       OR: searchFields.map((field) => ({ [field]: { contains: term, mode: Prisma.QueryMode.insensitive } })),
+     }))
+
+     conditions.push(...searchFilters)
+     return conditions
+   }
+
+   async countEntitiesWithPagination<W extends Prisma.Enumerable<object>>(
+     countFunction: (args: { where?: W }) => Promise<number>,
+     whereQuery: W,
+     pagination: { take?: number; skip?: number },
+   ): Promise<CorePaging> {
+     const where = whereQuery
+     const total = await countFunction({})
+     const count = await countFunction({ where })
+     const { take = 10, skip = 0 } = pagination
+
+     const page = Math.ceil(skip / take)
+
+     return {
+       take,
+       skip,
+       page,
+       count,
+       total,
+     }
+   }
+}

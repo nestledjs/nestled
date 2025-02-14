@@ -1,0 +1,10 @@
+import { Module } from '@nestjs/common'
+import { <%= className %>MailerDataAccessService } from './<%= name %>-mailer-data-access.service'
+import { <%= className %>CoreFeatureModule } from '@<%= npmScope %>/<%= name %>/core/feature'
+
+@Module({
+  imports: [<%= className %>CoreFeatureModule],
+  providers: [<%= className %>MailerDataAccessService],
+  exports: [<%= className %>MailerDataAccessService],
+})
+export class <%= className %>MailerDataAccessModule {}

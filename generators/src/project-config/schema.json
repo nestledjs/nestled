@@ -6,9 +6,9 @@
   "properties": {
     "overwritePrettier": {
       "type": "boolean",
-      "description": "Overwrite existing .prettierrc file",
-      "default": false,
-      "x-prompt": "Do you want to overwrite the existing .prettierrc file? (y/N)"
+      "description": "Generate .prettierrc file",
+      "default": true,
+      "x-prompt": "Do you want to generate a .prettierrc file? (Y/n)"
     },
     "generateEnv": {
       "type": "boolean",
@@ -21,6 +21,12 @@
       "description": "Generate Dockerfile and docker-compose.yml",
       "default": true,
       "x-prompt": "Do you want to generate Dockerfile and docker-compose.yml? (Y/n)"
+    },
+    "ignoreEvn": {
+      "type": "boolean",
+      "description": "Add .env in .gitignore",
+      "default": true,
+      "x-prompt": "Do you want to ignore .env file in .gitignore? (Y/n)"
     }
   },
   "required": []

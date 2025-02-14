@@ -1,0 +1,17 @@
+mutation userCreate<%= className %>($input: UserCreate<%= className %>Input!) {
+  create<%= className %>: userCreate<%= className %>(input: $input) {
+    ...User<%= className %>Basics
+  }
+}
+
+mutation userDelete<%= className %>($<%= propertyName %>Id: String!) {
+  delete<%= className %>: userDelete<%= className %>(<%= propertyName %>Id: $<%= propertyName %>Id) {
+    id
+  }
+}
+
+mutation userUpdate<%= className %>($<%= propertyName %>Id: String!, $input: UserUpdate<%= className %>Input!) {
+  update<%= className %>: userUpdate<%= className %>(<%= propertyName %>Id: $<%= propertyName %>Id, input: $input) {
+    ...User<%= className %>Basics
+  }
+}

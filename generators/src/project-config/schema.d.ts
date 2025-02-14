@@ -3,5 +3,6 @@ declare module 'schema' {
     overwritePrettier: boolean
     generateEnv: boolean
     generateDocker: boolean
+    ignoreEnv: boolean
   }
 }
