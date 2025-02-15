@@ -10,7 +10,7 @@ import {
 } from '@nx/devkit'
 import { WebUserCrudGeneratorSchema } from './schema'
 import { libraryGenerator } from '@nx/react'
-import { Linter } from '@nx/linter'
+import { Linter } from '@nx/eslint'
 
 function addNavigation(tree, options) {
   console.log('Started Adding Navigation')

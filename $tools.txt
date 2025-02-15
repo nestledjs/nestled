@@ -1,3 +1,4 @@
+// /Users/justinhandley/IdeaProjects/nestled/tools/scripts/publish-local.ts
 // Related to the target generated in the root project.json
 import { startLocalRegistry } from '@nx/js/plugins/jest/local-registry'
 import { readdirSync, readFileSync } from 'fs'
@@ -138,3 +139,56 @@ function getInstallCommand(targetPath: string): string {
   }
   throw new Error(`No package manager found for target repository: ${targetPath}`)
 }
+
+
+// /Users/justinhandley/IdeaProjects/nestled/tools/scripts/start-local-registry.ts
+/**
+ * This script starts a local registry for e2e testing purposes.
+ * It is meant to be called in jest's globalSetup.
+ */
+import { startLocalRegistry } from '@nx/js/plugins/jest/local-registry';
+import { execFileSync } from 'child_process';
+import { releasePublish, releaseVersion } from 'nx/release';
+
+export default async () => {
+  // local registry target to run
+  const localRegistryTarget = '@nestled/source:local-registry';
+  // storage folder for the local registry
+  const storage = './tmp/local-registry/storage';
+
+  global.stopLocalRegistry = await startLocalRegistry({
+    localRegistryTarget,
+    storage,
+    verbose: false,
+  });
+
+  await releaseVersion({
+    specifier: '0.0.0-e2e',
+    stageChanges: false,
+    gitCommit: false,
+    gitTag: false,
+    firstRelease: true,
+    generatorOptionsOverrides: {
+      skipLockFileUpdate: true,
+    },
+  });
+  await releasePublish({
+    tag: 'e2e',
+    firstRelease: true,
+  });
+};
+
+
+// /Users/justinhandley/IdeaProjects/nestled/tools/scripts/stop-local-registry.ts
+/**
+ * This script stops the local registry for e2e testing purposes.
+ * It is meant to be called in jest's globalTeardown.
+ */
+
+export default () => {
+  if (global.stopLocalRegistry) {
+    global.stopLocalRegistry();
+  }
+};
+
+

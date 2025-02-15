@@ -10,21 +10,62 @@ interface Schema {
 export default async function (tree: Tree, schema: Schema) {
   // First generate the nest application
   await nestApplicationGenerator(tree, {
-    name: 'api',
-    directory: 'apps/api',
-    projectNameAndRootFormat: 'as-provided',
+    name: 'api', // Full path as the name
+    directory: 'apps', // Directory where the app will be generated
+    strict: true
   })
 
   // Then install our custom plugins
   const installTask = await installPlugins(tree)
-  
-  // Update the project.json to remove the assets from the build options
-  updateJson(tree, 'apps/api/project.json', (json) => {
-    if (json.targets && json.targets.build && json.targets.build.options) {
-      delete json.targets.build.options.assets
+
+  // Update the project configuration to use tsc
+  const projectJsonPath = 'apps/api/project.json'
+  if (tree.exists(projectJsonPath)) {
+    updateJson(tree, projectJsonPath, (json) => {
+      // Remove assets from build options
+      if (json.targets?.build?.options) {
+        delete json.targets.build.options.assets
+      }
+
+      // Update serve target to use @nx/js:node
+      json.targets.serve = {
+        executor: '@nx/js:node',
+        options: {
+          buildTarget: 'api:build',
+          watch: true,
+          port: 9230,
+          inspect: 'inspect'
+        },
+        configurations: {
+          development: {
+            buildTarget: 'api:build:development'
+          }
+        }
+      }
+
+      // Update build target to use tsc
+      json.targets.build = {
+        executor: '@nx/js:tsc',
+        outputs: ['{options.outputPath}'],
+        options: {
+          outputPath: 'dist/apps/api',
+          main: 'apps/api/src/main.ts',
+          tsConfig: 'apps/api/tsconfig.app.json',
+          assets: ['apps/api/src/assets']
+        }
+      }
+
+      return json
+    })
+
+    // Clean up webpack config if it exists
+    const webpackConfigPath = 'apps/api/webpack.config.js'
+    if (tree.exists(webpackConfigPath)) {
+      tree.delete(webpackConfigPath)
     }
-    return json
-  })
+  } else {
+    console.warn(`Could not find ${projectJsonPath}`)
+  }
 
   // Add the dev:api script to the main package.json
   updateJson(tree, 'package.json', (json) => {
@@ -52,5 +93,5 @@ export default async function (tree: Tree, schema: Schema) {
     }
   })
 
-  return installTask;
+  return installTask
 }

@@ -8,7 +8,7 @@ import {
   Tree,
 } from '@nx/devkit'
 import { libraryGenerator } from '@nx/react/src/generators/library/library'
-import { Linter } from '@nx/linter'
+import { Linter } from '@nx/eslint'
 
 export default async function (tree: Tree, schema: any) {
   await libraryGenerator(tree, {

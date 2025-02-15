@@ -19,6 +19,7 @@ export async function installPlugins(tree: Tree) {
     '@types/cookie-parser': 'latest',
     '@types/express': 'latest',
     prisma: 'latest',
+    tsx: 'latest',
   }
 
   try {

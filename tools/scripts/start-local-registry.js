@@ -1,15 +1,9 @@
-/**
- * This script starts a local registry for e2e testing purposes.
- * It is meant to be called in jest's globalSetup.
- */
-import { startLocalRegistry } from '@nx/js/plugins/jest/local-registry';
-import { execFileSync } from 'child_process';
-import { releasePublish, releaseVersion } from 'nx/release';
+const { startLocalRegistry } = require('@nx/js/plugins/jest/local-registry');
+const { execFileSync } = require('child_process');
+const { releasePublish, releaseVersion } = require('nx/release');
 
-export default async () => {
-  // local registry target to run
+module.exports = async () => {
   const localRegistryTarget = '@nestled/source:local-registry';
-  // storage folder for the local registry
   const storage = './tmp/local-registry/storage';
 
   global.stopLocalRegistry = await startLocalRegistry({
@@ -32,4 +26,4 @@ export default async () => {
     tag: 'e2e',
     firstRelease: true,
   });
-};
+}; 

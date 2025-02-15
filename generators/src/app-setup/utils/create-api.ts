@@ -5,6 +5,5 @@ export async function createApi(tree: Tree) {
   await applicationGenerator(tree, {
     name: 'api',
     directory: 'apps/api',
-    projectNameAndRootFormat: 'as-provided',
   })
 }

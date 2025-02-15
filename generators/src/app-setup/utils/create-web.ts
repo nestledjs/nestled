@@ -5,6 +5,5 @@ export async function createWeb(tree: Tree) {
   await applicationGenerator(tree, {
     name: 'web',
     directory: 'apps/web',
-    projectNameAndRootFormat: 'as-provided',
   })
 }
