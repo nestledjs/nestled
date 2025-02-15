@@ -15,7 +15,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@nestled/generators": ["generators/src/index.ts"]
+      "@nestled/generators": ["generators/src/index.ts"],
     }
   },
   "exclude": ["node_modules", "tmp"]
