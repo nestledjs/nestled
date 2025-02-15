@@ -63,20 +63,30 @@ let stopLocalRegistry = () => {};
   /**
    * Step 5: Install your Libraries
    */
-    // Get All published Npm packages that should be installed
+  // Get All published Npm packages that should be installed
   const packagesToInstall = Object.entries(projectsVersionData).map(
-      ([projectName, { newVersion }]) => {
-        const project = readCachedProjectGraph().nodes[projectName];
+    ([projectName, { newVersion }]) => {
+      const project = readCachedProjectGraph().nodes[projectName];
 
-        const packageJson = JSON.parse(
-          readFileSync(
-            resolve(process.cwd(), project.data.root, `package.json`)
-          ).toString()
-        );
+      const packageJson = JSON.parse(
+        readFileSync(
+          resolve(process.cwd(), project.data.root, `package.json`)
+        ).toString()
+      );
 
-        return `${packageJson.name}@${newVersion}`;
+      console.log(`Preparing to install package: ${packageJson.name}@${newVersion}`);
+      
+      // Also install dependencies if this is the generator package
+      if (packageJson.name === '@nestled/generators') {
+        console.log('Installing generator dependencies...');
+        Object.entries(packageJson.dependencies || {}).forEach(([dep, version]) => {
+          console.log(`- ${dep}@${version}`);
+        });
       }
-    );
+
+      return `${packageJson.name}@${newVersion}`;
+    }
+  );
 
   // Prepare the install command
   const targetPath = resolve(process.cwd(), options.targetPath);
@@ -84,11 +94,28 @@ let stopLocalRegistry = () => {};
     targetPath
   )} ${packagesToInstall.join(' ')} --registry=http://localhost:4873`;
 
-  console.log(installCommand);
+  console.log('Installing packages in target workspace:', installCommand);
 
   // Locate to target dir and run the install command
   process.chdir(targetPath);
-  execSync(installCommand);
+  try {
+    // Install packages one by one to better track failures
+    for (const pkg of packagesToInstall) {
+      const singleInstallCommand = `${getInstallCommand(targetPath)} ${pkg} --registry=http://localhost:4873`;
+      console.log(`Installing package: ${pkg}`);
+      try {
+        execSync(singleInstallCommand, { stdio: 'inherit' });
+        console.log(`✓ Successfully installed ${pkg}`);
+      } catch (error) {
+        console.error(`✗ Failed to install ${pkg}:`, error);
+        throw error;
+      }
+    }
+  } catch (error) {
+    console.error('Installation process failed:', error);
+    stopLocalRegistry();
+    process.exit(1);
+  }
 
   /**
    * Final: When installation is done, no need to have Verdaccio

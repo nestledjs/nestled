@@ -6,7 +6,7 @@ import { ApiLibAccountGeneratorSchema } from './schema'
 
 describe('api-lib-account generator', () => {
   let tree: Tree
-  const options: ApiLibAccountGeneratorSchema = { name: 'test' }
+  const options: ApiLibAccountGeneratorSchema = { directory: 'libs/api/account' }
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
@@ -14,7 +14,7 @@ describe('api-lib-account generator', () => {
 
   it('should run successfully', async () => {
     await generator(tree, options)
-    const config = readProjectConfiguration(tree, 'test')
+    const config = readProjectConfiguration(tree, 'api-account-feature')
     expect(config).toBeDefined()
   })
 })

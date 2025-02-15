@@ -7,24 +7,17 @@ interface Schema {
   [key: string]: unknown;
 }
 
-const devDependencies = {
-  'prisma-datamodel': '^1.0.2'  // Use the latest version available
-}
-
 export default async function (tree: Tree, schema: Schema) {
-  // Install prisma-datamodel
-  const installTask = await installPlugins(tree, {}, devDependencies)
-
-  // Install the necessary plugins
-  const installTask = await installPlugins(tree, schema)
-
-  // Generate the nest application
+  // First generate the nest application
   await nestApplicationGenerator(tree, {
     name: 'api',
     directory: 'apps/api',
     projectNameAndRootFormat: 'as-provided',
   })
 
+  // Then install our custom plugins
+  const installTask = await installPlugins(tree)
+  
   // Update the project.json to remove the assets from the build options
   updateJson(tree, 'apps/api/project.json', (json) => {
     if (json.targets && json.targets.build && json.targets.build.options) {
@@ -59,5 +52,5 @@ export default async function (tree: Tree, schema: Schema) {
     }
   })
 
-  return installTask
+  return installTask;
 }

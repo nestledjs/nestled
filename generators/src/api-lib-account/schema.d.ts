@@ -1,3 +1,4 @@
 export interface ApiLibAccountGeneratorSchema {
-  name: string
+  name?: string;
+  directory: string;
 }

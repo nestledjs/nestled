@@ -1,5 +1,5 @@
 import { addDependenciesToPackageJson, joinPathFragments, readJson, Tree } from '@nx/devkit'
-import { parseSchema, DMMF } from 'prisma-datamodel'
+import { getDMMF } from '@prisma/internals'
 
 export function deleteFiles(tree: Tree, filesToDelete: string[]) {
   filesToDelete.forEach((file) => {
@@ -96,10 +96,10 @@ export function mapPrismaTypeToNestJsType(prismaType: string) {
   return typeMap[prismaType] || prismaType
 }
 
-export function parsePrismaSchema(schemaContent: string, modelName: string) {
+export async function parsePrismaSchema(schemaContent: string, modelName: string) {
   try {
-    const schema = parseSchema(schemaContent)
-    const model = schema.models.find(m => m.name === modelName)
+    const dmmf = await getDMMF({ datamodel: schemaContent })
+    const model = dmmf.datamodel.models.find(m => m.name === modelName)
     
     if (!model) {
       return null

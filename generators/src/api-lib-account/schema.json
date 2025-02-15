@@ -1,13 +1,18 @@
 {
   "$schema": "http://json-schema.org/schema",
-  "cli": "nx",
-  "$id": "api-lib-account",
+  "$id": "ApiLibAccount",
+  "title": "Create an API Library",
   "type": "object",
   "properties": {
+    "name": {
+      "type": "string",
+      "description": "Library name",
+      "default": "account"
+    },
     "directory": {
       "type": "string",
-      "description": "Your main api library directory name",
-      "default": "api"
+      "description": "Directory where the lib is placed",
+      "default": "libs/api/account"
     }
   },
   "required": ["directory"]

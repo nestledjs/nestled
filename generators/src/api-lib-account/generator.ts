@@ -9,42 +9,42 @@ import {
   Tree,
 } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
+import { ApiLibAccountGeneratorSchema } from './schema'
 
-interface ApiLibAccountGeneratorSchema {
-  name: string
-  directory: string
-}
+export default async function (tree: Tree, schema: ApiLibAccountGeneratorSchema) {
+  const directory = schema.directory || 'libs/api/account'
 
-async function apiAccountGenerator(tree: Tree, schema: ApiLibAccountGeneratorSchema, type: string) {
-  if (!schema.name) {
-    throw new Error('Name is required')
-  }
-
-  if (!schema.directory) {
+  if (!directory) {
     throw new Error('Directory is required')
   }
 
-  const filePath = `${schema.directory}/account`
+  const type = 'feature'
+  
+  // Create project name according to Nx 20 format
+  const projectName = `api-account-${type}`
+  const projectRoot = `${directory}/${type}`
+  
   await libraryGenerator(tree, {
-    name: type,
-    directory: filePath,
-    tags: `scope:${schema.directory},type:${type}`,
+    name: projectName,
+    directory: projectRoot,
+    tags: `scope:${directory},type:${type}`,
   })
-  const libraryRoot = readProjectConfiguration(tree, `${schema.directory}-account-${type}`).root
+
+  const libraryRoot = readProjectConfiguration(tree, projectName).root
 
   const npmScope = readJson(tree, 'nx.json').npmScope
 
   const variables = {
     ...schema,
-    ...names(schema.directory),
+    ...names(directory),
     npmScope,
     tmpl: '',
   }
   await generateFiles(
-    tree, // the virtual file system
-    joinPathFragments(__dirname, `./files/${type}`), // path to the file templates
-    libraryRoot, // destination path of the files
-    variables, // config object to replace variable in file templates
+    tree,
+    joinPathFragments(__dirname, `./files/${type}`),
+    libraryRoot,
+    variables,
   )
   await formatFiles(tree)
   return () => {
