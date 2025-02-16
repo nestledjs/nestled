@@ -38,7 +38,7 @@ async function apiAuthGenerator(tree: Tree, schema: ApiLibAuthGeneratorSchema, t
     npmScope,
     tmpl: '',
   }
-  await generateFiles(
+  generateFiles(
     tree, // the virtual file system
     joinPathFragments(__dirname, `./files/${type}`), // path to the file templates
     libraryRoot, // destination path of the files
