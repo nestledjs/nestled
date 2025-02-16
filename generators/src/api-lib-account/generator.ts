@@ -24,13 +24,15 @@ async function apiAccountGenerator(tree: Tree, schema: ApiLibAccountGeneratorSch
     throw new Error('Directory is required')
   }
 
-  const filePath = `${schema.directory}/account`
+  const filePath = `${schema.directory}/${type}`
+  const libraryName = `api-${schema.name}-${type}`
+
   await libraryGenerator(tree, {
-    name: type,
+    name: libraryName,
     directory: filePath,
     tags: `scope:${schema.directory},type:${type}`,
   })
-  const libraryRoot = readProjectConfiguration(tree, `${schema.directory}-account-${type}`).root
+  const libraryRoot = readProjectConfiguration(tree, libraryName).root
 
   const npmScope = readJson(tree, 'nx.json').npmScope
 
