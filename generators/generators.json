@@ -15,6 +15,11 @@
       "schema": "./src/api-app/schema.json",
       "description": "Generates Basic Nest API App"
     },
+    "api-app-init": {
+      "factory": "./src/api-app/init",
+      "schema": "./src/api-app/schema.json",
+      "description": "Installs dependencies for API App"
+    },
     "remix-app": {
       "factory": "./src/remix-app/generator",
       "schema": "./src/remix-app/schema.json",
@@ -69,6 +74,11 @@
       "factory": "./src/workspace-setup/generator",
       "schema": "./src/workspace-setup/schema.json",
       "description": "Generates Workspace Setup"
+    },
+    "setup-api": {
+      "factory": "./src/api-app/setup",
+      "schema": "./src/api-app/schema.json",
+      "description": "Sets up API App with all dependencies"
     }
   }
 }

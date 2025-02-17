@@ -1,7 +1,14 @@
 {
   "name": "@nestled/generators",
   "version": "0.0.1",
-  "dependencies":{},
+  "dependencies": {
+    "@prisma/internals": "^6.3.1"
+  },
+  "peerDependencies": {
+    "@nx/nest": ">=20.0.0",
+    "@nx/node": ">=20.0.0",
+    "@nx/webpack": ">=20.0.0"
+  },
   "type": "commonjs",
   "main": "./src/index.js",
   "typings": "./src/index.d.ts",
