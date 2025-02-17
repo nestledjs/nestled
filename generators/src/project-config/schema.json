@@ -22,7 +22,7 @@
       "default": true,
       "x-prompt": "Do you want to generate Dockerfile and docker-compose.yml? (Y/n)"
     },
-    "ignoreEvn": {
+    "ignoreEnv": {
       "type": "boolean",
       "description": "Add .env in .gitignore",
       "default": true,

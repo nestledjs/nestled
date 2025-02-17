@@ -1,22 +1,27 @@
 import { generateFiles, joinPathFragments, Tree, updateJson } from '@nx/devkit'
-import { applicationGenerator as nestApplicationGenerator } from '@nx/nest'
-import { installPlugins } from './utils/install-plugins'
 import { deleteDirectory } from '../shared/utils'
+import { installPlugins } from './utils/install-plugins'
 
 interface Schema {
   [key: string]: unknown;
 }
 
 export default async function (tree: Tree, schema: Schema) {
-  // First generate the nest application
+  // First install all required plugins and dependencies
+  const installTask = await installPlugins(tree)
+  
+  // Execute the install task before proceeding
+  await installTask();
+  
+  // Now we can safely import and use the nest generator
+  const { applicationGenerator: nestApplicationGenerator } = require('@nx/nest');
+  
+  // Generate the nest application
   await nestApplicationGenerator(tree, {
-    name: 'api', // Full path as the name
-    directory: 'apps', // Directory where the app will be generated
+    name: 'api',
+    directory: 'apps',
     strict: true
   })
-
-  // Then install our custom plugins
-  const installTask = await installPlugins(tree)
 
   // Update the project configuration to use tsc
   const projectJsonPath = 'apps/api/project.json'
@@ -93,5 +98,5 @@ export default async function (tree: Tree, schema: Schema) {
     }
   })
 
-  return installTask
+  return installTask;
 }

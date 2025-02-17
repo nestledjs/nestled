@@ -1,4 +1,4 @@
-import { addDependenciesToPackageJson, joinPathFragments, readJson, Tree } from '@nx/devkit'
+import { addDependenciesToPackageJson, generateFiles, joinPathFragments, names, readJson, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
 
 export function deleteFiles(tree: Tree, filesToDelete: string[]) {
@@ -99,21 +99,61 @@ export function mapPrismaTypeToNestJsType(prismaType: string) {
 export async function parsePrismaSchema(schemaContent: string, modelName: string) {
   try {
     const dmmf = await getDMMF({ datamodel: schemaContent })
-    const model = dmmf.datamodel.models.find(m => m.name === modelName)
-    
+    const model = dmmf.datamodel.models.find((m) => m.name === modelName)
+
     if (!model) {
       return null
     }
 
-    return model.fields.map(field => ({
+    return model.fields.map((field) => ({
       name: field.name,
       type: mapPrismaTypeToNestJsType(field.type),
-      optional: !field.isRequired
+      optional: !field.isRequired,
     }))
   } catch (error) {
     console.error('Error parsing Prisma schema:', error)
     return null
   }
+}
+
+interface GenerateTemplateOptions {
+  tree: Tree
+  schema: any
+  libraryRoot: string
+  type: string
+  templatePath: string
+  npmScope: string
+}
+
+export function getNpmScope(tree: Tree): string {
+  const packageJson = readJson(tree, 'package.json')
+  const { name } = packageJson
+
+  const match = name.match(/@([^/]+)/)
+  if (!match) {
+    throw new Error('No npm scope found in package.json name')
+  }
+
+  return match[1] // Returns just "nestled" from "@nestled/source"
+}
+
+export async function generateTemplateFiles({
+  tree,
+  schema,
+  libraryRoot,
+  type,
+  templatePath,
+  npmScope,
+}: GenerateTemplateOptions): Promise<() => void> {
+  const variables = {
+    ...schema,
+    ...names(`${schema.name}`),
+    npmScope,
+    tmpl: '',
+  }
+
+  generateFiles(tree, joinPathFragments(templatePath, '../api-files', schema.name, type), libraryRoot, variables)
+  return
 }
 
 /**
@@ -146,9 +186,9 @@ export async function installPlugins(
   dependencies: Record<string, string> = {},
   devDependencies: Record<string, string> = {},
   options: {
-    configureProjectGraph?: boolean;
-    pluginNames?: string[];
-  } = {}
+    configureProjectGraph?: boolean
+    pluginNames?: string[]
+  } = {},
 ) {
   const depsToInstall: Record<string, string> = {}
   const devDepsToInstall: Record<string, string> = {}

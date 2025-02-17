@@ -27,8 +27,8 @@ export default async function () {
   const connected = await canConnect(DATABASE_URL)
 
   if (!connected) {
-    await ensureDockerIsRunning()
-    await ensureDockerComposeIsRunning()
+    ensureDockerIsRunning()
+    ensureDockerComposeIsRunning()
   }
 
   try {

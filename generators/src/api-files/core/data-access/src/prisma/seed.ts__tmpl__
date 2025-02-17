@@ -1,0 +1,47 @@
+import { PrismaClient } from '@prisma/client'
+import { countries } from './seed-data/iso-3166-countries'
+
+const prisma = new PrismaClient()
+async function main() {
+  for (const country of countries) {
+    await prisma.country.upsert({
+      where: { alpha2: country['alpha-2'] },
+      update: {},
+      create: {
+        name: country.name,
+        alpha2: country['alpha-2'],
+        alpha3: country['alpha-3'],
+        countryCode: country['country-code'],
+        iso3166_2: country['iso_3166-2'],
+        region: country.region,
+        subRegion: country['sub-region'],
+        intermediateRegion: country['intermediate-region'],
+        regionCode: country['region-code'],
+        subRegionCode: country['sub-region-code'],
+        intermediateRegionCode: country['intermediate-region-code'],
+      },
+    })
+  }
+  for (const user of PrismaClient.users) {
+    await prisma.user.upsert({
+      where: { id: user.id },
+      update: {},
+      create: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        password: user.password,
+        role: user.role,
+      },
+    })
+  }
+}
+main()
+  .then(async () => {
+    await prisma.$disconnect()
+  })
+  .catch(async (e) => {
+    console.error(e)
+    await prisma.$disconnect()
+    process.exit(1)
+  })

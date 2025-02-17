@@ -1,14 +1,14 @@
 {
   "generators": {
+    "api-lib": {
+      "factory": "./src/api-lib/generator",
+      "schema": "./src/api-lib/schema.json",
+      "description": "Generates Default API Libraries"
+    },
     "project-config": {
       "factory": "./src/project-config/generator",
       "schema": "./src/project-config/schema.json",
       "description": "Generates Top Level Project Config"
-    },
-    "app-setup": {
-      "factory": "./src/app-setup/generator",
-      "schema": "./src/app-setup/schema.json",
-      "description": "Generates All Requested Apps"
     },
     "api-app": {
       "factory": "./src/api-app/generator",
@@ -24,41 +24,6 @@
       "factory": "./src/api-crud/generator",
       "schema": "./src/api-crud/schema.json",
       "description": "Generates API CRUD operations"
-    },
-    "api-feature": {
-      "factory": "./src/api-feature/generator",
-      "schema": "./src/api-feature/schema.json",
-      "description": "Generates API Feature Modules"
-    },
-    "api-lib-account": {
-      "factory": "./src/api-lib-account/generator",
-      "schema": "./src/api-lib-account/schema.json",
-      "description": "Generates Account Library for API"
-    },
-    "api-lib-auth": {
-      "factory": "./src/api-lib-auth/generator",
-      "schema": "./src/api-lib-auth/schema.json",
-      "description": "Generates Authentication Library for API"
-    },
-    "api-lib-core": {
-      "factory": "./src/api-lib-core/generator",
-      "schema": "./src/api-lib-core/schema.json",
-      "description": "Generates Core Library for API"
-    },
-    "api-lib-mailer": {
-      "factory": "./src/api-lib-mailer/generator",
-      "schema": "./src/api-lib-mailer/schema.json",
-      "description": "Generates Mailer Library for API"
-    },
-    "api-lib-user": {
-      "factory": "./src/api-lib-user/generator",
-      "schema": "./src/api-lib-user/schema.json",
-      "description": "Generates User Management Library for API"
-    },
-    "prisma-seed": {
-      "factory": "./src/prisma-seed/generator",
-      "schema": "./src/prisma-seed/schema.json",
-      "description": "Generates Prisma Seed Script"
     },
     "crud": {
       "factory": "./src/crud/generator",

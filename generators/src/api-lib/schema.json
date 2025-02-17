@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "ApiLib",
+  "title": "Create an API Library",
+  "type": "object",
+  "properties": {
+    "useDefaults": {
+      "type": "boolean",
+      "description": "Generate all library modules",
+      "default": false
+    },
+    "generateAccounts": {
+      "type": "boolean",
+      "description": "Generate Accounts module",
+      "default": true
+    },
+    "generateAuth": {
+      "type": "boolean",
+      "description": "Generate Auth module",
+      "default": true
+    },
+    "generateCore": {
+      "type": "boolean",
+      "description": "Generate Core module",
+      "default": true
+    },
+    "generateMailer": {
+      "type": "boolean",
+      "description": "Generate Mailer module",
+      "default": true
+    },
+    "generateUser": {
+      "type": "boolean",
+      "description": "Generate User module",
+      "default": true
+    }
+  }
+}

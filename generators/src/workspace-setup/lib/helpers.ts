@@ -45,7 +45,7 @@ export function ensureDockerIsRunning() {
 
 export function isDockerComposeRunning(): boolean {
   try {
-    const res = execSync('docker-compose top', {
+    const res = execSync('docker compose top', {
       stdio: ['inherit', 'inherit'],
     })
 
@@ -60,13 +60,13 @@ export function isDockerComposeRunning(): boolean {
 }
 
 export async function ensureDockerComposeIsRunning() {
-  const isRunning = await isDockerComposeRunning()
+  const isRunning = isDockerComposeRunning()
   if (isRunning) {
     return true
   }
 
   try {
-    execSync('docker-compose up -d', { stdio: 'ignore' })
+    execSync('docker compose up -d', { stdio: 'ignore' })
     await waitForConnection()
     log(chalk.greenBright('Docker Compose Started'))
   } catch (e) {
@@ -110,21 +110,27 @@ export function runPrismaSeed() {
 
 export const sleep = (ms = 1000) => new Promise((resolve) => setTimeout(resolve, ms))
 
-async function waitForConnection(): Promise<void> {
+function waitForConnection(): Promise<void> {
   log(chalk.yellow('Waiting for Postgres to connect'))
-  return new Promise(async (resolve, reject) => {
+  return new Promise((resolve, reject) => {
     let count = 0
-    let connected = false
 
-    while (!connected && count < MAX_RETRIES) {
-      connected = await canConnect(DATABASE_URL)
-      await sleep()
-      count++
+    function tryConnect() {
+      if (count >= MAX_RETRIES) {
+        reject()
+        return
+      }
+
+      canConnect(DATABASE_URL).then((isConnected) => {
+        if (isConnected) {
+          resolve()
+        } else {
+          count++
+          sleep().then(tryConnect)
+        }
+      })
     }
 
-    if (connected) {
-      return resolve()
-    }
-    return reject()
+    tryConnect()
   })
 }
