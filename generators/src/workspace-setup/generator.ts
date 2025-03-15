@@ -1,5 +1,4 @@
 require('dotenv').config()
-import chalk from 'chalk'
 import {
   canConnect,
   DATABASE_URL,
@@ -12,9 +11,9 @@ import {
 } from './lib/helpers'
 
 export default async function () {
-  log(chalk.blueBright('Setting up workspace '))
+  log('Setting up workspace ')
 
-  await ensureDotEnv()
+  ensureDotEnv()
 
   if (!DATABASE_URL) {
     throw new Error(`Please provide DATABASE_URL env var`)
@@ -28,13 +27,13 @@ export default async function () {
 
   if (!connected) {
     ensureDockerIsRunning()
-    ensureDockerComposeIsRunning()
+    await ensureDockerComposeIsRunning()
   }
 
   try {
     runPrismaSetup()
     runPrismaSeed()
-    log(chalk.blueBright('Workspace setup done!'))
+    log('Workspace setup done!')
   } catch (error) {
     console.error('Error during workspace setup:', error.message)
   }

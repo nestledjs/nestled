@@ -1,11 +1,29 @@
+import { UserRole } from '@prisma/client'
+
+
 export const seedUsers = [
   {
+    id: '1',
     firstName: 'SuperAdmin',
     lastName: 'User',
     email: 'superadmin@example.com',
-    role: 'SuperAdmin',
+    role: UserRole.SUPER_ADMIN,
     password: 'password123',
   },
-  { firstName: 'Admin', lastName: 'User', email: 'admin@example.com', role: 'Admin', password: 'password123' },
-  { firstName: 'User', lastName: 'User', email: 'user@example.com', role: 'User', password: 'password123' },
-]
+  {
+    id: '2',
+    firstName: 'Admin',
+    lastName: 'User',
+    email: 'admin@example.com',
+    role: UserRole.ADMIN,
+    password: 'password123',
+  },
+  {
+    id: '3',
+    firstName: 'User',
+    lastName: 'User',
+    email: 'user@example.com',
+    role: UserRole.USER,
+    password: 'password123',
+  },
+];

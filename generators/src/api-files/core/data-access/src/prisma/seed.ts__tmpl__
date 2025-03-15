@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import { countries } from './seed-data/iso-3166-countries'
+import { seedUsers } from './seed-data/seed-users';
 
 const prisma = new PrismaClient()
 async function main() {
@@ -22,14 +23,19 @@ async function main() {
       },
     })
   }
-  for (const user of PrismaClient.users) {
+  for (const user of seedUsers) {
     await prisma.user.upsert({
       where: { id: user.id },
       update: {},
       create: {
         firstName: user.firstName,
         lastName: user.lastName,
-        email: user.email,
+        emails: {
+          create: {
+            email: user.email,
+            primary: true,
+          },
+        },
         password: user.password,
         role: user.role,
       },

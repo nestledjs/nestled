@@ -1,4 +1,3 @@
-import chalk from 'chalk'
 import { execSync } from 'child_process'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { basename } from 'path'
@@ -9,12 +8,7 @@ export const WORKSPACE_NAME = basename(process.cwd())
 export const DATABASE_URL = process.env.DATABASE_URL
 
 export function log(...msg) {
-  console.log(
-    chalk.magentaBright('>'),
-    chalk.inverse(chalk.magentaBright(chalk.bold(` BIZTOBIZ `))),
-    chalk.gray(`${WORKSPACE_NAME}`),
-    ...msg,
-  )
+  console.log(`[${WORKSPACE_NAME}]`, ...msg)
 }
 
 export async function connectToPostgres(url: string): Promise<Client> {
@@ -26,7 +20,7 @@ export async function connectToPostgres(url: string): Promise<Client> {
 export async function canConnect(url: string): Promise<boolean> {
   try {
     await connectToPostgres(url)
-    log(chalk.greenBright('Connected to Postgres'))
+    log('Connected to Postgres')
     return true
   } catch (e) {
     return false
@@ -36,10 +30,10 @@ export async function canConnect(url: string): Promise<boolean> {
 export function ensureDockerIsRunning() {
   try {
     execSync('docker ps', { stdio: 'ignore' })
-    log(chalk.greenBright('Docker is Up'))
+    log('Docker is Up')
     return true
   } catch (e) {
-    throw new Error(`Make sure Docker is running`)
+    throw new Error(`Make sure Docker is running, then run this again`)
   }
 }
 
@@ -50,7 +44,7 @@ export function isDockerComposeRunning(): boolean {
     })
 
     if (res) {
-      log(chalk.greenBright('Docker Compose is Running'))
+      log('Docker Compose is Running')
       return true
     }
     return false
@@ -68,40 +62,39 @@ export async function ensureDockerComposeIsRunning() {
   try {
     execSync('docker compose up -d', { stdio: 'ignore' })
     await waitForConnection()
-    log(chalk.greenBright('Docker Compose Started'))
+    log('Docker Compose Started')
   } catch (e) {
     throw new Error(`Make sure Docker Compose is running`)
   }
 }
 
 export function ensureDotEnv() {
-  // TODO: This method should verify if all values from .env.example exist in .env
   try {
     if (!existsSync('.env')) {
       writeFileSync('.env', readFileSync('.env.example'))
-      log(chalk.greenBright('.env created (copied from .env.example)'))
+      log('.env created (copied from .env.example)')
     } else {
-      log(chalk.greenBright('.env exists'))
+      log('.env exists')
     }
   } catch (e) {
-    throw new Error(`Make sure Docker Compose is running`)
+    throw new Error(`Error creating or reading.env file`)
   }
 }
 
 export function runPrismaSetup() {
   try {
-    execSync('pnpm prisma:db-push', { stdio: 'ignore' })
-    log(chalk.greenBright('Prisma Setup is Done'))
+    execSync('pnpm prisma:apply', { stdio: 'ignore' })
+    log('Prisma Setup is Done')
     return true
   } catch (e) {
-    throw new Error(`There was an issue running 'pnpm prisma:db-push'`)
+    throw new Error(`There was an issue running 'pnpm prisma:apply'`)
   }
 }
 
 export function runPrismaSeed() {
   try {
     execSync('pnpm prisma:seed --confirm --timeout 0', { stdio: 'ignore' })
-    log(chalk.greenBright('Prisma Seed is Done'))
+    log('Prisma Seed is Done')
     return true
   } catch (e) {
     throw new Error(`There was an issue running 'pnpm prisma:seed'`)
@@ -111,7 +104,7 @@ export function runPrismaSeed() {
 export const sleep = (ms = 1000) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function waitForConnection(): Promise<void> {
-  log(chalk.yellow('Waiting for Postgres to connect'))
+  log('Waiting for Postgres to connect')
   return new Promise((resolve, reject) => {
     let count = 0
 

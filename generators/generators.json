@@ -1,8 +1,8 @@
 {
   "generators": {
-    "api-lib": {
-      "factory": "./src/api-lib/generator",
-      "schema": "./src/api-lib/schema.json",
+    "api-libs": {
+      "factory": "./src/api-libs/generator",
+      "schema": "./src/api-libs/schema.json",
       "description": "Generates Default API Libraries"
     },
     "project-config": {
@@ -14,11 +14,6 @@
       "factory": "./src/api-app/generator",
       "schema": "./src/api-app/schema.json",
       "description": "Generates Basic Nest API App"
-    },
-    "api-app-init": {
-      "factory": "./src/api-app/init",
-      "schema": "./src/api-app/schema.json",
-      "description": "Installs dependencies for API App"
     },
     "remix-app": {
       "factory": "./src/remix-app/generator",
@@ -75,10 +70,10 @@
       "schema": "./src/workspace-setup/schema.json",
       "description": "Generates Workspace Setup"
     },
-    "setup-api": {
-      "factory": "./src/api-app/setup",
-      "schema": "./src/api-app/schema.json",
-      "description": "Sets up API App with all dependencies"
+    "api-dependencies": {
+      "factory": "./src/api-dependencies/generator",
+      "schema": "./src/api-dependencies/schema.json",
+      "description": "Sets up all dependencies for API App"
     }
   }
 }
