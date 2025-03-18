@@ -1,28 +1,118 @@
 import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
+import { Linter } from '@nx/eslint'
 import { generateTemplateFiles, getNpmScope, installPlugins } from '../shared/utils'
 import { promptProvider } from './prompts'
 import { ApiLibGeneratorSchema } from './schema'
+import { generateFiles } from '@nx/devkit'
+
+// Add scope filter to ensure we only process libs/api
+const API_LIBS_SCOPE = 'libs/api'
 
 async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: string) {
   const npmScope = getNpmScope(tree)
-  const libraryRoot = joinPathFragments('libs', 'api', schema.name, type)
+  const libraryRoot = joinPathFragments(API_LIBS_SCOPE, schema.name, type)
   const libraryName = `api-${schema.name}-${type}`
   const importPath = `@${npmScope}/api/${schema.name}/${type}`
 
-  await libraryGenerator(tree, {
-    name: libraryName,
-    directory: libraryRoot,
-    tags: `scope:api,type:${type}`,
-    importPath,
+  // Create the basic library structure manually
+  const libraryFiles = {
+    'project.json': JSON.stringify({
+      name: libraryName,
+      $schema: '../../node_modules/nx/schemas/project-schema.json',
+      sourceRoot: `${libraryRoot}/src`,
+      projectType: 'library',
+      targets: {
+        build: {
+          executor: '@nx/js:tsc',
+          outputs: ['{options.outputPath}'],
+          options: {
+            outputPath: `dist/${libraryRoot}`,
+            main: `${libraryRoot}/src/index.ts`,
+            tsConfig: `${libraryRoot}/tsconfig.lib.json`,
+            assets: [`${libraryRoot}/*.md`],
+          },
+        },
+        test: {
+          executor: '@nx/jest:jest',
+          outputs: ['{workspaceRoot}/coverage/{projectRoot}'],
+          options: {
+            jestConfig: `${libraryRoot}/jest.config.ts`,
+          },
+        },
+        lint: {
+          executor: '@nx/eslint:lint',
+          outputs: ['{options.outputFile}'],
+        },
+      },
+      tags: [`scope:api`, `type:${type}`],
+    }),
+    'tsconfig.json': JSON.stringify({
+      extends: '../../tsconfig.base.json',
+      compilerOptions: {
+        module: 'commonjs',
+        forceConsistentCasingInFileNames: true,
+        strict: true,
+        noImplicitOverride: true,
+        noPropertyAccessFromIndexSignature: true,
+        noImplicitReturns: true,
+        noFallthroughCasesInSwitch: true,
+        sourceMap: true,
+        declaration: false,
+        types: ['node'],
+      },
+      files: [],
+      include: [],
+      references: [
+        {
+          path: './tsconfig.lib.json',
+        },
+        {
+          path: './tsconfig.spec.json',
+        },
+      ],
+    }),
+    'tsconfig.lib.json': JSON.stringify({
+      extends: './tsconfig.json',
+      compilerOptions: {
+        outDir: '../../dist/out-tsc',
+        types: ['node'],
+      },
+      include: ['src/**/*.ts'],
+      exclude: ['jest.config.ts', 'src/**/*.spec.ts', 'src/**/*.test.ts'],
+    }),
+    'tsconfig.spec.json': JSON.stringify({
+      extends: './tsconfig.json',
+      compilerOptions: {
+        outDir: '../../dist/out-tsc',
+        types: ['jest', 'node'],
+      },
+      include: ['jest.config.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.d.ts'],
+    }),
+    'jest.config.ts': JSON.stringify({
+      displayName: libraryName,
+      preset: '../../jest.preset.js',
+      testEnvironment: 'node',
+      transform: {
+        '^.+\\.[tj]s$': 'ts-jest',
+      },
+      moduleFileExtensions: ['ts', 'js', 'html'],
+      coverageDirectory: '../../coverage/libs/api',
+    }),
+  }
+
+  // Write the library files
+  Object.entries(libraryFiles).forEach(([file, content]) => {
+    tree.write(joinPathFragments(libraryRoot, file), content)
   })
 
+  // Generate the template files
   generateTemplateFiles({
     tree,
     schema,
     libraryRoot,
     type,
-    templatePath: __dirname,
+    templatePath: joinPathFragments(__dirname, '../../api-files'),
     npmScope,
   })
 
@@ -104,6 +194,11 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
 export default async function generateLibraries(tree: Tree, schema: ApiLibGeneratorSchema) {
   const options = await promptProvider.handleMissingOptions(schema)
   const tasks: (() => void)[] = []
+
+  // Ensure we're only working with libs/api
+  if (!schema.name.startsWith('api-')) {
+    schema.name = `api-${schema.name}`
+  }
 
   if (options.generateAccounts || options.useDefaults) {
     tasks.push(await apiGenerator(tree, { ...schema, name: 'account' }, 'data-access'))

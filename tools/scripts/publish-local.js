@@ -1,18 +1,15 @@
 // Related to the target generated in the root project.json
-const { startLocalRegistry } = require('@nx/js/plugins/jest/local-registry');
 const { readdirSync, readFileSync } = require('fs');
 const { releasePublish, releaseVersion } = require('nx/release');
 const { execSync } = require('child_process');
 const yargs = require('yargs/yargs');
 const { resolve } = require('path');
 const { readCachedProjectGraph } = require('nx/src/project-graph/project-graph');
+const startLocalRegistry = require('./start-local-registry');
+const stopLocalRegistry = require('./stop-local-registry');
 
-const localRegistryTarget = '@nestled/source:local-registry';
-
-// Callback used to stop Verdaccio process
-let stopLocalRegistry = () => {
-  /* noop */
-};
+const REGISTRY_PORT = 4873;
+const REGISTRY_URL = `http://localhost:${REGISTRY_PORT}`;
 
 // Configure yargs properly
 const argv = yargs(process.argv.slice(2))
@@ -33,7 +30,21 @@ const argv = yargs(process.argv.slice(2))
   .help()
   .parse();
 
+// Ensure cleanup happens on process termination
+process.on('SIGINT', () => {
+  console.log('\nReceived SIGINT. Cleaning up...');
+  stopLocalRegistry();
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\nReceived SIGTERM. Cleaning up...');
+  stopLocalRegistry();
+  process.exit(0);
+});
+
 (async () => {
+  let stopRegistry = null;
   try {
     console.log('Starting with configuration:', {
       releaseVersion: argv.releaseVersion,
@@ -50,10 +61,8 @@ const argv = yargs(process.argv.slice(2))
     }
 
     console.log('Starting local registry...');
-    stopLocalRegistry = await startLocalRegistry({
-      localRegistryTarget,
-      verbose: true,
-    });
+    const registry = await startLocalRegistry();
+    stopRegistry = registry.stopLocalRegistry;
 
     // Build all projects using nx CLI
     console.log('Building all packages...');
@@ -94,7 +103,7 @@ const argv = yargs(process.argv.slice(2))
     console.log('Publishing packages to local registry...');
     const publishStatus = await releasePublish({
       firstRelease: true,
-      registry: 'http://localhost:4873',
+      registry: REGISTRY_URL,
       verbose: true,
       tag: 'local'
     });
@@ -123,13 +132,13 @@ const argv = yargs(process.argv.slice(2))
     const targetPath = resolve(process.cwd(), argv.targetPath);
     const installCommand = `${getInstallCommand(targetPath)} ${packagesToInstall.join(
       ' ',
-    )} --registry=http://localhost:4873`;
+    )} --registry=${REGISTRY_URL}`;
 
     console.log('Installing packages in target workspace:', installCommand);
 
     process.chdir(targetPath);
     for (const pkg of packagesToInstall) {
-      const singleInstallCommand = `${getInstallCommand(targetPath)} ${pkg} --registry=http://localhost:4873`;
+      const singleInstallCommand = `${getInstallCommand(targetPath)} ${pkg} --registry=${REGISTRY_URL}`;
       console.log(`Installing package: ${pkg}`);
       try {
         execSync(singleInstallCommand, { stdio: 'inherit' });
@@ -140,22 +149,23 @@ const argv = yargs(process.argv.slice(2))
       }
     }
 
+    console.log('All operations completed successfully. Cleaning up...');
+    if (stopRegistry) {
+      stopRegistry();
+    }
     stopLocalRegistry();
     process.exit(publishStatus ? 0 : 1);
   } catch (error) {
     console.error('Error occurred:', error);
-    if (stopLocalRegistry) {
-      console.log('Stopping local registry...');
-      stopLocalRegistry();
+    if (stopRegistry) {
+      stopRegistry();
     }
+    stopLocalRegistry();
     process.exit(1);
   }
 })().catch((error) => {
   console.error('Unhandled error:', error);
-  if (stopLocalRegistry) {
-    console.log('Stopping local registry due to error...');
-    stopLocalRegistry();
-  }
+  stopLocalRegistry();
   process.exit(1);
 });
 
