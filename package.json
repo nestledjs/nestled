@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "publish-local": "node ./tools/scripts/publish-local.js --targetPath ../test-workspace",
+    "vpub": "node ./tools/scripts/publish-local.js --targetPath ../test-workspace",
     "serve-docs": "docsify serve ./docs --port 3020"
   },
   "private": true,
@@ -65,7 +65,7 @@
     "tslib": "^2.3.0",
     "typescript": "5.7.3",
     "typescript-eslint": "8.24.0",
-    "verdaccio": "^5.0.4",
+    "verdaccio": "6.0.5",
     "yargs": "^17.7.2"
   },
   "nx": {
