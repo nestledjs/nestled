@@ -1,7 +1,6 @@
 require('dotenv').config()
 import {
   canConnect,
-  DATABASE_URL,
   ensureDockerComposeIsRunning,
   ensureDockerIsRunning,
   ensureDotEnv,
@@ -14,6 +13,9 @@ export default async function () {
   log('Setting up workspace ')
 
   ensureDotEnv()
+  require('dotenv').config()
+  
+  const DATABASE_URL = process.env.DATABASE_URL
 
   if (!DATABASE_URL) {
     throw new Error(`Please provide DATABASE_URL env var`)

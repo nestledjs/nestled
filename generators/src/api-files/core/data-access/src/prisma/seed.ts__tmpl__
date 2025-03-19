@@ -30,6 +30,7 @@ async function main() {
       create: {
         firstName: user.firstName,
         lastName: user.lastName,
+        displayName: user.displayName,
         emails: {
           create: {
             email: user.email,
