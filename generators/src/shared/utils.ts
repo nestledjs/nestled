@@ -137,14 +137,14 @@ export function getNpmScope(tree: Tree): string {
   return match[1] // Returns just "nestled" from "@nestled/source"
 }
 
-export async function generateTemplateFiles({
+export function generateTemplateFiles({
   tree,
   schema,
   libraryRoot,
   type,
   templatePath,
   npmScope,
-}: GenerateTemplateOptions): Promise<() => void> {
+}: GenerateTemplateOptions): void {
   const variables = {
     ...schema,
     ...names(`${schema.name}`),
@@ -152,8 +152,8 @@ export async function generateTemplateFiles({
     tmpl: '',
   }
 
-  generateFiles(tree, joinPathFragments(templatePath, '../api-files', schema.name, type), libraryRoot, variables)
-  return
+  // Fix the path - remove the redundant '../api-files'
+  generateFiles(tree, joinPathFragments(templatePath, schema.name, type), libraryRoot, variables)
 }
 
 /**
