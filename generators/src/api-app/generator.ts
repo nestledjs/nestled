@@ -26,7 +26,7 @@ export default async function (tree: Tree, schema: Schema) {
         executor: '@nx/js:tsc',
         outputs: ['{options.outputPath}'],
         options: {
-          outputPath: 'dist/apps/api',
+          outputPath: 'dist/out-tsc',
           main: 'apps/api/src/main.ts',
           tsConfig: 'apps/api/tsconfig.app.json',
         },
@@ -53,6 +53,42 @@ export default async function (tree: Tree, schema: Schema) {
     json.scripts['dev:api'] = 'nx serve api'
     return json
   })
+
+  // Create TypeScript configuration files with specified settings
+  const tsConfigApp = {
+    extends: './tsconfig.json',
+    compilerOptions: {
+      outDir: '../../dist/out-tsc',
+      module: 'NodeNext',
+      moduleResolution: 'NodeNext',
+      types: ['node'],
+      experimentalDecorators: true,
+      emitDecoratorMetadata: true,
+      target: 'es2021',
+      strictNullChecks: true,
+      noImplicitAny: true,
+      strictBindCallApply: true,
+      forceConsistentCasingInFileNames: true,
+      noFallthroughCasesInSwitch: true,
+    },
+    include: ['src/**/*.ts'],
+    exclude: ['jest.config.ts', 'src/**/*.spec.ts', 'src/**/*.test.ts'],
+  }
+
+  const tsConfigSpec = {
+    extends: './tsconfig.json',
+    compilerOptions: {
+      outDir: '../../dist/out-tsc',
+      module: 'NodeNext',
+      moduleResolution: 'NodeNext',
+      types: ['jest', 'node'],
+    },
+    include: ['jest.config.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.d.ts'],
+  }
+
+  // Write the TypeScript configuration files
+  tree.write('apps/api/tsconfig.app.json', JSON.stringify(tsConfigApp, null, 2))
+  tree.write('apps/api/tsconfig.spec.json', JSON.stringify(tsConfigSpec, null, 2))
 
   // Generate custom files
   generateFiles(tree, joinPathFragments(__dirname, './files'), 'apps/api/src', { ...schema, tmpl: '' })

@@ -13,6 +13,10 @@ To build an api, run tasks in this order:
 ```
 
 ```sh
+  pnpm approve-builds
+```
+
+```sh
   nx g @nestled/generators:api-libs
 ```
 
