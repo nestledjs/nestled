@@ -2,6 +2,8 @@
   "$schema": "http://json-schema.org/schema",
   "cli": "nx",
   "$id": "ApiGenerator",
+  "title": "API Application Generator",
   "type": "object",
-  "properties": {}
+  "properties": {},
+  "required": []
 }

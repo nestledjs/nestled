@@ -5,10 +5,12 @@ export async function apiDependenciesGenerator(tree: Tree) {
     tree,
     {},
     {
-      '@nx/nest': 'latest',
-      '@nx/node': 'latest',
-      '@nx/webpack': 'latest',
-      pg: 'latest',
+      nx: '20.6.1',
+      '@nx/js': '20.6.1',
+      '@nx/nest': '20.6.1',
+      '@nx/node': '20.6.1',
+      '@nx/webpack': '20.6.1',
+      pg: '8.14.1',
     },
   )
 }
