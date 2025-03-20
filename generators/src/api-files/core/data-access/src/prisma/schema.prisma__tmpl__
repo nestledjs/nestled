@@ -117,8 +117,7 @@ model User {
   lastName                  String?
   role                      UserRole
   bio                       String?
-  displayName               String?
-  username                  String               @unique
+  displayName               String?              @unique
   password                  String?
   passwordResetToken        String?
   passwordResetExpires      DateTime?

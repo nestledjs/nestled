@@ -36,8 +36,7 @@ export class ApiUserDataAccessService {
     await this.data.ensureAdminUser(adminId)
     const email = input.email.trim()
     const avatarUrl = getGravatarUrl(email)
-    const username = this.formatUsername(email, input.username)
-    await this.ensureUsernameAvailable(username)
+    const displayName = input.displayName || `${input.firstName} ${input.lastName}`.trim() || email
 
     return this.data.user.create({
       data: {
@@ -46,7 +45,7 @@ export class ApiUserDataAccessService {
         firstName: input.firstName,
         lastName: input.lastName,
         avatarUrl,
-        username,
+        displayName,
       },
       include: { emails: true },
     })

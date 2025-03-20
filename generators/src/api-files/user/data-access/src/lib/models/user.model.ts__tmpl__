@@ -17,7 +17,7 @@ export class User {
   phone: string
 
   @Field({ nullable: true })
-  username?: string
+  displayName?: string
 
   @Field({ nullable: true })
   firstName?: string

@@ -12,7 +12,7 @@ export class UserCreateInput {
   email: string
 
   @Field({ nullable: true })
-  username?: string
+  displayName?: string
 
   @Field({ nullable: true })
   @IsNotEmpty()

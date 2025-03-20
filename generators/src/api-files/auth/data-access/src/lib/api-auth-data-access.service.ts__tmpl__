@@ -32,7 +32,7 @@ export class ApiAuthDataAccessService {
     const password = input.password
     const hashedPassword = hashPassword(password)
     const email = input.email.trim()
-    const username = input.username || email
+    const displayName = input.displayName || `${input.firstName} ${input.lastName}`.trim() || email
 
     return this.data.user
       .create({
@@ -41,7 +41,7 @@ export class ApiAuthDataAccessService {
           lastName: input.lastName,
           emails: { create: { email, primary: true } },
           phone: input.phone,
-          username,
+          displayName,
           avatarUrl: input.avatarUrl || getGravatarUrl(input.email.toLowerCase()),
           password: hashedPassword,
           role: Role.User,

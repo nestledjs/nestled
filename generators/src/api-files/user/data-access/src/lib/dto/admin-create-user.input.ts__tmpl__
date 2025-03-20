@@ -10,7 +10,7 @@ export class AdminCreateUserInput {
   email: string
 
   @Field({ nullable: true })
-  username?: string
+  displayName?: string
 
   @Field({ nullable: true })
   firstName?: string
