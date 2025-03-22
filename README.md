@@ -18,8 +18,15 @@ To build an api, run tasks in this order:
 
 ```sh
   nx g @nestled/generators:api-libs
+``` 
+
+```sh
+  nx g @nestled/generators:project-config
 ```
 
+```sh
+  nx g @nestled/generators:workspace-setup
+```
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 
 ✨ Your new, shiny [Nx workspace](https://nx.dev) is almost ready ✨.

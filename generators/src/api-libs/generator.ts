@@ -1,11 +1,75 @@
-import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree } from '@nx/devkit'
+import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree, names, updateJson } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
 import { generateTemplateFiles, getNpmScope, installPlugins } from '../shared/utils'
 import { promptProvider } from './prompts'
 import { ApiLibGeneratorSchema } from './schema'
+import * as ts from 'typescript'
 
 // Add scope filter to ensure we only process libs/api
 const API_LIBS_SCOPE = 'libs/api'
+
+function addImport(tree: Tree, name: string, type: string) {
+  const coreFeaturePath = `apps/api/src/app.module.ts`
+
+  if (!tree.exists(coreFeaturePath)) {
+    console.error(`Can't find ${coreFeaturePath}`)
+    return
+  }
+
+  const nameClassName = names(name).className
+  const typeClassName = names(type).className
+  const npmScope = getNpmScope(tree)
+  const moduleToAdd = `Api${nameClassName}${typeClassName}Module`
+  const importPath = `@${npmScope}/api/${name}/${type}`
+
+  let fileContent = tree.read(coreFeaturePath)?.toString() || ''
+  
+  // Add import statement if it doesn't exist
+  if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
+    const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
+    fileContent = importStatement + fileContent
+  }
+
+  // Find the exact position of the appModules array
+  const arrayStart = fileContent.indexOf('export const appModules = [')
+  
+  if (arrayStart !== -1) {
+    // Find the closing bracket of the array
+    const arrayEnd = fileContent.indexOf('];', arrayStart)
+    
+    if (arrayEnd !== -1) {
+      // Get just the array content
+      const arrayContent = fileContent.slice(arrayStart + 'export const appModules = ['.length, arrayEnd)
+      
+      // Check if module exists only in the array content
+      if (!arrayContent.includes(moduleToAdd)) {
+        // If array is empty, don't add a leading comma
+        const isEmpty = arrayContent.trim() === ''
+        const moduleEntry = isEmpty 
+          ? `\n  ${moduleToAdd}`
+          : `,\n  ${moduleToAdd}`
+        
+        // Insert the new module just before the closing bracket
+        const before = fileContent.slice(0, arrayEnd)
+        const after = fileContent.slice(arrayEnd)
+        fileContent = before + moduleEntry + after
+      }
+    }
+  }
+
+  // Clean up the array formatting if needed
+  const arrayRegex = /export const appModules = \[([\s\S]*?)\];/
+  const match = fileContent.match(arrayRegex)
+  if (match) {
+    const modules = match[1].split(',')
+      .map(m => m.trim())
+      .filter(m => m.length > 0)
+    const formattedArray = `export const appModules = [\n  ${modules.join(',\n  ')}\n];`
+    fileContent = fileContent.replace(arrayRegex, formattedArray)
+  }
+
+  tree.write(coreFeaturePath, fileContent)
+}
 
 async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: string) {
   const npmScope = getNpmScope(tree)
@@ -25,7 +89,46 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     importPath: importPath,
     skipFormat: true,
     tags: `scope:api,type:${type}`,
+    strict: true,
   })
+
+  // Update library's tsconfig.json
+  const libTsConfigPath = joinPathFragments(libraryRoot, 'tsconfig.json')
+  if (tree.exists(libTsConfigPath)) {
+    updateJson(tree, libTsConfigPath, (json) => {
+      json.compilerOptions = {
+        ...json.compilerOptions,
+        strict: true,
+        noImplicitAny: true,
+        strictNullChecks: true,
+        strictFunctionTypes: true,
+        strictBindCallApply: true,
+        strictPropertyInitialization: true,
+        noImplicitThis: true,
+        alwaysStrict: true,
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+      }
+      return json
+    })
+  }
+
+  // Update library's tsconfig.lib.json
+  const libTsConfigLibPath = joinPathFragments(libraryRoot, 'tsconfig.lib.json')
+  if (tree.exists(libTsConfigLibPath)) {
+    updateJson(tree, libTsConfigLibPath, (json) => {
+      json.compilerOptions = {
+        ...json.compilerOptions,
+        outDir: '../../../dist/out-tsc',
+        declaration: true,
+        types: ['node'],
+        target: 'es2021',
+      }
+      json.include = ['src/**/*.ts']
+      json.exclude = ['jest.config.ts', '**/*.spec.ts', '**/*.test.ts']
+      return json
+    })
+  }
 
   // Generate the template files on top of the Nx-generated structure
   generateTemplateFiles({
@@ -57,52 +160,15 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
       seed: 'ts-node --project tsconfig.json libs/api/core/data-access/src/prisma/seed.ts',
     }
 
-    // Add scripts
-    packageJson.scripts = {
-      ...packageJson.scripts,
-      affected: 'nx affected',
-      'affected:apps': 'nx affected:apps',
-      'affected:build': 'nx affected:build',
-      'affected:dep-graph': 'nx affected:dep-graph',
-      'affected:e2e': 'nx affected:e2e',
-      'affected:libs': 'nx affected:libs',
-      'affected:lint': 'nx affected:lint',
-      'affected:test': 'nx affected:test',
-      'dep-graph': 'nx dep-graph',
-      'build:api': 'nx build api --prod --skip-nx-cache',
-      'deploy-api': 'git checkout api-deploy && git merge develop && git push && git checkout develop',
-      'dev:api': 'nx serve api',
-      format: 'nx format:write',
-      'format:check': 'nx format:check',
-      'format:write': 'nx format:write',
-      help: 'nx help',
-      lint: 'nx workspace-lint && nx lint',
-      nx: 'nx',
-      'pre-commit:lint': 'nx format:write --uncommitted & nx affected --target eslint --uncommitted',
-      'prisma:apply': 'pnpm prisma:format && pnpm prisma db push',
-      'prisma:format': 'pnpm prisma format',
-      'prisma:generate': 'pnpm prisma generate',
-      'prisma:migrate': 'pnpm prisma migrate save && pnpm prisma migrate up',
-      'prisma:migrate:dev': 'pnpm prisma migrate dev',
-      'prisma:migrate:prod': 'pnpm prisma migrate deploy',
-      'prisma:reset': 'pnpm prisma migrate reset && pnpm prisma:seed',
-      'prisma:seed': 'npx prisma db seed',
-      'prisma:studio': 'pnpm prisma studio',
-      sdk: 'graphql-codegen --config libs/shared/util-sdk/src/codegen.yml',
-      'sdk:watch': 'pnpm sdk --watch',
-      'types:watch': 'nodemon',
-      setup: 'pnpm prisma:apply',
-      test: 'nx test',
-      'test:api': 'pnpm nx e2e api-e2e',
-      'test:ci': 'pnpm test:api',
-      update: 'nx migrate latest',
-      'workspace-generator': 'nx workspace-generator',
-    }
-
     tree.write('package.json', JSON.stringify(packageJson, null, 2))
 
     // Use the shared installPlugins utility to install the necessary packages
     await installPlugins(tree, dependencies, devDependencies)
+  }
+
+  // Add the module import after generating the library
+  if (type === 'feature' || (type === 'data-access' && schema.name === 'mailer')) {
+    addImport(tree, schema.name, type)
   }
 
   await formatFiles(tree)
@@ -127,11 +193,6 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
     tasks.push(await apiGenerator(tree, { name: 'auth' }, 'util'))
   }
 
-  if (options.generateCore || options.useDefaults) {
-    tasks.push(await apiGenerator(tree, { name: 'core' }, 'data-access'))
-    tasks.push(await apiGenerator(tree, { name: 'core' }, 'feature'))
-  }
-
   if (options.generateMailer || options.useDefaults) {
     tasks.push(await apiGenerator(tree, { name: 'mailer' }, 'data-access'))
   }
@@ -140,6 +201,8 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
     tasks.push(await apiGenerator(tree, { name: 'user' }, 'data-access'))
     tasks.push(await apiGenerator(tree, { name: 'user' }, 'feature'))
   }
+
+  await formatFiles(tree)
 
   return () => {
     tasks.forEach((task) => task?.())

@@ -34,6 +34,7 @@ export default async function () {
 
   try {
     runPrismaSetup()
+    await new Promise(resolve => setTimeout(resolve, 2000))
     runPrismaSeed()
     log('Workspace setup done!')
   } catch (error) {

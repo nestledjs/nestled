@@ -3,7 +3,7 @@ import { LoggerMiddleware } from './applogger.middleware'
 import { ConfigModule } from '@nestjs/config'
 import { appConfig, validationSchema } from './app.config'
 
-// Add Imports Here
+export const appModules = [];
 
 @Module({
   imports: [
@@ -16,7 +16,7 @@ import { appConfig, validationSchema } from './app.config'
       },
       isGlobal: true,
     }),
-    // Add Modules Here
+    ...appModules,
   ],
 })
 export class AppModule implements NestModule {

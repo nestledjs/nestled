@@ -93,11 +93,12 @@ export function runPrismaSetup() {
 
 export function runPrismaSeed() {
   try {
-    execSync('pnpm prisma:seed --confirm --timeout 0', { stdio: 'ignore' })
+    execSync('npx prisma db seed -- --confirm --timeout 0', { stdio: 'inherit' })
     log('Prisma Seed is Done')
     return true
   } catch (e) {
-    throw new Error(`There was an issue running 'pnpm prisma:seed'`)
+    console.error('Prisma Seed Error:', e.message)
+    throw new Error(`There was an issue running 'pnpm prisma:seed': ${e.message}`)
   }
 }
 

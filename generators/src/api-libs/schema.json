@@ -19,11 +19,6 @@
       "description": "Generate Auth module",
       "default": true
     },
-    "generateCore": {
-      "type": "boolean",
-      "description": "Generate Core module",
-      "default": true
-    },
     "generateMailer": {
       "type": "boolean",
       "description": "Generate Mailer module",

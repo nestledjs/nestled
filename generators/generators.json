@@ -79,6 +79,11 @@
       "factory": "./src/api-dependencies/generator",
       "schema": "./src/api-dependencies/schema.json",
       "description": "Sets up all dependencies for API App"
+    },
+    "api-core": {
+      "factory": "./src/api-core/generator",
+      "schema": "./src/api-core/schema.json",
+      "description": "Generates Core API Library"
     }
   }
 }
