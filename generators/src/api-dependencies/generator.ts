@@ -16,29 +16,29 @@ export async function apiDependenciesGenerator(tree: Tree) {
       '@nestjs/axios': '^3.0.0',
       '@prisma/client': '^5.0.0',
       'apollo-server-express': '^3.12.0',
-      'bcryptjs': '^2.4.3',
+      bcryptjs: '^2.4.3',
       'class-validator': '^0.14.0',
       'cookie-parser': '^1.4.6',
-      'graphql': '^16.0.0',
+      graphql: '^16.0.0',
       'graphql-subscriptions': '^2.0.0',
-      'joi': '^17.9.0',
-      'nodemailer': '^6.9.0',
+      joi: '^17.9.0',
+      nodemailer: '^6.9.0',
       'passport-jwt': '^4.0.1',
       'reflect-metadata': '^0.1.13',
-      'rxjs': '^7.8.0'
+      rxjs: '^7.8.0',
     },
     {
-      nx: '20.6.1',
-      '@nx/js': '20.6.1',
-      '@nx/nest': '20.6.1',
-      '@nx/node': '20.6.1',
-      '@nx/webpack': '20.6.1',
+      nx: '20.6.2',
+      '@nx/js': '20.6.2',
+      '@nx/nest': '20.6.2',
+      '@nx/node': '20.6.2',
+      '@nx/webpack': '20.6.2',
       '@types/bcryptjs': '^2.4.2',
       '@types/cookie-parser': '^1.4.3',
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^3.0.8',
-      'prisma': '^5.0.0',
-      'pg': '8.14.1'
+      prisma: '^5.0.0',
+      pg: '8.14.1',
     },
   )
 
@@ -51,10 +51,10 @@ export async function apiDependenciesGenerator(tree: Tree) {
     // Update module and moduleResolution
     tsConfig.compilerOptions.module = 'CommonJS'
     tsConfig.compilerOptions.moduleResolution = 'node'
-    
+
     // Set baseUrl for path aliases
     tsConfig.compilerOptions.baseUrl = '.'
-    
+
     // Remove emitDeclarationOnly if it exists
     if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
       delete tsConfig.compilerOptions.emitDeclarationOnly
@@ -70,7 +70,7 @@ export async function apiDependenciesGenerator(tree: Tree) {
 Run the following commands in order to set up your project:
 
 \`\`\`sh
-nx g @nestled/generators:api-dependencies 
+nx g @nestled/generators:api-dependencies
 \`\`\`
 
 \`\`\`sh

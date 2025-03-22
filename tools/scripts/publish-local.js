@@ -179,7 +179,7 @@ function getInstallCommand(targetPath) {
     return 'npm install';
   }
   if (siblingFiles.includes('pnpm-lock.yaml')) {
-    return 'pnpm add';
+    return 'pnpm add -w';
   }
   throw new Error(`No package manager found for target repository: ${targetPath}`);
 } 

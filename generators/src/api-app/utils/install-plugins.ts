@@ -2,14 +2,14 @@ import { addDependenciesToPackageJson, logger, Tree } from '@nx/devkit'
 
 export async function installPlugins(tree: Tree) {
   logger.info('Starting to install API dependencies...')
-  
+
   const dependencies = {
     '@nestjs/common': 'latest',
     '@nestjs/core': 'latest',
     '@nestjs/config': 'latest',
     'cookie-parser': 'latest',
     '@prisma/client': 'latest',
-    '@prisma/internals': '^6.3.1',
+    '@prisma/internals': 'latest',
     express: 'latest',
     joi: 'latest',
   }

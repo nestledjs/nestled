@@ -96,6 +96,28 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
     strict: true,
   });
 
+  // Remove assets from project.json if it exists (we deleted it in the libraryGenerator)
+  const projectJsonPath = joinPathFragments(libraryRoot, 'project.json');
+  if (tree.exists(projectJsonPath)) {
+    updateJson(tree, projectJsonPath, (json) => {
+      if (json.targets?.build?.options?.assets) {
+        delete json.targets.build.options.assets;
+      }
+      return json;
+    });
+  }
+
+  // Remove module from tsconfig.app.json if it exists - this defaults to NodeNext from the root tsconfig.json
+  const tsconfigAppPath = joinPathFragments(libraryRoot, 'tsconfig.app.json');
+  if (tree.exists(tsconfigAppPath)) {
+    updateJson(tree, tsconfigAppPath, (json) => {
+      if (json.compilerOptions?.module) {
+        delete json.compilerOptions.module;
+      }
+      return json;
+    });
+  }
+
   // Generate the template files on top of the Nx-generated structure
   generateTemplateFiles({
     tree,

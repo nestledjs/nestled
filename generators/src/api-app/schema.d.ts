@@ -1,1 +1,1 @@
-export interface AppSetupGeneratorSchema {}
+export type AppSetupGeneratorSchema = Record<string, unknown>

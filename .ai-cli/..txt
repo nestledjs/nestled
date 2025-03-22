@@ -343,11 +343,11 @@ export async function apiDependenciesGenerator(tree: Tree) {
       'rxjs': '^7.8.0'
     },
     {
-      nx: '20.6.1',
-      '@nx/js': '20.6.1',
-      '@nx/nest': '20.6.1',
-      '@nx/node': '20.6.1',
-      '@nx/webpack': '20.6.1',
+      nx: '20.6.2',
+      '@nx/js': '20.6.2',
+      '@nx/nest': '20.6.2',
+      '@nx/node': '20.6.2',
+      '@nx/webpack': '20.6.2',
       '@types/bcryptjs': '^2.4.2',
       '@types/cookie-parser': '^1.4.3',
       '@types/nodemailer': '^6.4.7',
@@ -366,10 +366,10 @@ export async function apiDependenciesGenerator(tree: Tree) {
     // Update module and moduleResolution
     tsConfig.compilerOptions.module = 'CommonJS'
     tsConfig.compilerOptions.moduleResolution = 'node'
-    
+
     // Set baseUrl for path aliases
     tsConfig.compilerOptions.baseUrl = '.'
-    
+
     // Remove emitDeclarationOnly if it exists
     if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
       delete tsConfig.compilerOptions.emitDeclarationOnly
@@ -385,7 +385,7 @@ export async function apiDependenciesGenerator(tree: Tree) {
 Run the following commands in order to set up your project:
 
 \`\`\`sh
-nx g @nestled/generators:api-dependencies 
+nx g @nestled/generators:api-dependencies
 \`\`\`
 
 \`\`\`sh
@@ -431,7 +431,7 @@ interface ApiGenGeneratorSchema {
 function configurePnpmAllowBuilds(tree: Tree) {
   const npmrcPath = '.npmrc';
   let content = '';
-  
+
   if (tree.exists(npmrcPath)) {
     content = tree.read(npmrcPath)?.toString() || '';
     if (!content.includes('enable-pre-post-scripts')) {
@@ -509,7 +509,7 @@ export default async function apiGenGenerator(tree: Tree, options: ApiGenGenerat
     console.error('API generation sequence failed:', error);
     throw error;
   }
-} 
+}
 
 // /Users/justinhandley/IdeaProjects/nestled/generators/src/api-libs/generator.ts
 import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree, names, updateJson } from '@nx/devkit'
@@ -537,7 +537,7 @@ function addImport(tree: Tree, name: string, type: string) {
   const importPath = `@${npmScope}/api/${name}/${type}`
 
   let fileContent = tree.read(coreFeaturePath)?.toString() || ''
-  
+
   // Add import statement if it doesn't exist
   if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
     const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
@@ -546,23 +546,23 @@ function addImport(tree: Tree, name: string, type: string) {
 
   // Find the exact position of the appModules array
   const arrayStart = fileContent.indexOf('export const appModules = [')
-  
+
   if (arrayStart !== -1) {
     // Find the closing bracket of the array
     const arrayEnd = fileContent.indexOf('];', arrayStart)
-    
+
     if (arrayEnd !== -1) {
       // Get just the array content
       const arrayContent = fileContent.slice(arrayStart + 'export const appModules = ['.length, arrayEnd)
-      
+
       // Check if module exists only in the array content
       if (!arrayContent.includes(moduleToAdd)) {
         // If array is empty, don't add a leading comma
         const isEmpty = arrayContent.trim() === ''
-        const moduleEntry = isEmpty 
+        const moduleEntry = isEmpty
           ? `\n  ${moduleToAdd}`
           : `,\n  ${moduleToAdd}`
-        
+
         // Insert the new module just before the closing bracket
         const before = fileContent.slice(0, arrayEnd)
         const after = fileContent.slice(arrayEnd)
@@ -1636,7 +1636,7 @@ export default async function () {
 
   ensureDotEnv()
   require('dotenv').config()
-  
+
   const DATABASE_URL = process.env.DATABASE_URL
 
   if (!DATABASE_URL) {
@@ -1831,7 +1831,7 @@ import { addDependenciesToPackageJson, logger, Tree } from '@nx/devkit'
 
 export async function installPlugins(tree: Tree) {
   logger.info('Starting to install API dependencies...')
-  
+
   const dependencies = {
     '@nestjs/common': 'latest',
     '@nestjs/core': 'latest',
