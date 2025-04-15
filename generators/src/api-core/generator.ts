@@ -103,7 +103,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
   if (type === 'data-access') {
     // Add specific dependencies for core data-access
     const dependencies = {
-      'graphql-type-json': '^5.0.2',
+      'graphql-type-json': '^0.3.2',
       'graphql-subscriptions': '^2.0.0',
       '@nestjs/graphql': '^12.0.0',
       '@nestjs/common': '^10.0.0',
@@ -119,7 +119,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
     // Add prisma schema path
     packageJson.prisma = {
       schema: 'libs/api/core/data-access/src/prisma/schema.prisma',
-      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/src/prisma/seed.ts',
+      seed: 'ts-node --project tsconfig.base.json libs/api/core/data-access/src/prisma/seed.ts',
     }
 
     tree.write('package.json', JSON.stringify(packageJson, null, 2))

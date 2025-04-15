@@ -143,7 +143,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
   if (schema.name === 'core' && type === 'data-access') {
     // Add specific dependencies for this generator
     const dependencies = {
-      'graphql-type-json': '^5.0.2',
+      'graphql-type-json': '^0.3.2',
       '@nestjs/graphql': '^12.0.0',
       '@nestjs/common': '^10.0.0',
       '@prisma/client': '^5.0.0',
@@ -157,7 +157,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     // Add prisma schema path
     packageJson.prisma = {
       schema: 'libs/api/core/data-access/src/prisma/schema.prisma',
-      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/src/prisma/seed.ts',
+      seed: 'ts-node --project tsconfig.base.json libs/api/core/data-access/src/prisma/seed.ts',
     }
 
     tree.write('package.json', JSON.stringify(packageJson, null, 2))

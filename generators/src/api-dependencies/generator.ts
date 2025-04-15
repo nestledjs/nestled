@@ -16,7 +16,7 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       '@nestjs/passport': '^10.0.0',
       '@nestjs/axios': '^3.0.0',
       '@prisma/client': '^5.0.0',
-      'apollo-server-express': '^3.12.0',
+      '@apollo/server': '^4.9.0',
       bcryptjs: '^2.4.3',
       'class-validator': '^0.14.0',
       'cookie-parser': '^1.4.6',
