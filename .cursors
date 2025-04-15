@@ -1,0 +1,61 @@
+# Project Context
+project_type: generator
+description: "This is a generator project where generators are meant to be run externally for testing"
+
+# Generator Rules
+generator_rules:
+  prevent_internal_execution: true
+  context: "Generators in this project are for external use only and should not be run within this project"
+
+# Generator Structure Rules
+generator_structure:
+  required_files:
+    - file: "schema.json"
+      description: "JSON Schema defining the generator options"
+    - file: "schema.d.ts"
+      description: "TypeScript type definitions for the generator schema"
+    - file: "generator.ts"
+      description: "Main generator implementation file"
+    - file: "generator.spec.ts"
+      description: "Generator test file"
+  
+  global_config_files:
+    - file: "project.json"
+      scope: "global"
+      description: "Should only exist at workspace root, not in individual generators"
+    - file: "tsconfig.json"
+      scope: "global"
+      description: "Should only exist at workspace root, not in individual generators"
+
+# AI Behavior
+ai_behavior:
+  # Prevent suggestions to run generators internally
+  generator_suggestions:
+    enabled: false
+    reason: "Generators in this project are meant to be run externally for testing"
+  
+  # Prevent cleanup suggestions for generator outputs
+  cleanup_suggestions:
+    enabled: false
+    reason: "No generator cleanup needed as generators are not run in this project"
+
+  # Custom context for AI responses
+  context_rules:
+    - description: "This is a generator development project"
+    - description: "All generator testing should be suggested to be done externally"
+    - description: "Focus on generator implementation rather than generator execution"
+    - description: "Every generator must include schema.json, schema.d.ts, generator.ts, and generator.spec.ts"
+    - description: "project.json and tsconfig.json are workspace-level files only"
+
+  # File structure validation
+  structure_validation:
+    check_required_files: true
+    prevent_local_config: true
+    required_generator_files:
+      - "schema.json"
+      - "schema.d.ts"
+      - "generator.ts"
+      - "generator.spec.ts"
+    forbidden_local_files:
+      - "project.json"
+      - "tsconfig.json" 

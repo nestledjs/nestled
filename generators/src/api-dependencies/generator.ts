@@ -1,4 +1,5 @@
 import { addDependenciesToPackageJson, Tree } from '@nx/devkit'
+import { execSync } from 'child_process'
 
 export async function apiDependenciesGenerator(tree: Tree) {
   // Add dependencies
@@ -28,11 +29,11 @@ export async function apiDependenciesGenerator(tree: Tree) {
       rxjs: '^7.8.0',
     },
     {
-      nx: '20.6.2',
-      '@nx/js': '20.6.2',
-      '@nx/nest': '20.6.2',
-      '@nx/node': '20.6.2',
-      '@nx/webpack': '20.6.2',
+      nx: '20.8.0',
+      '@nx/js': '20.8.0',
+      '@nx/nest': '20.8.0',
+      '@nx/node': '20.8.0',
+      '@nx/webpack': '20.8.0',
       '@types/bcryptjs': '^2.4.2',
       '@types/cookie-parser': '^1.4.3',
       '@types/nodemailer': '^6.4.7',
@@ -64,37 +65,12 @@ export async function apiDependenciesGenerator(tree: Tree) {
     tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
   }
 
-  // Create setup.md file with generator commands
-  const setupContent = `# Setup Instructions
-
-Run the following commands in order to set up your project:
-
-\`\`\`sh
-nx g @nestled/generators:api-dependencies
-\`\`\`
-
-\`\`\`sh
-nx g @nestled/generators:api-app
-\`\`\`
-
-\`\`\`sh
-pnpm approve-builds
-\`\`\`
-
-\`\`\`sh
-nx g @nestled/generators:api-libs
-\`\`\`
-
-\`\`\`sh
-nx g @nestled/generators:project-config
-\`\`\`
-
-\`\`\`sh
-nx g @nestled/generators:workspace-setup
-\`\`\`
-`
-
-  tree.write('setup.md', setupContent)
+  // Run pnpm install to install the dependencies
+  try {
+    execSync('pnpm install', { stdio: 'inherit' })
+  } catch (error) {
+    console.error('Failed to run pnpm install:', error)
+  }
 }
 
 export default apiDependenciesGenerator

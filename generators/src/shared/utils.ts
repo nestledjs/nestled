@@ -1,4 +1,4 @@
-import { addDependenciesToPackageJson, generateFiles, joinPathFragments, names, readJson, Tree } from '@nx/devkit'
+import { addDependenciesToPackageJson, generateFiles, joinPathFragments, names, readJson, Tree, updateJson } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
 
 export function deleteFiles(tree: Tree, filesToDelete: string[]) {
@@ -213,4 +213,23 @@ export async function installPlugins(
   }
 
   return () => undefined // Return a no-op function instead of empty arrow function
+}
+
+/**
+ * Updates tsconfig.base.json to include a new library path
+ * @param tree The file system tree
+ * @param importPath The import path for the library (e.g. @myorg/my-lib)
+ * @param libraryRoot The root path of the library (e.g. libs/my-lib)
+ */
+export function updateTsConfigPaths(tree: Tree, importPath: string, libraryRoot: string): void {
+  updateJson(tree, 'tsconfig.base.json', (json) => {
+    if (!json.compilerOptions) {
+      json.compilerOptions = {};
+    }
+    if (!json.compilerOptions.paths) {
+      json.compilerOptions.paths = {};
+    }
+    json.compilerOptions.paths[importPath] = [`${libraryRoot}/src/index.ts`];
+    return json;
+  });
 }

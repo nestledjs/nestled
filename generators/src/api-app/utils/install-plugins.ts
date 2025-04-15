@@ -4,22 +4,21 @@ export async function installPlugins(tree: Tree) {
   logger.info('Starting to install API dependencies...')
 
   const dependencies = {
-    '@nestjs/common': 'latest',
-    '@nestjs/core': 'latest',
-    '@nestjs/config': 'latest',
-    'cookie-parser': 'latest',
-    '@prisma/client': 'latest',
-    '@prisma/internals': 'latest',
-    express: 'latest',
-    joi: 'latest',
+    '@nestjs/common': '^10.0.0',
+    '@nestjs/core': '^10.0.0',
+    '@nestjs/config': '^3.0.0',
+    'cookie-parser': '^1.4.6',
+    '@prisma/client': '^5.0.0',
+    '@prisma/internals': '^5.0.0',
+    express: '^4.18.0',
+    joi: '^17.9.0',
   }
 
   const devDependencies = {
-    '@nx/nest': 'latest',
-    '@types/cookie-parser': 'latest',
-    '@types/express': 'latest',
-    prisma: 'latest',
-    tsx: 'latest',
+    '@nx/nest': '20.8.0',
+    '@types/cookie-parser': '^1.4.3',
+    '@types/express': '^4.17.17',
+    prisma: '^5.0.0',
   }
 
   try {

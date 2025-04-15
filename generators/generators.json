@@ -20,6 +20,11 @@
       "schema": "./src/api-app/schema.json",
       "description": "Generates Basic Nest API App"
     },
+    "prisma-crud": {
+      "factory": "./src/prisma-crud/generator",
+      "schema": "./src/prisma-crud/schema.json",
+      "description": "Generates API CRUD for all Prisma Models"
+    },
     "remix-app": {
       "factory": "./src/remix-app/generator",
       "schema": "./src/remix-app/schema.json",
@@ -84,6 +89,11 @@
       "factory": "./src/api-core/generator",
       "schema": "./src/api-core/schema.json",
       "description": "Generates Core API Library"
+    },
+    "info": {
+      "factory": "./src/info/generator",
+      "schema": "./src/info/schema.json",
+      "description": "Creates setup instructions file"
     }
   }
 }

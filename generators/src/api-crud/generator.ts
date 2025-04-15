@@ -10,16 +10,17 @@ import {
 import * as workspace from '@nx/workspace'
 import { projectRootDir } from '@nx/workspace'
 import { getPrismaSchemaPath, parsePrismaSchema, readPrismaSchema } from '../shared/utils'
-import { libraryGenerator } from '@nx/nest'
+import { execSync } from 'child_process'
 import { Linter } from '@nx/eslint'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
-function normalizeOptions(tree, options, projectType) {
+function normalizeOptions(tree, options, projectType, type: string) {
   const directoryName = options.directory ? names(options.directory).fileName : ''
+  const name = names(options.name).fileName
   const projectDirectory = directoryName
-    ? `${directoryName}/${names(options.name).fileName}`
-    : names(options.name).fileName
-  const projectName = projectDirectory.replace(/\//g, '-')
+    ? `${directoryName}/${name}/${type}`
+    : `${name}/${type}`
+  const projectName = `${directoryName}-${name}-${type}`.replace(/\//g, '-')
   const projectRoot = `${projectRootDir(projectType)}/${projectDirectory}`
 
   return {
@@ -47,73 +48,94 @@ interface ApiCrud {
 }
 
 async function apiCrudGenerator(tree: Tree, schema: ApiCrud, type: string) {
-  const normalizedOptions = normalizeOptions(tree, schema, workspace.ProjectType.Library)
+  const normalizedOptions = normalizeOptions(tree, schema, workspace.ProjectType.Library, type)
   const filePath = `libs/${normalizedOptions.projectDirectory}`
-  const projectName = `${normalizedOptions.projectName}-${type}`
+  const projectName = normalizedOptions.projectName
 
-  await libraryGenerator(tree, {
-    name: type,
-    directory: filePath,
-    tags: `scope:${schema.directory},type:${type}`,
-    linter: Linter.EsLint,
-  })
-
-  const libraryRoot = readProjectConfiguration(tree, projectName).root
-  const modelName = schema.model || schema.name
-  const pluralName = schema.plural || `${modelName}s`
-  const formattedSearchFields = schema?.searchFields ? "'" + schema?.searchFields?.split(',').join("','") + "'" : ''
-  let modelFields = null
-  if (type === 'data-access') {
-    modelFields = createModelFromPrisma(tree, names(modelName).className)
-    console.log({ modelFields })
-
-    if (!modelFields) {
-      console.error(`Model fields not created correctly`)
-      return
+  try {
+    // Check if project already exists
+    try {
+      const existingConfig = readProjectConfiguration(tree, projectName)
+      if (existingConfig) {
+        console.log(`Project ${projectName} already exists, skipping library generation`)
+        return
+      }
+    } catch (e) {
+      // Project doesn't exist, continue with creation
     }
-  }
-  const variables = {
-    ...schema,
-    ...names(schema.name),
-    npmScope: normalizedOptions.npmScope,
-    apiClassName: names(schema.directory).className,
-    modelName,
-    modelClassName: names(modelName).className,
-    modelPropertyName: names(modelName).propertyName,
-    pluralName,
-    pluralClassName: names(pluralName).className,
-    pluralPropertyName: names(pluralName).propertyName,
-    projectName,
-    projectClassName: names(projectName).className,
-    projectPropertyName: names(projectName).propertyName,
-    tmpl: '',
-    filePath,
-    type,
-    typeClassName: names(type).className,
-    searchFields: formattedSearchFields,
-    modelFields,
-  }
 
-  generateFiles(
-    tree, // the virtual file system
-    joinPathFragments(__dirname, `./files/${type}`), // path to the file templates
-    libraryRoot, // destination path of the files
-    variables, // config object to replace variable in file templates
-  )
-  await formatFiles(tree)
-  return () => {
-    installPackagesTask(tree)
+    // Run the Nx generator command directly
+    execSync(
+      `nx g @nx/nest:library --name=${projectName} --directory=${filePath} --tags=scope:${schema.directory},type:${type} --linter=eslint --strict --no-interactive --unitTestRunner=jest`,
+      {
+        stdio: 'inherit',
+        cwd: tree.root,
+      }
+    )
+
+    // Wait a bit for files to be created and project.json to be updated
+    await new Promise((resolve) => setTimeout(resolve, 2000))
+
+    const libraryRoot = readProjectConfiguration(tree, projectName).root
+    const modelName = schema.model || schema.name
+    const pluralName = schema.plural || `${modelName}s`
+    const formattedSearchFields = schema?.searchFields ? "'" + schema?.searchFields?.split(',').join("','") + "'" : ''
+    let modelFields = null
+    if (type === 'data-access') {
+      modelFields = await createModelFromPrisma(tree, names(modelName).className)
+      console.log({ modelFields })
+
+      if (!modelFields) {
+        console.error(`Model fields not created correctly`)
+        return
+      }
+    }
+    const variables = {
+      ...schema,
+      ...names(schema.name),
+      npmScope: normalizedOptions.npmScope,
+      apiClassName: names(schema.directory).className,
+      modelName,
+      modelClassName: names(modelName).className,
+      modelPropertyName: names(modelName).propertyName,
+      pluralName,
+      pluralClassName: names(pluralName).className,
+      pluralPropertyName: names(pluralName).propertyName,
+      projectName,
+      projectClassName: names(projectName).className,
+      projectPropertyName: names(projectName).propertyName,
+      tmpl: '',
+      filePath,
+      type,
+      typeClassName: names(type).className,
+      searchFields: formattedSearchFields,
+      modelFields,
+    }
+
+    generateFiles(
+      tree,
+      joinPathFragments(__dirname, `./files/${type}`),
+      libraryRoot,
+      variables,
+    )
+    await formatFiles(tree)
+    return () => {
+      installPackagesTask(tree)
+    }
+  } catch (error) {
+    console.error(`Error generating CRUD libraries for model ${schema.name}:`, error)
+    throw error
   }
 }
 
-function createModelFromPrisma(tree, modelName: string) {
+async function createModelFromPrisma(tree, modelName: string) {
   const prismaPath = getPrismaSchemaPath(tree)
   const prismaSchema = readPrismaSchema(tree, prismaPath)
   if (!prismaSchema) {
     console.error(`No Prisma schema found at ${prismaPath}`)
     return
   }
-  return parsePrismaSchema(prismaSchema, modelName)
+  return await parsePrismaSchema(prismaSchema, modelName)
 }
 
 function updatePrisma(tree, options) {
@@ -147,6 +169,7 @@ function addImport(tree, options) {
     tree,
     { ...options, directory: options.directory || 'api', name: options.name },
     workspace.ProjectType.Library,
+    'data-access',
   )
   const coreFeaturePath = `apps/${normalizedOptions.directory}/src/app/app.module.ts`
 

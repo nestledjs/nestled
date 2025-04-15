@@ -1,5 +1,5 @@
-import { BadRequestException, Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { PrismaClient, Role } from '@prisma/client'
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
+import { PrismaClient, Prisma } from '@prisma/client'
 
 @Injectable()
 export class ApiCoreDataAccessService extends PrismaClient implements OnModuleInit, OnModuleDestroy {

@@ -143,10 +143,10 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
   if (schema.name === 'core' && type === 'data-access') {
     // Add specific dependencies for this generator
     const dependencies = {
-      'graphql-type-json': 'latest',
-      '@nestjs/graphql': 'latest',
-      '@nestjs/common': 'latest',
-      '@prisma/client': 'latest',
+      'graphql-type-json': '^5.0.2',
+      '@nestjs/graphql': '^12.0.0',
+      '@nestjs/common': '^10.0.0',
+      '@prisma/client': '^5.0.0',
     }
 
     const devDependencies = {}

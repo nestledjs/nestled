@@ -12,19 +12,19 @@ datasource db {
 // Models (Alphabetical Order)
 
 model Address {
-  id             String         @id @default(cuid())
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  address1       String?
-  address2       String?
-  city           String?
-  region         String?
-  postalCode     String?
-  addressType    AddressType    @default(WORK)
-  countryId      String?
-  country        Country?       @relation("Country_belongsTo_Address", fields: [countryId], references: [id])
-  users          User[]         @relation("Address_belongsTo_User")
-  organizations  Organization[] @relation("Address_belongsTo_Organization")
+  id            String         @id @default(cuid())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  address1      String?
+  address2      String?
+  city          String?
+  region        String?
+  postalCode    String?
+  addressType   AddressType    @default(WORK)
+  countryId     String?
+  country       Country?       @relation("Country_belongsTo_Address", fields: [countryId], references: [id])
+  users         User[]         @relation("Address_belongsTo_User")
+  organizations Organization[] @relation("Address_belongsTo_Organization")
 }
 
 model Country {
@@ -134,20 +134,24 @@ model User {
   invitesSent               Invite[]             @relation("Invite_sentBy_User")
 
   // 2FA fields
-  twoFactorEnabled      Boolean   @default(false)
-  twoFactorSecret      String?   // Stores the TOTP secret
+  twoFactorEnabled       Boolean  @default(false)
+  twoFactorSecret        String? // Stores the TOTP secret
   twoFactorRecoveryCodes String[] // Backup codes for 2FA recovery
 
   // Optional: If you want to support multiple 2FA methods
-  twoFactorMethod      TwoFactorMethod @default(NONE)
+  twoFactorMethod TwoFactorMethod @default(NONE)
 
   // If you want to track 2FA verification status per session
-  activeSessions       UserSession[]
-  loginAttempts        LoginAttempt[]
-  lastSuccessfulLogin  DateTime?
-  lastFailedLogin      DateTime?
-  failedLoginCount     Int           @default(0)
-  lockedUntil         DateTime?      // For temporary account lockouts
+  activeSessions      UserSession[]
+  loginAttempts       LoginAttempt[]
+  lastSuccessfulLogin DateTime?
+  lastFailedLogin     DateTime?
+  failedLoginCount    Int              @default(0)
+  lockedUntil         DateTime? // For temporary account lockouts
+  AuditLog            AuditLog[]
+  UserPreference      UserPreference[]
+  TeamMember          TeamMember[]
+  SecurityEvent       SecurityEvent[]
 }
 
 model Organization {
@@ -162,6 +166,8 @@ model Organization {
   members      OrganizationMember[] @relation("OrganizationMember_belongsTo_Organization")
   addresses    Address[]            @relation("Address_belongsTo_Organization")
   invites      Invite[]             @relation("Invite_belongsTo_Organization")
+  AuditLog     AuditLog[]
+  Team         Team[]
 }
 
 model Invite {
@@ -179,74 +185,75 @@ model Invite {
 }
 
 model OrganizationMember {
-  id             String        @id @default(cuid())
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  role           OrganizationRole          @default(ORGANIZATION_MEMBER)
+  id             String           @id @default(cuid())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  role           OrganizationRole @default(ORGANIZATION_MEMBER)
   userId         String?
-  user           User?         @relation("OrganizationMember_belongsTo_User", fields: [userId], references: [id])
+  user           User?            @relation("OrganizationMember_belongsTo_User", fields: [userId], references: [id])
   organizationId String?
-  organization   Organization? @relation("OrganizationMember_belongsTo_Organization", fields: [organizationId], references: [id])
+  organization   Organization?    @relation("OrganizationMember_belongsTo_Organization", fields: [organizationId], references: [id])
 }
 
 model UserSession {
-  id           String    @id @default(cuid())
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-  lastActiveAt DateTime  @default(now())
+  id           String   @id @default(cuid())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  lastActiveAt DateTime @default(now())
   userId       String
-  user         User      @relation(fields: [userId], references: [id])
+  user         User     @relation(fields: [userId], references: [id])
   deviceInfo   String?
   ipAddress    String?
-  isValid      Boolean   @default(true)
+  isValid      Boolean  @default(true)
 
   // Add this field to track 2FA verification status
-  twoFactorVerified  Boolean   @default(false)
+  twoFactorVerified Boolean @default(false)
 }
 
 model AuditLog {
-  id             String    @id @default(cuid())
-  createdAt      DateTime  @default(now())
-  entityId       String    // ID of the entity being modified
-  entityType     String    // Name of the model being modified
-  action         String    // CREATE, UPDATE, DELETE
+  id             String        @id @default(cuid())
+  createdAt      DateTime      @default(now())
+  entityId       String // ID of the entity being modified
+  entityType     String // Name of the model being modified
+  action         String // CREATE, UPDATE, DELETE
   userId         String
-  user           User      @relation(fields: [userId], references: [id])
+  user           User          @relation(fields: [userId], references: [id])
   organizationId String?
   organization   Organization? @relation(fields: [organizationId], references: [id])
-  changes        Json?     // Store what was changed
+  changes        Json? // Store what was changed
 }
 
 model UserPreference {
-  id       String @id @default(cuid())
-  userId   String
-  user     User   @relation(fields: [userId], references: [id])
-  key      String
-  value    String
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+  key    String
+  value  String
+
   @@unique([userId, key])
 }
 
 // Optional if you need team functionality
 model Team {
-  id             String         @id @default(cuid())
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  id             String       @id @default(cuid())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
   name           String
   description    String?
   organizationId String
-  organization   Organization   @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
   members        TeamMember[]
 }
 
 model TeamMember {
-  id             String    @id @default(cuid())
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  teamId         String
-  team           Team      @relation(fields: [teamId], references: [id])
-  userId         String
-  user           User      @relation(fields: [userId], references: [id])
-  role           TeamRole  @default(MEMBER)
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id])
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  role      TeamRole @default(MEMBER)
 }
 
 // Enums (Alphabetical Order)
@@ -304,16 +311,16 @@ enum TwoFactorMethod {
 }
 
 model LoginAttempt {
-  id          String       @id @default(cuid())
-  createdAt   DateTime     @default(now())
-  userId      String?      // Optional because login attempts might be for non-existent users
-  user        User?        @relation(fields: [userId], references: [id])
-  email       String       // The email used in the attempt
-  success     Boolean      @default(false)
-  ipAddress   String?
-  userAgent   String?      // Browser/client info
-  location    String?      // Geo location if you want to track it
-  reason      FailureReason? // Why the login failed
+  id        String         @id @default(cuid())
+  createdAt DateTime       @default(now())
+  userId    String? // Optional because login attempts might be for non-existent users
+  user      User?          @relation(fields: [userId], references: [id])
+  email     String // The email used in the attempt
+  success   Boolean        @default(false)
+  ipAddress String?
+  userAgent String? // Browser/client info
+  location  String? // Geo location if you want to track it
+  reason    FailureReason? // Why the login failed
 }
 
 enum FailureReason {
@@ -327,14 +334,14 @@ enum FailureReason {
 }
 
 model SecurityEvent {
-  id          String           @id @default(cuid())
-  createdAt   DateTime         @default(now())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id])
-  eventType   SecurityEventType
-  ipAddress   String?
-  userAgent   String?
-  metadata    Json?            // Additional event-specific data
+  id        String            @id @default(cuid())
+  createdAt DateTime          @default(now())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id])
+  eventType SecurityEventType
+  ipAddress String?
+  userAgent String?
+  metadata  Json? // Additional event-specific data
 }
 
 enum SecurityEventType {

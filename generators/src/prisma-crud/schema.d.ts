@@ -1,0 +1,1 @@
+export type PrismaCrudGeneratorSchema = Record<string, never> 
