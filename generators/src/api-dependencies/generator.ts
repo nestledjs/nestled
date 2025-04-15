@@ -1,7 +1,7 @@
-import { addDependenciesToPackageJson, Tree } from '@nx/devkit'
+import { addDependenciesToPackageJson, Tree, GeneratorCallback, readJson } from '@nx/devkit'
 import { execSync } from 'child_process'
 
-export async function apiDependenciesGenerator(tree: Tree) {
+export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
   await addDependenciesToPackageJson(
     tree,
@@ -65,11 +65,50 @@ export async function apiDependenciesGenerator(tree: Tree) {
     tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
   }
 
-  // Run pnpm install to install the dependencies
-  try {
-    execSync('pnpm install', { stdio: 'inherit' })
-  } catch (error) {
-    console.error('Failed to run pnpm install:', error)
+  // Update pnpm.onlyBuiltDependencies in package.json
+  const packageJsonPath = 'package.json'
+  if (tree.exists(packageJsonPath)) {
+    const packageJson = readJson(tree, packageJsonPath)
+    
+    // Initialize pnpm section if it doesn't exist
+    if (!packageJson.pnpm) {
+      packageJson.pnpm = {}
+    }
+    
+    // Initialize onlyBuiltDependencies array if it doesn't exist
+    if (!packageJson.pnpm.onlyBuiltDependencies) {
+      packageJson.pnpm.onlyBuiltDependencies = []
+    }
+    
+    // Add the specified packages if they don't already exist
+    const requiredPackages = [
+      '@apollo/protobufjs',
+      '@nestjs/core',
+      '@parcel/watcher',
+      '@prisma/client',
+      '@prisma/engines',
+      'esbuild',
+      'nx',
+      'prisma'
+    ]
+    
+    for (const pkg of requiredPackages) {
+      if (!packageJson.pnpm.onlyBuiltDependencies.includes(pkg)) {
+        packageJson.pnpm.onlyBuiltDependencies.push(pkg)
+      }
+    }
+    
+    // Write back the updated package.json
+    tree.write(packageJsonPath, JSON.stringify(packageJson, null, 2))
+  }
+
+  // Return a callback that will run after the generator completes
+  return () => {
+    try {
+      execSync('pnpm install', { stdio: 'inherit' })
+    } catch (error) {
+      console.error('Failed to run pnpm install:', error)
+    }
   }
 }
 

@@ -193,6 +193,11 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
     tasks.push(await apiGenerator(tree, { name: 'auth' }, 'util'))
   }
 
+  if (options.generateCore || options.useDefaults) {
+    tasks.push(await apiGenerator(tree, { name: 'core' }, 'data-access'))
+    tasks.push(await apiGenerator(tree, { name: 'core' }, 'feature'))
+  }
+
   if (options.generateMailer || options.useDefaults) {
     tasks.push(await apiGenerator(tree, { name: 'mailer' }, 'data-access'))
   }

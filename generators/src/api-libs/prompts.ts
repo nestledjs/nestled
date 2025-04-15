@@ -12,6 +12,7 @@ type PromptDefinition = {
 const defaultOptions: Partial<ApiLibGeneratorSchema> = {
   generateAccounts: true,
   generateAuth: true,
+  generateCore: true,
   generateMailer: true,
   generateUser: true,
 }
