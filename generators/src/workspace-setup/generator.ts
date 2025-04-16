@@ -7,6 +7,7 @@ import {
   log,
   runPrismaSeed,
   runPrismaSetup,
+  runGraphQLTypeGeneration,
 } from './lib/helpers'
 
 export default async function () {
@@ -35,6 +36,11 @@ export default async function () {
   try {
     runPrismaSetup()
     await new Promise(resolve => setTimeout(resolve, 2000))
+    
+    // Generate GraphQL types from Prisma schema
+    log('Generating GraphQL types from Prisma schema...')
+    runGraphQLTypeGeneration()
+    
     runPrismaSeed()
     log('Workspace setup done!')
   } catch (error) {
