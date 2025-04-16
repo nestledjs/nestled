@@ -53,7 +53,7 @@ export default async function (tree: Tree, schema: Schema) {
       if (!json.scripts) {
         json.scripts = {}
       }
-      json.scripts['dev:api'] = 'nx serve api'
+      json.scripts['dev:api'] = 'nx serve api --skip-nx-cache'
       return json
     })
 

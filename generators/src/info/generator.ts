@@ -17,10 +17,6 @@ nx g @nestled/generators:api-app
 \`\`\`
 
 \`\`\`sh
-pnpm approve-builds
-\`\`\`
-
-\`\`\`sh
 nx g @nestled/generators:api-libs
 \`\`\`
 

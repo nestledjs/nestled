@@ -11,7 +11,7 @@ export class ApiUserDataAccessService {
   async adminUsers(userId: string, paging: CorePagingInput) {
     await this.data.ensureAdminUser(userId)
     return this.data.user.findMany({
-      take: paging.limit,
+      take: paging.take,
       skip: paging.skip,
       include: { emails: true },
     })
@@ -21,7 +21,7 @@ export class ApiUserDataAccessService {
     await this.data.ensureAdminUser(adminId)
     const total = await this.data.user.count()
     return {
-      limit: paging.limit,
+      take: paging.take,
       skip: paging.skip,
       total,
     }
@@ -35,7 +35,6 @@ export class ApiUserDataAccessService {
   async adminCreateUser(adminId: string, input: AdminCreateUserInput) {
     await this.data.ensureAdminUser(adminId)
     const email = input.email.trim()
-    const avatarUrl = getGravatarUrl(email)
     const displayName = input.displayName || `${input.firstName} ${input.lastName}`.trim() || email
 
     return this.data.user.create({
@@ -44,7 +43,6 @@ export class ApiUserDataAccessService {
         role: input.role,
         firstName: input.firstName,
         lastName: input.lastName,
-        avatarUrl,
         displayName,
       },
       include: { emails: true },

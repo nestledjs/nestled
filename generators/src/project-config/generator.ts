@@ -60,7 +60,7 @@ export default async function (tree: Tree, schema: ConfigGeneratorSchema) {
         'dep-graph': 'nx dep-graph',
         'build:api': 'nx build api --prod --skip-nx-cache',
         'deploy-api': 'git checkout api-deploy && git merge develop && git push && git checkout develop',
-        'dev:api': 'nx serve api',
+        'dev:api': 'nx serve api --skip-nx-cache',
         'docker:build': 'docker build . -t muzebook/api',
         'docker:down': 'docker compose down',
         'docker:push': 'docker push muzebook/api',

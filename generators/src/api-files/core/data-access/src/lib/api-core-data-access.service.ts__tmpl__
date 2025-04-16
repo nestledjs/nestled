@@ -1,5 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { PrismaClient, Prisma } from '@prisma/client'
+import {Role} from '@<%= npmScope %>/api/user/data-access'
+import {CorePaging} from './models/core-paging'
 
 @Injectable()
 export class ApiCoreDataAccessService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
@@ -15,7 +17,15 @@ export class ApiCoreDataAccessService extends PrismaClient implements OnModuleIn
     await this.$connect()
   }
 
- search(conditions: any[], searchQuery: string, searchFields: string[]) {
+  async ensureAdminUser(adminId: string): Promise<boolean> {
+    const tenant = await this.findUserById(adminId)
+    if (tenant.role !== Role.Admin) {
+      throw new Error(`This operation needs Admin access`)
+    }
+    return true
+  }
+
+  search(conditions: any[], searchQuery: string, searchFields: string[]) {
      const query = searchQuery.trim()
      const terms: string[] = query?.includes(' ') ? query.split(' ') : [query].filter(Boolean)
      const searchFilters = terms.map((term) => ({
@@ -24,7 +34,7 @@ export class ApiCoreDataAccessService extends PrismaClient implements OnModuleIn
 
      conditions.push(...searchFilters)
      return conditions
-   }
+  }
 
    async countEntitiesWithPagination<W extends Prisma.Enumerable<object>>(
      countFunction: (args: { where?: W }) => Promise<number>,
