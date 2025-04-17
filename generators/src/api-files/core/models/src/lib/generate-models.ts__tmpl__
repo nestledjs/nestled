@@ -39,8 +39,8 @@ interface PrismaEnum {
 }
 
 // Paths
-const schemaPath = join(__dirname, '../../../prisma/src/lib/schema.prisma');
-const outputDir = join(__dirname, '../models');
+const schemaPath = join(__dirname, '../../../data-access/src/lib/schema.prisma');
+const outputDir = join(__dirname, './models');
 
 async function main() {
   // Ensure output directory exists

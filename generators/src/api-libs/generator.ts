@@ -199,7 +199,7 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
   if (options.generateCore || options.useDefaults) {
     tasks.push(await apiGenerator(tree, { name: 'core' }, 'data-access'))
     tasks.push(await apiGenerator(tree, { name: 'core' }, 'feature'))
-    tasks.push(await apiGenerator(tree, { name: 'core' }, 'prisma'))
+    tasks.push(await apiGenerator(tree, { name: 'core' }, 'models'))
   }
 
   if (options.generateMailer || options.useDefaults) {
