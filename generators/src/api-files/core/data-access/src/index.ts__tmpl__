@@ -1,17 +1,9 @@
-export * from './lib/api-core-data-access.module'
+// Export lib
 export * from './lib/api-core-data-access.service'
-export * from './lib/dto/core-paging.input'
-export * from './lib/dto/multi-select-input'
+export * from './lib/api-core-data-access.module'
 export * from './lib/models/core-paging'
+export * from './lib/dto/core-paging.input'
 
 // Export generated code
-export * from './generated'
-export * from './generated/models'
-export * from './generated/enums'
-export * from './generated/resolvers/crud'
-export * from './generated/resolvers/relations'
-export * from './generated/resolvers/inputs'
-export * from './generated/resolvers/outputs'
-export * from './generated/scalars'
-export * from './generated/helpers'
-export * from './generated/enhance'
+export * from './models'
+export { Prisma } from './generated'

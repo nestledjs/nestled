@@ -28,9 +28,9 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       'reflect-metadata': '^0.1.13',
       rxjs: '^7.8.0',
       'type-graphql': '^1.1.1',
-      'typegraphql-prisma': '^0.28.0',
       'graphql-scalars': '^1.22.4',
       'graphql-fields': '^2.0.3',
+      '@prisma/internals': '^5.0.0',
     },
     {
       nx: '20.8.0',
@@ -42,7 +42,7 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       '@types/cookie-parser': '^1.4.3',
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^3.0.8',
-      '@prisma/sdk': '^4.0.0',
+      '@prisma/internals': '^5.0.0',
       prisma: '^6.6.0',
       pg: '8.14.1',
     },
@@ -104,13 +104,12 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       }
     }
     
-    // Add GraphQL type generation scripts
+    // Add GraphQL model generation script
     if (!packageJson.scripts) {
       packageJson.scripts = {}
     }
     
-    packageJson.scripts['generate:graphql'] = 'typegraphql-prisma --schema ./libs/api/core/data-access/src/prisma/schema.prisma --output ./libs/api/core/data-access/src/graphql-types.ts'
-    packageJson.scripts['generate:graphql:watch'] = 'nodemon --watch libs/api/core/data-access/src/prisma/schema.prisma --exec "npm run generate:graphql"'
+    packageJson.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
     
     // Write back the updated package.json
     tree.write(packageJsonPath, JSON.stringify(packageJson, null, 2))

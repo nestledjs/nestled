@@ -6,7 +6,7 @@ export class RegisterInput {
   @Field()
   @IsNotEmpty()
   @IsEmail()
-  email: string
+  email!: string
 
   @Field({ nullable: true })
   displayName?: string
@@ -20,11 +20,8 @@ export class RegisterInput {
   @Field({ nullable: true })
   phone?: string
 
-  @Field({ nullable: true })
-  avatarUrl?: string
-
   @Field()
   @IsNotEmpty()
   @MinLength(8)
-  password: string
+  password!: string
 }

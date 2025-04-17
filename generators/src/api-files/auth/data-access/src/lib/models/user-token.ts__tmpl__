@@ -1,5 +1,5 @@
 import { Field, ObjectType } from '@nestjs/graphql'
-import { User } from '@<%= npmScope %>/api/user/data-access'
+import { User } from '@<%= npmScope %>/api/core/data-access'
 
 @ObjectType()
 export class UserToken {

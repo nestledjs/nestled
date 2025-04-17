@@ -28,8 +28,6 @@ import { ApiCoreFeatureService } from './api-core-feature.service'
       buildSchemaOptions: {
         dateScalarMode: 'isoDate',         // Better interoperability (ISO strings, not JS Dates)
         numberScalarMode: 'float',         // Default is fine; override to 'integer' if you hate floats
-        emitSchemaFile: false,             // Redundant with Nest's `autoSchemaFile`; disable it here
-        validate: false,                   // Validation handled by Nest pipes usually (e.g. class-validator)
         scalarsMap: [],                    // Optional, for custom scalar mappings if you use them
         skipCheck: true,                   // Skip extra metadata validation — speeds up build
       },

@@ -4,7 +4,7 @@ import { Request } from 'express'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { ApiAuthDataAccessService } from '../api-auth-data-access.service'
 import { JwtDto } from '../dto/jwt.dto'
-import { User } from '@<%= npmScope %>/api/user/data-access'
+import { User as PrismaUser } from '@<%= npmScope %>/api/core/data-access/generated'
 
 function headerAndCookieExtractor(req: Request): string {
   const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req)
@@ -15,7 +15,7 @@ function headerAndCookieExtractor(req: Request): string {
 }
 
 function cookieExtractor(req: Request): string {
-  const name = process.env.API_COOKIE_NAME || '__session'
+  const name = process.env['API_COOKIE_NAME'] || '__session'
   return req?.cookies?.[name] ? req.cookies[name] : undefined
 }
 
@@ -24,11 +24,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly auth: ApiAuthDataAccessService) {
     super({
       jwtFromRequest: headerAndCookieExtractor,
-      secretOrKey: process.env.JWT_SECRET,
+      secretOrKey: process.env['JWT_SECRET'],
     })
   }
 
-  async validate(payload: JwtDto): Promise<User> {
+  async validate(payload: JwtDto): Promise<PrismaUser> {
     const user = await this.auth.validateUser(payload.userId)
     if (!user) {
       throw new UnauthorizedException()

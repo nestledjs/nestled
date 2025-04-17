@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { createTransport } from 'nodemailer'
+import { createTransport, Transporter } from 'nodemailer'
 import * as Mail from 'nodemailer/lib/mailer'
 import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature'
+import { SentMessageInfo } from 'nodemailer/lib/smtp-transport'
 
 export type PreparedMailer = (params: MailerParams) => PreparedMail
 
@@ -22,14 +23,21 @@ export interface PreparedMail {
 @Injectable()
 export class ApiMailerDataAccessService {
   private readonly logger = new Logger('ApiMailerService')
-  private readonly mailer: Mail
+  private readonly mailer: Transporter<SentMessageInfo>
   private readonly appEmail: string
   private readonly appName: string
   private readonly appSupportEmail: string
   private readonly siteUrl: string
 
   constructor(private readonly config: ApiCoreFeatureService) {
-    this.mailer = createTransport(this.config.mailerConfig)
+    this.mailer = createTransport({
+      host: this.config.mailerConfig.host,
+      port: parseInt(this.config.mailerConfig.port),
+      auth: {
+        user: this.config.mailerConfig.auth.user,
+        pass: this.config.mailerConfig.auth.pass,
+      },
+    })
     this.appEmail = this.config.appEmail
     this.appName = this.config.appName
     this.appSupportEmail = this.config.appSupportEmail

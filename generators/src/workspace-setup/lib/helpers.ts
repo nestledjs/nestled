@@ -104,12 +104,12 @@ export function runPrismaSeed() {
 
 export function runGraphQLTypeGeneration() {
   try {
-    execSync('pnpm generate:graphql', { stdio: 'inherit' })
+    execSync('pnpm generate:models', { stdio: 'inherit' })
     log('GraphQL types generation is done')
     return true
   } catch (e) {
     console.error('GraphQL types generation error:', e.message)
-    throw new Error(`There was an issue running 'pnpm generate:graphql': ${e.message}`)
+    throw new Error(`There was an issue running 'pnpm generate:models': ${e.message}`)
   }
 }
 

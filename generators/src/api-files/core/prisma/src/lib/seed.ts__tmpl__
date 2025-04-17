@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client'
+import { PrismaClient } from './prisma-gen'
 import { countries } from './seed-data/iso-3166-countries'
 import { seedUsers } from './seed-data/seed-users';
 

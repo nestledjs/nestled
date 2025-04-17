@@ -8,21 +8,21 @@ import { AdminUpdateUserInput } from './dto/admin-update-user.input'
 export class ApiUserDataAccessService {
   constructor(private readonly data: ApiCoreDataAccessService) {}
 
-  async adminUsers(userId: string, paging: CorePagingInput) {
+  async adminUsers(userId: string, paging?: CorePagingInput) {
     await this.data.ensureAdminUser(userId)
     return this.data.user.findMany({
-      take: paging.take,
-      skip: paging.skip,
+      take: paging?.take ?? 20,
+      skip: paging?.skip ?? 0,
       include: { emails: true },
     })
   }
 
-  async adminCountUsers(adminId: string, paging: CorePagingInput): Promise<CorePaging> {
+  async adminCountUsers(adminId: string, paging?: CorePagingInput): Promise<CorePaging> {
     await this.data.ensureAdminUser(adminId)
     const total = await this.data.user.count()
     return {
-      take: paging.take,
-      skip: paging.skip,
+      take: paging?.take ?? 20,
+      skip: paging?.skip ?? 0,
       total,
     }
   }
@@ -71,14 +71,22 @@ export class ApiUserDataAccessService {
     return this.data.user.delete({ where: { id: userId } })
   }
 
-  private formatUsername(email: string, username?: string): string {
-    return username?.trim() || uniqueSuffix(email.trim().split('@')[0])
+  private formatdisplayName(email: string, displayName?: string): string {
+    return displayName?.trim() || uniqueSuffix(email.trim().split('@')[0])
   }
 
-  private async ensureUsernameAvailable(username: string): Promise<boolean> {
-    const user = await this.data.findUserByUsername(username)
+  private async ensuredisplayNameAvailable(displayName: string): Promise<boolean> {
+    const user = await this.data.findUserByDisplayName(displayName)
     if (user) {
-      throw new Error(`This username is not available`)
+      throw new Error(`This displayName is not available`)
+    }
+    return true
+  }
+
+  private async ensureDisplayNameAvailable(displayName: string): Promise<boolean> {
+    const user = await this.data.findUserByDisplayName(displayName)
+    if (user) {
+      throw new Error(`This display name is not available`)
     }
     return true
   }

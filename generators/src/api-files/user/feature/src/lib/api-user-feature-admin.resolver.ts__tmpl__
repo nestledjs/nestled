@@ -1,12 +1,11 @@
 import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
-import { CorePaging, CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
+import { CorePaging, CorePagingInput, User } from '@<%= npmScope %>/api/core/data-access'
 import { CtxUser, GqlAuthAdminGuard } from '@<%= npmScope %>/api/auth/util'
 import {
   AdminCreateUserInput,
   AdminUpdateUserInput,
   ApiUserDataAccessService,
-  User,
 } from '@<%= npmScope %>/api/user/data-access'
 
 @Resolver()

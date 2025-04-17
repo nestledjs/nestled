@@ -1,166 +1,185 @@
+import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { execSync } from 'child_process';
+import { getDMMF } from '@prisma/internals';
+import { GraphQLJSONObject } from 'graphql-type-json';
+import { Prisma } from '@<%= npmScope %>/api/core/prisma'
+
+interface PrismaField {
+  readonly name: string;
+  readonly type: string;
+  readonly isRequired: boolean;
+  readonly isList: boolean;
+  readonly isUnique: boolean;
+  readonly isId: boolean;
+  readonly isReadOnly: boolean;
+  readonly hasDefaultValue: boolean;
+  readonly default?: any;
+  readonly relationName?: string;
+  readonly relationFromFields?: readonly string[];
+  readonly relationToFields?: readonly string[];
+  readonly relationOnDelete?: string;
+  readonly documentation?: string;
+}
+
+interface PrismaModel {
+  readonly name: string;
+  readonly dbName: string | null;
+  readonly fields: readonly PrismaField[];
+  readonly isGenerated?: boolean;
+  readonly documentation?: string;
+}
+
+interface PrismaEnum {
+  readonly name: string;
+  readonly values: readonly { readonly name: string; readonly dbName: string | null }[];
+  readonly dbName?: string | null;
+  readonly documentation?: string;
+}
 
 // Paths
-const schemaPath = join(__dirname, '../prisma/schema.prisma');
-const outputDir = join(__dirname, '../generated');
+const schemaPath = join(__dirname, '../../../prisma/src/lib/schema.prisma');
+const outputDir = join(__dirname, '../models');
 
-// Ensure output directory exists
-if (!existsSync(outputDir)) {
-  mkdirSync(outputDir, { recursive: true });
-}
-
-// Generate Prisma client first
-console.log('Generating Prisma client...');
-execSync(`npx prisma generate --schema ${schemaPath}`, { stdio: 'inherit' });
-
-// Read schema
-console.log('Reading Prisma schema...');
-const schemaContent = readFileSync(schemaPath, 'utf-8');
-
-// Extract models and enums from schema
-const models = extractModels(schemaContent);
-const enums = extractEnums(schemaContent);
-
-// Generate models
-console.log('Generating TypeScript models...');
-const modelsOutput = generateModels(models, enums);
-writeFileSync(join(outputDir, 'models.ts'), modelsOutput);
-
-// Generate enums
-console.log('Generating TypeScript enums...');
-const enumsOutput = generateEnums(enums);
-writeFileSync(join(outputDir, 'enums.ts'), enumsOutput);
-
-// Generate index file
-console.log('Generating index file...');
-const indexOutput = generateIndex();
-writeFileSync(join(outputDir, 'index.ts'), indexOutput);
-
-console.log('Models and enums generated successfully!');
-
-function extractModels(schema: string): any[] {
-  const modelRegex = /model\s+(\w+)\s+{([^}]+)}/g;
-  const models: any[] = [];
-  let match;
-
-  while ((match = modelRegex.exec(schema)) !== null) {
-    const modelName = match[1];
-    const modelContent = match[2];
-    
-    const fields = extractFields(modelContent);
-    models.push({ name: modelName, fields });
+async function main() {
+  // Ensure output directory exists
+  if (!existsSync(outputDir)) {
+    mkdirSync(outputDir, { recursive: true });
   }
 
-  return models;
+  // Generate Prisma client first
+  console.log('Generating Prisma client...');
+  execSync(`npx prisma generate --schema ${schemaPath}`, { stdio: 'inherit' });
+
+  // Read and parse schema
+  console.log('Reading Prisma schema...');
+  const schemaContent = readFileSync(schemaPath, 'utf-8');
+  const dmmf = await getDMMF({ datamodel: schemaContent });
+
+  // Extract models and enums from parsed schema
+  const models = dmmf.datamodel.models;
+  const enums = dmmf.datamodel.enums;
+
+  // Generate models
+  console.log('Generating TypeScript models...');
+  const modelsOutput = generateModels(models, enums);
+  writeFileSync(join(outputDir, 'models.ts'), modelsOutput);
+
+  // Generate enums
+  console.log('Generating TypeScript enums...');
+  const enumsOutput = generateEnums(enums);
+  writeFileSync(join(outputDir, 'enums.ts'), enumsOutput);
+
+  // Generate index file
+  console.log('Generating index file...');
+  const indexOutput = generateIndex();
+  writeFileSync(join(outputDir, 'index.ts'), indexOutput);
+
+  console.log('Models and enums generated successfully!');
 }
 
-function extractFields(modelContent: string): any[] {
-  const fieldRegex = /(\w+)\s+(\w+)(\s+@\w+(\s*\([^)]*\))?)*/g;
-  const fields: any[] = [];
-  let match;
+function generateModels(models: readonly any[], enums: readonly any[]): string {
+  let output = `import { Field, ObjectType, Int, Float } from '@nestjs/graphql';\n`;
+  output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`;
+  output += `import { Prisma } from '../generated';\n`;
 
-  while ((match = fieldRegex.exec(modelContent)) !== null) {
-    const fieldName = match[1];
-    const fieldType = match[2];
-    const fieldAttributes = match[0].substring(match[0].indexOf('@'));
+  // Import all enums
+  output += `import { ${enums.map(e => e.name).join(', ')} } from './enums';\n\n`;
+
+  for (const model of models) {
+    output += `@ObjectType()\nexport class ${model.name} {\n`;
     
-    const isRequired = !fieldAttributes.includes('?');
-    const isId = fieldAttributes.includes('@id');
-    const isList = fieldType.includes('[]');
-    const isEnum = fieldAttributes.includes('@enum');
-    
-    // Extract enum type if it's an enum field
-    let enumType = null;
-    if (isEnum) {
-      const enumMatch = fieldAttributes.match(/@enum\((\w+)\)/);
-      if (enumMatch) {
-        enumType = enumMatch[1];
+    for (const field of model.fields) {
+      const isList = field.isList;
+      const isEnum = field.kind === 'enum';
+      const isRelation = field.kind === 'object';
+      const originalType = field.type;
+      const originalTypeIsScalar = isScalarType(originalType);
+      
+      // Determine the TypeScript type
+      let fieldType = originalType;
+
+      if (fieldType === 'DateTime') {
+        fieldType = 'Date';
+      } else if (fieldType === 'Int' || fieldType === 'Float') {
+        fieldType = 'number';
+      } else if (fieldType === 'Json') {
+        fieldType = 'Prisma.JsonValue';
+      } else if (originalTypeIsScalar) {
+        fieldType = fieldType.toLowerCase();
       }
+
+      // Generate the decorator
+      let decorator = '@Field(';
+      const nullableOption = '{ nullable: true }';
+      let decoratorType = '';
+
+      if (originalType === 'Json' && !isList) {
+          decoratorType = `() => GraphQLJSONObject`;
+      } else if (originalType === 'Int' && !isList) {
+          decoratorType = `() => Int`;
+      } else if (originalType === 'Float' && !isList) {
+          decoratorType = `() => Float`;
+      } else if (originalTypeIsScalar && !isList) {
+          decoratorType = ''; 
+      } else if (isList) {
+          // Determine list item type for decorator using the *original* Prisma type
+          let listItemGraphQLType = originalType; // Start with original type
+
+          // Map specific Prisma types to GraphQL types for lists
+          if (originalType === 'Int') listItemGraphQLType = 'Int';
+          else if (originalType === 'Float') listItemGraphQLType = 'Float';
+          else if (originalType === 'Json') listItemGraphQLType = 'GraphQLJSONObject';
+          else if (isEnum || isRelation) listItemGraphQLType = originalType; // Keep original casing for relations/enums
+          else if (originalType === 'DateTime') listItemGraphQLType = 'Date';
+          else if (originalType === 'Boolean') listItemGraphQLType = 'Boolean';
+          // Handle String/string/ID specifically for GraphQL [String]
+          else if (originalType.toLowerCase() === 'string' || originalType === 'ID') {
+              listItemGraphQLType = 'String'; // Ensure capitalized 'String' for GraphQL
+          }
+          // If it's not scalar, enum, or relation, it might be a complex type not handled yet.
+          // Default uses originalType which might be correct.
+
+          decoratorType = `() => [${listItemGraphQLType}]`;
+
+      } else if (isEnum || isRelation) {
+          decoratorType = `() => ${originalType}`;
+      } 
+
+      if (decoratorType) {
+          decorator += `${decoratorType}, ${nullableOption}`;
+      } else {
+          decorator += nullableOption;
+      }
+
+      decorator += ')';
+
+      // Generate the field definition
+      output += `  ${decorator}\n`;
+      output += `  ${field.name}?: ${fieldType}${isList ? '[]' : ''};\n\n`;
     }
-    
-    fields.push({
-      name: fieldName,
-      type: fieldType.replace('[]', ''),
-      isRequired,
-      isId,
-      isList,
-      isEnum,
-      enumType
-    });
+
+    output += `}\n\n`;
   }
 
-  return fields;
-}
-
-function extractEnums(schema: string): any[] {
-  const enumRegex = /enum\s+(\w+)\s+{([^}]+)}/g;
-  const enums: any[] = [];
-  let match;
-
-  while ((match = enumRegex.exec(schema)) !== null) {
-    const enumName = match[1];
-    const enumContent = match[2];
-    
-    const values = extractEnumValues(enumContent);
-    enums.push({ name: enumName, values });
-  }
-
-  return enums;
-}
-
-function extractEnumValues(enumContent: string): string[] {
-  const valueRegex = /(\w+)/g;
-  const values: string[] = [];
-  let match;
-
-  while ((match = valueRegex.exec(enumContent)) !== null) {
-    values.push(match[1]);
-  }
-
-  return values;
-}
-
-function generateModels(models: any[], enums: any[]): string {
-  let output = '// Generated from Prisma schema\n\n';
-  
-  // Add imports for enums
-  const enumImports = enums.map(e => e.name);
-  if (enumImports.length > 0) {
-    output += `import { ${enumImports.join(', ')} } from './enums';\n\n`;
-  }
-  
-  // Generate model interfaces
-  models.forEach(model => {
-    output += `export interface ${model.name} {\n`;
-    
-    model.fields.forEach((field: any) => {
-      const isOptional = !field.isRequired;
-      const type = getTypeScriptType(field, enums);
-      output += `  ${field.name}${isOptional ? '?' : ''}: ${type};\n`;
-    });
-    
-    output += '}\n\n';
-  });
-  
   return output;
 }
 
-function generateEnums(enums: any[]): string {
+function generateEnums(enums: readonly any[]): string {
   let output = '// Generated from Prisma schema\n\n';
-  
+
   // Generate enum types
-  enums.forEach(enumType => {
+  enums.forEach((enumType) => {
     output += `export enum ${enumType.name} {\n`;
-    
-    enumType.values.forEach((value: string) => {
-      output += `  ${value} = '${value}',\n`;
+
+    enumType.values.forEach((value: any) => {
+      output += `  ${value.name} = '${value.name}',\n`;
     });
-    
+
     output += '}\n\n';
   });
-  
+
   return output;
 }
 
@@ -171,36 +190,8 @@ export * from './enums';
 `;
 }
 
-function getTypeScriptType(field: any, enums: any[]): string {
-  // Handle scalar types
-  const scalarMap: { [key: string]: string } = {
-    String: 'string',
-    Boolean: 'boolean',
-    Int: 'number',
-    Float: 'number',
-    DateTime: 'Date',
-    Json: 'any',
-    BigInt: 'bigint',
-    Decimal: 'number',
-    Bytes: 'Buffer',
-  };
+function isScalarType(type: string): boolean {
+  return ['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Json', 'ID'].includes(type);
+}
 
-  let type = field.type;
-  
-  // Handle scalar types
-  if (scalarMap[type]) {
-    type = scalarMap[type];
-  }
-  
-  // Handle enums
-  if (field.isEnum) {
-    type = field.enumType || type;
-  }
-  
-  // Handle arrays
-  if (field.isList) {
-    type = `${type}[]`;
-  }
-  
-  return type;
-} 
+main().catch(console.error);

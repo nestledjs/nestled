@@ -24,9 +24,12 @@ export class ApiAccountFeatureResolver {
     return this.service.accountProfile(user.id)
   }
 
-  @Query(() => Boolean, { nullable: true })
-  accountUsernameAvailable(@CtxUser() user: User, @Args('username') username: string) {
-    return this.service.accountUsernameAvailable(user.id, username)
+  @Query(() => Boolean)
+  accountDisplayNameAvailable(
+    @CtxUser() user: User,
+    @Args('displayName') displayName: string
+  ) {
+    return this.service.accountDisplayNameAvailable(user.id, displayName)
   }
 
   @Mutation(() => Email, { nullable: true })
@@ -59,9 +62,12 @@ export class ApiAccountFeatureResolver {
     return this.service.accountUpdateProfile(user.id, input)
   }
 
-  @Mutation(() => User, { nullable: true })
-  accountUpdateUsername(@CtxUser() user: User, @Args('username') username: string) {
-    return this.service.accountUpdateUsername(user.id, username)
+  @Mutation(() => User)
+  accountUpdateDisplayName(
+    @CtxUser() user: User,
+    @Args('displayName') displayName: string
+  ) {
+    return this.service.accountUpdateDisplayName(user.id, displayName)
   }
 
   @Mutation(() => Boolean, { nullable: true })

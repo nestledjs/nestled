@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { BadRequestException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
+import { ApiCoreDataAccessService, UserRole } from '@<%= npmScope %>/api/core/data-access'
 import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature'
 import { Response } from 'express'
 import {
@@ -14,10 +14,10 @@ import { LoginInput } from './dto/login.input'
 import { RegisterInput } from './dto/register.input'
 import { UserToken } from './models/user-token'
 import { UserCreateInput } from './dto/user-create.input'
-import { Prisma } from '@prisma/client'
+import { Prisma } from '@<%= npmScope %>/api/core/data-access'
 import { ApiMailerDataAccessService } from '@<%= npmScope %>/api/mailer/data-access'
 import { passwordResetEmail } from './templates/password-reset-email.template'
-import { Role, User } from '@<%= npmScope %>/api/user/data-access'
+import { User } from '@<%= npmScope %>/api/core/data-access'
 
 @Injectable()
 export class ApiAuthDataAccessService {
@@ -29,22 +29,31 @@ export class ApiAuthDataAccessService {
   ) {}
 
   async createUser(input: Partial<UserCreateInput>) {
+    if (!input.password) {
+      throw new BadRequestException('Password is required')
+    }
+    
+    if (!input.email) {
+      throw new BadRequestException('Email is required')
+    }
     const password = input.password
     const hashedPassword = hashPassword(password)
     const email = input.email.trim()
-    const displayName = input.displayName || `${input.firstName} ${input.lastName}`.trim() || email
+    const displayName =
+      input.displayName ||
+      `${input.firstName || ''} ${input.lastName || ''}`.trim() ||
+      email
 
     return this.data.user
       .create({
         data: {
           firstName: input.firstName,
           lastName: input.lastName,
-          emails: { create: { email, primary: true } },
-          phone: input.phone,
+          emails: { create: { email, primary: true, emailType: 'PERSONAL' } },
+          phoneNumbers: input?.phone ? { create: { phone: input.phone, primary: true, phoneType: 'MOBILE' } } : undefined,
           displayName,
-          avatarUrl: input.avatarUrl || getGravatarUrl(input.email.toLowerCase()),
           password: hashedPassword,
-          role: Role.User,
+          role: UserRole.USER,
         },
       })
       .catch((e) => {
@@ -53,15 +62,35 @@ export class ApiAuthDataAccessService {
             throw new BadRequestException('This email is already in use')
           }
         }
+        throw e;
       })
   }
 
-  async register(payload: RegisterInput) {
-    const user = await this.createUser({
-      ...payload,
+  async register(input: UserCreateInput): Promise<any> {
+    if (!input.password) {
+      throw new BadRequestException('Password is required')
+    }
+    
+    if (!input.email) {
+      throw new BadRequestException('Email is required')
+    }
+    
+    const email = input.email.toLowerCase()
+    const displayName = input.displayName || email.split('@')[0]
+
+    const user = await this.data.user.create({
+      data: {
+        role: UserRole.USER,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        emails: { create: { email, primary: true, emailType: 'PERSONAL' } },
+        phoneNumbers: input?.phone ? { create: { phone: input.phone, primary: true, phoneType: 'MOBILE' } } : undefined,
+        displayName,
+        password: hashPassword(input.password),
+      },
     })
 
-    return this.signUser(user)
+    return user
   }
 
   async login(input: LoginInput) {
@@ -75,7 +104,7 @@ export class ApiAuthDataAccessService {
       throw new NotFoundException(`No user found for email: ${email}`)
     }
 
-    const passwordValid = await validatePassword(password, user.password)
+    const passwordValid = await validatePassword(password, user.password || '')
 
     if (!passwordValid) {
       throw new BadRequestException('Invalid password')
@@ -99,11 +128,17 @@ export class ApiAuthDataAccessService {
       where: { id: user.id },
       data: { passwordResetToken, passwordResetExpires },
     })
-    await this.mailer.send(passwordResetEmail({ email: email, firstName: user.firstName, passwordResetToken }))
+    await this.mailer.send(
+      passwordResetEmail({
+        email: email,
+        firstName: user.firstName || '',
+        passwordResetToken,
+      })
+    )
     return true
   }
 
-  async resetPassword(password: string, token: string): Promise<User> {
+  async resetPassword(password: string, token: string): Promise<any> {
     const user = await this.data.user.findFirst({ where: { passwordResetToken: token } })
 
     if (!user) {
@@ -111,8 +146,10 @@ export class ApiAuthDataAccessService {
       throw new Error(`This token has been used or is invalid.`)
     }
 
-    if (user.passwordResetExpires.valueOf() < new Date(Date.now()).valueOf()) {
-      Logger.warn(`PasswordResetToken ${token} expired on ${user.passwordResetExpires}.`)
+    if (user.passwordResetExpires && user.passwordResetExpires.valueOf() < new Date(Date.now()).valueOf()) {
+      Logger.warn(
+        `PasswordResetToken ${token} expired on ${user.passwordResetExpires}.`
+      )
       throw new Error(`Your password reset token has expired.`)
     }
 
@@ -127,7 +164,7 @@ export class ApiAuthDataAccessService {
     })
   }
 
-  signUser(user): UserToken {
+  signUser(user: any): UserToken {
     const token = this.jwtService.sign({ userId: user?.id })
     return { token, user }
   }
@@ -143,15 +180,13 @@ export class ApiAuthDataAccessService {
   }
 
   public findUserByEmail(email: string) {
-    return this.data.email.findUnique({ where: { email } }).owner({ include: { emails: true } })
+    return this.data.email
+      .findUnique({ where: { email } })
+      .user()
   }
 
   public findUserById(userId: string) {
     return this.data.user.findUnique({ where: { id: userId } })
-  }
-
-  public findUserByUsername(username: string) {
-    return this.data.user.findUnique({ where: { username } })
   }
 
   public setCookie(res: Response, token: string) {

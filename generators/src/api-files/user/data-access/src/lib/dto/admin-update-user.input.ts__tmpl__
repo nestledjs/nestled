@@ -1,10 +1,10 @@
 import { Field, InputType } from '@nestjs/graphql'
-import { Role } from '../models/role.enum'
+import { UserRole } from '@<%= npmScope %>/api/core/data-access'
 
 @InputType()
 export class AdminUpdateUserInput {
-  @Field(() => Role, { nullable: true })
-  role: Role
+  @Field(() => UserRole, { nullable: true })
+  role?: UserRole
 
   @Field({ nullable: true })
   displayName?: string
@@ -16,7 +16,7 @@ export class AdminUpdateUserInput {
   lastName?: string
 
   @Field({ nullable: true })
-  phone: string
+  phone?: string
 
   @Field({ nullable: true })
   avatarUrl?: string
