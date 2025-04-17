@@ -31,6 +31,7 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       'graphql-scalars': '^1.22.4',
       'graphql-fields': '^2.0.3',
       '@prisma/internals': '^5.0.0',
+      'class-transformer': '^0.5.1',
     },
     {
       nx: '20.8.0',

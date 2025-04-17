@@ -82,7 +82,7 @@ async function main() {
 function generateModels(models: readonly any[], enums: readonly any[]): string {
   let output = `import { Field, ObjectType, Int, Float } from '@nestjs/graphql';\n`;
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`;
-  output += `import { Prisma } from '../generated';\n`;
+  output += `import { Prisma } from '@<%= npmScope %>/api/core/data-access';\n`;
 
   // Import all enums
   output += `import { ${enums.map(e => e.name).join(', ')} } from './enums';\n\n`;

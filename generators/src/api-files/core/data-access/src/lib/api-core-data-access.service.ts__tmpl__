@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
 import { Strategy } from 'passport-jwt'
-import { PrismaClient, Prisma, UserRole } from './prisma-gen'
+import { PrismaClient, Prisma, UserRole } from './prisma-generated'
 import { CorePaging } from './models/core-paging'
 import { CorePagingInput } from './dto/core-paging.input'
 

@@ -7,7 +7,7 @@ import {
   ApiAccountDataAccessService,
 } from '@<%= npmScope %>/api/account/data-access'
 import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/auth/util'
-import { Email, User } from '@<%= npmScope %>/api/user/data-access'
+import { User, Email } from '@<%= npmScope %>/api/core/models'
 
 @Resolver()
 @UseGuards(GqlAuthGuard)

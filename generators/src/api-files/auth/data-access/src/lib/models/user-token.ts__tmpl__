@@ -1,11 +1,11 @@
 import { Field, ObjectType } from '@nestjs/graphql'
-import { User } from '@<%= npmScope %>/api/core/data-access'
+import { User } from '@<%= npmScope %>/api/core/models'
 
 @ObjectType()
 export class UserToken {
-  @Field({ description: 'JWT Bearer token' })
-  token: string
+  @Field({ description: 'JWT Bearer token', nullable: true })
+  token?: string;
 
-  @Field(() => User)
-  user: User
+  @Field(() => User, { nullable: true })
+  user?: User;
 }

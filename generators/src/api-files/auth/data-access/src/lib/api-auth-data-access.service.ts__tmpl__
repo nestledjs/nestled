@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, UnauthorizedException } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
-import { ApiCoreDataAccessService, UserRole } from '@<%= npmScope %>/api/core/data-access'
+import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
+import { UserRole } from '@<%= npmScope %>/api/core/models'
 import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature'
 import { Response } from 'express'
 import {

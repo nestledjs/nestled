@@ -29,7 +29,7 @@ export default async function (tree: Tree, schema: Schema) {
     // Install required plugins
     const installTask = await installPlugins(tree)
 
-    // Update webpack.config.js to remove assets
+    // Update webpack.config.js to remove assets and add sourceMap: false
     const webpackConfigPath = 'apps/api/webpack.config.js'
     if (tree.exists(webpackConfigPath)) {
       try {
@@ -38,9 +38,27 @@ export default async function (tree: Tree, schema: Schema) {
           console.error('Failed to read webpack.config.js')
           return installTask
         }
-        const updatedConfig = webpackConfig.replace(/assets: \['\.\/src\/assets'\],/, '')
+        // Remove assets line - improved regex
+        let updatedConfig = webpackConfig.replace(/assets: \[".\/src\/assets"\],?\s*\n?/, '');
+        console.log('Successfully removed assets line from webpack.config.js (if present)');
+
+        // Add sourceMap: false after generatePackageJson: true,
+        const generatePkgJsonRegex = /^(\s*)generatePackageJson: true,/m;
+        const match = updatedConfig.match(generatePkgJsonRegex);
+
+        if (match) {
+            const indentation = match[1]; // Capture the indentation
+            updatedConfig = updatedConfig.replace(
+                generatePkgJsonRegex,
+                `${match[0]}\n${indentation}sourceMap: false,` // Use captured indentation for the new line
+            );
+            console.log('Successfully added sourceMap: false to webpack.config.js');
+        } else {
+            // Log a warning if the anchor point isn't found, as the Nx generator output might change
+            console.warn('Could not find "generatePackageJson: true," line in webpack.config.js to insert sourceMap config.');
+        }
+
         tree.write(webpackConfigPath, updatedConfig)
-        console.log('Successfully removed assets from webpack.config.js')
       } catch (error) {
         console.error('Error modifying webpack.config.js:', error)
       }

@@ -9,7 +9,7 @@ import {
 import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
 import { Logger, UseGuards } from '@nestjs/common'
 import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/auth/util'
-import { User } from '@<%= npmScope %>/api/user/data-access'
+import { User } from '@<%= npmScope %>/api/core/models'
 
 @Resolver(() => UserToken)
 export class ApiAuthFeatureResolver {
