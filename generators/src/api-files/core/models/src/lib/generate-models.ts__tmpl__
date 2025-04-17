@@ -4,7 +4,7 @@ import { join } from 'path';
 import { execSync } from 'child_process';
 import { getDMMF } from '@prisma/internals';
 import { GraphQLJSONObject } from 'graphql-type-json';
-import { Prisma } from '@<%= npmScope %>/api/core/prisma'
+import { Prisma } from '@<%= npmScope %>/api/core/data-access'
 
 interface PrismaField {
   readonly name: string;

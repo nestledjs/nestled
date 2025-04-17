@@ -82,7 +82,7 @@ export default async function (tree: Tree, schema: ConfigGeneratorSchema) {
         'prisma:reset': 'pnpm prisma migrate reset && pnpm prisma:seed',
         'prisma:seed': 'npx prisma db seed',
         'prisma:studio': 'pnpm prisma studio',
-        'generate:models': 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts',
+        'generate:models': 'ts-node libs/api/core/models/src/lib/generate-models.ts',
         sdk: 'graphql-codegen --config libs/shared/util-sdk/src/codegen.yml',
         'sdk:watch': 'pnpm sdk --watch',
         'types:watch': 'nodemon',

@@ -121,8 +121,8 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
 
     // Add prisma schema path
     packageJson.prisma = {
-      schema: 'libs/api/core/prisma/src/lib/schema.prisma',
-      seed: 'ts-node libs/api/core/prisma/src/lib/seed.ts',
+      schema: 'libs/api/core/data-access/src/lib/schema.prisma',
+      seed: 'ts-node libs/api/core/data-access/src/lib/seed.ts',
     }
 
     tree.write('package.json', JSON.stringify(packageJson, null, 2))
