@@ -15,7 +15,7 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       '@nestjs/jwt': '^10.0.0',
       '@nestjs/passport': '^10.0.0',
       '@nestjs/axios': '^3.0.0',
-      '@prisma/client': '^5.0.0',
+      '@prisma/client': '^6.6.0',
       '@apollo/server': '^4.9.0',
       bcryptjs: '^2.4.3',
       'class-validator': '^0.14.0',
@@ -27,7 +27,10 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       'passport-jwt': '^4.0.1',
       'reflect-metadata': '^0.1.13',
       rxjs: '^7.8.0',
-      'typegraphql-prisma': '^1.0.0',
+      'type-graphql': '^1.1.1',
+      'typegraphql-prisma': '^0.28.0',
+      'graphql-scalars': '^1.22.4',
+      'graphql-fields': '^2.0.3',
     },
     {
       nx: '20.8.0',
@@ -39,7 +42,8 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       '@types/cookie-parser': '^1.4.3',
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^3.0.8',
-      prisma: '^5.0.0',
+      '@prisma/sdk': '^4.0.0',
+      prisma: '^6.6.0',
       pg: '8.14.1',
     },
   )
@@ -90,7 +94,8 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       '@prisma/engines',
       'esbuild',
       'nx',
-      'prisma'
+      'prisma',
+      'type-graphql'
     ]
     
     for (const pkg of requiredPackages) {

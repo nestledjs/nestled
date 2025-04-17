@@ -1,0 +1,206 @@
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
+import { join, dirname } from 'path';
+import { execSync } from 'child_process';
+
+// Paths
+const schemaPath = join(__dirname, '../prisma/schema.prisma');
+const outputDir = join(__dirname, '../generated');
+
+// Ensure output directory exists
+if (!existsSync(outputDir)) {
+  mkdirSync(outputDir, { recursive: true });
+}
+
+// Generate Prisma client first
+console.log('Generating Prisma client...');
+execSync(`npx prisma generate --schema ${schemaPath}`, { stdio: 'inherit' });
+
+// Read schema
+console.log('Reading Prisma schema...');
+const schemaContent = readFileSync(schemaPath, 'utf-8');
+
+// Extract models and enums from schema
+const models = extractModels(schemaContent);
+const enums = extractEnums(schemaContent);
+
+// Generate models
+console.log('Generating TypeScript models...');
+const modelsOutput = generateModels(models, enums);
+writeFileSync(join(outputDir, 'models.ts'), modelsOutput);
+
+// Generate enums
+console.log('Generating TypeScript enums...');
+const enumsOutput = generateEnums(enums);
+writeFileSync(join(outputDir, 'enums.ts'), enumsOutput);
+
+// Generate index file
+console.log('Generating index file...');
+const indexOutput = generateIndex();
+writeFileSync(join(outputDir, 'index.ts'), indexOutput);
+
+console.log('Models and enums generated successfully!');
+
+function extractModels(schema: string): any[] {
+  const modelRegex = /model\s+(\w+)\s+{([^}]+)}/g;
+  const models: any[] = [];
+  let match;
+
+  while ((match = modelRegex.exec(schema)) !== null) {
+    const modelName = match[1];
+    const modelContent = match[2];
+    
+    const fields = extractFields(modelContent);
+    models.push({ name: modelName, fields });
+  }
+
+  return models;
+}
+
+function extractFields(modelContent: string): any[] {
+  const fieldRegex = /(\w+)\s+(\w+)(\s+@\w+(\s*\([^)]*\))?)*/g;
+  const fields: any[] = [];
+  let match;
+
+  while ((match = fieldRegex.exec(modelContent)) !== null) {
+    const fieldName = match[1];
+    const fieldType = match[2];
+    const fieldAttributes = match[0].substring(match[0].indexOf('@'));
+    
+    const isRequired = !fieldAttributes.includes('?');
+    const isId = fieldAttributes.includes('@id');
+    const isList = fieldType.includes('[]');
+    const isEnum = fieldAttributes.includes('@enum');
+    
+    // Extract enum type if it's an enum field
+    let enumType = null;
+    if (isEnum) {
+      const enumMatch = fieldAttributes.match(/@enum\((\w+)\)/);
+      if (enumMatch) {
+        enumType = enumMatch[1];
+      }
+    }
+    
+    fields.push({
+      name: fieldName,
+      type: fieldType.replace('[]', ''),
+      isRequired,
+      isId,
+      isList,
+      isEnum,
+      enumType
+    });
+  }
+
+  return fields;
+}
+
+function extractEnums(schema: string): any[] {
+  const enumRegex = /enum\s+(\w+)\s+{([^}]+)}/g;
+  const enums: any[] = [];
+  let match;
+
+  while ((match = enumRegex.exec(schema)) !== null) {
+    const enumName = match[1];
+    const enumContent = match[2];
+    
+    const values = extractEnumValues(enumContent);
+    enums.push({ name: enumName, values });
+  }
+
+  return enums;
+}
+
+function extractEnumValues(enumContent: string): string[] {
+  const valueRegex = /(\w+)/g;
+  const values: string[] = [];
+  let match;
+
+  while ((match = valueRegex.exec(enumContent)) !== null) {
+    values.push(match[1]);
+  }
+
+  return values;
+}
+
+function generateModels(models: any[], enums: any[]): string {
+  let output = '// Generated from Prisma schema\n\n';
+  
+  // Add imports for enums
+  const enumImports = enums.map(e => e.name);
+  if (enumImports.length > 0) {
+    output += `import { ${enumImports.join(', ')} } from './enums';\n\n`;
+  }
+  
+  // Generate model interfaces
+  models.forEach(model => {
+    output += `export interface ${model.name} {\n`;
+    
+    model.fields.forEach((field: any) => {
+      const isOptional = !field.isRequired;
+      const type = getTypeScriptType(field, enums);
+      output += `  ${field.name}${isOptional ? '?' : ''}: ${type};\n`;
+    });
+    
+    output += '}\n\n';
+  });
+  
+  return output;
+}
+
+function generateEnums(enums: any[]): string {
+  let output = '// Generated from Prisma schema\n\n';
+  
+  // Generate enum types
+  enums.forEach(enumType => {
+    output += `export enum ${enumType.name} {\n`;
+    
+    enumType.values.forEach((value: string) => {
+      output += `  ${value} = '${value}',\n`;
+    });
+    
+    output += '}\n\n';
+  });
+  
+  return output;
+}
+
+function generateIndex(): string {
+  return `// Generated from Prisma schema
+export * from './models';
+export * from './enums';
+`;
+}
+
+function getTypeScriptType(field: any, enums: any[]): string {
+  // Handle scalar types
+  const scalarMap: { [key: string]: string } = {
+    String: 'string',
+    Boolean: 'boolean',
+    Int: 'number',
+    Float: 'number',
+    DateTime: 'Date',
+    Json: 'any',
+    BigInt: 'bigint',
+    Decimal: 'number',
+    Bytes: 'Buffer',
+  };
+
+  let type = field.type;
+  
+  // Handle scalar types
+  if (scalarMap[type]) {
+    type = scalarMap[type];
+  }
+  
+  // Handle enums
+  if (field.isEnum) {
+    type = field.enumType || type;
+  }
+  
+  // Handle arrays
+  if (field.isList) {
+    type = `${type}[]`;
+  }
+  
+  return type;
+} 

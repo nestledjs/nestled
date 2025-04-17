@@ -108,7 +108,10 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
       '@nestjs/graphql': '^12.0.0',
       '@nestjs/common': '^10.0.0',
       '@nestjs/apollo': '^12.0.0',
-      '@prisma/client': '^5.0.0',
+      '@nestjs/passport': '^10.0.0',
+      '@nestjs/axios': '^3.0.0',
+      '@prisma/client': '^6.6.0',
+      '@apollo/server': '^4.9.0',
     }
 
     const devDependencies = {}
