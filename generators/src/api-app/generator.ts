@@ -39,8 +39,16 @@ export default async function (tree: Tree, schema: Schema) {
           return installTask
         }
         // Remove assets line - improved regex
-        let updatedConfig = webpackConfig.replace(/assets: \[".\/src\/assets"\],?\s*\n?/, '');
-        console.log('Successfully removed assets line from webpack.config.js (if present)');
+        // Match variations in quotes and spacing, ensure it's on its own line
+        const assetsRegex = /^\s*assets:\s*\[\s*['"]\.\/src\/assets['"]\s*\]\s*,?\s*$/m;
+        let updatedConfig = webpackConfig.replace(assetsRegex, '');
+        if (updatedConfig !== webpackConfig) {
+             console.log('Successfully removed assets line from webpack.config.js');
+        } else {
+             console.warn('Assets line "assets: [\'./src/assets\']" not found or not removed from webpack.config.js. Regex might need adjustment.');
+             // Optional: Log the content for debugging
+             // console.log('webpack.config.js content before removal attempt:\n', webpackConfig);
+        }
 
         // Add sourceMap: false after generatePackageJson: true,
         const generatePkgJsonRegex = /^(\s*)generatePackageJson: true,/m;
