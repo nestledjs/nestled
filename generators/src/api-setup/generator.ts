@@ -1,7 +1,7 @@
 import { addDependenciesToPackageJson, Tree, GeneratorCallback, readJson } from '@nx/devkit'
 import { execSync } from 'child_process'
 
-export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCallback> {
+export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
   await addDependenciesToPackageJson(
     tree,
@@ -32,6 +32,7 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       'graphql-fields': '^2.0.3',
       '@prisma/internals': '^5.0.0',
       'class-transformer': '^0.5.1',
+      '@paljs/plugins': '^4.1.0',
     },
     {
       nx: '20.8.0',
@@ -75,17 +76,17 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
   const packageJsonPath = 'package.json'
   if (tree.exists(packageJsonPath)) {
     const packageJson = readJson(tree, packageJsonPath)
-    
+
     // Initialize pnpm section if it doesn't exist
     if (!packageJson.pnpm) {
       packageJson.pnpm = {}
     }
-    
+
     // Initialize onlyBuiltDependencies array if it doesn't exist
     if (!packageJson.pnpm.onlyBuiltDependencies) {
       packageJson.pnpm.onlyBuiltDependencies = []
     }
-    
+
     // Add the specified packages if they don't already exist
     const requiredPackages = [
       '@apollo/protobufjs',
@@ -98,20 +99,20 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
       'prisma',
       'type-graphql'
     ]
-    
+
     for (const pkg of requiredPackages) {
       if (!packageJson.pnpm.onlyBuiltDependencies.includes(pkg)) {
         packageJson.pnpm.onlyBuiltDependencies.push(pkg)
       }
     }
-    
+
     // Add GraphQL model generation script
     if (!packageJson.scripts) {
       packageJson.scripts = {}
     }
-    
+
     packageJson.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
-    
+
     // Write back the updated package.json
     tree.write(packageJsonPath, JSON.stringify(packageJson, null, 2))
   }
@@ -126,4 +127,4 @@ export async function apiDependenciesGenerator(tree: Tree): Promise<GeneratorCal
   }
 }
 
-export default apiDependenciesGenerator
+export default apiSetupGenerator

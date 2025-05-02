@@ -1,8 +1,6 @@
-// Export lib
 export * from './lib/api-core-data-access.service'
 export * from './lib/api-core-data-access.module'
 export * from './lib/models/core-paging'
 export * from './lib/dto/core-paging.input'
-
-// Export generated code
+export * from './lib/custom-types'
 export * from './lib/prisma-generated'

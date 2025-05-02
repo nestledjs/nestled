@@ -9,6 +9,32 @@ interface ConfigGeneratorSchema {
   // Add other options as needed
 }
 
+function updateESLintConfig(tree: Tree) {
+  const eslintConfigPath = 'eslint.config.mjs'
+  if (tree.exists(eslintConfigPath)) {
+    const content = tree.read(eslintConfigPath, 'utf-8')
+    const updatedContent = content.replace(
+      /depConstraints:\s*\[\s*\{\s*sourceTag:\s*['"]\*['"],\s*onlyDependOnLibsWithTags:\s*\[['"]\*['"]\]\s*\}\s*\]/,
+      `depConstraints: [
+        {
+          sourceTag: 'scope:api',
+          onlyDependOnLibsWithTags: ['scope:api'],
+          allow: ['^libs/api/']
+        },
+        {
+          sourceTag: 'scope:web',
+          onlyDependOnLibsWithTags: ['scope:web', 'scope:web-ui'],
+          allow: ['^libs/web/']
+        }
+      ]`
+    )
+    tree.write(eslintConfigPath, updatedContent)
+    logger.info('✅ Updated ESLint configuration with project boundary rules')
+  } else {
+    logger.info('⚠️  No ESLint configuration file found')
+  }
+}
+
 export default async function (tree: Tree, schema: ConfigGeneratorSchema) {
   const templateOptions = {
     ...schema,
@@ -102,6 +128,9 @@ export default async function (tree: Tree, schema: ConfigGeneratorSchema) {
   }
 
   await formatFiles(tree)
+
+  // Update ESLint configuration
+  updateESLintConfig(tree)
 
   // Handle .env in .gitignore
   if (schema.ignoreEnv) {

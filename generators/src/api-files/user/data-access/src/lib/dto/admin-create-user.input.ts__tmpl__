@@ -1,5 +1,5 @@
 import { Field, InputType } from '@nestjs/graphql'
-import { UserRole } from '@<%= npmScope %>/api/core/models'
+import { UserRole } from '@<%= npmScope %>/api/core/data-access'
 
 @InputType()
 export class AdminCreateUserInput {

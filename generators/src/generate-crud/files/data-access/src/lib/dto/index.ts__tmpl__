@@ -1,0 +1,26 @@
+import { Field, InputType } from '@nestjs/graphql'
+
+<% for (const model of models) { %>
+// Create input type
+@InputType()
+export class Create<%= model.modelName %>Input {
+<% for (const field of model.fields) { %>
+  @Field({ nullable: <%= field.isOptional ? 'true' : 'false' %> })
+  <%= field.name %>: <%= field.type %>
+<% } %>
+}
+
+@InputType()
+export class Update<%= model.modelName %>Input {
+<% for (const field of model.fields) { %>
+  @Field({ nullable: true })
+  <%= field.name %>? : <%= field.type %>
+<% } %>
+}
+
+// Export all types
+export type {
+  Create<%= model.modelName %>Input,
+  Update<%= model.modelName %>Input,
+}
+<% } %>

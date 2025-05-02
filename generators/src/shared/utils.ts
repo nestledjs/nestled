@@ -152,7 +152,6 @@ export function generateTemplateFiles({
     tmpl: '',
   }
 
-  // Fix the path - remove the redundant '../api-files'
   generateFiles(tree, joinPathFragments(templatePath, schema.name, type), libraryRoot, variables)
 }
 

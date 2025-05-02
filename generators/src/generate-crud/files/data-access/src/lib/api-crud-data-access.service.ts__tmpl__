@@ -1,0 +1,50 @@
+import { Injectable } from '@nestjs/common'
+import { ApiCoreDataAccessService } from '<%= npmScope %>/api/core/data-access'
+import { PrismaSelect } from '@paljs/plugins'
+import { <%= models.map(model => `Create${model.modelName}Input, Update${model.modelName}Input`).join(', ') %> } from './dto'
+import { GraphQLResolveInfo } from 'graphql'
+
+@Injectable()
+export class ApiCrudDataAccessService {
+  constructor(private readonly data: ApiCoreDataAccessService) {}
+
+<% for (const model of models) { %>
+  async create<%= model.modelName %>(info: GraphQLResolveInfo, input: Create<%= model.modelName %>Input) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= model.modelPropertyName %>.create({
+      data: input,
+      ...select,
+    });
+  }
+
+  async findAll<%= model.modelName %>(info: GraphQLResolveInfo) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= model.modelPropertyName %>.findMany({
+      ...select,
+    });
+  }
+
+  async findOne<%= model.modelName %>(info: GraphQLResolveInfo, id: string) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= model.modelPropertyName %>.findUnique({
+      where: { id },
+      ...select,
+    });
+  }
+
+  async update<%= model.modelName %>(info: GraphQLResolveInfo, id: string, input: Update<%= model.modelName %>Input) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= model.modelPropertyName %>.update({
+      where: { id },
+      data: input,
+      ...select,
+    });
+  }
+
+  async delete<%= model.modelName %>(id: string) {
+    return this.data.<%= model.modelPropertyName %>.delete({
+      where: { id }
+    });
+  }
+<% } %>
+}

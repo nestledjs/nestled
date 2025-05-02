@@ -6,10 +6,21 @@ import {
   ResetPasswordInput,
   UserToken,
 } from '@<%= npmScope %>/api/auth/data-access'
-import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
+import {
+  Args,
+  Context,
+  Info,
+  Mutation,
+  Parent,
+  Query,
+  ResolveField,
+  Resolver,
+} from '@nestjs/graphql'
 import { Logger, UseGuards } from '@nestjs/common'
 import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/auth/util'
 import { User } from '@<%= npmScope %>/api/core/models'
+import { GraphQLResolveInfo } from 'graphql/type'
+import { NestContextType } from '@<%= npmScope %>/api/core/data-access'
 
 @Resolver(() => UserToken)
 export class ApiAuthFeatureResolver {
@@ -22,11 +33,24 @@ export class ApiAuthFeatureResolver {
   }
 
   @Mutation(() => UserToken, { nullable: true })
-  async login(@Context() context, @Args('input') input: LoginInput) {
-    Logger.log('login', input)
-    const userToken = await this.service.login(input)
-    this.service.setCookie(context.res, userToken.token)
-    return userToken
+  async login(
+    @Context() context: NestContextType,
+    @Args('input') input: LoginInput,
+  ) {
+    try {
+      const userToken = await this.service.login(input)
+
+      if (!userToken || !userToken.token) {
+        Logger.warn('Login failed: No user token returned')
+        return null
+      }
+
+      this.service.setCookie(context.res, userToken.token)
+      return userToken
+    } catch (error) {
+      Logger.error(`Login failed: ${(error as Error).message}`, (error as Error).stack)
+      return null
+    }
   }
 
   @Mutation(() => Boolean, { nullable: true })
@@ -37,7 +61,7 @@ export class ApiAuthFeatureResolver {
   }
 
   @Mutation(() => UserToken, { nullable: true })
-  async register(@Context() context, @Args('input') input: RegisterInput) {
+  async register(@Context() context: NestContextType, @Args('input') input: RegisterInput) {
     Logger.log('register', input)
     const userToken = await this.service.register(input)
     this.service.setCookie(context.res, userToken.token)

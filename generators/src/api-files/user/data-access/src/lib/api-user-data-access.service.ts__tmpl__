@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { ApiCoreDataAccessService, CorePaging, CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
 import { getGravatarUrl, hashPassword, uniqueSuffix } from '@<%= npmScope %>/api/auth/data-access'
-import { UserRole } from '@<%= npmScope %>/api/core/models';
+import { UserRole } from '@<%= npmScope %>/api/core/data-access';
 import { AdminCreateUserInput } from './dto/admin-create-user.input'
 import { AdminUpdateUserInput } from './dto/admin-update-user.input'
 

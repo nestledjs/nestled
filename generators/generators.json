@@ -1,5 +1,10 @@
 {
   "generators": {
+    "generate-all": {
+      "factory": "./src/generate-all/generator",
+      "schema": "./src/generate-all/schema.json",
+      "description": "Generates complete API project with all configurations and libraries"
+    },
     "api-libs": {
       "factory": "./src/api-libs/generator",
       "schema": "./src/api-libs/schema.json",
@@ -80,9 +85,9 @@
       "schema": "./src/workspace-setup/schema.json",
       "description": "Generates Workspace Setup"
     },
-    "api-dependencies": {
-      "factory": "./src/api-dependencies/generator",
-      "schema": "./src/api-dependencies/schema.json",
+    "api-setup": {
+      "factory": "./src/api-setup/generator",
+      "schema": "./src/api-setup/schema.json",
       "description": "Sets up all dependencies for API App"
     },
     "api-core": {
@@ -94,6 +99,11 @@
       "factory": "./src/info/generator",
       "schema": "./src/info/schema.json",
       "description": "Creates setup instructions file"
+    },
+    "generate-crud": {
+      "factory": "./src/generate-crud/generator",
+      "schema": "./src/generate-crud/schema.json",
+      "description": "Creates a single Generated CRUD library for all Prisma models"
     }
   }
 }

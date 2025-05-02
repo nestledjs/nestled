@@ -1,6 +1,7 @@
 import { PrismaClient } from './prisma-generated'
 import { countries } from './seed-data/iso-3166-countries'
 import { seedUsers } from './seed-data/seed-users';
+import { hashSync } from 'bcryptjs'
 
 const prisma = new PrismaClient()
 async function main() {
@@ -37,7 +38,7 @@ async function main() {
             primary: true,
           },
         },
-        password: user.password,
+        password: hashSync(user.password, 10),
         role: user.role,
       },
     })
