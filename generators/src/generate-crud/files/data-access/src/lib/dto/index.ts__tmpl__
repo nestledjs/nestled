@@ -1,12 +1,11 @@
 import { Field, InputType } from '@nestjs/graphql'
 
 <% for (const model of models) { %>
-// Create input type
 @InputType()
 export class Create<%= model.modelName %>Input {
 <% for (const field of model.fields) { %>
   @Field({ nullable: <%= field.isOptional ? 'true' : 'false' %> })
-  <%= field.name %>: <%= field.type %>
+  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type %>
 <% } %>
 }
 
@@ -14,13 +13,16 @@ export class Create<%= model.modelName %>Input {
 export class Update<%= model.modelName %>Input {
 <% for (const field of model.fields) { %>
   @Field({ nullable: true })
-  <%= field.name %>? : <%= field.type %>
+  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type %>
 <% } %>
 }
 
-// Export all types
-export type {
-  Create<%= model.modelName %>Input,
-  Update<%= model.modelName %>Input,
+@InputType()
+export class List<%= model.modelName %>Input {
+<% for (const field of model.fields) { %>
+  @Field({ nullable: true })
+  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type %>
+<% } %>
 }
+
 <% } %>

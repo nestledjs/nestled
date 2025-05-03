@@ -1,26 +1,30 @@
 import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import { GraphQLResolveInfo } from 'graphql'
-import { <%= models.map(model => `${apiClassName}${model.modelName}DataAccessAdminService`).join(', ') %> } from '<%= npmScope %>/api/generated-crud/data-access'
+import {
+  CorePaging,
+  ApiCoreDataAccessService
+} from '<%= npmScope %>/api/core/data-access'
 import {
   <%= models.map(model => model.modelName).join(', ') %>,
-  <%= models.map(model => `AdminCreate${model.modelName}Input`).join(', ') %>,
-  <%= models.map(model => `List${model.modelName}Input`).join(', ') %>,
-  <%= models.map(model => `AdminUpdate${model.modelName}Input`).join(', ') %>,
-  User,
-  CorePaging
-} from '<%= npmScope %>/api/core/data-access'
+} from '<%= npmScope %>/api/core/models'
+import {
+    <%= models.map(model => `Create${model.modelName}Input`).join(', ') %>,
+    <%= models.map(model => `List${model.modelName}Input`).join(', ') %>,
+    <%= models.map(model => `Update${model.modelName}Input`).join(', ') %>,
+} from '<%= npmScope %>/api/generated-crud/data-access'
 import {
   CtxUser,
   GqlAuthAdminGuard,
-} from '<%= npmScope %>/api/core/auth'
+} from '<%= npmScope %>/api/auth/util'
 
 @Resolver()
 @UseGuards(GqlAuthAdminGuard)
 export class ApiCrudFeatureResolver {
   constructor(
-    <%= models.map(model => `private readonly ${model.modelPropertyName}Service: ${apiClassName}${model.modelName}DataAccessAdminService`).join(',\n    ') %>
+    private readonly db: ApiCoreDataAccessService,
   ) {}
+
 
 <% for (const model of models) { %>
   @Query(() => [<%= model.modelName %>], { nullable: true })
@@ -28,14 +32,14 @@ export class ApiCrudFeatureResolver {
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List<%= model.modelName %>Input, nullable: true }) input?: List<%= model.modelName %>Input,
   ) {
-    return this.service.<%= model.modelName %>s(info, input)
+    return this.db.<%= model.modelPropertyName %>s(info, input)
   }
 
   @Query(() => CorePaging, { nullable: true })
   <%= model.modelName %>Count(
     @Args({ name: 'input', type: () => List<%= model.modelName %>Input, nullable: true }) input?: List<%= model.modelName %>Input,
   ) {
-    return this.service.<%= model.modelName %>Count(input)
+    return this.db.<%= model.modelPropertyName %>Count(input)
   }
 
   @Query(() => <%= model.modelName %>, { nullable: true })
@@ -44,7 +48,7 @@ export class ApiCrudFeatureResolver {
     @Info() info: GraphQLResolveInfo,
     @Args('<%= model.modelPropertyName %>Id') <%= model.modelPropertyName %>Id: string
   ) {
-    return this.service.<%= model.modelName %>(info, <%= model.modelPropertyName %>Id)
+    return this.db.<%= model.modelPropertyName %>(info, <%= model.modelPropertyName %>Id)
   }
 
   @Mutation(() => <%= model.modelName %>, { nullable: true })
@@ -53,7 +57,7 @@ export class ApiCrudFeatureResolver {
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: AdminCreate<%= model.modelName %>Input,
   ) {
-    return this.service.create<%= model.modelName %>(info, input)
+    return this.db.create<%= model.modelName %>(info, input)
   }
 
   @Mutation(() => <%= model.modelName %>, { nullable: true })
@@ -63,7 +67,7 @@ export class ApiCrudFeatureResolver {
     @Args('<%= model.modelPropertyName %>Id') <%= model.modelPropertyName %>Id: string,
     @Args('input') input: AdminUpdate<%= model.modelName %>Input,
   ) {
-    return this.service.update<%= model.modelName %>(info, <%= model.modelPropertyName %>Id, input)
+    return this.db.update<%= model.modelName %>(info, <%= model.modelPropertyName %>Id, input)
   }
 
   @Mutation(() => Boolean, { nullable: true })
@@ -71,7 +75,7 @@ export class ApiCrudFeatureResolver {
     @CtxUser() admin: User,
     @Args('<%= model.modelPropertyName %>Id') <%= model.modelPropertyName %>Id: string,
   ) {
-    return this.service.delete<%= model.modelName %>(<%= model.modelPropertyName %>Id)
+    return this.db.delete<%= model.modelName %>(<%= model.modelPropertyName %>Id)
   }
 <% } %>
 }
