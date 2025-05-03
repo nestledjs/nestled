@@ -26,7 +26,7 @@ function updateESLintConfig(tree: Tree) {
           onlyDependOnLibsWithTags: ['scope:web', 'scope:web-ui'],
           allow: ['^libs/web/']
         }
-      ]`
+      ]`,
     )
     tree.write(eslintConfigPath, updatedContent)
     logger.info('✅ Updated ESLint configuration with project boundary rules')
@@ -75,6 +75,8 @@ export default async function (tree: Tree, schema: ConfigGeneratorSchema) {
 
       packageJsonContent.scripts = {
         ...packageJsonContent.scripts,
+        clean:
+          'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && pnpm install',
         affected: 'nx affected',
         'affected:apps': 'nx affected:apps',
         'affected:build': 'nx affected:build',

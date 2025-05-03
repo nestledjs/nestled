@@ -677,6 +677,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     // Add scripts
     packageJson.scripts = {
       ...packageJson.scripts,
+      clean: 'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && pnpm install',
       affected: 'nx affected',
       'affected:apps': 'nx affected:apps',
       'affected:build': 'nx affected:build',
