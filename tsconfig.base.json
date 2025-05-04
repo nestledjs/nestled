@@ -16,9 +16,7 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@nestled/api/core/data-access": ["libs/api/core/data-access/src/index.ts"],
-      "@nestled/api/core/feature": ["libs/api/core/feature/src/index.ts"],
-      "@nestled/generators": ["generators/src/index.ts"]
+       "@nestled/generators": ["generators/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
