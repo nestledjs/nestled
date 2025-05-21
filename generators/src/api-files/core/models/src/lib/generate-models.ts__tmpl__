@@ -1,42 +1,8 @@
-import { Field, ObjectType, Int, Float } from '@nestjs/graphql';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';
 import { getDMMF } from '@prisma/internals';
-import { GraphQLJSONObject } from 'graphql-type-json';
-import { Prisma } from '@<%= npmScope %>/api/core/data-access'
 
-interface PrismaField {
-  readonly name: string;
-  readonly type: string;
-  readonly isRequired: boolean;
-  readonly isList: boolean;
-  readonly isUnique: boolean;
-  readonly isId: boolean;
-  readonly isReadOnly: boolean;
-  readonly hasDefaultValue: boolean;
-  readonly default?: any;
-  readonly relationName?: string;
-  readonly relationFromFields?: readonly string[];
-  readonly relationToFields?: readonly string[];
-  readonly relationOnDelete?: string;
-  readonly documentation?: string;
-}
-
-interface PrismaModel {
-  readonly name: string;
-  readonly dbName: string | null;
-  readonly fields: readonly PrismaField[];
-  readonly isGenerated?: boolean;
-  readonly documentation?: string;
-}
-
-interface PrismaEnum {
-  readonly name: string;
-  readonly values: readonly { readonly name: string; readonly dbName: string | null }[];
-  readonly dbName?: string | null;
-  readonly documentation?: string;
-}
 
 // Paths
 const schemaPath = join(__dirname, '../../../data-access/src/lib/schema.prisma');

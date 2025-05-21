@@ -1,9 +1,86 @@
-import { addDependenciesToPackageJson, Tree, GeneratorCallback, readJson } from '@nx/devkit'
+import { addDependenciesToPackageJson, GeneratorCallback, readJson, Tree, updateJson } from '@nx/devkit'
 import { execSync } from 'child_process'
+
+function updateTypeScriptConfig(tree: Tree): void {
+  const tsConfigPath = 'tsconfig.base.json'
+  if (tree.exists(tsConfigPath)) {
+    const tsConfigContent = tree.read(tsConfigPath, 'utf-8')
+    const tsConfig = JSON.parse(tsConfigContent)
+
+    // Set baseUrl for path aliases
+    tsConfig.compilerOptions.baseUrl = '.'
+
+    // Remove emitDeclarationOnly if it exists
+    if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
+      delete tsConfig.compilerOptions.emitDeclarationOnly
+    }
+
+    // Write back the updated configuration
+    tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
+  }
+}
+
+function updatePackageJson(tree: Tree): void {
+  const packageJsonPath = 'package.json'
+  if (tree.exists(packageJsonPath)) {
+    const packageJson = readJson(tree, packageJsonPath)
+
+    // Initialize pnpm section if it doesn't exist
+    if (!packageJson.pnpm) {
+      packageJson.pnpm = {}
+    }
+
+    // Initialize onlyBuiltDependencies array if it doesn't exist
+    if (!packageJson.pnpm.onlyBuiltDependencies) {
+      packageJson.pnpm.onlyBuiltDependencies = []
+    }
+
+    // Add the specified packages if they don't already exist
+    const requiredPackages = [
+      '@apollo/protobufjs',
+      '@nestjs/core',
+      '@parcel/watcher',
+      '@prisma/client',
+      '@prisma/engines',
+      'esbuild',
+      'nx',
+      'prisma',
+      'type-graphql',
+    ]
+
+    for (const pkg of requiredPackages) {
+      if (!packageJson.pnpm.onlyBuiltDependencies.includes(pkg)) {
+        packageJson.pnpm.onlyBuiltDependencies.push(pkg)
+      }
+    }
+
+    // Add GraphQL model generation script
+    if (!packageJson.scripts) {
+      packageJson.scripts = {}
+    }
+
+    packageJson.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
+
+    // Write back the updated package.json
+    tree.write(packageJsonPath, JSON.stringify(packageJson, null, 2))
+  }
+}
+
+function removeWorkspacesFromPackageJson(tree: Tree): void {
+  const packageJsonPath = 'package.json'
+  if (tree.exists(packageJsonPath)) {
+    updateJson(tree, packageJsonPath, (json) => {
+      if (json.workspaces) {
+        delete json.workspaces
+      }
+      return json
+    })
+  }
+}
 
 export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
-  await addDependenciesToPackageJson(
+  addDependenciesToPackageJson(
     tree,
     {
       '@nestjs/common': '^10.0.0',
@@ -51,71 +128,13 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
   )
 
   // Update TypeScript configuration
-  const tsConfigPath = 'tsconfig.base.json'
-  if (tree.exists(tsConfigPath)) {
-    const tsConfigContent = tree.read(tsConfigPath, 'utf-8')
-    const tsConfig = JSON.parse(tsConfigContent)
+  updateTypeScriptConfig(tree)
 
-    // Update module and moduleResolution
-    tsConfig.compilerOptions.module = 'CommonJS'
-    tsConfig.compilerOptions.moduleResolution = 'node'
+  // Update package.json with pnpm settings and scripts
+  updatePackageJson(tree)
 
-    // Set baseUrl for path aliases
-    tsConfig.compilerOptions.baseUrl = '.'
-
-    // Remove emitDeclarationOnly if it exists
-    if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
-      delete tsConfig.compilerOptions.emitDeclarationOnly
-    }
-
-    // Write back the updated configuration
-    tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
-  }
-
-  // Update pnpm.onlyBuiltDependencies in package.json
-  const packageJsonPath = 'package.json'
-  if (tree.exists(packageJsonPath)) {
-    const packageJson = readJson(tree, packageJsonPath)
-
-    // Initialize pnpm section if it doesn't exist
-    if (!packageJson.pnpm) {
-      packageJson.pnpm = {}
-    }
-
-    // Initialize onlyBuiltDependencies array if it doesn't exist
-    if (!packageJson.pnpm.onlyBuiltDependencies) {
-      packageJson.pnpm.onlyBuiltDependencies = []
-    }
-
-    // Add the specified packages if they don't already exist
-    const requiredPackages = [
-      '@apollo/protobufjs',
-      '@nestjs/core',
-      '@parcel/watcher',
-      '@prisma/client',
-      '@prisma/engines',
-      'esbuild',
-      'nx',
-      'prisma',
-      'type-graphql'
-    ]
-
-    for (const pkg of requiredPackages) {
-      if (!packageJson.pnpm.onlyBuiltDependencies.includes(pkg)) {
-        packageJson.pnpm.onlyBuiltDependencies.push(pkg)
-      }
-    }
-
-    // Add GraphQL model generation script
-    if (!packageJson.scripts) {
-      packageJson.scripts = {}
-    }
-
-    packageJson.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
-
-    // Write back the updated package.json
-    tree.write(packageJsonPath, JSON.stringify(packageJson, null, 2))
-  }
+  // Remove workspaces section from package.json if it exists
+  removeWorkspacesFromPackageJson(tree)
 
   // Return a callback that will run after the generator completes
   return () => {

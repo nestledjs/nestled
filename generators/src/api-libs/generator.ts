@@ -1,6 +1,6 @@
 import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree, names, updateJson } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
-import { generateTemplateFiles, getNpmScope, installPlugins } from '../shared/utils'
+import { generateTemplateFiles, getNpmScope, installPlugins, updateTypeScriptConfigs } from '../shared/utils'
 import { promptProvider } from './prompts'
 import { ApiLibGeneratorSchema } from './schema'
 import * as ts from 'typescript'
@@ -23,7 +23,7 @@ function addImport(tree: Tree, name: string, type: string) {
   const importPath = `@${npmScope}/api/${name}/${type}`
 
   let fileContent = tree.read(coreFeaturePath)?.toString() || ''
-  
+
   // Add import statement if it doesn't exist
   if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
     const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
@@ -32,23 +32,23 @@ function addImport(tree: Tree, name: string, type: string) {
 
   // Find the exact position of the appModules array
   const arrayStart = fileContent.indexOf('export const appModules = [')
-  
+
   if (arrayStart !== -1) {
     // Find the closing bracket of the array
     const arrayEnd = fileContent.indexOf('];', arrayStart)
-    
+
     if (arrayEnd !== -1) {
       // Get just the array content
       const arrayContent = fileContent.slice(arrayStart + 'export const appModules = ['.length, arrayEnd)
-      
+
       // Check if module exists only in the array content
       if (!arrayContent.includes(moduleToAdd)) {
         // If array is empty, don't add a leading comma
         const isEmpty = arrayContent.trim() === ''
-        const moduleEntry = isEmpty 
+        const moduleEntry = isEmpty
           ? `\n  ${moduleToAdd}`
           : `,\n  ${moduleToAdd}`
-        
+
         // Insert the new module just before the closing bracket
         const before = fileContent.slice(0, arrayEnd)
         const after = fileContent.slice(arrayEnd)
@@ -92,43 +92,8 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     strict: true,
   })
 
-  // Update library's tsconfig.json
-  const libTsConfigPath = joinPathFragments(libraryRoot, 'tsconfig.json')
-  if (tree.exists(libTsConfigPath)) {
-    updateJson(tree, libTsConfigPath, (json) => {
-      json.compilerOptions = {
-        ...json.compilerOptions,
-        strict: true,
-        noImplicitAny: true,
-        strictNullChecks: true,
-        strictFunctionTypes: true,
-        strictBindCallApply: true,
-        strictPropertyInitialization: true,
-        noImplicitThis: true,
-        alwaysStrict: true,
-        experimentalDecorators: true,
-        emitDecoratorMetadata: true,
-      }
-      return json
-    })
-  }
-
-  // Update library's tsconfig.lib.json
-  const libTsConfigLibPath = joinPathFragments(libraryRoot, 'tsconfig.lib.json')
-  if (tree.exists(libTsConfigLibPath)) {
-    updateJson(tree, libTsConfigLibPath, (json) => {
-      json.compilerOptions = {
-        ...json.compilerOptions,
-        outDir: '../../../dist/out-tsc',
-        declaration: true,
-        types: ['node'],
-        target: 'es2021',
-      }
-      json.include = ['src/**/*.ts']
-      json.exclude = ['jest.config.ts', '**/*.spec.ts', '**/*.test.ts']
-      return json
-    })
-  }
+  // Update TypeScript configurations
+  updateTypeScriptConfigs(tree, libraryRoot)
 
   // Generate the template files on top of the Nx-generated structure
   generateTemplateFiles({

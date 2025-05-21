@@ -232,3 +232,63 @@ export function updateTsConfigPaths(tree: Tree, importPath: string, libraryRoot:
     return json;
   });
 }
+
+export function updateTypeScriptConfigs(tree: Tree, libraryRoot: string): void {
+  // Update library's tsconfig.json
+  const libTsConfigPath = joinPathFragments(libraryRoot, 'tsconfig.json')
+  if (tree.exists(libTsConfigPath)) {
+    updateJson(tree, libTsConfigPath, (json) => {
+      json.compilerOptions = {
+        ...json.compilerOptions,
+        module: 'NodeNext',
+        moduleResolution: 'NodeNext',
+        strict: true,
+        noImplicitAny: true,
+        strictNullChecks: true,
+        strictFunctionTypes: true,
+        strictBindCallApply: true,
+        strictPropertyInitialization: true,
+        noImplicitThis: true,
+        alwaysStrict: true,
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+      }
+      return json
+    })
+  }
+
+  // Update library's tsconfig.lib.json
+  const libTsConfigLibPath = joinPathFragments(libraryRoot, 'tsconfig.lib.json')
+  if (tree.exists(libTsConfigLibPath)) {
+    updateJson(tree, libTsConfigLibPath, (json) => {
+      json.compilerOptions = {
+        ...json.compilerOptions,
+        module: 'NodeNext',
+        moduleResolution: 'NodeNext',
+        outDir: '../../../dist/out-tsc',
+        declaration: true,
+        types: ['node'],
+        target: 'es2021',
+      }
+      json.include = ['src/**/*.ts']
+      json.exclude = ['jest.config.ts', '**/*.spec.ts', '**/*.test.ts']
+      return json
+    })
+  }
+
+  // Update library's tsconfig.spec.json
+  const libTsConfigSpecPath = joinPathFragments(libraryRoot, 'tsconfig.spec.json')
+  if (tree.exists(libTsConfigSpecPath)) {
+    updateJson(tree, libTsConfigSpecPath, (json) => {
+      json.compilerOptions = {
+        ...json.compilerOptions,
+        module: 'NodeNext',
+        moduleResolution: 'NodeNext',
+        outDir: '../../../dist/out-tsc',
+        types: ['jest', 'node']
+      }
+      json.include = ['jest.config.ts', 'src/**/*.test.ts', 'src/**/*.spec.ts', 'src/**/*.d.ts']
+      return json
+    })
+  }
+}

@@ -1,5 +1,7 @@
 # Nestled
 
+Remove workspaces from package.json
+
 ## Build an API
 
 To build an api, run tasks in this order:

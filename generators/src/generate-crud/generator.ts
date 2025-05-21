@@ -1,6 +1,6 @@
 import { formatFiles, Tree, installPackagesTask, generateFiles, joinPathFragments, names, readProjectConfiguration } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema } from '../shared/utils'
+import { getPrismaSchemaPath, readPrismaSchema, updateTypeScriptConfigs } from '../shared/utils'
 import { GenerateCrudGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
@@ -44,7 +44,7 @@ async function createLibraries(tree: Tree) {
   // Create feature library
   const featureLibraryRoot = `libs/api/generated-crud/feature`
   const featureProjectName = 'api-crud-feature'
-  
+
   try {
     // First try to remove the library if it exists
     try {
@@ -69,6 +69,9 @@ async function createLibraries(tree: Tree) {
       }
     )
     console.log(`Successfully created ${featureProjectName}`)
+
+    // Update TypeScript configurations for feature library
+    updateTypeScriptConfigs(tree, featureLibraryRoot)
   } catch (error) {
     console.error('Error creating feature library:', error)
     throw error
@@ -77,7 +80,7 @@ async function createLibraries(tree: Tree) {
   // Create data-access library
   const dataAccessLibraryRoot = `libs/api/generated-crud/data-access`
   const dataAccessProjectName = 'api-crud-data-access'
-  
+
   try {
     // First try to remove the library if it exists
     try {
@@ -102,6 +105,9 @@ async function createLibraries(tree: Tree) {
       }
     )
     console.log(`Successfully created ${dataAccessProjectName}`)
+
+    // Update TypeScript configurations for data-access library
+    updateTypeScriptConfigs(tree, dataAccessLibraryRoot)
   } catch (error) {
     console.error('Error creating data-access library:', error)
     throw error
