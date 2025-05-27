@@ -7,7 +7,7 @@ Remove workspaces from package.json
 To build an api, run tasks in this order:
 
 ```sh
-  nx g @nestled/generators:api-dependencies 
+  nx g @nestled/generators:api-setup 
 ```
 
 ```sh
