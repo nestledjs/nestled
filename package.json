@@ -4,7 +4,10 @@
   "license": "MIT",
   "scripts": {
     "vpub": "node ./tools/scripts/publish-local.js",
-    "serve-docs": "docsify serve ./docs --port 3020"
+    "serve-docs": "docsify serve ./docs --port 3020",
+    "build": "nx run-many --target=build --all",
+    "publish": "cd dist/generators && yalc publish && cd ../../",
+    "push": "cd dist/generators && yalc push && cd ../../"
   },
   "private": true,
   "dependencies": {
@@ -60,7 +63,6 @@
     "tslib": "^2.3.0",
     "typescript": "5.7.3",
     "typescript-eslint": "8.24.0",
-    "verdaccio": "6.0.5",
     "yargs": "^17.7.2"
   },
   "nx": {
