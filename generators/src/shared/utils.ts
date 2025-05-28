@@ -71,13 +71,53 @@ export function readPrismaSchema(tree, prismaPath) {
     return null
   }
 
-  const prismaSchemaContent = tree.read(prismaPath)
-  if (!prismaSchemaContent) {
-    console.error(`Can't read the schema at ${prismaPath}`)
+  // Check if the path exists
+  if (!tree.exists(prismaPath)) {
+    console.error(`Path does not exist: ${prismaPath}`)
     return null
   }
 
-  return prismaSchemaContent.toString()
+  // Check if the path is a directory
+  const isDirectory = !tree.isFile(prismaPath)
+
+  if (isDirectory) {
+    // If it's a directory, read all .prisma files and concatenate them
+    console.log(`Reading Prisma schema from directory: ${prismaPath}`)
+    const schemaFiles = tree.children(prismaPath).filter(file => file.endsWith('.prisma'))
+
+    if (schemaFiles.length === 0) {
+      console.error(`No .prisma files found in directory: ${prismaPath}`)
+      return null
+    }
+
+    // Concatenate all schema files
+    let combinedSchema = ''
+    for (const file of schemaFiles) {
+      const filePath = `${prismaPath}/${file}`
+      const fileContent = tree.read(filePath)
+      if (fileContent) {
+        combinedSchema += fileContent.toString() + '\n'
+      } else {
+        console.warn(`Could not read file: ${filePath}`)
+      }
+    }
+
+    if (!combinedSchema) {
+      console.error(`Could not read any schema files from directory: ${prismaPath}`)
+      return null
+    }
+
+    return combinedSchema
+  } else {
+    // If it's a file, read it directly
+    const prismaSchemaContent = tree.read(prismaPath)
+    if (!prismaSchemaContent) {
+      console.error(`Can't read the schema at ${prismaPath}`)
+      return null
+    }
+
+    return prismaSchemaContent.toString()
+  }
 }
 
 export function mapPrismaTypeToNestJsType(prismaType: string) {

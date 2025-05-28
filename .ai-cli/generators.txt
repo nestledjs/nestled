@@ -209,7 +209,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
     // Add prisma schema path
     packageJson.prisma = {
       schema: 'libs/api/core/data-access/src/prisma/schema.prisma',
-      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/src/prisma/seed.ts',
+      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/scr/prisma/seed/seed.ts',
     }
 
     tree.write('package.json', JSON.stringify(packageJson, null, 2))
@@ -240,7 +240,7 @@ export default async function (tree: Tree, schema: ApiCoreGeneratorSchema) {
 // /Users/justinhandley/IdeaProjects/nestled/generators/src/api-core/schema.d.ts
 export interface ApiCoreGeneratorSchema {
   name: string;
-} 
+}
 
 // /Users/justinhandley/IdeaProjects/nestled/generators/src/api-crud/generator.ts
 import {
@@ -587,7 +587,7 @@ function addImport(tree: Tree, name: string, type: string) {
   const importPath = `@${npmScope}/api/${name}/${type}`
 
   let fileContent = tree.read(coreFeaturePath)?.toString() || ''
-  
+
   // Add import statement if it doesn't exist
   if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
     const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
@@ -596,23 +596,23 @@ function addImport(tree: Tree, name: string, type: string) {
 
   // Find the exact position of the appModules array
   const arrayStart = fileContent.indexOf('export const appModules = [')
-  
+
   if (arrayStart !== -1) {
     // Find the closing bracket of the array
     const arrayEnd = fileContent.indexOf('];', arrayStart)
-    
+
     if (arrayEnd !== -1) {
       // Get just the array content
       const arrayContent = fileContent.slice(arrayStart + 'export const appModules = ['.length, arrayEnd)
-      
+
       // Check if module exists only in the array content
       if (!arrayContent.includes(moduleToAdd)) {
         // If array is empty, don't add a leading comma
         const isEmpty = arrayContent.trim() === ''
-        const moduleEntry = isEmpty 
+        const moduleEntry = isEmpty
           ? `\n  ${moduleToAdd}`
           : `,\n  ${moduleToAdd}`
-        
+
         // Insert the new module just before the closing bracket
         const before = fileContent.slice(0, arrayEnd)
         const after = fileContent.slice(arrayEnd)
@@ -721,7 +721,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     // Add prisma schema path
     packageJson.prisma = {
       schema: 'libs/api/core/data-access/src/prisma/schema.prisma',
-      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/src/prisma/seed.ts',
+      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/scr/prisma/seed/seed.ts',
     }
 
     tree.write('package.json', JSON.stringify(packageJson, null, 2))
@@ -991,14 +991,14 @@ async function generateModelCrud(tree: Tree, model: any) {
 
 export default async function (tree: Tree, schema: PrismaCrudGeneratorSchema) {
   const models = await getAllPrismaModels(tree)
-  
+
   if (models.length === 0) {
     console.error('No models found in Prisma schema')
     return
   }
 
   console.log(`Found ${models.length} models in Prisma schema`)
-  
+
   // Generate CRUD libraries for each model sequentially
   for (const model of models) {
     await generateModelCrud(tree, model)
@@ -1011,10 +1011,10 @@ export default async function (tree: Tree, schema: PrismaCrudGeneratorSchema) {
     console.log('🎉 Successfully generated CRUD libraries for all Prisma models!')
     console.warn('Run "pnpm prisma:apply" and restart the API to see changes')
   }
-} 
+}
 
 // /Users/justinhandley/IdeaProjects/nestled/generators/src/prisma-crud/schema.d.ts
-export type PrismaCrudGeneratorSchema = Record<string, never> 
+export type PrismaCrudGeneratorSchema = Record<string, never>
 
 // /Users/justinhandley/IdeaProjects/nestled/generators/src/project-config/generator.ts
 import { formatFiles, generateFiles, logger, Tree } from '@nx/devkit'
@@ -1654,7 +1654,7 @@ interface ApiGenGeneratorSchema {
 function configurePnpmAllowBuilds(tree: Tree) {
   const npmrcPath = '.npmrc';
   let content = '';
-  
+
   if (tree.exists(npmrcPath)) {
     content = tree.read(npmrcPath)?.toString() || '';
     if (!content.includes('enable-pre-post-scripts')) {
@@ -1732,7 +1732,7 @@ export default async function apiGenGenerator(tree: Tree, options: ApiGenGenerat
     console.error('API generation sequence failed:', error);
     throw error;
   }
-} 
+}
 
 // /Users/justinhandley/IdeaProjects/nestled/generators/src/web-module/generator.ts
 import { formatFiles, generateFiles, names, Tree } from '@nx/devkit'
@@ -1895,7 +1895,7 @@ export default async function () {
 
   ensureDotEnv()
   require('dotenv').config()
-  
+
   const DATABASE_URL = process.env.DATABASE_URL
 
   if (!DATABASE_URL) {
@@ -3447,7 +3447,7 @@ export class ApiCoreDataAccessService extends PrismaClient implements OnModuleIn
 }
 
 
-// /Users/justinhandley/IdeaProjects/nestled/generators/src/api-files/core/data-access/src/prisma/seed.ts__tmpl__
+// /Users/justinhandley/IdeaProjects/nestled/generators/src/api-files/core/data-access/scr/prisma/seed/seed.ts__tmpl__
 import { PrismaClient } from '@prisma/client'
 import { countries } from './seed-data/iso-3166-countries'
 import { seedUsers } from './seed-data/seed-users';

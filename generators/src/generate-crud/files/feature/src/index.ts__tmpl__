@@ -1,2 +1,1 @@
 export * from './lib/api-crud-feature.module'
-export * from './lib/dto'

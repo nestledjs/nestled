@@ -1,11 +1,15 @@
 import { Field, InputType } from '@nestjs/graphql'
+import { <%= models.map(model => model.modelName).join(', ') %> } from '<%= npmScope %>/api/core/models'
+import * as CoreDataAccess from '<%= npmScope %>/api/core/data-access'
+import { GraphQLJSON } from 'graphql-type-json'
+import { CorePagingInput } from '<%= npmScope %>/api/core/data-access'
 
 <% for (const model of models) { %>
 @InputType()
 export class Create<%= model.modelName %>Input {
 <% for (const field of model.fields) { %>
   @Field({ nullable: <%= field.isOptional ? 'true' : 'false' %> })
-  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type %>
+  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type === 'Float' || field.type === 'Int' || field.type === 'Decimal' ? 'number' : field.type === 'Json' ? 'typeof GraphQLJSON' : field.type === 'Boolean' ? 'boolean' : `CoreDataAccess.${field.type}` %>
 <% } %>
 }
 
@@ -13,15 +17,15 @@ export class Create<%= model.modelName %>Input {
 export class Update<%= model.modelName %>Input {
 <% for (const field of model.fields) { %>
   @Field({ nullable: true })
-  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type %>
+  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type === 'Float' || field.type === 'Int' || field.type === 'Decimal' ? 'number' : field.type === 'Json' ? 'typeof GraphQLJSON' : field.type === 'Boolean' ? 'boolean' : `CoreDataAccess.${field.type}` %>
 <% } %>
 }
 
 @InputType()
-export class List<%= model.modelName %>Input {
+export class List<%= model.modelName %>Input extends CorePagingInput {
 <% for (const field of model.fields) { %>
   @Field({ nullable: true })
-  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type %>
+  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type === 'Float' || field.type === 'Int' || field.type === 'Decimal' ? 'number' : field.type === 'Json' ? 'typeof GraphQLJSON' : field.type === 'Boolean' ? 'boolean' : `CoreDataAccess.${field.type}` %>
 <% } %>
 }
 

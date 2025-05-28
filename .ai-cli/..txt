@@ -671,7 +671,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     // Add prisma schema path
     packageJson.prisma = {
       schema: 'libs/api/core/data-access/src/prisma/schema.prisma',
-      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/src/prisma/seed.ts',
+      seed: 'ts-node --project tsconfig.json libs/api/core/data-access/scr/prisma/seed/seed.ts',
     }
 
     // Add scripts
@@ -3179,7 +3179,7 @@ export class ApiCoreDataAccessService extends PrismaClient implements OnModuleIn
 }
 
 
-// /Users/justinhandley/IdeaProjects/nestled/generators/src/api-files/core/data-access/src/prisma/seed.ts__tmpl__
+// /Users/justinhandley/IdeaProjects/nestled/generators/src/api-files/core/data-access/scr/prisma/seed/seed.ts__tmpl__
 import { PrismaClient } from '@prisma/client'
 import { countries } from './seed-data/iso-3166-countries'
 import { seedUsers } from './seed-data/seed-users';

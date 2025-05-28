@@ -17,14 +17,21 @@ export class ApiCrudDataAccessService {
     });
   }
 
-  async findAll<%= model.modelName %>(info: GraphQLResolveInfo) {
+  async <%= model.pluralModelPropertyName %>(info: GraphQLResolveInfo) {
     const select = new PrismaSelect(info).value
     return this.data.<%= model.modelPropertyName %>.findMany({
       ...select,
     });
   }
 
-  async findOne<%= model.modelName %>(info: GraphQLResolveInfo, id: string) {
+  async <%= model.pluralModelPropertyName %>Count(input?: any) {
+    const count = await this.data.<%= model.modelPropertyName %>.count({
+      where: input?.where,
+    });
+    return { count, total: count };
+  }
+
+  async <%= model.modelPropertyName %>(info: GraphQLResolveInfo, id: string) {
     const select = new PrismaSelect(info).value
     return this.data.<%= model.modelPropertyName %>.findUnique({
       where: { id },

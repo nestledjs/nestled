@@ -5,12 +5,19 @@ import { GraphQLModule } from '@nestjs/graphql'
 import { PubSub } from 'graphql-subscriptions'
 import { join } from 'path'
 import { Request, Response } from 'express'
-
+import { apiCorePubSub } from '@<%= npmScope %>/api/core/data-access'
+import { RedisPubSub } from 'graphql-redis-subscriptions'
 import { configuration } from './config/configuration'
 import { validationSchema } from './config/validation'
 import { ApiCoreFeatureController } from './api-core-feature.controller'
 import { ApiCoreFeatureResolver } from './api-core-feature.resolver'
 import { ApiCoreFeatureService } from './api-core-feature.service'
+import { ComplexityPlugin } from './plugins/complexity.plugin'
+
+const redisPubSubProvider = {
+  provide: 'REDIS_PUB_SUB',
+  useFactory: (): RedisPubSub => apiCorePubSub,
+}
 
 @Module({
   imports: [
@@ -22,8 +29,40 @@ import { ApiCoreFeatureService } from './api-core-feature.service'
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'api-schema.graphql'),
-      context: ({ req, res }: { req: Request; res: Response }) => ({ req, res }),
-      installSubscriptionHandlers: true,
+      subscriptions: {
+        'graphql-ws': {
+          onConnect: async (context: Context<any>) => {
+            const { extra } = context
+            const rawHeaders = (extra as any)?.request?.rawHeaders
+            let token = ''
+            if (rawHeaders) {
+              for (let i = 0; i < rawHeaders.length; i += 2) {
+                if (rawHeaders[i].toLowerCase() === 'cookie') {
+                  const cookies = rawHeaders[i + 1].split(';')
+                  for (const cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=')
+                    if (name === '__session') {
+                      token = value
+                      break
+                    }
+                  }
+                  break
+                }
+              }
+            }
+
+            if (token === '') {
+              throw new Error('Authentication token is missing')
+            }
+          },
+        },
+      },
+      context: ({ req, res, connectionParams }: {req: Partial<Request>; res: Response; connectionParams: any}) => {
+        if (connectionParams) {
+          req = { headers: connectionParams }
+        }
+        return { req, res }
+      },
       sortSchema: true,
       buildSchemaOptions: {
         dateScalarMode: 'isoDate',         // Better interoperability (ISO strings, not JS Dates)
@@ -35,6 +74,6 @@ import { ApiCoreFeatureService } from './api-core-feature.service'
   ],
   controllers: [ApiCoreFeatureController],
   providers: [ApiCoreFeatureResolver, ApiCoreFeatureService],
-  exports: [ApiCoreFeatureService],
+  exports: [ApiCoreFeatureService, ComplexityPlugin, 'REDIS_PUB_SUB'],
 })
 export class ApiCoreFeatureModule {}

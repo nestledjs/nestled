@@ -2,9 +2,9 @@ import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import { GraphQLResolveInfo } from 'graphql'
 import {
-  CorePaging,
-  ApiCoreDataAccessService
+  CorePaging
 } from '<%= npmScope %>/api/core/data-access'
+import { ApiCrudDataAccess } from
 import {
   <%= models.map(model => model.modelName).join(', ') %>,
 } from '<%= npmScope %>/api/core/models'
@@ -22,60 +22,60 @@ import {
 @UseGuards(GqlAuthAdminGuard)
 export class ApiCrudFeatureResolver {
   constructor(
-    private readonly db: ApiCoreDataAccessService,
+    private readonly service: ApiCrudDataAccessService,
   ) {}
 
 
 <% for (const model of models) { %>
   @Query(() => [<%= model.modelName %>], { nullable: true })
-  <%= model.modelName %>s(
+  <%= model.pluralModelPropertyName %>(
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List<%= model.modelName %>Input, nullable: true }) input?: List<%= model.modelName %>Input,
   ) {
-    return this.db.<%= model.modelPropertyName %>s(info, input)
+    return this.service.<% model.pluralModelPropertyName %>(info, input)
   }
 
   @Query(() => CorePaging, { nullable: true })
-  <%= model.modelName %>Count(
+  <%= model.pluralModelPropertyName %>Count(
     @Args({ name: 'input', type: () => List<%= model.modelName %>Input, nullable: true }) input?: List<%= model.modelName %>Input,
   ) {
-    return this.db.<%= model.modelPropertyName %>Count(input)
+    return this.service.<%= model.pluralModelPropertyName %>Count(input)
   }
 
   @Query(() => <%= model.modelName %>, { nullable: true })
-  <%= model.modelName %>(
+  <%= model.modelPropertyName %>(
     @CtxUser() admin: User,
     @Info() info: GraphQLResolveInfo,
     @Args('<%= model.modelPropertyName %>Id') <%= model.modelPropertyName %>Id: string
   ) {
-    return this.db.<%= model.modelPropertyName %>(info, <%= model.modelPropertyName %>Id)
+    return this.service.<%= model.modelPropertyName %>(info, <%= model.modelPropertyName %>Id)
   }
 
   @Mutation(() => <%= model.modelName %>, { nullable: true })
-  create<%= model.modelName %>(
+  create<%= model.modelPropertyName %>(
     @CtxUser() admin: User,
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: AdminCreate<%= model.modelName %>Input,
   ) {
-    return this.db.create<%= model.modelName %>(info, input)
+    return this.service.create<%= model.modelPropertyName %>(info, input)
   }
 
   @Mutation(() => <%= model.modelName %>, { nullable: true })
-  update<%= model.modelName %>(
+  update<%= model.modelPropertyName %>(
     @CtxUser() admin: User,
     @Info() info: GraphQLResolveInfo,
     @Args('<%= model.modelPropertyName %>Id') <%= model.modelPropertyName %>Id: string,
     @Args('input') input: AdminUpdate<%= model.modelName %>Input,
   ) {
-    return this.db.update<%= model.modelName %>(info, <%= model.modelPropertyName %>Id, input)
+    return this.service.update<%= model.modelPropertyName %>(info, <%= model.modelPropertyName %>Id, input)
   }
 
   @Mutation(() => Boolean, { nullable: true })
-  delete<%= model.modelName %>(
+  delete<%= model.modelPropertyName %>(
     @CtxUser() admin: User,
     @Args('<%= model.modelPropertyName %>Id') <%= model.modelPropertyName %>Id: string,
   ) {
-    return this.db.delete<%= model.modelName %>(<%= model.modelPropertyName %>Id)
+    return this.service.delete<%= model.modelPropertyName %>(<%= model.modelPropertyName %>Id)
   }
 <% } %>
 }

@@ -4,10 +4,7 @@ import { getPrismaSchemaPath, readPrismaSchema, updateTypeScriptConfigs } from '
 import { GenerateCrudGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
-
-// Library names for the generated CRUD libraries
-const FEATURE_LIBRARY = 'api-crud-feature'
-const DATA_ACCESS_LIBRARY = 'api-crud-data-access'
+import pluralize from 'pluralize'
 
 async function getAllPrismaModels(tree: Tree) {
   const prismaPath = getPrismaSchemaPath(tree)
@@ -22,11 +19,13 @@ async function getAllPrismaModels(tree: Tree) {
     const models = dmmf.datamodel.models.map(model => {
       const modelObj = {
         name: model.name,
+        pluralName: pluralize(model.name),
         fields: model.fields,
         primaryField: model.fields.find(f => !f.isId && f.type === 'String')?.name || 'name',
         // Add these properties that might be needed by the templates
         modelName: model.name,
-        modelPropertyName: model.name.charAt(0).toLowerCase() + model.name.slice(1)
+        modelPropertyName: model.name.charAt(0).toLowerCase() + model.name.slice(1),
+        pluralModelPropertyName: pluralize(model.name.charAt(0).toLowerCase() + model.name.slice(1))
       };
       console.log('Model object:', JSON.stringify(modelObj, null, 2));
       return modelObj;

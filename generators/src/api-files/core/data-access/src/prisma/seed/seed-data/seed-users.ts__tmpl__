@@ -1,4 +1,4 @@
-import { UserRole } from '../prisma-generated'
+import { UserRole } from '../../prisma-generated'
 
 
 export const seedUsers = [

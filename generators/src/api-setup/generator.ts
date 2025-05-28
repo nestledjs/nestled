@@ -41,11 +41,17 @@ function updatePackageJson(tree: Tree): void {
       '@nestjs/core',
       '@parcel/watcher',
       '@prisma/client',
+      '@prisma/extension-optimize',
       '@prisma/engines',
       'esbuild',
       'nx',
       'prisma',
       'type-graphql',
+      'graphql-redis-subscriptions',
+      'ioredis',
+      'apollo-server-plugin-base',
+      'graphql-query-complexity',
+      'pluralize'
     ]
 
     for (const pkg of requiredPackages) {

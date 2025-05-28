@@ -1,4 +1,4 @@
-import { PrismaClient } from './prisma-generated'
+import { PrismaClient } from '../prisma-generated'
 import { countries } from './seed-data/iso-3166-countries'
 import { seedUsers } from './seed-data/seed-users';
 import { hashSync } from 'bcryptjs'
