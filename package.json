@@ -7,7 +7,7 @@
     "serve-docs": "docsify serve ./docs --port 3020",
     "build": "nx run-many --target=build --all",
     "publish": "cd dist/generators && yalc publish && cd ../../",
-    "push": "cd dist/generators && yalc push && cd ../../"
+    "push": "pnpm build && cd dist/generators && yalc push && cd ../../"
   },
   "private": true,
   "dependencies": {

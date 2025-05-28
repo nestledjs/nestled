@@ -5,7 +5,7 @@ import { getDMMF } from '@prisma/internals';
 
 
 // Paths
-const schemaPath = join(__dirname, '../../../data-access/src/lib/schema.prisma');
+const schemaPath = join(__dirname, '../../../data-access/src/prisma/schemas/schema.prisma');
 const outputDir = join(__dirname, './models');
 
 async function main() {

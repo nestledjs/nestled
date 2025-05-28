@@ -124,7 +124,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
 
     // Add prisma schema path
     packageJson.prisma = {
-      schema: 'libs/api/core/data-access/src/lib/schema.prisma',
+      schema: 'libs/api/core/data-access/src/prisma/schemas/schema.prisma',
       seed: 'ts-node libs/api/core/data-access/src/lib/seed.ts',
     }
 
