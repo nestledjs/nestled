@@ -2,11 +2,10 @@ import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo'
 import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { GraphQLModule } from '@nestjs/graphql'
-import { PubSub } from 'graphql-subscriptions'
 import { join } from 'path'
 import { Request, Response } from 'express'
 import { apiCorePubSub } from '@<%= npmScope %>/api/core/data-access'
-import { RedisPubSub } from 'graphql-redis-subscriptions'
+import { Context } from 'graphql-ws'
 import { configuration } from './config/configuration'
 import { validationSchema } from './config/validation'
 import { ApiCoreFeatureController } from './api-core-feature.controller'
@@ -14,9 +13,13 @@ import { ApiCoreFeatureResolver } from './api-core-feature.resolver'
 import { ApiCoreFeatureService } from './api-core-feature.service'
 import { ComplexityPlugin } from './plugins/complexity.plugin'
 
+interface ConnectionParameters {
+  headers?: Record<string, string>
+}
+
 const redisPubSubProvider = {
   provide: 'REDIS_PUB_SUB',
-  useFactory: (): RedisPubSub => apiCorePubSub,
+  useValue: apiCorePubSub,
 }
 
 @Module({
@@ -31,49 +34,54 @@ const redisPubSubProvider = {
       autoSchemaFile: join(process.cwd(), 'api-schema.graphql'),
       subscriptions: {
         'graphql-ws': {
-          onConnect: async (context: Context<any>) => {
+          onConnect: async (context: Context<Record<string, unknown> | undefined>) => {
             const { extra } = context
-            const rawHeaders = (extra as any)?.request?.rawHeaders
-            let token = ''
-            if (rawHeaders) {
-              for (let i = 0; i < rawHeaders.length; i += 2) {
-                if (rawHeaders[i].toLowerCase() === 'cookie') {
-                  const cookies = rawHeaders[i + 1].split(';')
-                  for (const cookie of cookies) {
-                    const [name, value] = cookie.trim().split('=')
-                    if (name === '__session') {
-                      token = value
-                      break
+            if (extra && typeof extra === 'object' && 'request' in extra && extra.request && typeof extra.request === 'object' && 'rawHeaders' in extra.request) {
+              const rawHeaders = extra.request.rawHeaders as string[] | undefined
+              let token = ''
+              if (rawHeaders) {
+                for (let i = 0; i < rawHeaders.length; i += 2) {
+                  if (rawHeaders[i].toLowerCase() === 'cookie') {
+                    const cookies = rawHeaders[i + 1].split(';')
+                    for (const cookie of cookies) {
+                      const [name, value] = cookie.trim().split('=')
+                      if (name === '__session') {
+                        token = value
+                        break
+                      }
                     }
+                    break
                   }
-                  break
                 }
               }
-            }
 
-            if (token === '') {
+              if (token === '') {
+                throw new Error('Authentication token is missing')
+              }
+            } else {
               throw new Error('Authentication token is missing')
             }
+            return true;
           },
         },
       },
-      context: ({ req, res, connectionParams }: {req: Partial<Request>; res: Response; connectionParams: any}) => {
+      context: ({ req, res, connectionParams }: { req: Partial<Request>; res: Response; connectionParams: ConnectionParameters }) => {
         if (connectionParams) {
-          req = { headers: connectionParams }
+          req = { headers: connectionParams.headers }
         }
         return { req, res }
       },
       sortSchema: true,
       buildSchemaOptions: {
-        dateScalarMode: 'isoDate',         // Better interoperability (ISO strings, not JS Dates)
-        numberScalarMode: 'float',         // Default is fine; override to 'integer' if you hate floats
-        scalarsMap: [],                    // Optional, for custom scalar mappings if you use them
-        skipCheck: true,                   // Skip extra metadata validation — speeds up build
+        dateScalarMode: 'isoDate', // Better interoperability (ISO strings, not JS Dates)
+        numberScalarMode: 'float', // Default is fine; override to 'integer' if you hate floats
+        scalarsMap: [], // Optional for custom scalar mappings if you use them
+        skipCheck: true, // Skip extra metadata validation — speeds up build
       },
     }),
   ],
   controllers: [ApiCoreFeatureController],
-  providers: [ApiCoreFeatureResolver, ApiCoreFeatureService],
+  providers: [ApiCoreFeatureResolver, ApiCoreFeatureService, ComplexityPlugin, redisPubSubProvider],
   exports: [ApiCoreFeatureService, ComplexityPlugin, 'REDIS_PUB_SUB'],
 })
 export class ApiCoreFeatureModule {}

@@ -1,9 +1,0 @@
-import { Module } from '@nestjs/common'
-import { ApiCrudDataAccessModule } from '@test-workspace/api/generated-crud/data-access'
-import { ApiCrudFeatureResolver } from './api-crud-feature.resolver'
-
-@Module({
-  imports: [ApiCrudDataAccessModule],
-  providers: [ApiCrudFeatureResolver],
-})
-export class ApiCrudFeatureModule {}

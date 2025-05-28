@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { ApiCoreDataAccessService } from '<%= npmScope %>/api/core/data-access'
 import { PrismaSelect } from '@paljs/plugins'
-import { <%= models.map(model => `Create${model.modelName}Input, Update${model.modelName}Input`).join(', ') %> } from './dto'
 import { GraphQLResolveInfo } from 'graphql'
 
 @Injectable()
@@ -11,29 +10,30 @@ export class ApiCrudDataAccessService {
 <% for (const model of models) { %>
   async create<%= model.modelName %>(info: GraphQLResolveInfo, input: Create<%= model.modelName %>Input) {
     const select = new PrismaSelect(info).value
-    return this.data.<%= model.modelPropertyName %>.create({
+    return this.data['<%= model.modelPropertyName %>'].create({
       data: input,
       ...select,
     });
   }
 
-  async <%= model.pluralModelPropertyName %>(info: GraphQLResolveInfo) {
+  async <%= model.pluralModelPropertyName %>(info: GraphQLResolveInfo, input?: List<%= model.modelName %>Input) {
     const select = new PrismaSelect(info).value
-    return this.data.<%= model.modelPropertyName %>.findMany({
+    return this.data['<%= model.modelPropertyName %>'].findMany({
+      ...this.data.filter(input),
       ...select,
     });
   }
 
-  async <%= model.pluralModelPropertyName %>Count(input?: any) {
-    const count = await this.data.<%= model.modelPropertyName %>.count({
-      where: input?.where,
+  async <%= model.pluralModelPropertyName %>Count(input?: List<%= model.modelName %>Input) {
+    const count = await this.data['<%= model.modelPropertyName %>'].count({
+      ...this.data.filter(input)
     });
     return { count, total: count };
   }
 
   async <%= model.modelPropertyName %>(info: GraphQLResolveInfo, id: string) {
     const select = new PrismaSelect(info).value
-    return this.data.<%= model.modelPropertyName %>.findUnique({
+    return this.data['<%= model.modelPropertyName %>'].findUnique({
       where: { id },
       ...select,
     });
@@ -41,7 +41,7 @@ export class ApiCrudDataAccessService {
 
   async update<%= model.modelName %>(info: GraphQLResolveInfo, id: string, input: Update<%= model.modelName %>Input) {
     const select = new PrismaSelect(info).value
-    return this.data.<%= model.modelPropertyName %>.update({
+    return this.data['<%= model.modelPropertyName %>'].update({
       where: { id },
       data: input,
       ...select,
@@ -49,7 +49,7 @@ export class ApiCrudDataAccessService {
   }
 
   async delete<%= model.modelName %>(id: string) {
-    return this.data.<%= model.modelPropertyName %>.delete({
+    return this.data['<%= model.modelPropertyName %>'].delete({
       where: { id }
     });
   }

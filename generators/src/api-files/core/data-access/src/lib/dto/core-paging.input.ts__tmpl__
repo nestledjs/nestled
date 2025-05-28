@@ -13,6 +13,9 @@ export class CorePagingInput {
   search?: string
 
   @Field({ nullable: true })
+  searchFields?: string[]
+
+  @Field({ nullable: true })
   orderDirection?: 'asc' | 'desc'
 
   @Field({ nullable: true })

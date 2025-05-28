@@ -1,5 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
-import { Prisma, PrismaClient } from '@prisma/client'
+import { CorePaging, Prisma, PrismaClient } from '@<%= npmScope %>/api/data-access'
 import { withOptimize } from '@prisma/extension-optimize'
 
 @Injectable()
@@ -39,26 +39,58 @@ export class ApiCoreDataAccessService extends PrismaClient implements OnModuleIn
     await this.$connect()
 
     if (process.env['LOG_PRISMA_QUERIES'] == 'true') {
-      this.$on('query', async (e) => {
-        console.log(`QUERY: ${e.query} \n\nPARAMS: ${e.params}\n\n\n`)
-      })
+     this.$on('query' as never, async (e: Prisma.QueryEvent) => {
+       console.log(`QUERY: ${e.query} \n\nPARAMS: ${e.params}\n\n\n`)
+     })
     }
 
     if (process.env['COUNT_PRISMA_QUERIES'] == 'true') {
-      this.$on('query', async (e) => {
-        this.queryCount++
-      })
+     this.$on('query' as never, async (_e: Prisma.QueryEvent) => {
+       this.queryCount++
+     })
     }
   }
 
-  search(conditions: any[], searchQuery: string, searchFields: string[]): any[] {
-    const query = searchQuery.trim()
-    const terms: string[] = query?.includes(' ') ? query.split(' ') : [query].filter(Boolean)
-    const searchFilters = terms.map((term) => ({
-      OR: searchFields.map((field) => ({ [field]: { contains: term, mode: Prisma.QueryMode.insensitive } })),
-    }))
+  filter<T extends Record<string, any>>(input: CorePagingInput = {}): {
+    skip: number
+    take: number
+    where?: T
+    orderBy: { [key: string]: 'asc' | 'desc' }
+  } {
+    const {
+      search = '',
+      searchFields = [],
+      take = 20,
+      skip = 0,
+      orderBy = 'id',
+      orderDirection = 'asc',
+      filters = {},
+    } = input
 
-    conditions.push(...searchFilters)
-    return conditions
+    const trimmedSearch = search.trim()
+    const andConditions: any[] = []
+
+    if (Object.keys(filters).length > 0) {
+      andConditions.push(filters)
+    }
+
+    if (trimmedSearch && searchFields.length > 0) {
+      const terms = trimmedSearch.includes(' ') ? trimmedSearch.split(' ') : [trimmedSearch].filter(Boolean)
+      const searchFilters = terms.map((term) => ({
+        OR: searchFields.map((field) => ({
+          [field]: { contains: term, mode: Prisma.QueryMode.insensitive },
+        })),
+      }))
+      andConditions.push(...searchFilters)
+    }
+
+    const where = andConditions.length > 0 ? { AND: andConditions } : undefined
+
+    return {
+      skip,
+      take,
+      where: where as unknown as T, // assert type safety for the generic
+      orderBy: { [orderBy]: orderDirection },
+    }
   }
 }
