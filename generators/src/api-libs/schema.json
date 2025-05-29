@@ -28,6 +28,11 @@
       "type": "boolean",
       "description": "Generate User module",
       "default": true
+    },
+    "generateConfig": {
+      "type": "boolean",
+      "description": "Generate Config module",
+      "default": true
     }
   }
 }

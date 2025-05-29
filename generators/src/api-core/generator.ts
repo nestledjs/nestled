@@ -91,12 +91,12 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
   // Generate the template files on top of the Nx-generated structure
+  const finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name, type);
   generateTemplateFiles({
     tree,
     schema,
     libraryRoot,
-    type,
-    templatePath: joinPathFragments(__dirname, '../api-files'),
+    templatePath: finalTemplatePath,
     npmScope,
   })
 

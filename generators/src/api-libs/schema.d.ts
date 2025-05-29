@@ -6,4 +6,5 @@ export interface ApiLibGeneratorSchema {
   generateCore?: boolean;
   generateMailer?: boolean;
   generateUser?: boolean;
+  generateConfig?: boolean;
 }

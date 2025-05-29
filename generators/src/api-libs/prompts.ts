@@ -15,13 +15,14 @@ const defaultOptions: Partial<ApiLibGeneratorSchema> = {
   generateCore: true,
   generateMailer: true,
   generateUser: true,
+  generateConfig: true,
 }
 
 const prompts: PromptDefinition[] = [
   {
     type: 'confirm',
     name: 'useDefaults',
-    message: 'Generate all library modules? (Accounts, Auth, Core, Mailer, User)',
+    message: 'Generate all library modules? (Accounts, Auth, Core, Config, Mailer, User)',
     default: false,
   },
   {
@@ -56,6 +57,13 @@ const prompts: PromptDefinition[] = [
     type: 'confirm',
     name: 'generateUser',
     message: 'Generate User module?',
+    default: true,
+    skip: (answers) => answers.useDefaults === true,
+  },
+  {
+    type: 'confirm',
+    name: 'generateConfig',
+    message: 'Generate Config module?',
     default: true,
     skip: (answers) => answers.useDefaults === true,
   },

@@ -8,7 +8,7 @@ import * as ts from 'typescript'
 // Add scope filter to ensure we only process libs/api
 const API_LIBS_SCOPE = 'libs/api'
 
-function addImport(tree: Tree, name: string, type: string) {
+function addImport(tree: Tree, name: string, type?: string) {
   const coreFeaturePath = `apps/api/src/app.module.ts`
 
   if (!tree.exists(coreFeaturePath)) {
@@ -17,10 +17,10 @@ function addImport(tree: Tree, name: string, type: string) {
   }
 
   const nameClassName = names(name).className
-  const typeClassName = names(type).className
+  const typeClassName = type ? names(type).className : ''
   const npmScope = getNpmScope(tree)
   const moduleToAdd = `Api${nameClassName}${typeClassName}Module`
-  const importPath = `@${npmScope}/api/${name}/${type}`
+  const importPath = type ? `@${npmScope}/api/${name}/${type}` : `@${npmScope}/api/${name}`
 
   let fileContent = tree.read(coreFeaturePath)?.toString() || ''
 
@@ -71,11 +71,14 @@ function addImport(tree: Tree, name: string, type: string) {
   tree.write(coreFeaturePath, fileContent)
 }
 
-async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: string) {
+async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: string) {
   const npmScope = getNpmScope(tree)
-  const libraryRoot = joinPathFragments(API_LIBS_SCOPE, schema.name, type)
-  const libraryName = `api-${schema.name}-${type}`
-  const importPath = `@${npmScope}/api/${schema.name}/${type}`
+  const libraryRoot = type
+    ? joinPathFragments(API_LIBS_SCOPE, schema.name, type)
+    : joinPathFragments(API_LIBS_SCOPE, schema.name)
+  const libraryName = type ? `api-${schema.name}-${type}` : `api-${schema.name}`
+  const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
+  const tags = type ? `scope:api,type:${type}` : 'scope:api'
 
   // Check if the directory already exists, if not create it
   if (!tree.exists(API_LIBS_SCOPE)) {
@@ -88,20 +91,37 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
     directory: libraryRoot,
     importPath: importPath,
     skipFormat: true,
-    tags: `scope:api,type:${type}`,
+    tags: tags,
     strict: true,
   })
 
   // Update TypeScript configurations
   updateTypeScriptConfigs(tree, libraryRoot)
 
+  // Determine the correct template path for generateTemplateFiles
+  let finalTemplatePath: string;
+  if (schema.name === 'config' && !type) {
+    // For 'config' library without a type, templates are directly in '.../api-files/config/'
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files/config');
+  } else if (type) {
+    // For libraries with a type, templates are in '.../api-files/<name>/<type>/'
+    // It assumes that for a given schema.name and type, the templates are in a subfolder named <type>
+    // under a folder named <schema.name> inside '../api-files'
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name, type);
+  } else {
+    // Fallback for libraries (other than 'config') generated without a type.
+    // Assumes templates are directly under '.../api-files/<name>/'
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name);
+    // Consider adding a log or warning here if this case is unexpected for certain schema names.
+    // console.warn(`Generating library ${schema.name} without a type, template path: ${finalTemplatePath}`);
+  }
+
   // Generate the template files on top of the Nx-generated structure
   generateTemplateFiles({
     tree,
     schema,
     libraryRoot,
-    type,
-    templatePath: joinPathFragments(__dirname, '../api-files'),
+    templatePath: finalTemplatePath, // Pass the exact path
     npmScope,
   })
 
@@ -135,7 +155,8 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type: str
   }
 
   // Add the module import after generating the library
-  if (type === 'feature' || (type === 'data-access' && schema.name === 'mailer')) {
+  // Only add import if type is 'feature' or if it's 'data-access' for 'mailer'
+  if (type && (type === 'feature' || (type === 'data-access' && schema.name === 'mailer'))) {
     addImport(tree, schema.name, type)
   }
 
@@ -165,6 +186,10 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
     tasks.push(await apiGenerator(tree, { name: 'core' }, 'data-access'))
     tasks.push(await apiGenerator(tree, { name: 'core' }, 'feature'))
     tasks.push(await apiGenerator(tree, { name: 'core' }, 'models'))
+  }
+
+  if (options.generateConfig || options.useDefaults) {
+    tasks.push(await apiGenerator(tree, { name: 'config' })) // No type needed here
   }
 
   if (options.generateMailer || options.useDefaults) {

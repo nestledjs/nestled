@@ -160,7 +160,6 @@ interface GenerateTemplateOptions {
   tree: Tree
   schema: any
   libraryRoot: string
-  type: string
   templatePath: string
   npmScope: string
 }
@@ -181,7 +180,6 @@ export function generateTemplateFiles({
   tree,
   schema,
   libraryRoot,
-  type,
   templatePath,
   npmScope,
 }: GenerateTemplateOptions): void {
@@ -192,7 +190,7 @@ export function generateTemplateFiles({
     tmpl: '',
   }
 
-  generateFiles(tree, joinPathFragments(templatePath, schema.name, type), libraryRoot, variables)
+  generateFiles(tree, templatePath, libraryRoot, variables)
 }
 
 /**
