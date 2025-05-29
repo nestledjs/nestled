@@ -1,31 +1,219 @@
-import { Field, InputType } from '@nestjs/graphql'
-import { <%= models.map(model => model.modelName).join(', ') %> } from '<%= npmScope %>/api/core/models'
-import * as CoreDataAccess from '<%= npmScope %>/api/core/data-access'
-import { GraphQLJSON } from 'graphql-type-json'
+<%# EJS template for generating DTOs %>
+<%
+let gqlImports = new Set(['Field', 'InputType']);
+let usesGraphQLJSON = false;
+let usesInt = false;
+let usesFloat = false;
+let usesID = false;
+
+// First pass to determine necessary imports
+for (const model of models) {
+  for (const field of model.fields) {
+    if (field.type === 'Int') usesInt = true;
+    if (field.type === 'Float' || field.type === 'Decimal') usesFloat = true;
+    if (field.type === 'Json') usesGraphQLJSON = true;
+
+    if (field.type === 'ID') { // Explicit ID field
+        usesID = true;
+    } else if (field.kind === 'object') {
+        // Check if a corresponding scalar ID field (e.g., 'userId') exists for this object field (e.g., 'user')
+        const correspondingIdFieldName = `${field.name}Id`;
+        const hasCorrespondingIdField = model.fields.some(f => f.name === correspondingIdFieldName && f.kind !== 'object');
+        if (!hasCorrespondingIdField) {
+            // If no pre-existing '...Id' scalar, we'll generate one, so 'ID' import is needed.
+            usesID = true;
+        }
+    }
+  }
+}
+
+if (usesInt) gqlImports.add('Int');
+if (usesFloat) gqlImports.add('Float');
+if (usesID) gqlImports.add('ID');
+%>
+import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
+import * as PrismaSchema from '<%= npmScope %>/api/prisma'
+<% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
 import { CorePagingInput } from '<%= npmScope %>/api/core/data-access'
 
 <% for (const model of models) { %>
 @InputType()
 export class Create<%= model.modelName %>Input {
 <% for (const field of model.fields) { %>
-  @Field({ nullable: <%= field.isOptional ? 'true' : 'false' %> })
-  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type === 'Float' || field.type === 'Int' || field.type === 'Decimal' ? 'number' : field.type === 'Json' ? 'typeof GraphQLJSON' : field.type === 'Boolean' ? 'boolean' : `CoreDataAccess.${field.type}` %>
+  <%
+    let shouldSkipField = false;
+    let baseGqlType;
+    let tsType;
+    let effectiveFieldName = field.name;
+
+    if (field.kind === 'object') {
+        const correspondingIdFieldName = `${field.name}Id`;
+        const hasCorrespondingIdField = model.fields.some(f => f.name === correspondingIdFieldName && f.kind !== 'object');
+        if (hasCorrespondingIdField) {
+            shouldSkipField = true; // Skip this object field; its ID is handled by the existing scalar field.
+        } else {
+            // No corresponding '...Id' scalar found, so generate an ID field for this relation.
+            baseGqlType = 'ID';
+            tsType = 'string';
+            effectiveFieldName = correspondingIdFieldName;
+        }
+    } else {
+        // Handle non-object (scalar, enum, or explicit ID) fields
+        effectiveFieldName = field.name;
+        if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
+        else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
+        else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
+        else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
+        else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
+        else if (field.type === 'DateTime') { baseGqlType = 'Date'; tsType = 'Date'; }
+        else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
+        else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
+        else if (field.kind === 'enum') {
+            baseGqlType = `PrismaSchema.${field.type}`;
+            tsType = `PrismaSchema.${field.type}`;
+        } else { // Fallback, should ideally not be reached if all model types are known
+            baseGqlType = 'String'; tsType = 'string';
+        }
+    }
+
+    let fieldDecoratorTypeArg = '';
+    let finalTsType = tsType;
+
+    if (!shouldSkipField) {
+        if (field.isList) { // Use original field's isList property
+            fieldDecoratorTypeArg = `() => [${baseGqlType}]`; // baseGqlType is 'ID' if transformed from object list
+            finalTsType = tsType + '[]'; // tsType is 'string' for ID, so 'string[]'
+        } else {
+            // For non-list fields (scalars or single objects transformed to ID)
+            if (baseGqlType !== 'String' && baseGqlType !== 'Boolean') {
+                fieldDecoratorTypeArg = `() => ${baseGqlType}`;
+            }
+            // finalTsType is already 'tsType', which is correct
+        }
+    }
+  %>
+  <% if (!shouldSkipField) { %>
+  @Field(<% if (fieldDecoratorTypeArg) { %><%- fieldDecoratorTypeArg %>, <% } %>{ nullable: true })
+  <%= effectiveFieldName %>?: <%= finalTsType %>
+  <% } %>
 <% } %>
 }
 
 @InputType()
 export class Update<%= model.modelName %>Input {
 <% for (const field of model.fields) { %>
-  @Field({ nullable: true })
-  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type === 'Float' || field.type === 'Int' || field.type === 'Decimal' ? 'number' : field.type === 'Json' ? 'typeof GraphQLJSON' : field.type === 'Boolean' ? 'boolean' : `CoreDataAccess.${field.type}` %>
+  <%
+    let shouldSkipField = false;
+    let baseGqlType;
+    let tsType;
+    let effectiveFieldName = field.name;
+
+    if (field.kind === 'object') {
+        const correspondingIdFieldName = `${field.name}Id`;
+        const hasCorrespondingIdField = model.fields.some(f => f.name === correspondingIdFieldName && f.kind !== 'object');
+        if (hasCorrespondingIdField) {
+            shouldSkipField = true;
+        } else {
+            baseGqlType = 'ID';
+            tsType = 'string';
+            effectiveFieldName = correspondingIdFieldName;
+        }
+    } else {
+        effectiveFieldName = field.name;
+        if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
+        else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
+        else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
+        else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
+        else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
+        else if (field.type === 'DateTime') { baseGqlType = 'Date'; tsType = 'Date'; }
+        else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
+        else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
+        else if (field.kind === 'enum') {
+            baseGqlType = `PrismaSchema.${field.type}`;
+            tsType = `PrismaSchema.${field.type}`;
+        } else {
+            baseGqlType = 'String'; tsType = 'string';
+        }
+    }
+
+    let fieldDecoratorTypeArg = '';
+    let finalTsType = tsType;
+
+    if (!shouldSkipField) {
+        if (field.isList) {
+            fieldDecoratorTypeArg = `() => [${baseGqlType}]`;
+            finalTsType = tsType + '[]';
+        } else {
+            if (baseGqlType !== 'String' && baseGqlType !== 'Boolean') {
+                fieldDecoratorTypeArg = `() => ${baseGqlType}`;
+            }
+        }
+    }
+  %>
+  <% if (!shouldSkipField) { %>
+  @Field(<% if (fieldDecoratorTypeArg) { %><%- fieldDecoratorTypeArg %>, <% } %>{ nullable: true })
+  <%= effectiveFieldName %>?: <%= finalTsType %>
+  <% } %>
 <% } %>
 }
 
 @InputType()
 export class List<%= model.modelName %>Input extends CorePagingInput {
 <% for (const field of model.fields) { %>
-  @Field({ nullable: true })
-  <%= field.name %>?: <%= field.type === 'String' ? 'string' : field.type === 'DateTime' ? 'Date' : field.type === 'Float' || field.type === 'Int' || field.type === 'Decimal' ? 'number' : field.type === 'Json' ? 'typeof GraphQLJSON' : field.type === 'Boolean' ? 'boolean' : `CoreDataAccess.${field.type}` %>
+  <%
+    let shouldSkipField = false;
+    let baseGqlType;
+    let tsType;
+    let effectiveFieldName = field.name;
+
+    if (field.kind === 'object') {
+        const correspondingIdFieldName = `${field.name}Id`;
+        const hasCorrespondingIdField = model.fields.some(f => f.name === correspondingIdFieldName && f.kind !== 'object');
+        if (hasCorrespondingIdField) {
+            shouldSkipField = true;
+        } else {
+            // For ListInput, if no direct ...Id field, we create one for filtering by relation ID
+            baseGqlType = 'ID';
+            tsType = 'string';
+            effectiveFieldName = correspondingIdFieldName;
+        }
+    } else {
+        // Handle non-object fields for filtering
+        effectiveFieldName = field.name;
+        if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
+        else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
+        else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
+        else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
+        else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
+        else if (field.type === 'DateTime') { baseGqlType = 'Date'; tsType = 'Date'; }
+        else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
+        else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
+        else if (field.kind === 'enum') {
+            baseGqlType = `PrismaSchema.${field.type}`;
+            tsType = `PrismaSchema.${field.type}`;
+        } else {
+            baseGqlType = 'String'; tsType = 'string';
+        }
+    }
+
+    let fieldDecoratorTypeArg = '';
+    let finalTsType = tsType;
+
+    if (!shouldSkipField) {
+        if (field.isList) {
+            fieldDecoratorTypeArg = `() => [${baseGqlType}]`;
+            finalTsType = tsType + '[]';
+        } else {
+            if (baseGqlType !== 'String' && baseGqlType !== 'Boolean') {
+                fieldDecoratorTypeArg = `() => ${baseGqlType}`;
+            }
+        }
+    }
+  %>
+  <% if (!shouldSkipField) { %>
+  @Field(<% if (fieldDecoratorTypeArg) { %><%- fieldDecoratorTypeArg %>, <% } %>{ nullable: true })
+  <%= effectiveFieldName %>?: <%= finalTsType %>
+  <% } %>
 <% } %>
 }
 

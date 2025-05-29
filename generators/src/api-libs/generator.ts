@@ -1,6 +1,6 @@
 import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree, names, updateJson } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
-import { generateTemplateFiles, getNpmScope, installPlugins, updateTypeScriptConfigs } from '../shared/utils'
+import { generateTemplateFiles, getNpmScope, installPlugins, updateTypeScriptConfigs, updateTsConfigPaths } from '../shared/utils'
 import { promptProvider } from './prompts'
 import { ApiLibGeneratorSchema } from './schema'
 import * as ts from 'typescript'
@@ -95,14 +95,19 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: st
     strict: true,
   })
 
-  // Update TypeScript configurations
+  // Update TypeScript configurations for the library itself
   updateTypeScriptConfigs(tree, libraryRoot)
+  // Explicitly update the tsconfig.base.json paths after libraryGenerator has run
+  updateTsConfigPaths(tree, importPath, libraryRoot)
 
   // Determine the correct template path for generateTemplateFiles
   let finalTemplatePath: string;
   if (schema.name === 'config' && !type) {
     // For 'config' library without a type, templates are directly in '.../api-files/config/'
     finalTemplatePath = joinPathFragments(__dirname, '../api-files/config');
+  } else if (schema.name === 'prisma' && !type) {
+    // For 'prisma' library without a type, templates are directly in '.../api-files/prisma/'
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files/prisma');
   } else if (type) {
     // For libraries with a type, templates are in '.../api-files/<name>/<type>/'
     // It assumes that for a given schema.name and type, the templates are in a subfolder named <type>
@@ -199,6 +204,11 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
   if (options.generateUser || options.useDefaults) {
     tasks.push(await apiGenerator(tree, { name: 'user' }, 'data-access'))
     tasks.push(await apiGenerator(tree, { name: 'user' }, 'feature'))
+  }
+
+  // Add a new generator for Prisma
+  if (options.generatePrisma || options.useDefaults) {
+    tasks.push(await apiGenerator(tree, { name: 'prisma' }))
   }
 
   await formatFiles(tree)

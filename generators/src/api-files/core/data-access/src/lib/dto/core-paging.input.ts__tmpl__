@@ -12,7 +12,7 @@ export class CorePagingInput {
   @Field({ nullable: true })
   search?: string
 
-  @Field({ nullable: true })
+  @Field(() => [String], { nullable: true })
   searchFields?: string[]
 
   @Field({ nullable: true })

@@ -3,10 +3,70 @@ import { join } from 'path';
 import { execSync } from 'child_process';
 import { getDMMF } from '@prisma/internals';
 
+// Find project root and get schema path from package.json
+function findProjectRoot(startDir: string) {
+  try {
+    // Try to use Nx's utility first if available
+    try {
+      const { findRootSync } = require('@nx/devkit');
+      return findRootSync(startDir);
+    } catch {
+      // Fallback to process.cwd() which should be project root when running scripts
+      return process.cwd();
+    }
+  } catch (error) {
+    console.error('Error finding project root:', error);
+    return process.cwd();
+  }
+}
+
+// Determine the correct prisma import path based on package.json configuration
+function getPrismaImportPath() {
+  try {
+    const projectRoot = findProjectRoot(__dirname);
+    const packageJsonPath = join(projectRoot, 'package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+
+    // If prisma schema is now in libs/api/prisma, we should import from there
+    const schemaPath = packageJson.prisma?.schema || '';
+
+    if (schemaPath.includes('prisma/src/lib')) {
+      return '@<%= npmScope %>/api/prisma';
+    }
+
+    // Fallback to the original path
+    return '@<%= npmScope %>/api/core/data-access';
+  } catch (error) {
+    console.error('Error determining Prisma import path:', error);
+    // Default to the new path as per the request
+    return '@<%= npmScope %>/api/prisma';
+  }
+}
+
+// Get schema path from package.json
+function getPrismaSchemaPath() {
+  try {
+    const projectRoot = findProjectRoot(__dirname);
+    const packageJsonPath = join(projectRoot, 'package.json');
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
+
+    if (!packageJson.prisma?.schema) {
+      throw new Error('prisma.schema not found in package.json');
+    }
+
+    // Join the project root with the schema path and append schema.prisma
+    return join(projectRoot, packageJson.prisma.schema, 'schema.prisma');
+  } catch (error) {
+    console.error('Error getting Prisma schema path:', error);
+    // Fallback to the old path for backward compatibility
+    return join(__dirname, '../../../data-access/src/prisma/schemas/schema.prisma');
+  }
+}
 
 // Paths
-const schemaPath = join(__dirname, '../../../data-access/src/prisma/schemas/schema.prisma');
+const schemaPath = getPrismaSchemaPath();
 const outputDir = join(__dirname, './models');
+const prismaImportPath = getPrismaImportPath();
 
 async function main() {
   // Ensure output directory exists
@@ -14,8 +74,15 @@ async function main() {
     mkdirSync(outputDir, { recursive: true });
   }
 
+  // Verify schema exists
+  if (!existsSync(schemaPath)) {
+    console.error(`Error: Prisma schema not found at ${schemaPath}`);
+    console.error('Please check your package.json prisma.schema configuration');
+    process.exit(1);
+  }
+
   // Generate Prisma client first
-  console.log('Generating Prisma client...');
+  console.log(`Generating Prisma client using schema at ${schemaPath}...`);
   execSync(`npx prisma generate --schema ${schemaPath}`, { stdio: 'inherit' });
 
   // Read and parse schema
@@ -48,7 +115,7 @@ async function main() {
 function generateModels(models: readonly any[], enums: readonly any[]): string {
   let output = `import { Field, ObjectType, Int, Float } from '@nestjs/graphql';\n`;
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`;
-  output += `import { Prisma, ${enums.map(e => e.name).join(', ')} } from '@<%= npmScope %>/api/core/data-access';\n`;
+  output += `import { Prisma, ${enums.map(e => e.name).join(', ')} } from '${prismaImportPath}';\n`;
 
   for (const model of models) {
     output += `@ObjectType()\nexport class ${model.name} {\n`;
@@ -58,22 +125,33 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       const isEnum = field.kind === 'enum';
       const isRelation = field.kind === 'object';
       const originalType = field.type;
-      const originalTypeIsScalar = isScalarType(originalType);
+
+      // DEBUG LINE ADDED HERE
+      console.log(`DEBUG: Processing field: ${model.name}.${field.name}, Kind: ${field.kind}, OriginalType: ${originalType}`);
 
       // Determine the TypeScript type
-      let fieldType = originalType;
+      let tsType = originalType; // Default to originalType
 
-      if (fieldType === 'DateTime') {
-        fieldType = 'Date';
-      } else if (fieldType === 'Int' || fieldType === 'Float') {
-        fieldType = 'number';
-      } else if (fieldType === 'Json') {
-        fieldType = 'Prisma.JsonValue';
-      } else if (originalTypeIsScalar) {
-        fieldType = fieldType.toLowerCase();
+      if (field.kind === 'scalar') {
+          if (originalType === 'Int' || originalType === 'Float' || originalType === 'Decimal') {
+              tsType = 'number';
+          } else if (originalType === 'String' || originalType === 'ID') {
+              tsType = 'string';
+          } else if (originalType === 'Boolean') {
+              tsType = 'boolean';
+          } else if (originalType === 'DateTime') {
+              tsType = 'Date';
+          } else if (originalType === 'Json') {
+              tsType = 'Prisma.JsonValue';
+          }
+          // Other scalars (e.g., BigInt, Bytes) will remain originalType if not handled above
+      } else if (field.kind === 'enum') {
+          tsType = originalType; // Stays as EnumName (e.g., UserRole)
+      } else if (field.kind === 'object') {
+          tsType = originalType; // Stays as RelatedModelName (e.g., Post)
       }
 
-      // Generate the decorator
+      // Generate the GraphQL decorator
       let decorator = '@Field(';
       const nullableOption = '{ nullable: true }';
       let decoratorType = '';
@@ -82,30 +160,22 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
           decoratorType = `() => GraphQLJSONObject`;
       } else if (originalType === 'Int' && !isList) {
           decoratorType = `() => Int`;
-      } else if (originalType === 'Float' && !isList) {
+      } else if ((originalType === 'Float' || originalType === 'Decimal') && !isList) {
           decoratorType = `() => Float`;
-      } else if (originalTypeIsScalar && !isList) {
+      } else if (isScalarType(originalType) && !isList && originalType !== 'Decimal' && originalType !== 'Float' && originalType !== 'Int' && originalType !== 'Json') {
           decoratorType = '';
       } else if (isList) {
-          // Determine list item type for decorator using the *original* Prisma type
-          let listItemGraphQLType = originalType; // Start with original type
-
-          // Map specific Prisma types to GraphQL types for lists
+          let listItemGraphQLType = originalType;
           if (originalType === 'Int') listItemGraphQLType = 'Int';
-          else if (originalType === 'Float') listItemGraphQLType = 'Float';
+          else if (originalType === 'Float' || originalType === 'Decimal') listItemGraphQLType = 'Float';
           else if (originalType === 'Json') listItemGraphQLType = 'GraphQLJSONObject';
-          else if (isEnum || isRelation) listItemGraphQLType = originalType; // Keep original casing for relations/enums
+          else if (isEnum || isRelation) listItemGraphQLType = originalType;
           else if (originalType === 'DateTime') listItemGraphQLType = 'Date';
           else if (originalType === 'Boolean') listItemGraphQLType = 'Boolean';
-          // Handle String/string/ID specifically for GraphQL [String]
           else if (originalType.toLowerCase() === 'string' || originalType === 'ID') {
-              listItemGraphQLType = 'String'; // Ensure capitalized 'String' for GraphQL
+              listItemGraphQLType = 'String';
           }
-          // If it's not scalar, enum, or relation, it might be a complex type not handled yet.
-          // Default uses originalType which might be correct.
-
           decoratorType = `() => [${listItemGraphQLType}]`;
-
       } else if (isEnum || isRelation) {
           decoratorType = `() => ${originalType}`;
       }
@@ -115,13 +185,11 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       } else {
           decorator += nullableOption;
       }
-
       decorator += ')';
 
       // Generate the field definition
       output += `  ${decorator}\n`;
-      // Use the full type for the field definition
-      output += `  ${field.name}?: ${isRelation ? `Partial<${fieldType}>` : fieldType}${isList ? '[]' : ''};\n\n`;
+      output += `  ${field.name}?: ${isRelation ? `Partial<${tsType}>` : tsType}${isList ? '[]' : ''};\n\n`;
     }
 
     output += `}\n\n`;
@@ -134,11 +202,9 @@ function generateEnums(enums: readonly any[]): string {
   let output = '// Generated from Prisma schema\n\n';
   output += "import { registerEnumType } from '@nestjs/graphql';\n";
 
-  // Create a single import statement with all enum types
   const enumNames = enums.map(e => e.name).join(', ');
-  output += `import { ${enumNames} } from '@<%= npmScope %>/api/core/data-access';\n\n`;
+  output += `import { ${enumNames} } from '${prismaImportPath}';\n\n`;
 
-  // Register each enum type
   enums.forEach((enumType) => {
     output += `registerEnumType(${enumType.name}, { name: '${enumType.name}' });\n\n`;
   });
@@ -154,7 +220,7 @@ export * from './enums';
 }
 
 function isScalarType(type: string): boolean {
-  return ['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Json', 'ID'].includes(type);
+  return ['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Json', 'ID', 'Decimal'].includes(type);
 }
 
 main().catch(console.error);

@@ -293,12 +293,12 @@ export * from './lib/api-public-data-access.service'
 
   // Create public feature module file
   const publicModuleContent = `import { Module } from '@nestjs/common'
-import { ApiCrudDataAccessService } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
+import { ApiCrudDataAccessModule } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
 import { ApiPublicDataAccessModule } from '@${getNpmScope(tree)}/api/public/data-access'
 ${models.map(model => `import { ${model.modelName}Resolver } from './${toKebabCase(model.modelName)}.resolver'`).join('\n')}
 
 @Module({
-  imports: [ApiCrudDataAccessService, ApiPublicDataAccessModule],
+  imports: [ApiCrudDataAccessModule, ApiPublicDataAccessModule],
   providers: [${models.map(model => `${model.modelName}Resolver`).join(', ')}],
 })
 export class ApiPublicFeatureModule {}
