@@ -20,9 +20,13 @@ async function getAllPrismaModels(tree: Tree) {
       const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
       const pluralPropertyName = pluralize(singularPropertyName)
 
-      // Handle case where plural is the same as singular (e.g., "data")
-      const pluralModelPropertyName =
-        singularPropertyName === pluralPropertyName ? `${singularPropertyName}List` : pluralPropertyName
+      // Get the singular and pluralized versions of the model name
+      const singularModelName = model.name
+      const pluralModelName = pluralize(model.name)
+
+      // Check if the pluralized version is the same as the singular version
+      const adminPluralModelName =
+        singularModelName === pluralModelName ? `admin${singularModelName}List` : `admin${pluralModelName}`
 
       const modelObj = {
         name: model.name,
@@ -32,7 +36,7 @@ async function getAllPrismaModels(tree: Tree) {
         // Add these properties that might be needed by the templates
         modelName: model.name,
         modelPropertyName: `admin${model.name}`,
-        pluralModelPropertyName: `admin${pluralize(model.name)}`,
+        pluralModelPropertyName: adminPluralModelName,
       }
       console.log('Model object:', JSON.stringify(modelObj, null, 2))
       return modelObj
