@@ -21,7 +21,7 @@ function addImport(tree: Tree, name: string, type: string) {
 
   let fileContent = tree.read(coreFeaturePath)?.toString() || ''
 
-  // Add import statement if it doesn't exist
+  // Add an import statement if it doesn't exist
   if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
     const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
     fileContent = importStatement + fileContent
@@ -38,9 +38,9 @@ function addImport(tree: Tree, name: string, type: string) {
       // Get just the array content
       const arrayContent = fileContent.slice(arrayStart + 'export const appModules = ['.length, arrayEnd)
 
-      // Check if module exists only in the array content
+      // Check if the module exists only in the array content
       if (!arrayContent.includes(moduleToAdd)) {
-        // If array is empty, don't add a leading comma
+        // If an array is empty, don't add a leading comma
         const isEmpty = arrayContent.trim() === ''
         const moduleEntry = isEmpty ? `\n  ${moduleToAdd}` : `,\n  ${moduleToAdd}`
 
@@ -53,7 +53,7 @@ function addImport(tree: Tree, name: string, type: string) {
   }
 
   // Clean up the array formatting if needed
-  const arrayRegex = /export const appModules = \[([\s\S]*?)\];/
+  const arrayRegex = /export const appModules = \[([\s\S]*?)];/
   const match = fileContent.match(arrayRegex)
   if (match) {
     const modules = match[1]
@@ -73,7 +73,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
   const libraryName = `api-${schema.name}-${type}`
   const importPath = `@${npmScope}/api/${schema.name}/${type}`
 
-  // Create libs/api directory if it doesn't exist
+  // Create the libs/api directory if it doesn't exist
   if (!tree.exists(API_LIBS_SCOPE)) {
     tree.write(joinPathFragments(API_LIBS_SCOPE, '.gitkeep'), '')
   }
@@ -91,7 +91,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
   await new Promise((resolve) => setTimeout(resolve, 2000))
 
   // Generate the template files on top of the Nx-generated structure
-  const finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name, type);
+  const finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name, type)
   generateTemplateFiles({
     tree,
     schema,
@@ -131,7 +131,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
     await installPlugins(tree, dependencies, devDependencies)
   }
 
-  // Add the module import for feature
+  // Add the module import for the feature
   if (type === 'feature') {
     addImport(tree, schema.name, type)
   }

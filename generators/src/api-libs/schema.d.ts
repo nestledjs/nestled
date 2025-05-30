@@ -8,4 +8,5 @@ export interface ApiLibGeneratorSchema {
   generateUser?: boolean;
   generateConfig?: boolean;
   generatePrisma?: boolean;
+  generateCustom?: boolean;
 }

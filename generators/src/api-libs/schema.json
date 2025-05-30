@@ -33,6 +33,16 @@
       "type": "boolean",
       "description": "Generate Config module",
       "default": true
+    },
+    "generatePrisma": {
+      "type": "boolean",
+      "description": "Generate Prisma module",
+      "default": true
+    },
+    "generateCustom": {
+      "type": "boolean",
+      "description": "Generate Custom module",
+      "default": true
     }
   }
 }

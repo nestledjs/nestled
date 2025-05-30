@@ -1,9 +1,14 @@
-import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree, names, updateJson } from '@nx/devkit'
+import { formatFiles, installPackagesTask, joinPathFragments, names, readJson, Tree } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
-import { generateTemplateFiles, getNpmScope, installPlugins, updateTypeScriptConfigs, updateTsConfigPaths } from '../shared/utils'
+import {
+  generateTemplateFiles,
+  getNpmScope,
+  installPlugins,
+  updateTsConfigPaths,
+  updateTypeScriptConfigs,
+} from '../shared/utils'
 import { promptProvider } from './prompts'
 import { ApiLibGeneratorSchema } from './schema'
-import * as ts from 'typescript'
 
 // Add scope filter to ensure we only process libs/api
 const API_LIBS_SCOPE = 'libs/api'
@@ -24,7 +29,7 @@ function addImport(tree: Tree, name: string, type?: string) {
 
   let fileContent = tree.read(coreFeaturePath)?.toString() || ''
 
-  // Add import statement if it doesn't exist
+  // Add an import statement if it doesn't exist
   if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
     const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
     fileContent = importStatement + fileContent
@@ -41,13 +46,11 @@ function addImport(tree: Tree, name: string, type?: string) {
       // Get just the array content
       const arrayContent = fileContent.slice(arrayStart + 'export const appModules = ['.length, arrayEnd)
 
-      // Check if module exists only in the array content
+      // Check if a module exists only in the array content
       if (!arrayContent.includes(moduleToAdd)) {
-        // If array is empty, don't add a leading comma
+        // If an array is empty, don't add a leading comma
         const isEmpty = arrayContent.trim() === ''
-        const moduleEntry = isEmpty
-          ? `\n  ${moduleToAdd}`
-          : `,\n  ${moduleToAdd}`
+        const moduleEntry = isEmpty ? `\n  ${moduleToAdd}` : `,\n  ${moduleToAdd}`
 
         // Insert the new module just before the closing bracket
         const before = fileContent.slice(0, arrayEnd)
@@ -58,12 +61,13 @@ function addImport(tree: Tree, name: string, type?: string) {
   }
 
   // Clean up the array formatting if needed
-  const arrayRegex = /export const appModules = \[([\s\S]*?)\];/
+  const arrayRegex = /export const appModules = \[([\s\S]*?)];/
   const match = fileContent.match(arrayRegex)
   if (match) {
-    const modules = match[1].split(',')
-      .map(m => m.trim())
-      .filter(m => m.length > 0)
+    const modules = match[1]
+      .split(',')
+      .map((m) => m.trim())
+      .filter((m) => m.length > 0)
     const formattedArray = `export const appModules = [\n  ${modules.join(',\n  ')}\n];`
     fileContent = fileContent.replace(arrayRegex, formattedArray)
   }
@@ -80,7 +84,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: st
   const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
   const tags = type ? `scope:api,type:${type}` : 'scope:api'
 
-  // Check if the directory already exists, if not create it
+  // Check if the directory already exists, if not, create it
   if (!tree.exists(API_LIBS_SCOPE)) {
     tree.write(joinPathFragments(API_LIBS_SCOPE, '.gitkeep'), '')
   }
@@ -101,22 +105,22 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: st
   updateTsConfigPaths(tree, importPath, libraryRoot)
 
   // Determine the correct template path for generateTemplateFiles
-  let finalTemplatePath: string;
+  let finalTemplatePath: string
   if (schema.name === 'config' && !type) {
     // For 'config' library without a type, templates are directly in '.../api-files/config/'
-    finalTemplatePath = joinPathFragments(__dirname, '../api-files/config');
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files/config')
   } else if (schema.name === 'prisma' && !type) {
-    // For 'prisma' library without a type, templates are directly in '.../api-files/prisma/'
-    finalTemplatePath = joinPathFragments(__dirname, '../api-files/prisma');
+    // For a 'prisma' library without a type, templates are directly in '.../api-files/prisma/'
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files/prisma')
   } else if (type) {
     // For libraries with a type, templates are in '.../api-files/<name>/<type>/'
     // It assumes that for a given schema.name and type, the templates are in a subfolder named <type>
     // under a folder named <schema.name> inside '../api-files'
-    finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name, type);
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name, type)
   } else {
     // Fallback for libraries (other than 'config') generated without a type.
     // Assumes templates are directly under '.../api-files/<name>/'
-    finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name);
+    finalTemplatePath = joinPathFragments(__dirname, '../api-files', schema.name)
     // Consider adding a log or warning here if this case is unexpected for certain schema names.
     // console.warn(`Generating library ${schema.name} without a type, template path: ${finalTemplatePath}`);
   }
@@ -149,8 +153,8 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: st
 
     // Add prisma schema path
     packageJson.prisma = {
-      schema: 'libs/api/core/data-access/src/prisma/schemas/schema.prisma',
-      seed: 'ts-node libs/api/core/data-access/src/lib/seed.ts',
+      schema: 'libs/api/prisma/src/lib/schemas',
+      seed: 'ts-node libs/api/prisma/src/lib/seed/seed.ts',
     }
 
     tree.write('package.json', JSON.stringify(packageJson, null, 2))
@@ -160,7 +164,7 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: st
   }
 
   // Add the module import after generating the library
-  // Only add import if type is 'feature' or if it's 'data-access' for 'mailer'
+  // Only add import if the type is 'feature' or if it's 'data-access' for 'mailer'
   if (type && (type === 'feature' || (type === 'data-access' && schema.name === 'mailer'))) {
     addImport(tree, schema.name, type)
   }
@@ -209,6 +213,12 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
   // Add a new generator for Prisma
   if (options.generatePrisma || options.useDefaults) {
     tasks.push(await apiGenerator(tree, { name: 'prisma' }))
+  }
+
+  // Add a new generator for Custom
+  if (options.generateCustom || options.useDefaults) {
+    tasks.push(await apiGenerator(tree, { name: 'custom' }, 'data-access'))
+    tasks.push(await apiGenerator(tree, { name: 'custom' }, 'feature'))
   }
 
   await formatFiles(tree)
