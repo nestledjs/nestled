@@ -20,23 +20,32 @@ async function getAllPrismaModels(tree: Tree) {
       const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
       const pluralPropertyName = pluralize(singularPropertyName)
 
-      // Get the singular and pluralized versions of the model name
-      const singularModelName = model.name
-      const pluralModelName = pluralize(model.name)
-
-      // Check if the pluralized version is the same as the singular version
-      const adminPluralModelName =
-        singularModelName === pluralModelName ? `admin${singularModelName}List` : `admin${pluralModelName}`
+      // Create a properly typed fields array
+      const fields = model.fields.map((field) => ({
+        name: field.name,
+        type: field.type,
+        isId: field.isId,
+        isRequired: field.isRequired,
+        isList: field.isList,
+        isUnique: field.isUnique,
+        isReadOnly: field.isReadOnly,
+        isGenerated: field.isGenerated,
+        isUpdatedAt: field.isUpdatedAt,
+        documentation: field.documentation,
+        // Include any other properties that might be needed
+        ...field,
+      }))
 
       const modelObj = {
         name: model.name,
         pluralName: pluralize(model.name),
-        fields: model.fields,
+        fields,
         primaryField: model.fields.find((f) => !f.isId && f.type === 'String')?.name || 'name',
         // Add these properties that might be needed by the templates
         modelName: model.name,
-        modelPropertyName: `admin${model.name}`,
-        pluralModelPropertyName: adminPluralModelName,
+        modelPropertyName: singularPropertyName,
+        pluralModelName: pluralize(model.name),
+        pluralModelPropertyName: pluralPropertyName,
       }
       console.log('Model object:', JSON.stringify(modelObj, null, 2))
       return modelObj
@@ -127,14 +136,16 @@ async function generateModelFiles(
   tree: Tree,
   dataAccessLibraryRoot: string,
   featureLibraryRoot: string,
-  models: {
+  models: Array<{
     name: string
-    fields: readonly { name: string; type: string }[]
+    pluralName: string
+    fields: ReadonlyArray<Record<string, unknown> & { name: string; type: string }>
     primaryField: string
     modelName: string
     modelPropertyName: string
+    pluralModelName: string
     pluralModelPropertyName: string
-  }[],
+  }>,
   name = 'generated-crud',
 ) {
   console.log(`Generating files for ${models.length} models`)
@@ -188,16 +199,16 @@ async function generateModelFiles(
 
   // Create feature module file for generated-crud
   const featureModuleContent = `import { Module } from '@nestjs/common'
-import { ApiAdminCrudDataAccessModule } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
+import { ApiCrudDataAccessModule } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
 ${models
   .map((model) => `import { Admin${model.modelName}Resolver } from './${toKebabCase(model.modelName)}.resolver'`)
   .join('\n')}
 
 @Module({
-  imports: [ApiAdminCrudDataAccessModule],
+  imports: [ApiCrudDataAccessModule],
   providers: [${models.map((model) => `Admin${model.modelName}Resolver`).join(', ')}],
 })
-export class ApiAdminCrudFeatureModule {}
+export class ApiCrudFeatureModule {}
 `
 
   // Always write a feature module file
@@ -227,7 +238,7 @@ import { GraphQLResolveInfo } from 'graphql'
 import {
   CorePaging
 } from '@${getNpmScope(tree)}/api/core/data-access'
-import { ApiAdminCrudDataAccessService } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
+import { ApiCrudDataAccessService } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
 import {
   ${model.modelName},
 } from '@${getNpmScope(tree)}/api/core/models'
@@ -243,37 +254,41 @@ import {
 @Resolver(() => ${model.modelName})
 export class Admin${model.modelName}Resolver {
   constructor(
-    private readonly service: ApiAdminCrudDataAccessService,
+    private readonly service: ApiCrudDataAccessService,
   ) {}
 
   @Query(() => [${model.modelName}], { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  ${model.pluralModelPropertyName}(
+  admin${model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName}(
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
       model.modelName
     }Input,
   ) {
-    return this.service.${model.pluralModelPropertyName}(info, input)
+    return this.service.admin${
+      model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName
+    }(info, input)
   }
 
   @Query(() => CorePaging, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  ${model.pluralModelPropertyName}Count(
+  admin${model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName}Count(
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
       model.modelName
     }Input,
   ) {
-    return this.service.${model.pluralModelPropertyName}Count(input)
+    return this.service.admin${
+      model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName
+    }Count(input)
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  ${model.modelPropertyName}(
+  admin${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string
   ) {
-    return this.service.${model.modelPropertyName}(info, ${model.modelPropertyName}Id)
+    return this.service.admin${model.modelName}(info, ${model.modelPropertyName}Id)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })

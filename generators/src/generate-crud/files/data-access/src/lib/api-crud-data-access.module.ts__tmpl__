@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common'
 
-import { ApiAdminCrudDataAccessService } from './api-crud-data-access.service'
+import { ApiCrudDataAccessService } from './api-crud-data-access.service'
 import { ApiCoreDataAccessModule } from '@mi/api/core/data-access'
 
 @Module({
   imports: [ApiCoreDataAccessModule],
-  providers: [ApiAdminCrudDataAccessService],
-  exports: [ApiAdminCrudDataAccessService],
+  providers: [ApiCrudDataAccessService],
+  exports: [ApiCrudDataAccessService],
 })
-export class ApiAdminCrudDataAccessModule {}
+export class ApiCrudDataAccessModule {}
