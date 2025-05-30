@@ -278,29 +278,29 @@ export class Admin${model.modelName}Resolver {
 
   @Mutation(() => ${model.modelName}, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  create${model.modelName}(
+  adminCreate${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: Create${model.modelName}Input,
   ) {
-    return this.service.create${model.modelName}(info, input)
+    return this.service.adminCreate${model.modelName}(info, input)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  update${model.modelName}(
+  adminUpdate${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
     @Args('input') input: Update${model.modelName}Input,
   ) {
-    return this.service.update${model.modelName}(info, ${model.modelPropertyName}Id, input)
+    return this.service.adminUpdate${model.modelName}(info, ${model.modelPropertyName}Id, input)
   }
 
   @Mutation(() => Boolean, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  delete${model.modelName}(
+  adminDelete${model.modelName}(
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
   ) {
-    return this.service.delete${model.modelName}(${model.modelPropertyName}Id)
+    return this.service.adminDelete${model.modelName}(${model.modelPropertyName}Id)
   }
 }
 `
