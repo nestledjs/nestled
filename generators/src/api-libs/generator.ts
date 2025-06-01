@@ -215,12 +215,6 @@ export default async function generateLibraries(tree: Tree, schema: ApiLibGenera
     tasks.push(await apiGenerator(tree, { name: 'prisma' }))
   }
 
-  // Add a new generator for Custom
-  if (options.generateCustom || options.useDefaults) {
-    tasks.push(await apiGenerator(tree, { name: 'custom' }, 'data-access'))
-    tasks.push(await apiGenerator(tree, { name: 'custom' }, 'feature'))
-  }
-
   await formatFiles(tree)
 
   return () => {

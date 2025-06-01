@@ -17,14 +17,13 @@ const defaultOptions: Partial<ApiLibGeneratorSchema> = {
   generateUser: true,
   generateConfig: true,
   generatePrisma: true,
-  generateCustom: true,
 }
 
 const prompts: PromptDefinition[] = [
   {
     type: 'confirm',
     name: 'useDefaults',
-    message: 'Generate all library modules? (Accounts, Auth, Core, Config, Mailer, User, Prisma, Custom)',
+    message: 'Generate all library modules? (Accounts, Auth, Core, Config, Mailer, User, Prisma)',
     default: false,
   },
   {
@@ -75,14 +74,7 @@ const prompts: PromptDefinition[] = [
     message: 'Generate Prisma module?',
     default: true,
     skip: (answers) => answers.useDefaults === true,
-  },
-  {
-    type: 'confirm',
-    name: 'generateCustom',
-    message: 'Generate Custom module?',
-    default: true,
-    skip: (answers) => answers.useDefaults === true,
-  },
+  }
 ]
 
 export const promptProvider = {

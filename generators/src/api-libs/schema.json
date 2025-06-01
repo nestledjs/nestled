@@ -38,11 +38,6 @@
       "type": "boolean",
       "description": "Generate Prisma module",
       "default": true
-    },
-    "generateCustom": {
-      "type": "boolean",
-      "description": "Generate Custom module",
-      "default": true
     }
   }
 }
