@@ -6,13 +6,114 @@ import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'
 
-async function getAllPrismaModels(tree: Tree) {
+interface CrudAuthConfig {
+  readOne?: string
+  readMany?: string
+  count?: string
+  create?: string
+  update?: string
+  delete?: string
+}
+
+function parseCrudAuth(comment: string): CrudAuthConfig | null {
+  try {
+    // Match @crudAuth: { ... } in a single line
+    const match = comment.match(/@crudAuth:\s*(\{.*\})/)
+    if (!match) return null
+    
+    // The captured group should be valid JSON
+    return JSON.parse(match[1])
+  } catch (e) {
+    console.error('Error parsing @crudAuth:', e)
+    console.error('Comment:', comment)
+    return null
+  }
+}
+
+function getCrudAuthForModel(schema: string, modelName: string): CrudAuthConfig {
+  const defaultConfig: CrudAuthConfig = {
+    readOne: 'admin',
+    readMany: 'admin',
+    count: 'admin',
+    create: 'admin',
+    update: 'admin',
+    delete: 'admin',
+  }
+
+  // Split the schema into lines for precise model matching
+  const lines = schema.split('\n')
+  let modelDoc: string[] = []
+  let foundModel = false
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim()
+    
+    // Check if this is the start of our target model
+    if (line.startsWith(`model ${modelName}`) || line.startsWith(`model ${modelName} `) || line.startsWith(`model ${modelName}{`)) {
+      // We found our model, use the collected documentation
+      foundModel = true
+      break
+    } else if (line.startsWith('model ')) {
+      // Reset documentation when we hit a different model
+      modelDoc = []
+    } else if (line.startsWith('///') && !foundModel) {
+      // Only collect documentation if it's before our model
+      modelDoc.push(line)
+    }
+  }
+  
+  if (!foundModel) return defaultConfig
+  
+  // Find the @crudAuth line in the model's documentation
+  const authLine = modelDoc.find(line => line.includes('@crudAuth:'))
+  
+  if (!authLine) return defaultConfig
+  
+  console.log(`\\n=== Processing @crudAuth for ${modelName} ===`)
+  console.log(authLine.trim())
+  
+  const config = parseCrudAuth(authLine)
+  if (config) {
+    console.log('Successfully parsed config:', JSON.stringify(config, null, 2))
+    return { ...defaultConfig, ...config }
+  }
+  
+  return defaultConfig
+}
+
+function getGuardForAuthLevel(level: string): string | null {
+  if (!level) return 'GqlAuthAdminGuard' // Default to admin if not specified
+  level = level.toLowerCase()
+  
+  if (level === 'public') return null
+  if (level === 'user') return 'GqlAuthGuard'
+  if (level === 'admin') return 'GqlAuthAdminGuard'
+  
+  // For custom roles, convert to PascalCase and prepend 'GqlAuth' and append 'Guard'
+  // Example: 'custom' -> 'GqlAuthCustomGuard'
+  const pascalCase = level.charAt(0).toUpperCase() + level.slice(1).toLowerCase()
+  return `GqlAuth${pascalCase}Guard`
+}
+
+async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
+  console.log('=== DEBUG: getAllPrismaModels called ===')
   const prismaPath = getPrismaSchemaPath(tree)
   const prismaSchema = readPrismaSchema(tree, prismaPath)
   if (!prismaSchema) {
     console.error(`No Prisma schema found at ${prismaPath}`)
     return []
   }
+
+  // Debug: Test guard resolution
+  console.log('\n=== Testing guard resolution ===')
+  console.log({
+    'undefined': getGuardForAuthLevel(undefined),
+    'public': getGuardForAuthLevel('public'),
+    'user': getGuardForAuthLevel('user'),
+    'admin': getGuardForAuthLevel('admin'),
+    'custom': getGuardForAuthLevel('custom')
+  })
+  console.log('=============================\n')
 
   try {
     const dmmf = await getDMMF({ datamodel: prismaSchema })
@@ -36,19 +137,32 @@ async function getAllPrismaModels(tree: Tree) {
         ...field,
       }))
 
-      const modelObj = {
+      // Get auth config for this model
+      const authConfig = getCrudAuthForModel(prismaSchema, model.name)
+      console.log(`\n=== Auth config for ${model.name} ===`)
+      console.log(JSON.stringify(authConfig, null, 2))
+      console.log('============================\n')
+
+      // Create and return the model with auth configuration
+      const modelWithAuth: ModelType = {
         name: model.name,
         pluralName: pluralize(model.name),
         fields,
         primaryField: model.fields.find((f) => !f.isId && f.type === 'String')?.name || 'name',
-        // Add these properties that might be needed by the templates
         modelName: model.name,
         modelPropertyName: singularPropertyName,
         pluralModelName: pluralize(model.name),
         pluralModelPropertyName: pluralPropertyName,
+        auth: authConfig
       }
-      console.log('Model object:', JSON.stringify(modelObj, null, 2))
-      return modelObj
+      
+      console.log(`\n=== Final model data for ${model.name} ===`)
+      console.log(JSON.stringify({
+        name: modelWithAuth.name,
+        auth: modelWithAuth.auth
+      }, null, 2))
+      console.log('==============================\n')
+      return modelWithAuth
     })
   } catch (error) {
     console.error('Error parsing Prisma schema:', error)
@@ -132,22 +246,30 @@ function toKebabCase(str: string): string {
   return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
+interface ModelType {
+  name: string
+  pluralName: string
+  fields: ReadonlyArray<Record<string, unknown> & { name: string; type: string }>
+  primaryField: string
+  modelName: string
+  modelPropertyName: string
+  pluralModelName: string
+  pluralModelPropertyName: string
+  auth?: CrudAuthConfig
+}
+
 async function generateModelFiles(
   tree: Tree,
   dataAccessLibraryRoot: string,
   featureLibraryRoot: string,
-  models: Array<{
-    name: string
-    pluralName: string
-    fields: ReadonlyArray<Record<string, unknown> & { name: string; type: string }>
-    primaryField: string
-    modelName: string
-    modelPropertyName: string
-    pluralModelName: string
-    pluralModelPropertyName: string
-  }>,
+  models: ModelType[],
   name = 'generated-crud',
 ) {
+  console.log('=== DEBUG: generateModelFiles called ===')
+  console.log('Models received:', JSON.stringify(models.map(m => ({
+    name: m.name,
+    auth: m.auth
+  })), null, 2))
   console.log(`Generating files for ${models.length} models`)
   console.log('Name parameter in generateModelFiles:', name)
 
@@ -247,9 +369,28 @@ import {
   List${model.modelName}Input,
   Update${model.modelName}Input,
 } from '@${getNpmScope(tree)}/api/generated-crud/data-access'
-import {
-  GqlAuthAdminGuard,
-} from '@${getNpmScope(tree)}/api/auth/util'
+${(() => {
+  const usedGuards = new Set<string>()
+  
+  // Check which guards are actually used in the resolver
+  if (model.auth) {
+    Object.values(model.auth).forEach(level => {
+      if (level === 'public') return
+      const guard = getGuardForAuthLevel(level)
+      if (guard) {
+        usedGuards.add(guard)
+      }
+    })
+  } else {
+    // If no auth config, we use admin guard by default
+    usedGuards.add('GqlAuthAdminGuard')
+  }
+  
+  // Only include the import if we have guards to import
+  if (usedGuards.size === 0) return ''
+  
+  return `import { ${Array.from(usedGuards).sort().join(', ')} } from '@${getNpmScope(tree)}/api/auth/util'`
+})()}
 
 @Resolver(() => ${model.modelName})
 export class Admin${model.modelName}Resolver {
@@ -258,7 +399,10 @@ export class Admin${model.modelName}Resolver {
   ) {}
 
   @Query(() => [${model.modelName}], { nullable: true })
-  @UseGuards(GqlAuthAdminGuard)
+  ${(() => {
+    const guard = model.auth?.readMany ? getGuardForAuthLevel(model.auth.readMany) : 'GqlAuthAdminGuard';
+    return guard ? `@UseGuards(${guard})` : '';
+  })()}
   ${(model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
@@ -269,7 +413,10 @@ export class Admin${model.modelName}Resolver {
   }
 
   @Query(() => CorePaging, { nullable: true })
-  @UseGuards(GqlAuthAdminGuard)
+  ${(() => {
+    const guard = model.auth?.count ? getGuardForAuthLevel(model.auth.count) : 'GqlAuthAdminGuard';
+    return guard ? `@UseGuards(${guard})` : '';
+  })()}
   ${(model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1)}Count(
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
       model.modelName
@@ -279,7 +426,10 @@ export class Admin${model.modelName}Resolver {
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
-  @UseGuards(GqlAuthAdminGuard)
+  ${(() => {
+    const guard = model.auth?.readOne ? getGuardForAuthLevel(model.auth.readOne) : 'GqlAuthAdminGuard';
+    return guard ? `@UseGuards(${guard})` : '';
+  })()}
   ${model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string
@@ -288,7 +438,10 @@ export class Admin${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  @UseGuards(GqlAuthAdminGuard)
+  ${(() => {
+    const guard = model.auth?.create ? getGuardForAuthLevel(model.auth.create) : 'GqlAuthAdminGuard';
+    return guard ? `@UseGuards(${guard})` : '';
+  })()}
   create${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: Create${model.modelName}Input,
@@ -297,7 +450,10 @@ export class Admin${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  @UseGuards(GqlAuthAdminGuard)
+  ${(() => {
+    const guard = model.auth?.update ? getGuardForAuthLevel(model.auth.update) : 'GqlAuthAdminGuard';
+    return guard ? `@UseGuards(${guard})` : '';
+  })()}
   update${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
@@ -306,8 +462,11 @@ export class Admin${model.modelName}Resolver {
     return this.service.update${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(info, ${model.modelPropertyName}Id, input)
   }
 
-  @Mutation(() => Boolean, { nullable: true })
-  @UseGuards(GqlAuthAdminGuard)
+  @Mutation(() => ${model.modelName}, { nullable: true })
+  ${(() => {
+    const guard = model.auth?.delete ? getGuardForAuthLevel(model.auth.delete) : 'GqlAuthAdminGuard';
+    return guard ? `@UseGuards(${guard})` : '';
+  })()}
   delete${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
   ) {
