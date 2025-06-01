@@ -25,7 +25,6 @@ function parseCrudAuth(comment: string): CrudAuthConfig | null {
     return JSON.parse(match[1])
   } catch (e) {
     console.error('Error parsing @crudAuth:', e)
-    console.error('Comment:', comment)
     return null
   }
 }
@@ -69,12 +68,8 @@ function getCrudAuthForModel(schema: string, modelName: string): CrudAuthConfig 
   
   if (!authLine) return defaultConfig
   
-  console.log(`\\n=== Processing @crudAuth for ${modelName} ===`)
-  console.log(authLine.trim())
-  
   const config = parseCrudAuth(authLine)
   if (config) {
-    console.log('Successfully parsed config:', JSON.stringify(config, null, 2))
     return { ...defaultConfig, ...config }
   }
   
@@ -96,24 +91,12 @@ function getGuardForAuthLevel(level: string): string | null {
 }
 
 async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
-  console.log('=== DEBUG: getAllPrismaModels called ===')
   const prismaPath = getPrismaSchemaPath(tree)
   const prismaSchema = readPrismaSchema(tree, prismaPath)
   if (!prismaSchema) {
     console.error(`No Prisma schema found at ${prismaPath}`)
     return []
   }
-
-  // Debug: Test guard resolution
-  console.log('\n=== Testing guard resolution ===')
-  console.log({
-    'undefined': getGuardForAuthLevel(undefined),
-    'public': getGuardForAuthLevel('public'),
-    'user': getGuardForAuthLevel('user'),
-    'admin': getGuardForAuthLevel('admin'),
-    'custom': getGuardForAuthLevel('custom')
-  })
-  console.log('=============================\n')
 
   try {
     const dmmf = await getDMMF({ datamodel: prismaSchema })
@@ -139,9 +122,7 @@ async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
 
       // Get auth config for this model
       const authConfig = getCrudAuthForModel(prismaSchema, model.name)
-      console.log(`\n=== Auth config for ${model.name} ===`)
-      console.log(JSON.stringify(authConfig, null, 2))
-      console.log('============================\n')
+
 
       // Create and return the model with auth configuration
       const modelWithAuth: ModelType = {
@@ -156,12 +137,6 @@ async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
         auth: authConfig
       }
       
-      console.log(`\n=== Final model data for ${model.name} ===`)
-      console.log(JSON.stringify({
-        name: modelWithAuth.name,
-        auth: modelWithAuth.auth
-      }, null, 2))
-      console.log('==============================\n')
       return modelWithAuth
     })
   } catch (error) {
@@ -171,7 +146,7 @@ async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
 }
 
 async function createLibraries(tree: Tree) {
-  console.log(`Creating Generated CRUD libraries`)
+  // Create required libraries for CRUD
 
   // Create a data-access library for generated-crud
   const dataAccessLibraryRoot = `libs/api/generated-crud/data-access`
@@ -188,9 +163,8 @@ async function createLibraries(tree: Tree) {
         stdio: 'inherit',
         cwd: tree.root,
       })
-      console.log(`Successfully removed existing ${dataAccessProjectName}`)
     } catch {
-      console.log(`No existing ${dataAccessProjectName} found, continuing...`)
+      // No existing library found
     }
 
     // Create the data-access library
@@ -203,7 +177,6 @@ async function createLibraries(tree: Tree) {
         cwd: tree.root,
       },
     )
-    console.log(`Successfully created ${dataAccessProjectName}`)
 
     // Update TypeScript configurations for data-access library
     updateTypeScriptConfigs(tree, dataAccessLibraryRoot)
@@ -214,9 +187,8 @@ async function createLibraries(tree: Tree) {
         stdio: 'inherit',
         cwd: tree.root,
       })
-      console.log(`Successfully removed existing ${featureProjectName}`)
     } catch {
-      console.log(`No existing ${featureProjectName} found, continuing...`)
+      // No existing library found
     }
 
     // Create the feature library
@@ -229,7 +201,6 @@ async function createLibraries(tree: Tree) {
         cwd: tree.root,
       },
     )
-    console.log(`Successfully created ${featureProjectName}`)
 
     // Update TypeScript configurations for the feature library
     updateTypeScriptConfigs(tree, featureLibraryRoot)
@@ -265,17 +236,10 @@ async function generateModelFiles(
   models: ModelType[],
   name = 'generated-crud',
 ) {
-  console.log('=== DEBUG: generateModelFiles called ===')
-  console.log('Models received:', JSON.stringify(models.map(m => ({
-    name: m.name,
-    auth: m.auth
-  })), null, 2))
-  console.log(`Generating files for ${models.length} models`)
-  console.log('Name parameter in generateModelFiles:', name)
+  // Generate files for models
 
   // Ensure a name is not undefined or empty
   if (!name) {
-    console.log('Name parameter is empty, using default "generated-crud"')
     name = 'generated-crud'
   }
 
@@ -291,11 +255,6 @@ async function generateModelFiles(
     tmpl: '',
     type: 'data-access',
   }
-
-  console.log('Final data access template substitutions:', {
-    ...substitutions,
-    models: substitutions.models.length,
-  })
 
   // Generate the service file with the new name
   generateFiles(
@@ -316,8 +275,6 @@ async function generateModelFiles(
       ...substitutions,
     },
   )
-
-  // No longer creating public data-access files
 
   // Create feature module file for generated-crud
   const featureModuleContent = `import { Module } from '@nestjs/common'
@@ -352,7 +309,7 @@ ${models.map((model) => `export * from './lib/${toKebabCase(model.modelName)}.re
     )
 
     // Always create the resolver file
-    console.log(`Creating resolver file for ${model.modelName} at ${resolverFilePath}`)
+
 
     const resolverContent = `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
@@ -481,14 +438,9 @@ export class Admin${model.modelName}Resolver {
 
 export default async function (tree: Tree, schema: GenerateCrudGeneratorSchema) {
   try {
-    console.log('Starting CRUD generator')
-
     // If a name is not provided, set a default value
     if (!schema.name) {
-      console.log('Name property is missing, setting default value "generated-crud"')
       schema.name = 'generated-crud'
-    } else {
-      console.log(`Using provided name: "${schema.name}"`)
     }
 
     // Get all Prisma models
@@ -498,7 +450,7 @@ export default async function (tree: Tree, schema: GenerateCrudGeneratorSchema) 
       return
     }
 
-    console.log(`Found ${models.length} models`)
+
 
     // Create libraries if they don't exist
     const { dataAccessLibraryRoot, featureLibraryRoot } = await createLibraries(tree)
