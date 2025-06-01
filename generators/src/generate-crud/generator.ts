@@ -259,63 +259,59 @@ export class Admin${model.modelName}Resolver {
 
   @Query(() => [${model.modelName}], { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  admin${model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName}(
+  ${(model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
       model.modelName
     }Input,
   ) {
-    return this.service.admin${
-      model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName
-    }(info, input)
+    return this.service.${(model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1)}(info, input)
   }
 
   @Query(() => CorePaging, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  admin${model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName}Count(
+  ${(model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1)}Count(
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
       model.modelName
     }Input,
   ) {
-    return this.service.admin${
-      model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName
-    }Count(input)
+    return this.service.${(model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1)}Count(input)
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  admin${model.modelName}(
+  ${model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string
   ) {
-    return this.service.admin${model.modelName}(info, ${model.modelPropertyName}Id)
+    return this.service.${model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1)}(info, ${model.modelPropertyName}Id)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  adminCreate${model.modelName}(
+  create${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: Create${model.modelName}Input,
   ) {
-    return this.service.adminCreate${model.modelName}(info, input)
+    return this.service.create${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(info, input)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  adminUpdate${model.modelName}(
+  update${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
     @Args('input') input: Update${model.modelName}Input,
   ) {
-    return this.service.adminUpdate${model.modelName}(info, ${model.modelPropertyName}Id, input)
+    return this.service.update${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(info, ${model.modelPropertyName}Id, input)
   }
 
   @Mutation(() => Boolean, { nullable: true })
   @UseGuards(GqlAuthAdminGuard)
-  adminDelete${model.modelName}(
+  delete${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
   ) {
-    return this.service.adminDelete${model.modelName}(${model.modelPropertyName}Id)
+    return this.service.delete${model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1)}(${model.modelPropertyName}Id)
   }
 }
 `
