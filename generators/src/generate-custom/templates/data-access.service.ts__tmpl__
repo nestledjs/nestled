@@ -1,0 +1,21 @@
+import { Injectable } from '@nestjs/common'
+import { PrismaService } from '@<%= npmScope %>/api/data-access-db'
+import { ${modelName}, Prisma } from '@prisma/client'
+import { BasePrismaCrudService } from '@<%= npmScope %>/api/generated-crud/data-access'
+
+@Injectable()
+export class ${modelName}CustomDataAccessService extends BasePrismaCrudService<
+  ${modelName},
+  Prisma.${modelName}FindUniqueArgs,
+  Prisma.${modelName}FindFirstArgs,
+  Prisma.${modelName}FindManyArgs,
+  Prisma.${modelName}CreateArgs,
+  Prisma.${modelName}UpdateArgs,
+  Prisma.${modelName}DeleteArgs,
+  Prisma.${modelName}UpsertArgs,
+  Prisma.${modelName}CountArgs
+> {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma.${modelName.toLowerCase()})
+  }
+}

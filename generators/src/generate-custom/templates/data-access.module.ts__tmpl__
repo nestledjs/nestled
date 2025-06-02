@@ -1,0 +1,19 @@
+import { DynamicModule, Module } from '@nestjs/common'
+import { PrismaModule } from '@<%= npmScope %>/api/data-access-db'
+<%= models.map(m => `import { ${m}CustomDataAccessService } from './${m.toLowerCase()}.custom-data-access.service'`).join('\n') %>
+
+@Module({})
+export class CustomDataAccessModule {
+  static forRoot(): DynamicModule {
+    return {
+      module: CustomDataAccessModule,
+      imports: [PrismaModule],
+      providers: [
+        <%= models.map(m => `${m}CustomDataAccessService`).join(',\n        ') %>
+      ],
+      exports: [
+        <%= models.map(m => `${m}CustomDataAccessService`).join(',\n        ') %>
+      ],
+    }
+  }
+}

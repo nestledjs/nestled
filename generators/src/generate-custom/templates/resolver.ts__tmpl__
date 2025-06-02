@@ -1,0 +1,13 @@
+import { Resolver } from '@nestjs/graphql'
+import { ${modelName} } from '@prisma/client'
+import { Generated${modelName}Resolver } from '@<%= npmScope %>/api/generated-crud/feature'
+import { ${modelName}CustomDataAccessService } from '../data-access/${modelName.toLowerCase()}.custom-data-access.service'
+
+@Resolver(() => ${modelName})
+export class ${modelName}CustomResolver extends Generated${modelName}Resolver {
+  constructor(
+    protected readonly service: ${modelName}CustomDataAccessService,
+  ) {
+    super(service)
+  }
+}

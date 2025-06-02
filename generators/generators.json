@@ -5,6 +5,11 @@
       "schema": "./src/generate-all/schema.json",
       "description": "Generates complete API project with all configurations and libraries"
     },
+    "generate-custom": {
+      "factory": "./src/generate-custom/generator",
+      "schema": "./src/generate-custom/schema.json",
+      "description": "Creates custom extensions for all Prisma models"
+    },
     "api-libs": {
       "factory": "./src/api-libs/generator",
       "schema": "./src/api-libs/schema.json",
