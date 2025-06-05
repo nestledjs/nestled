@@ -143,6 +143,8 @@ async function main() {
 function generateModels(models: readonly any[], enums: readonly any[]): string {
   let output = `import { Field, ObjectType, Int, Float } from '@nestjs/graphql';\n`
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`
+  output += `import { Decimal } from '@prisma/client/runtime/library';\n`
+  output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
   // Ensure Prisma and enums are imported correctly
   const enumNames = enums.map((e) => e.name)
   const prismaTypesToImport = ['Prisma']
@@ -167,8 +169,10 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       let tsType = originalType
 
       if (field.kind === 'scalar') {
-        if (originalType === 'Int' || originalType === 'Float' || originalType === 'Decimal') {
+        if (originalType === 'Int' || originalType === 'Float') {
           tsType = 'number'
+        } else if (originalType === 'Decimal') {
+          tsType = 'Decimal'
         } else if (originalType === 'String' || originalType === 'ID') {
           tsType = 'string'
         } else if (originalType === 'Boolean') {
@@ -199,7 +203,8 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       if (isList) {
         let listItemGraphQLType = originalType
         if (originalType === 'Int') listItemGraphQLType = 'Int'
-        else if (originalType === 'Float' || originalType === 'Decimal') listItemGraphQLType = 'Float'
+        else if (originalType === 'Float') listItemGraphQLType = 'Float'
+        else if (originalType === 'Decimal') listItemGraphQLType = 'GraphQLDecimal'
         else if (originalType === 'Json') listItemGraphQLType = 'GraphQLJSONObject'
         else if (isEnum || isRelation)
           listItemGraphQLType = originalType // Assumes enum/type is registered with GraphQL
@@ -217,8 +222,10 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         decoratorType = `() => GraphQLJSONObject`
       } else if (originalType === 'Int') {
         decoratorType = `() => Int`
-      } else if (originalType === 'Float' || originalType === 'Decimal') {
+      } else if (originalType === 'Float') {
         decoratorType = `() => Float`
+      } else if (originalType === 'Decimal') {
+        decoratorType = `() => GraphQLDecimal`
       } else if (isEnum || isRelation) {
         // Non-list enum or relation
         decoratorType = `() => ${originalType}`
