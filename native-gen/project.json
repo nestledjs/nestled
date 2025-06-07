@@ -1,0 +1,19 @@
+{
+  "name": "native-gen",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "native-gen/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/native-gen",
+        "main": "native-gen/src/index.ts",
+        "tsConfig": "native-gen/tsconfig.lib.json",
+        "assets": ["native-gen/*.md"]
+      }
+    }
+  }
+}

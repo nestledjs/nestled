@@ -1,0 +1,19 @@
+{
+  "name": "web-gen",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "web-gen/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/web-gen",
+        "main": "web-gen/src/index.ts",
+        "tsConfig": "web-gen/tsconfig.lib.json",
+        "assets": ["web-gen/*.md"]
+      }
+    }
+  }
+}

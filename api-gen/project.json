@@ -1,0 +1,19 @@
+{
+  "name": "api-gen",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "api-gen/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/api-gen",
+        "main": "api-gen/src/index.ts",
+        "tsConfig": "api-gen/tsconfig.lib.json",
+        "assets": ["api-gen/*.md"]
+      }
+    }
+  }
+}
