@@ -1,0 +1,41 @@
+{
+  "name": "api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "generators/api/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/generators/api",
+        "main": "generators/api/src/index.ts",
+        "tsConfig": "generators/api/tsconfig.lib.json",
+        "assets": [
+          "generators/api/*.md",
+          {
+            "input": "./generators/api/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/api/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/api",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./generators/api",
+            "glob": "executors.json",
+            "output": "."
+          }
+        ]
+      }
+    }
+  }
+}

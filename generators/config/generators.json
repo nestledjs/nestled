@@ -1,7 +1,7 @@
 {
   "generators": {
     "init": {
-      "factory": "./src/init/generator#initGenerator",
+      "factory": "./src/init/generator.js",
       "schema": "./src/init/schema.json",
       "description": "Initialize the configuration."
     }

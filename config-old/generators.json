@@ -1,9 +1,0 @@
-{
-  "generators": {
-    "init": {
-      "factory": "./src/init/generator",
-      "schema": "./src/init/schema.json",
-      "description": "Simple project configuration tasks"
-    }
-  }
-}

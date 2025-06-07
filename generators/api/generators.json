@@ -1,0 +1,9 @@
+{
+  "generators": {
+    "setup": {
+      "factory": "./src/setup/generator.js",
+      "schema": "./src/setup/schema.json",
+      "description": "Set up all dependencies for the API"
+    }
+  }
+}

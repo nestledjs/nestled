@@ -16,12 +16,9 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@nestled/api-gen": ["api-gen/src/index.ts"],
+      "@nestled/api": ["generators/api/src/index.ts"],
       "@nestled/config": ["generators/config/src/index.ts"],
-      "@nestled/config-old": ["config-old/src/index.ts"],
-      "@nestled/generators-old": ["generators-old/src/index.ts"],
-      "@nestled/native-gen": ["native-gen/src/index.ts"],
-      "@nestled/web-gen": ["web-gen/src/index.ts"]
+      "@nestled/utils": ["generators/utils/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

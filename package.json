@@ -16,8 +16,10 @@
     "@nestjs/graphql": "latest",
     "@nestjs/platform-express": "^10.0.2",
     "@prisma/internals": "^6.6.0",
+    "@types/js-yaml": "^4.0.9",
     "enquirer": "^2.4.1",
     "graphql-type-json": "^0.3.2",
+    "js-yaml": "^4.1.0",
     "pluralize": "^8.0.0",
     "prisma-datamodel": "^1.34.12",
     "reflect-metadata": "^0.1.13",
@@ -76,20 +78,10 @@
   "nx": {
     "includedScripts": []
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@nestjs/core",
-      "@parcel/watcher",
-      "@prisma/client",
-      "@prisma/engines",
-      "@swc/core",
-      "core-js",
-      "esbuild",
-      "nx"
-    ]
-  },
   "prisma": {
     "schema": "libs/api/core/data-access/src/prisma/schema.prisma",
     "seed": "ts-node libs/api/core/data-access/scr/prisma/seed/seed.ts"
-  }
+  },
+  "type": "commonjs",
+  "main": "src/index.js"
 }

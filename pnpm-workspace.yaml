@@ -1,0 +1,20 @@
+packages:
+  - 'generators/**'
+
+onlyBuiltDependencies:
+  - '@apollo/protobufjs'
+  - '@nestjs/core'
+  - '@parcel/watcher'
+  - '@prisma/client'
+  - '@prisma/extension-optimize'
+  - '@prisma/engines'
+  - 'esbuild'
+  - 'nx'
+  - 'prisma'
+  - 'type-graphql'
+  - 'graphql-redis-subscriptions'
+  - 'ioredis'
+  - 'apollo-server-plugin-base'
+  - 'graphql-query-complexity'
+  - 'prisma-graphql-type-decimal'
+  - 'pluralize' 

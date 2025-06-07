@@ -1,37 +1,9 @@
 import { GeneratorCallback, Tree, updateJson } from '@nx/devkit'
 import { execSync } from 'child_process'
+import { removeWorkspacesFromPackageJson, updateTypeScriptConfig } from '../../../utils/generator-utils'
 
-function updateTypeScriptConfig(tree: Tree): void {
-  const tsConfigPath = 'tsconfig.base.json'
-  if (tree.exists(tsConfigPath)) {
-    const tsConfigContent = tree.read(tsConfigPath, 'utf-8')
-    if (tsConfigContent) {
-      const tsConfig = JSON.parse(tsConfigContent)
-
-      // Set baseUrl for path aliases
-      tsConfig.compilerOptions.baseUrl = '.'
-
-      // Remove emitDeclarationOnly if it exists
-      if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
-        delete tsConfig.compilerOptions.emitDeclarationOnly
-      }
-
-      // Write back the updated configuration
-      tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
-    }
-  }
-}
-
-function removeWorkspacesFromPackageJson(tree: Tree): void {
-  const packageJsonPath = 'package.json'
-  if (tree.exists(packageJsonPath)) {
-    updateJson(tree, packageJsonPath, (json) => {
-      if (json.workspaces) {
-        delete json.workspaces
-      }
-      return json
-    })
-  }
+interface InitGeneratorOptions {
+  hideDeprecationWarnings: boolean
 }
 
 function addCleanScript(tree: Tree): void {
@@ -46,7 +18,15 @@ function addCleanScript(tree: Tree): void {
   }
 }
 
-export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback> {
+export async function initConfigGenerator(
+  tree: Tree,
+  options: InitGeneratorOptions
+): Promise<GeneratorCallback> {
+  // Hide deprecation warnings if requested
+  if (options.hideDeprecationWarnings) {
+    process.env.NODE_NO_DEPRECATION = '1'
+  }
+
   // Update TypeScript configuration
   updateTypeScriptConfig(tree)
 
@@ -62,6 +42,11 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
       execSync('pnpm install', { stdio: 'inherit' })
     } catch (error) {
       console.error('Failed to run pnpm install:', error)
+    } finally {
+      // Restore default behavior
+      if (options.hideDeprecationWarnings) {
+        delete process.env.NODE_NO_DEPRECATION
+      }
     }
   }
 }

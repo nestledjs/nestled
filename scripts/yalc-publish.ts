@@ -10,7 +10,7 @@ if (!action || !libName) {
 }
 
 console.log('🔧 Running pnpm build to ensure dist is up to date...')
-execSync(`nx build ${libName}`, { stdio: 'inherit' })
+execSync(`nx build ${libName} --skip-nx-cache`, { stdio: 'inherit' })
 
 const distPath = resolve(__dirname, `../dist/generators/${libName}`)
 
