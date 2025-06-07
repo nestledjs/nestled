@@ -34,13 +34,11 @@ function removeWorkspacesFromPackageJson(tree: Tree): void {
   }
 }
 
-export async function initConfigGenerator(
-  tree: Tree,
-): Promise<GeneratorCallback> {
+export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Update TypeScript configuration
   updateTypeScriptConfig(tree)
 
-  // Remove workspaces section from package.json if it exists
+  // Remove the workspaces section from package.json if it exists
   removeWorkspacesFromPackageJson(tree)
 
   // Return a callback that will run after the generator completes
