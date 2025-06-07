@@ -61,13 +61,6 @@ function updatePackageJson(tree: Tree): void {
       }
     }
 
-    // Add GraphQL model generation script
-    if (!packageJson.scripts) {
-      packageJson.scripts = {}
-    }
-
-    packageJson.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
-
     // Write back the updated package.json
     tree.write(packageJsonPath, JSON.stringify(packageJson, null, 2))
   }

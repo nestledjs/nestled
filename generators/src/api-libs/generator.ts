@@ -1,4 +1,4 @@
-import { formatFiles, installPackagesTask, joinPathFragments, names, readJson, Tree } from '@nx/devkit'
+import { formatFiles, installPackagesTask, joinPathFragments, names, readJson, Tree, updateJson } from '@nx/devkit'
 import { libraryGenerator } from '@nx/nest/src/generators/library/library'
 import {
   generateTemplateFiles,
@@ -149,15 +149,21 @@ async function apiGenerator(tree: Tree, schema: ApiLibGeneratorSchema, type?: st
     const devDependencies = {}
 
     // Update package.json
-    const packageJson = readJson(tree, 'package.json')
-
-    // Add prisma schema path
-    packageJson.prisma = {
-      schema: 'libs/api/prisma/src/lib/schemas',
-      seed: 'ts-node libs/api/prisma/src/lib/seed/seed.ts',
-    }
-
-    tree.write('package.json', JSON.stringify(packageJson, null, 2))
+    updateJson(tree, 'package.json', (json) => {
+      // Add prisma schema path
+      json.prisma = {
+        schema: 'libs/api/prisma/src/lib/schemas',
+        seed: 'ts-node libs/api/prisma/src/lib/seed/seed.ts',
+      }
+      // Add GraphQL model generation script for the 'core' library
+      if (!json.scripts) {
+        json.scripts = {}
+      }
+      if (!json.scripts['generate:models']) {
+        json.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
+      }
+      return json
+    })
 
     // Use the shared installPlugins utility to install the necessary packages
     await installPlugins(tree, dependencies, devDependencies)

@@ -1,4 +1,10 @@
-import { formatFiles, installPackagesTask, joinPathFragments, readJson, Tree } from '@nx/devkit'
+import {
+  formatFiles,
+  installPackagesTask,
+  joinPathFragments,
+  readJson,
+  Tree,
+} from '@nx/devkit'
 import { execSync } from 'child_process'
 import { generateTemplateFiles, getNpmScope, installPlugins } from '../shared/utils'
 import { ApiCoreGeneratorSchema } from './schema'
