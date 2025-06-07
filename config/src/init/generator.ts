@@ -34,12 +34,27 @@ function removeWorkspacesFromPackageJson(tree: Tree): void {
   }
 }
 
+function addCleanScript(tree: Tree): void {
+  const packageJsonPath = 'package.json'
+  if (tree.exists(packageJsonPath)) {
+    updateJson(tree, packageJsonPath, (json) => {
+      json.scripts = json.scripts ?? {}
+      json.scripts.clean =
+        'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && pnpm install'
+      return json
+    })
+  }
+}
+
 export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Update TypeScript configuration
   updateTypeScriptConfig(tree)
 
   // Remove the workspaces section from package.json if it exists
   removeWorkspacesFromPackageJson(tree)
+
+  // Add the clean script to package.json
+  addCleanScript(tree)
 
   // Return a callback that will run after the generator completes
   return () => {

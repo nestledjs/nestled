@@ -47,6 +47,15 @@ describe('init-config generator', () => {
     expect(updatedPackageJson.workspaces).toBeUndefined()
   })
 
+  it('should add the clean script to package.json', async () => {
+    tree.write('package.json', JSON.stringify({ name: 'test-repo' }))
+    await initConfigGenerator(tree)
+    const updatedPackageJson = readJson(tree, 'package.json')
+    expect(updatedPackageJson.scripts.clean).toBe(
+      'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && pnpm install',
+    )
+  })
+
   it('should not throw if tsconfig.base.json does not exist', async () => {
     await expect(initConfigGenerator(tree)).resolves.toBeDefined()
   })
