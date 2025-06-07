@@ -1,0 +1,11 @@
+{
+  "name": "@nestled/config",
+  "version": "0.0.1",
+  "generators": "./generators.json",
+  "type": "commonjs",
+  "main": "./index.js",
+  "types": "./index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0"
+  }
+}

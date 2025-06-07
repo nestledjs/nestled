@@ -10,9 +10,9 @@ if (!action || !libName) {
 }
 
 console.log('🔧 Running pnpm build to ensure dist is up to date...')
-execSync('pnpm build', { stdio: 'inherit' })
+execSync(`nx build ${libName}`, { stdio: 'inherit' })
 
-const distPath = resolve(__dirname, `../dist/${libName}`)
+const distPath = resolve(__dirname, `../dist/generators/${libName}`)
 
 const command =
   action === 'push' ? `cd ${distPath} && yalc push` : action === 'publish' ? `cd ${distPath} && yalc publish` : null

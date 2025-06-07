@@ -1,0 +1,41 @@
+{
+  "name": "config",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "generators/config/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/generators/config",
+        "main": "generators/config/src/index.ts",
+        "tsConfig": "generators/config/tsconfig.lib.json",
+        "assets": [
+          "generators/config/*.md",
+          {
+            "input": "./generators/config/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/config/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/config",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./generators/config",
+            "glob": "executors.json",
+            "output": "."
+          }
+        ]
+      }
+    }
+  }
+}
