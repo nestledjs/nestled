@@ -1,7 +1,7 @@
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { Tree, readJson } from '@nx/devkit'
+import { readJson, Tree } from '@nx/devkit'
 import { execSync } from 'child_process'
-import { vi, describe, it, expect, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { initConfigGenerator } from './generator'
 
@@ -9,6 +9,7 @@ vi.mock('child_process')
 
 describe('init-config generator', () => {
   let tree: Tree
+  // @ts-expect-error Intellij vitest namespace issue
   const mockedExecSync = execSync as vi.MockedFunction<typeof execSync>
 
   beforeEach(() => {
@@ -64,9 +65,7 @@ describe('init-config generator', () => {
   })
 
   it('should handle error during pnpm install', async () => {
-    const consoleErrorSpy = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => {})
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockedExecSync.mockImplementation(() => {
       throw new Error('pnpm failed')
     })
@@ -77,10 +76,7 @@ describe('init-config generator', () => {
     expect(mockedExecSync).toHaveBeenCalledWith('pnpm install', {
       stdio: 'inherit',
     })
-    expect(consoleErrorSpy).toHaveBeenCalledWith(
-      'Failed to run pnpm install:',
-      expect.any(Error),
-    )
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to run pnpm install:', expect.any(Error))
     consoleErrorSpy.mockRestore()
   })
 })
