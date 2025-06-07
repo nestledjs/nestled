@@ -2,6 +2,7 @@ import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { readJson, Tree } from '@nx/devkit'
 import { execSync } from 'child_process'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import * as yaml from 'yaml'
 
 import { initConfigGenerator } from './generator'
 
@@ -87,5 +88,46 @@ describe('init-config generator', () => {
     })
     expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to run pnpm install:', expect.any(Error))
     consoleErrorSpy.mockRestore()
+  })
+
+  describe('pnpm-workspace.yaml', () => {
+    it('should create pnpm-workspace.yaml if it does not exist', async () => {
+      await initConfigGenerator(tree)
+
+      const workspaceYaml = tree.read('pnpm-workspace.yaml', 'utf-8')
+      expect(workspaceYaml).toBeDefined()
+      const parsedYaml = yaml.parse(workspaceYaml)
+      expect(parsedYaml.packages).toEqual(['apps/**', 'libs/**', 'tools/*'])
+    })
+
+    it('should add packages to an existing pnpm-workspace.yaml', async () => {
+      tree.write('pnpm-workspace.yaml', 'packages:\n  - some-other-package')
+      await initConfigGenerator(tree)
+
+      const workspaceYaml = tree.read('pnpm-workspace.yaml', 'utf-8')
+      const parsedYaml = yaml.parse(workspaceYaml)
+      expect(parsedYaml.packages).toEqual(
+        expect.arrayContaining(['apps/**', 'libs/**', 'tools/*', 'some-other-package']),
+      )
+    })
+
+    it('should not add duplicate packages to pnpm-workspace.yaml', async () => {
+      tree.write('pnpm-workspace.yaml', 'packages:\n  - apps/**\n  - existing-package')
+      await initConfigGenerator(tree)
+
+      const workspaceYaml = tree.read('pnpm-workspace.yaml', 'utf-8')
+      const parsedYaml = yaml.parse(workspaceYaml)
+      expect(parsedYaml.packages).toHaveLength(4)
+      expect(parsedYaml.packages).toEqual(expect.arrayContaining(['apps/**', 'libs/**', 'tools/*', 'existing-package']))
+    })
+
+    it('should handle an empty pnpm-workspace.yaml file', async () => {
+      tree.write('pnpm-workspace.yaml', '')
+      await initConfigGenerator(tree)
+
+      const workspaceYaml = tree.read('pnpm-workspace.yaml', 'utf-8')
+      const parsedYaml = yaml.parse(workspaceYaml)
+      expect(parsedYaml.packages).toEqual(['apps/**', 'libs/**', 'tools/*'])
+    })
   })
 })

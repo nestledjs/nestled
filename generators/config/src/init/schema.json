@@ -3,12 +3,6 @@
   "cli": "nx",
   "id": "config-init",
   "type": "object",
-  "properties": {
-    "hideDeprecationWarnings": {
-      "type": "boolean",
-      "description": "Hide deprecation warnings when running the generator.",
-      "default": true
-    }
-  },
+  "properties": {},
   "required": []
 }

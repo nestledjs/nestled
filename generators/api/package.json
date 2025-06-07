@@ -1,7 +1,7 @@
 {
   "name": "@nestled/api",
   "version": "0.0.1",
-  "private": true,
+  "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",

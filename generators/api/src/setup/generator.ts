@@ -38,6 +38,8 @@ function updatePnpmWorkspaceYaml(tree: Tree): void {
     'prisma',
     'ioredis',
     'prisma-graphql-type-decimal',
+    '@nestjs/core',
+    'type-graphql',
   ]
 
   for (const pkg of requiredPackages) {
