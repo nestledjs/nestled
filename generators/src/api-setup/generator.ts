@@ -51,7 +51,8 @@ function updatePackageJson(tree: Tree): void {
       'ioredis',
       'apollo-server-plugin-base',
       'graphql-query-complexity',
-      'pluralize'
+      'prisma-graphql-type-decimal',
+      'pluralize',
     ]
 
     for (const pkg of requiredPackages) {
