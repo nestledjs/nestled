@@ -1,6 +1,5 @@
 import { generateFiles, joinPathFragments, Tree, updateJson } from '@nx/devkit'
 import { execSync } from 'child_process'
-import { installPlugins } from './utils/install-plugins'
 import * as path from 'path'
 
 interface Schema {
@@ -26,9 +25,6 @@ export default async function (tree: Tree, schema: Schema) {
     // Wait a bit for files to be created
     await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    // Install required plugins
-    const installTask = await installPlugins(tree)
-
     // Update webpack.config.js to remove assets and add sourceMap: false
     const webpackConfigPath = 'apps/api/webpack.config.js'
     if (tree.exists(webpackConfigPath)) {
@@ -36,7 +32,7 @@ export default async function (tree: Tree, schema: Schema) {
         const webpackConfig = tree.read(webpackConfigPath, 'utf-8')
         if (!webpackConfig) {
           console.error('Failed to read webpack.config.js')
-          return installTask
+          return
         }
         // Remove assets line - improved regex
         // Match variations in quotes and spacing, ensure it's on its own line
@@ -99,8 +95,6 @@ export default async function (tree: Tree, schema: Schema) {
     } else {
       console.error(`Target path ${targetPath} does not exist after generation`)
     }
-
-    return installTask
   } catch (error) {
     console.error('Error generating API app:', error)
     throw error

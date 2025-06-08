@@ -27,7 +27,7 @@ function updatePnpmWorkspaceYaml(tree: Tree): void {
     pnpmWorkspace.onlyBuiltDependencies = []
   }
 
-  const requiredPackages = [
+  const packagesToBuild = [
     '@apollo/protobufjs',
     '@parcel/watcher',
     '@prisma/client',
@@ -40,9 +40,10 @@ function updatePnpmWorkspaceYaml(tree: Tree): void {
     'prisma-graphql-type-decimal',
     '@nestjs/core',
     'type-graphql',
+    'express',
   ]
 
-  for (const pkg of requiredPackages) {
+  for (const pkg of packagesToBuild) {
     if (!pnpmWorkspace.onlyBuiltDependencies.includes(pkg)) {
       pnpmWorkspace.onlyBuiltDependencies.push(pkg)
     }
@@ -74,6 +75,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       bcryptjs: '^2.4.3',
       'class-validator': '^0.14.0',
       'cookie-parser': '^1.4.6',
+      express: '^4.18.0',
       graphql: '^16.0.0',
       'graphql-subscriptions': '^2.0.0',
       joi: '^17.9.0',
@@ -96,6 +98,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@nx/webpack': '20.8.0',
       '@types/bcryptjs': '^2.4.2',
       '@types/cookie-parser': '^1.4.3',
+      '@types/express': '^4.17.17',
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^3.0.8',
       '@prisma/internals': '^5.0.0',
