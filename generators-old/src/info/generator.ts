@@ -10,7 +10,7 @@ Run the following commands in order to set up your project:
 nx g @nestled/generators:api-dependencies
 \`\`\`
 > Note: This will automatically run \`pnpm install\` to install all dependencies.
-> It will also set up Nx packages to version 20.8.0 for compatibility.
+> It will also set up Nx packages to version 21.1.3 for compatibility.
 
 \`\`\`sh
 nx g @nestled/generators:api-app
@@ -32,4 +32,4 @@ nx g @nestled/generators:workspace-setup
   tree.write('setup.md', setupContent)
 }
 
-export default infoGenerator 
+export default infoGenerator
