@@ -1,5 +1,5 @@
 {
-  "$schema": "http://json-schema.org/schema",
+  "$schema": "https://json-schema.org/schema",
   "cli": "nx",
   "$id": "ApiGen",
   "title": "API Generation Sequence",
@@ -32,4 +32,4 @@
     }
   },
   "required": []
-} 
+}
