@@ -553,15 +553,18 @@ export async function apiLibraryGenerator(
     tree.write(joinPathFragments(API_LIBS_SCOPE, '.gitkeep'), '')
   }
 
-  // Use explicit naming to avoid conflicts
-  await libraryGenerator(tree, {
-    name: libraryName,
-    directory: libraryRoot,
-    importPath: importPath,
-    skipFormat: true,
-    tags: tags,
-    strict: true,
-  })
+  // Only call libraryGenerator if the library does not already exist
+  if (!tree.exists(libraryRoot)) {
+    // Use explicit naming to avoid conflicts
+    await libraryGenerator(tree, {
+      name: libraryName,
+      directory: libraryRoot,
+      importPath: importPath,
+      skipFormat: true,
+      tags: tags,
+      strict: true,
+    })
+  }
 
   // Determine the correct template path for generateTemplateFiles
   let finalTemplatePath: string
@@ -573,14 +576,16 @@ export async function apiLibraryGenerator(
     finalTemplatePath = joinPathFragments(templateRootPath, schema.name)
   }
 
-  // Generate the template files on top of the Nx-generated structure
-  generateTemplateFiles({
-    tree,
-    schema,
-    libraryRoot,
-    templatePath: finalTemplatePath, // Pass the exact path
-    npmScope,
-  })
+  // Only generate template files if the path exists and is not empty
+  if (templateRootPath && tree.exists(finalTemplatePath)) {
+    generateTemplateFiles({
+      tree,
+      schema,
+      libraryRoot,
+      templatePath: finalTemplatePath, // Pass the exact path
+      npmScope,
+    })
+  }
 
   // Update TypeScript configurations for the library itself
   updateTypeScriptConfigs(tree, libraryRoot)

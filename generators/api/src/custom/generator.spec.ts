@@ -3,27 +3,39 @@ import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { execSync } from 'child_process'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import generator from './generator'
+import { apiLibraryGenerator } from '@nestled/utils'
 
 // Mock dependencies
 vi.mock('child_process')
 vi.mock('@prisma/internals')
-vi.mock('@nestled/utils')
+vi.mock('@nestled/utils', async () => {
+  const actual = await vi.importActual<typeof import('@nestled/utils')>('@nestled/utils')
+  return {
+    ...actual,
+    apiLibraryGenerator: vi.fn().mockResolvedValue(undefined),
+  }
+})
 vi.mock('@nx/js/src/utils/package-json/get-npm-scope')
 
 describe('custom-generator', () => {
   let tree: Tree
+  let utils: typeof import('@nestled/utils')
+  let getPrismaSchemaPath: typeof import('@nestled/utils').getPrismaSchemaPath
+  let readPrismaSchema: typeof import('@nestled/utils').readPrismaSchema
 
-  beforeEach(() => {
+  beforeEach(async () => {
     tree = createTreeWithEmptyWorkspace()
     vi.clearAllMocks()
 
-    // Mock implementations
+    utils = await import('@nestled/utils')
+    getPrismaSchemaPath = utils.getPrismaSchemaPath
+    readPrismaSchema = utils.readPrismaSchema
+
     vi.mocked(getNpmScope).mockReturnValue('test-scope')
-    vi.mocked(getPrismaSchemaPath).mockReturnValue('prisma/schema.prisma')
-    vi.mocked(readPrismaSchema).mockReturnValue(`
+    vi.spyOn(utils, 'getPrismaSchemaPath').mockReturnValue('prisma/schema.prisma')
+    vi.spyOn(utils, 'readPrismaSchema').mockReturnValue(`
       model User {
         id Int @id @default(autoincrement())
         name String
@@ -46,18 +58,22 @@ describe('custom-generator', () => {
 
   it('should generate files correctly', async () => {
     await generator(tree, { name: 'custom' })
+    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'custom' }, '', undefined, false)
+    // Check if files are generated in the new structure
+    expect(tree.exists('libs/api/custom/src/lib/default/user/user.service.ts')).toBe(true)
+    expect(tree.exists('libs/api/custom/src/lib/default/user/user.resolver.ts')).toBe(true)
+    expect(tree.exists('libs/api/custom/src/lib/default/user/user.module.ts')).toBe(true)
+    expect(tree.exists('libs/api/custom/src/index.ts')).toBe(true)
+    expect(tree.exists('libs/api/custom/src/lib/plugins')).toBe(true)
+  })
 
-    // Check if libraries were "created"
-    expect(execSync).toHaveBeenCalledWith(expect.stringContaining('nx g @nx/nest:library --name=api-custom-data-access'), expect.any(Object))
-    expect(execSync).toHaveBeenCalledWith(expect.stringContaining('nx g @nx/nest:library --name=api-custom-feature'), expect.any(Object))
-
-    // Check if files are generated
-    expect(tree.exists('libs/api/custom/data-access/src/lib/user.service.ts')).toBe(true)
-    expect(tree.exists('libs/api/custom/feature/src/lib/user.resolver.ts')).toBe(true)
-    expect(tree.exists('libs/api/custom/data-access/src/lib/api-custom-data-access.module.ts')).toBe(true)
-    expect(tree.exists('libs/api/custom/feature/src/lib/api-custom-feature.module.ts')).toBe(true)
-    expect(tree.exists('libs/api/custom/data-access/src/index.ts')).toBe(true)
-    expect(tree.exists('libs/api/custom/feature/src/index.ts')).toBe(true)
+  it('should be idempotent and not overwrite existing model folders', async () => {
+    await generator(tree, { name: 'custom' })
+    // Write a marker file to simulate user customization
+    tree.write('libs/api/custom/src/lib/default/user/custom.txt', 'do not overwrite')
+    await generator(tree, { name: 'custom' })
+    // The marker file should still exist
+    expect(tree.read('libs/api/custom/src/lib/default/user/custom.txt', 'utf-8')).toBe('do not overwrite')
   })
 
   it('should not generate files if no models are found', async () => {

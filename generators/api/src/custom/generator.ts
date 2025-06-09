@@ -1,10 +1,13 @@
 import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
+import { getPrismaSchemaPath, readPrismaSchema, apiLibraryGenerator } from '@nestled/utils'
 import { GenerateCustomGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'
+import { existsSync, mkdirSync, rmSync } from 'fs'
+import { join } from 'path'
+import { removeProjectConfiguration } from '@nx/devkit'
 
 interface ModelType {
   name: string
@@ -15,11 +18,6 @@ interface ModelType {
   modelPropertyName: string
   pluralModelName: string
   pluralModelPropertyName: string
-}
-
-// Helper function to convert camelCase to kebab-case
-function toKebabCase(str: string): string {
-  return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
 async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
@@ -72,78 +70,43 @@ async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
   }
 }
 
-async function createLibraries(tree: Tree, name: string) {
-  // Create required libraries for custom extensions
-  const dataAccessLibraryRoot = `libs/api/${name}/data-access`
-  const dataAccessProjectName = `api-${name}-data-access`
-
-  // Add feature library paths
-  const featureLibraryRoot = `libs/api/${name}/feature`
-  const featureProjectName = `api-${name}-feature`
-
-  try {
-    // First, try to remove the data-access library if it exists
-    try {
-      execSync(`nx g rm ${dataAccessProjectName} --forceRemove`, {
-        stdio: 'inherit',
-        cwd: tree.root,
-      })
-    } catch {
-      // No existing library found
-    }
-
-    // Create the data-access library
-    execSync(
-      `nx g @nx/nest:library --name=${dataAccessProjectName} --directory=libs/api/${name}/data-access --tags=scope:api,type:data-access --linter=eslint --strict --no-interactive --unitTestRunner=jest --importPath=@${getNpmScope(
-        tree,
-      )}/api/${name}/data-access`,
-      {
-        stdio: 'inherit',
-        cwd: tree.root,
-      },
-    )
-
-    // Try to remove the feature library if it exists
-    try {
-      execSync(`nx g rm ${featureProjectName} --forceRemove`, {
-        stdio: 'inherit',
-        cwd: tree.root,
-      })
-    } catch {
-      // No existing library found
-    }
-
-    // Create the feature library
-    execSync(
-      `nx g @nx/nest:library --name=${featureProjectName} --directory=libs/api/${name}/feature --tags=scope:api,type:feature --linter=eslint --strict --no-interactive --unitTestRunner=jest --importPath=@${getNpmScope(
-        tree,
-      )}/api/${name}/feature`,
-      {
-        stdio: 'inherit',
-        cwd: tree.root,
-      },
-    )
-
-    return { dataAccessLibraryRoot, featureLibraryRoot }
-  } catch (error) {
-    console.error('Error creating libraries:', error)
-    throw error
+async function ensureDirExists(tree: Tree, path: string) {
+  if (!tree.exists(path)) {
+    // Only create the directory, do not write .gitkeep
+    // Directory will be created when a file is written into it
   }
+}
+
+function toKebabCase(str: string): string {
+  return str
+    .replace(/([a-z])([A-Z])/g, '$1-$2')
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
+    .toLowerCase();
 }
 
 async function generateCustomFiles(
   tree: Tree,
-  dataAccessLibraryRoot: string,
-  featureLibraryRoot: string,
+  customLibraryRoot: string,
   models: ModelType[],
   npmScope: string,
-  name: string,
 ) {
-  // Generate custom service files for each model in data-access library
-  for (const model of models) {
-    const kebabModelName = toKebabCase(model.modelName)
+  const defaultDir = join(customLibraryRoot, 'src/lib/default')
+  const pluginsDir = join(customLibraryRoot, 'src/lib/plugins')
+  await ensureDirExists(tree, defaultDir)
+  await ensureDirExists(tree, pluginsDir)
+  // Only write .gitkeep in pluginsDir
+  tree.write(join(pluginsDir, '.gitkeep'), '')
 
-    // Generate custom service file in data-access library
+  for (const model of models) {
+    const kebabModel = toKebabCase(model.modelName)
+    const modelFolder = join(defaultDir, kebabModel)
+    if (tree.exists(modelFolder)) {
+      // Skip if model folder already exists
+      continue
+    }
+    await ensureDirExists(tree, modelFolder)
+
+    // Generate service.ts
     const serviceContent = `import { Injectable } from '@nestjs/common'
 
 @Injectable()
@@ -151,93 +114,77 @@ export class ${model.modelName}Service {
   // Empty for now; will override or extend later if needed
 }
 `
-    const servicePath = `${dataAccessLibraryRoot}/src/lib/${kebabModelName}.service.ts`
-    tree.write(servicePath, serviceContent)
+    tree.write(join(modelFolder, `${kebabModel}.service.ts`), serviceContent)
 
-    // Generate custom resolver file in feature library
-    const resolverContent = `import { Generated${model.modelName}Resolver } from '${npmScope}/api/generated-crud/feature'
-import { ${model.modelName}Service } from '${npmScope}/api/${name}/data-access'
-import { Resolver } from '@nestjs/graphql'
-import { Injectable } from '@nestjs/common'
+    // Generate resolver.ts
+    const resolverContent = `import { ${model.modelName}Service } from './${kebabModel}.service'
 import { ApiCrudDataAccessService } from '${npmScope}/api/generated-crud/data-access'
+import { Generated${model.modelName}Resolver } from '${npmScope}/api/generated-crud/feature'
+import { Injectable } from '@nestjs/common'
+import { Resolver } from '@nestjs/graphql'
+import { ${model.modelName} } from '${npmScope}/api/core/models'
 
-@Resolver()
+@Resolver(() => ${model.modelName})
 @Injectable()
 export class ${model.modelName}Resolver extends Generated${model.modelName}Resolver {
   constructor(
     private readonly customService: ${model.modelName}Service,
     private readonly generatedService: ApiCrudDataAccessService,
   ) {
-    super(generatedService);
+    super(generatedService)
   }
-  // Empty for now; will override or extend later if needed
 }
 `
-    const resolverPath = `${featureLibraryRoot}/src/lib/${kebabModelName}.resolver.ts`
-    tree.write(resolverPath, resolverContent)
+    tree.write(join(modelFolder, `${kebabModel}.resolver.ts`), resolverContent)
+
+    // Generate module.ts
+    const moduleContent = `import { DynamicModule, Module } from '@nestjs/common'
+import { ${model.modelName}Service } from './${kebabModel}.service'
+import { ${model.modelName}Resolver } from './${kebabModel}.resolver'
+
+@Module({})
+export class ${model.modelName}Module {
+  static forRoot(): DynamicModule {
+    return {
+      module: ${model.modelName}Module,
+      providers: [${model.modelName}Service, ${model.modelName}Resolver],
+      exports: [${model.modelName}Service, ${model.modelName}Resolver],
+    }
+  }
+}
+`
+    tree.write(join(modelFolder, `${kebabModel}.module.ts`), moduleContent)
   }
 
-  // Generate data-access module file
-  const dataAccessModuleContent = `import { Module } from '@nestjs/common'
-import { ApiCoreDataAccessModule } from '${npmScope}/api/core/data-access'
-${models
-  .map((model) => `import { ${model.modelName}Service } from './${toKebabCase(model.modelName)}.service'`)
-  .join('\n')}
-
-@Module({
-  imports: [ApiCoreDataAccessModule],
-  providers: [
-    ${models.map((model) => `${model.modelName}Service,`).join('\n    ')}
-  ],
-  exports: [
-    ${models.map((model) => `${model.modelName}Service,`).join('\n    ')}
-  ],
-})
-export class Api${name.charAt(0).toUpperCase() + name.slice(1)}DataAccessModule {}
-`
-  const dataAccessModulePath = `${dataAccessLibraryRoot}/src/lib/api-${name}-data-access.module.ts`
-  tree.write(dataAccessModulePath, dataAccessModuleContent)
-
-  // Generate feature module file
-  const featureModuleContent = `import { Module } from '@nestjs/common'
-import { Api${name.charAt(0).toUpperCase() + name.slice(1)}DataAccessModule } from '${npmScope}/api/${name}/data-access'
-${models
-  .map((model) => `import { ${model.modelName}Resolver } from './${toKebabCase(model.modelName)}.resolver'`)
-  .join('\n')}
-
-@Module({
-  imports: [Api${name.charAt(0).toUpperCase() + name.slice(1)}DataAccessModule],
-  providers: [
-    ${models.map((model) => `${model.modelName}Resolver,`).join('\n    ')}
-  ],
-  exports: [
-    ${models.map((model) => `${model.modelName}Resolver,`).join('\n    ')}
-  ],
-})
-export class Api${name.charAt(0).toUpperCase() + name.slice(1)}FeatureModule {}
-`
-  const featureModulePath = `${featureLibraryRoot}/src/lib/api-${name}-feature.module.ts`
-  tree.write(featureModulePath, featureModuleContent)
-
-  // Generate data-access index.ts file
-  const dataAccessIndexContent = `export * from './lib/api-${name}-data-access.module'
-${models.map((model) => `export * from './lib/${toKebabCase(model.modelName)}.service'`).join('\n')}
-`
-  const dataAccessIndexPath = `${dataAccessLibraryRoot}/src/index.ts`
-  tree.write(dataAccessIndexPath, dataAccessIndexContent)
-
-  // Generate feature index.ts file
-  const featureIndexContent = `export * from './lib/api-${name}-feature.module'
-${models.map((model) => `export * from './lib/${toKebabCase(model.modelName)}.resolver'`).join('\n')}
-`
-  const featureIndexPath = `${featureLibraryRoot}/src/index.ts`
-  tree.write(featureIndexPath, featureIndexContent)
+  // Update index.ts to export all model modules
+  const modelFolders = models.map(m => toKebabCase(m.modelName))
+  const indexContent = modelFolders.map(m => `export * from './lib/default/${m}/${m}.module'`).join('\n')
+  tree.write(join(customLibraryRoot, 'src/index.ts'), indexContent)
 }
 
 export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema) {
   try {
-    // If a name is not provided, use the default value from schema.json
     const name = schema.name || 'custom'
+    const customLibraryRoot = schema.directory
+      ? `libs/api/${schema.directory}/${name}`
+      : `libs/api/${name}`
+    const projectName = schema.directory
+      ? `api-${schema.directory.replace(/\//g, '-')}-${name}`
+      : `api-${name}`
+
+    // Overwrite logic: use Nx removeProjectConfiguration and then delete the directory
+    if (schema.overwrite && tree.exists(customLibraryRoot)) {
+      removeProjectConfiguration(tree, projectName)
+      if (existsSync(customLibraryRoot)) {
+        rmSync(customLibraryRoot, { recursive: true, force: true })
+      }
+    }
+
+    // Use the shared apiLibraryGenerator to create the custom library
+    await apiLibraryGenerator(tree, { name }, '', undefined, false)
+
+    await ensureDirExists(tree, join(customLibraryRoot, 'src/lib/default'))
+    await ensureDirExists(tree, join(customLibraryRoot, 'src/lib/plugins'))
 
     // Get all Prisma models
     const models = await getAllPrismaModels(tree)
@@ -246,12 +193,9 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
       return
     }
 
-    // Create libraries if they don't exist
-    const { dataAccessLibraryRoot, featureLibraryRoot } = await createLibraries(tree, name)
-
-    // Generate custom files
+    // Generate custom files per model
     const npmScope = `@${getNpmScope(tree)}`
-    await generateCustomFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models, npmScope, name)
+    await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
 
     // Format files
     await formatFiles(tree)
