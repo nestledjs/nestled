@@ -9,8 +9,16 @@ async function main() {
     process.exit(1)
   }
 
+  console.log('🗺️ Generating Nx project graph...')
+  execSync('pnpm nx graph --file=tmp.html --no-interactive --no-daemon', { stdio: 'inherit' })
+
   console.log('🔧 Building with dependencies...')
-  execSync(`pnpm nx run-many --target=build --projects=${libName} --with-deps --skip-nx-cache`, { stdio: 'inherit' })
+  try {
+    execSync(`pnpm nx run-many --target=build --projects=${libName} --with-deps --skip-nx-cache --no-daemon --output-style=static`, { stdio: 'inherit' })
+  } catch (e) {
+    console.error('🚨 Build failed:', e)
+    process.exit(1)
+  }
 
   const distPath = resolve(__dirname, `../dist/generators/${libName}`)
   const command =
