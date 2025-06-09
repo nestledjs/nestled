@@ -1,60 +1,9 @@
 import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
-import { execSync } from 'child_process'
-import * as yaml from 'js-yaml'
-import { removeWorkspacesFromPackageJson, updateTypeScriptConfig } from '@nestled/utils'
-
-interface PnpmWorkspace {
-  packages?: string[]
-  onlyBuiltDependencies?: string[]
-}
-
-function updatePnpmWorkspaceYaml(tree: Tree): void {
-  const pnpmWorkspacePath = 'pnpm-workspace.yaml'
-
-  let pnpmWorkspace: PnpmWorkspace
-
-  if (tree.exists(pnpmWorkspacePath)) {
-    const existingContent = tree.read(pnpmWorkspacePath, 'utf-8')
-    pnpmWorkspace = yaml.load(existingContent)
-  } else {
-    pnpmWorkspace = {
-      packages: ['apps/**', 'libs/**', 'tools/**'],
-    }
-  }
-
-  // Initialize onlyBuiltDependencies array if it doesn't exist
-  if (!pnpmWorkspace.onlyBuiltDependencies) {
-    pnpmWorkspace.onlyBuiltDependencies = []
-  }
-
-  const packagesToBuild = [
-    '@apollo/protobufjs',
-    '@parcel/watcher',
-    '@prisma/client',
-    '@prisma/extension-optimize',
-    '@prisma/engines',
-    'esbuild',
-    'nx',
-    'prisma',
-    'ioredis',
-    'prisma-graphql-type-decimal',
-    '@nestjs/core',
-    'type-graphql',
-    'express',
-  ]
-
-  for (const pkg of packagesToBuild) {
-    if (!pnpmWorkspace.onlyBuiltDependencies.includes(pkg)) {
-      pnpmWorkspace.onlyBuiltDependencies.push(pkg)
-    }
-  }
-
-  pnpmWorkspace.onlyBuiltDependencies.sort()
-
-  // Write back the updated configuration
-  const newContent = yaml.dump(pnpmWorkspace)
-  tree.write(pnpmWorkspacePath, newContent)
-}
+import {
+  pnpmInstallCallback,
+  removeWorkspacesFromPackageJson,
+  updatePnpmWorkspaceConfig,
+} from '@nestled/utils'
 
 export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
@@ -104,28 +53,33 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@prisma/internals': '^5.0.0',
       prisma: '^6.6.0',
       pg: '8.14.1',
-      'js-yaml': '^4.1.0',
-      '@types/js-yaml': '^4.0.9',
+      yaml: '^2.4.2',
     },
   )
 
-  // Update TypeScript configuration
-  updateTypeScriptConfig(tree)
-
   // Update pnpm-workspace.yaml with build dependencies
-  updatePnpmWorkspaceYaml(tree)
+  const packagesToBuild = [
+    '@apollo/protobufjs',
+    '@parcel/watcher',
+    '@prisma/client',
+    '@prisma/extension-optimize',
+    '@prisma/engines',
+    'esbuild',
+    'nx',
+    'prisma',
+    'ioredis',
+    'prisma-graphql-type-decimal',
+    '@nestjs/core',
+    'type-graphql',
+    'express',
+  ]
+  updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: packagesToBuild })
 
   // Remove the workspaces section from package.json if it exists
   removeWorkspacesFromPackageJson(tree)
 
   // Return a callback that will run after the generator completes
-  return () => {
-    try {
-      execSync('pnpm install', { stdio: 'inherit' })
-    } catch (error) {
-      console.error('Failed to run pnpm install:', error)
-    }
-  }
+  return pnpmInstallCallback()
 }
 
 export default apiSetupGenerator

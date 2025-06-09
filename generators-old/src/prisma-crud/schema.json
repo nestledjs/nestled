@@ -1,8 +1,0 @@
-{
-  "$schema": "https://json-schema.org/schema",
-  "$id": "PrismaCrud",
-  "title": "Create CRUD Library for each Prisma model",
-  "type": "object",
-  "properties": {},
-  "required": []
-}

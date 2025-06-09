@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "ApiAuth",
+  "title": "Create an API Auth Library",
+  "type": "object",
+  "properties": {
+    "overwrite": {
+      "type": "boolean",
+      "description": "Whether to overwrite existing libraries if they exist.",
+      "default": false
+    }
+  }
+}
