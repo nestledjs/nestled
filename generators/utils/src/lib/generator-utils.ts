@@ -303,7 +303,7 @@ export function updateTsConfigPaths(tree: Tree, importPath: string, libraryRoot:
       if (!json.compilerOptions.paths) {
         json.compilerOptions.paths = {}
       }
-      json.compilerOptions.paths[importPath] = [libraryRoot]
+      json.compilerOptions.paths[importPath] = [`${libraryRoot}/src/index.ts`]
       return json
     })
   }
@@ -471,50 +471,73 @@ export function pnpmInstallCallback(): GeneratorCallback {
 }
 
 export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, importPath }: AddToModulesOptions) {
+  console.log(`[addToModules] Called with modulePath=${modulePath}, moduleArrayName=${moduleArrayName}, moduleToAdd=${moduleToAdd}, importPath=${importPath}`)
   if (!tree.exists(modulePath)) {
-    console.error(`Can't find ${modulePath}`)
+    console.error(`[addToModules] Can't find ${modulePath}`)
     return
   }
 
   let fileContent = tree.read(modulePath)?.toString() || ''
 
-  // Add an import statement if it doesn't exist
-  if (!fileContent.includes(`import { ${moduleToAdd} }`)) {
-    const importStatement = `import { ${moduleToAdd} } from '${importPath}';\n`
-    fileContent = importStatement + fileContent
+  // If the importPath is a deep path under /lib/default/, replace it with the barrel file path
+  const customBarrelMatch = importPath.match(/^(@[\w-]+\/api\/custom)(?:\/lib\/default\/[\w-]+\/[\w-]+\.module)?$/)
+  let barrelImportPath = importPath
+  if (customBarrelMatch) {
+    barrelImportPath = customBarrelMatch[1]
   }
 
-  const arrayRegex = new RegExp(`export const ${moduleArrayName} = \\[([\\s\\S]*?)\\];`, 'm')
-  const match = fileContent.match(arrayRegex)
-
-  if (match) {
-    const arrayContent = match[1]
-    if (!arrayContent.includes(moduleToAdd)) {
-      const modules = arrayContent
-        .split(',')
-        .map((m) => m.trim())
-        .filter((m) => m.length > 0)
-      modules.push(moduleToAdd)
-      const formattedArray = `export const ${moduleArrayName} = [\n  ${modules.join(',\n  ')},\n];`
-      fileContent = fileContent.replace(arrayRegex, formattedArray)
+  // Find all existing imports from the barrel file
+  const importRegex = new RegExp(`import {([^}]*)} from ['"]${barrelImportPath}['"];?`, 'm')
+  const existingImport = fileContent.match(importRegex)
+  if (existingImport) {
+    const importedModules = existingImport[1].split(',').map(m => m.trim()).filter(Boolean)
+    if (!importedModules.includes(moduleToAdd)) {
+      const newImport = `import { ${[...importedModules, moduleToAdd].join(', ')} } from '${barrelImportPath}';`
+      fileContent = fileContent.replace(importRegex, newImport)
+      console.log(`[addToModules] Updated import from barrel: ${barrelImportPath}`)
     }
   } else {
-    // Fallback for different array formatting
-    const arrayStart = fileContent.indexOf(`export const ${moduleArrayName} = [`)
-    if (arrayStart !== -1) {
-      const arrayEnd = fileContent.indexOf('];', arrayStart)
-      if (arrayEnd !== -1) {
-        const arrayContent = fileContent.slice(arrayStart + `export const ${moduleArrayName} = [`.length, arrayEnd)
+    const importStatement = `import { ${moduleToAdd} } from '${barrelImportPath}';\n`
+    fileContent = importStatement + fileContent
+    console.log(`[addToModules] Added new import from barrel: ${barrelImportPath}`)
+  }
 
-        if (!arrayContent.includes(moduleToAdd)) {
-          const isEmpty = arrayContent.trim() === ''
-          const moduleEntry = isEmpty ? `\n  ${moduleToAdd}` : `,\n  ${moduleToAdd}`
-          const before = fileContent.slice(0, arrayEnd)
-          const after = fileContent.slice(arrayEnd)
-          fileContent = before + moduleEntry + after
-        }
+  // Robustly add the module to the array, regardless of formatting/comments
+  const arrayRegex = new RegExp(`export const ${moduleArrayName}\\s*=\\s*\\[(.*?)\\][\\s;]*`, 'ms')
+  const match = fileContent.match(arrayRegex)
+  if (match) {
+    const arrayContent = match[1]
+    console.log(`[addToModules] Found array content for ${moduleArrayName}:\n${arrayContent}`)
+    // Split by lines, filter out comments and whitespace, and remove trailing commas
+    const lines = arrayContent.split(/\n|,/)
+      .map(line => line.trim())
+      .filter(line => line && !line.startsWith('//'))
+      .map(line => line.replace(/,$/, ''))
+    console.log(`[addToModules] Parsed lines:`, lines)
+    // Only add if not already present (ignore comments)
+    if (!lines.includes(moduleToAdd)) {
+      console.log(`[addToModules] Module ${moduleToAdd} not found in array, adding it.`)
+      // Find the position of the closing bracket
+      const arrayStart = match.index! + match[0].indexOf('[') + 1
+      const arrayEnd = match.index! + match[0].lastIndexOf(']')
+      let before = fileContent.slice(0, arrayEnd).replace(/(\s*\n)*$/, '')
+      const after = fileContent.slice(arrayEnd)
+      const hasRealModules = lines.length > 0
+      // Ensure the last real module ends with a comma
+      if (hasRealModules) {
+        // Find the last module in the array (ignoring comments/whitespace)
+        const lastModuleRegex = /(\w+)\s*$/m
+        before = before.replace(lastModuleRegex, (m) => m.endsWith(',') ? m : m + ',')
       }
+      const insert = `  ${moduleToAdd},\n`
+      const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
+      fileContent = newContent
+      console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`)
+    } else {
+      console.log(`[addToModules] Module ${moduleToAdd} already present in ${moduleArrayName}`)
     }
+  } else {
+    console.error(`[addToModules] Could not find array export for ${moduleArrayName}`)
   }
 
   tree.write(modulePath, fileContent)
@@ -599,7 +622,7 @@ export async function apiLibraryGenerator(
     addToModules({
       tree,
       modulePath: `apps/api/src/app.module.ts`,
-      moduleArrayName: 'appModules',
+      moduleArrayName: 'coreModules',
       moduleToAdd,
       importPath,
     })

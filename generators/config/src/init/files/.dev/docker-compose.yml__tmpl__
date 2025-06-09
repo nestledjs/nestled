@@ -1,7 +1,8 @@
-version: '3'
+version: '3.8'
 services:
   postgres:
     image: postgres
+    container_name: dev_postgres
     ports:
       - 5432:5432
     environment:
@@ -10,8 +11,17 @@ services:
       POSTGRES_PASSWORD: prisma
     volumes:
       - ./tmp/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
   mailhog:
     image: mailhog/mailhog
+    container_name: dev_mailhog
     ports:
       - '1025:1025'
       - '8025:8025'
+    restart: unless-stopped

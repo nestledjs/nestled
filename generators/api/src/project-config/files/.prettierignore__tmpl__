@@ -1,4 +1,0 @@
-/dist
-/coverage
-/.nx/cache
-/libs/api/core/data-access/src/prisma/prisma-generated/

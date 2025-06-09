@@ -45,11 +45,6 @@
       "schema": "./src/generate-crud/schema.json",
       "description": "Generate CRUD libraries based on Prisma models"
     },
-    "project-config": {
-      "factory": "./src/project-config/generator.js",
-      "schema": "./src/project-config/schema.json",
-      "description": "Project configuration generator"
-    },
     "mailer": {
       "factory": "./src/mailer/generator.js",
       "schema": "./src/mailer/schema.json",

@@ -1,6 +1,6 @@
 import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema, apiLibraryGenerator } from '@nestled/utils'
+import { getPrismaSchemaPath, readPrismaSchema, apiLibraryGenerator, addToModules } from '@nestled/utils'
 import { GenerateCustomGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
@@ -138,22 +138,26 @@ export class ${model.modelName}Resolver extends Generated${model.modelName}Resol
     tree.write(join(modelFolder, `${kebabModel}.resolver.ts`), resolverContent)
 
     // Generate module.ts
-    const moduleContent = `import { DynamicModule, Module } from '@nestjs/common'
+    const moduleContent = `import { Module } from '@nestjs/common'
 import { ${model.modelName}Service } from './${kebabModel}.service'
 import { ${model.modelName}Resolver } from './${kebabModel}.resolver'
 
-@Module({})
-export class ${model.modelName}Module {
-  static forRoot(): DynamicModule {
-    return {
-      module: ${model.modelName}Module,
-      providers: [${model.modelName}Service, ${model.modelName}Resolver],
-      exports: [${model.modelName}Service, ${model.modelName}Resolver],
-    }
-  }
-}
+@Module({
+  providers: [${model.modelName}Service, ${model.modelName}Resolver],
+  exports: [${model.modelName}Service, ${model.modelName}Resolver],
+})
+export class ${model.modelName}Module {}
 `
     tree.write(join(modelFolder, `${kebabModel}.module.ts`), moduleContent)
+
+    // Add to defaultModules in app.module.ts__tmpl__
+    addToModules({
+      tree,
+      modulePath: 'apps/api/src/app.module.ts',
+      moduleArrayName: 'defaultModules',
+      moduleToAdd: `${model.modelName}Module`,
+      importPath: `@${npmScope}/api/custom/lib/default/${kebabModel}/${kebabModel}.module`,
+    })
   }
 
   // Update index.ts to export all model modules
@@ -172,11 +176,15 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
       ? `api-${schema.directory.replace(/\//g, '-')}-${name}`
       : `api-${name}`
 
-    // Overwrite logic: use Nx removeProjectConfiguration and then delete the directory
+    // Overwrite logic: use Nx workspace:remove to fully remove the project and all references
     if (schema.overwrite && tree.exists(customLibraryRoot)) {
-      removeProjectConfiguration(tree, projectName)
-      if (existsSync(customLibraryRoot)) {
-        rmSync(customLibraryRoot, { recursive: true, force: true })
+      try {
+        execSync(`nx g @nx/workspace:remove ${projectName} --forceRemove`, {
+          stdio: 'inherit',
+          cwd: tree.root,
+        })
+      } catch (error) {
+        console.warn(`Failed to remove existing library ${projectName}:`, error)
       }
     }
 
@@ -194,7 +202,7 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
     }
 
     // Generate custom files per model
-    const npmScope = `@${getNpmScope(tree)}`
+    const npmScope = `${getNpmScope(tree)}`
     await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
 
     // Format files

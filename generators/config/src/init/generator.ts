@@ -5,6 +5,9 @@ import {
   removeWorkspacesFromPackageJson,
   updatePnpmWorkspaceConfig,
 } from '@nestled/utils'
+import { logger } from '@nx/devkit'
+import { generateFiles } from '@nx/devkit'
+import * as path from 'path'
 
 function updateTypeScriptConfig(tree: Tree): void {
   const tsConfigPath = 'tsconfig.base.json'
@@ -30,10 +33,192 @@ function updateTypeScriptConfig(tree: Tree): void {
   }
 }
 
+function ensureAndUpdateESLintConfig(tree: Tree) {
+  const eslintConfigPath = 'eslint.config.mjs'
+  let created = false
+  let eslintConfigContent = ''
+  if (!tree.exists(eslintConfigPath)) {
+    // Create a default ESLint config if it doesn't exist
+    eslintConfigContent = `const eslintConfig = {
+  depConstraints: [
+    {
+      sourceTag: 'scope:api',
+      onlyDependOnLibsWithTags: ['scope:api', 'scope:shared'],
+      allow: ['^libs/api/', '^libs/shared/']
+    },
+    {
+      sourceTag: 'scope:web',
+      onlyDependOnLibsWithTags: ['scope:web', 'scope:web-ui', 'scope:shared'],
+      allow: ['^libs/web/', '^libs/shared/']
+    },
+    {
+      sourceTag: 'scope:expo',
+      onlyDependOnLibsWithTags: ['scope:expo', 'scope:expo-ui', 'scope:shared'],
+      allow: ['^libs/expo/', '^libs/shared/']
+    },
+    {
+      sourceTag: 'scope:shared',
+      onlyDependOnLibsWithTags: ['scope:shared'],
+      allow: ['^libs/shared/']
+    }
+  ]
+}
+export default eslintConfig;
+`
+    tree.write(eslintConfigPath, eslintConfigContent)
+    created = true
+  } else {
+    // Update existing config
+    const content = tree.read(eslintConfigPath, 'utf-8')
+    const updatedContent = content.replace(
+      /depConstraints:\s*\[.*?\]/,
+      `depConstraints: [
+        {
+          sourceTag: 'scope:api',
+          onlyDependOnLibsWithTags: ['scope:api', 'scope:shared'],
+          allow: ['^libs/api/', '^libs/shared/']
+        },
+        {
+          sourceTag: 'scope:web',
+          onlyDependOnLibsWithTags: ['scope:web', 'scope:web-ui', 'scope:shared'],
+          allow: ['^libs/web/', '^libs/shared/']
+        },
+        {
+          sourceTag: 'scope:expo',
+          onlyDependOnLibsWithTags: ['scope:expo', 'scope:expo-ui', 'scope:shared'],
+          allow: ['^libs/expo/', '^libs/shared/']
+        },
+        {
+          sourceTag: 'scope:shared',
+          onlyDependOnLibsWithTags: ['scope:shared'],
+          allow: ['^libs/shared/']
+        }
+      ]`
+    )
+    tree.write(eslintConfigPath, updatedContent)
+  }
+  if (created) {
+    logger.info('✅ Created eslint.config.mjs with project boundary rules')
+  } else {
+    logger.info('✅ Updated ESLint configuration with project boundary rules')
+  }
+}
+
+function handlePrettierConfig(tree: Tree) {
+  const filesDir = path.join(__dirname, 'files')
+  generateFiles(tree, filesDir, '.', { dot: '.' })
+  logger.info('✅ Generated .prettierrc and .prettierignore files')
+}
+
+function handleEnvExample(tree: Tree) {
+  const filesDir = path.join(__dirname, 'files')
+  generateFiles(tree, filesDir, '.', { dot: '.' })
+  logger.info('✅ Generated .env.example file')
+
+  // Copy .env.example to .env if .env does not exist
+  const envExamplePath = '.env.example'
+  const envPath = '.env'
+  if (!tree.exists(envPath) && tree.exists(envExamplePath)) {
+    const envExampleContent = tree.read(envExamplePath, 'utf-8')
+    tree.write(envPath, envExampleContent)
+    logger.info('✅ Created .env from .env.example')
+  }
+}
+
+function handleDockerFilesAndScripts(tree: Tree) {
+  // Generate Docker files in .dev directory
+  const filesDir = path.join(__dirname, 'files', '.dev')
+  generateFiles(tree, filesDir, '.dev', { dot: '.' })
+  logger.info('✅ Generated Dockerfile and docker-compose.yml in .dev directory')
+
+  // Add only Docker-related scripts to package.json
+  const packageJsonPath = 'package.json'
+  if (tree.exists(packageJsonPath)) {
+    const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
+    packageJsonContent.scripts = {
+      ...packageJsonContent.scripts,
+      'docker:build': 'docker build -f .dev/Dockerfile -t muzebook/api .',
+      'docker:down': 'docker compose -f .dev/docker-compose.yml down',
+      'docker:push': 'docker push muzebook/api',
+      'docker:run': 'docker run -it -p 8000:3000 muzebook/api',
+      'docker:up': 'docker compose -f .dev/docker-compose.yml up',
+    }
+    tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))
+    logger.info('✅ Added Docker scripts to package.json')
+  }
+}
+
+function ensureEnvInGitignore(tree: Tree) {
+  const gitignorePath = '.gitignore'
+  if (tree.exists(gitignorePath)) {
+    let gitignoreContent = tree.read(gitignorePath, 'utf-8')
+    if (!gitignoreContent.includes('.env')) {
+      gitignoreContent += '\n.env\n'
+      tree.write(gitignorePath, gitignoreContent)
+      logger.info('✅ Added .env to .gitignore')
+    } else {
+      logger.info('ℹ️  .env already exists in .gitignore')
+    }
+  } else {
+    tree.write(gitignorePath, '.env\n')
+    logger.info('✅ Created .gitignore and added .env')
+  }
+}
+
+function addNxScriptsToPackageJson(tree: Tree) {
+  const nxScripts = {
+    affected: 'nx affected',
+    'affected:apps': 'nx affected:apps',
+    'affected:build': 'nx affected:build',
+    'affected:dep-graph': 'nx affected:dep-graph',
+    'affected:e2e': 'nx affected:e2e',
+    'affected:libs': 'nx affected:libs',
+    'affected:lint': 'nx affected:lint',
+    'affected:test': 'nx affected:test',
+    'dep-graph': 'nx dep-graph',
+    'build:api': 'nx build api --prod --skip-nx-cache',
+    'dev:api': 'nx serve api --skip-nx-cache',
+    format: 'nx format:write',
+    'format:check': 'nx format:check',
+    'format:write': 'nx format:write',
+    help: 'nx help',
+    lint: 'nx workspace-lint && nx lint',
+    nx: 'nx',
+    'pre-commit:lint': 'nx format:write --uncommitted & nx affected --target eslint --uncommitted',
+    test: 'nx test',
+    'test:api': 'pnpm nx e2e api-e2e',
+    'test:ci': 'pnpm test:api',
+    update: 'nx migrate latest',
+    'workspace-generator': 'nx workspace-generator',
+  }
+  const packageJsonPath = 'package.json'
+  if (tree.exists(packageJsonPath)) {
+    const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
+    packageJsonContent.scripts = {
+      ...packageJsonContent.scripts,
+      ...nxScripts,
+    }
+    tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))
+    logger.info('✅ Added Nx-related scripts to package.json')
+  }
+}
+
 export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback> {
   addDependenciesToPackageJson(tree, {}, { yaml: '^2.4.2' })
   // Update TypeScript configuration
   updateTypeScriptConfig(tree)
+
+  // Ensure and update ESLint configuration
+  ensureAndUpdateESLintConfig(tree)
+
+  // Always handle Prettier configuration
+  handlePrettierConfig(tree)
+
+  // Always handle .env.example generation
+  handleEnvExample(tree)
+
+  // Always handle Docker files and scripts
+  handleDockerFilesAndScripts(tree)
 
   // Remove the workspaces section from package.json if it exists
   removeWorkspacesFromPackageJson(tree)
@@ -47,6 +232,12 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
 
   // Create or update pnpm-workspace.yaml
   updatePnpmWorkspaceConfig(tree, { packages: ['apps/**', 'libs/**', 'tools/*'] })
+
+  // Always ensure .env is in .gitignore
+  ensureEnvInGitignore(tree)
+
+  // Always add Nx-related scripts
+  addNxScriptsToPackageJson(tree)
 
   // Return a callback that will run after the generator completes
   return pnpmInstallCallback()
