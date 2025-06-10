@@ -33,6 +33,8 @@ describe('init-config generator', () => {
     expect(updatedTsConfig.compilerOptions.baseUrl).toBe('.')
     expect(updatedTsConfig.compilerOptions.emitDeclarationOnly).toBeUndefined()
     expect(updatedTsConfig.compilerOptions.someOtherOption).toBe('value')
+    expect(updatedTsConfig.compilerOptions.moduleResolution).toBe('node')
+    expect(updatedTsConfig.compilerOptions.module).toBe('esnext')
   })
 
   it('should remove workspaces from package.json', async () => {

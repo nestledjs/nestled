@@ -33,6 +33,8 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'graphql-fields': '^2.0.3',
       'class-transformer': '^0.5.1',
       '@paljs/plugins': '^4.1.0',
+      'graphql-redis-subscriptions': '^2.7.0',
+      ioredis: '^5.6.1',
     },
     {
       nx: '21.1.3',
@@ -46,6 +48,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^3.0.8',
       '@prisma/internals': '^6.9.0',
+      '@prisma/extension-optimize': '1.1.8',
       prisma: '^6.9.0',
       pg: '8.14.1',
       yaml: '^2.4.2',

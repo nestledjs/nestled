@@ -21,6 +21,15 @@ function updateTypeScriptConfig(tree: Tree): void {
       }
       // Set baseUrl for path aliases
       tsConfig.compilerOptions.baseUrl = '.'
+      // Set rootDir
+      tsConfig.compilerOptions.rootDir = '.'
+      // Enable decorator metadata
+      tsConfig.compilerOptions.experimentalDecorators = true
+      tsConfig.compilerOptions.emitDecoratorMetadata = true
+      // Set moduleResolution to node
+      tsConfig.compilerOptions.moduleResolution = 'node'
+      // Set module to esnext
+      tsConfig.compilerOptions.module = 'esnext'
 
       // Remove emitDeclarationOnly if it exists
       if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
