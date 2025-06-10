@@ -11,7 +11,7 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
     // Add prisma schema path
     json.prisma = {
       schema: 'libs/api/prisma/src/lib/schemas',
-      seed: 'ts-node libs/api/prisma/src/lib/seed/seed.ts',
+      seed: 'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
     }
     // Add GraphQL model generation script for the 'core' library
     if (!json.scripts) {
@@ -39,7 +39,8 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
       json.scripts['prisma:migrate'] = 'pnpm prisma migrate save && pnpm prisma migrate up'
     }
     if (!json.scripts['prisma:seed']) {
-      json.scripts['prisma:seed'] = 'pnpm prisma seed'
+      json.scripts['prisma:seed'] =
+        'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts'
     }
     if (!json.scripts['prisma:studio']) {
       json.scripts['prisma:studio'] = 'pnpm nx prisma:studio api'

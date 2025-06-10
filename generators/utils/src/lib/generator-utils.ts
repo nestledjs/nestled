@@ -610,12 +610,6 @@ export async function apiLibraryGenerator(
     finalTemplatePath = templateRootPath
   }
 
-  // Add logging for debugging template path resolution
-  console.log(`[apiLibraryGenerator] templateRootPath: ${templateRootPath}`)
-  console.log(`[apiLibraryGenerator] schema.name: ${schema.name}`)
-  console.log(`[apiLibraryGenerator] type: ${type}`)
-  console.log(`[apiLibraryGenerator] finalTemplatePath: ${finalTemplatePath}`)
-  console.log(`[apiLibraryGenerator] tree.exists(finalTemplatePath): ${tree.exists(finalTemplatePath)}`)
   try {
     const parentDir = path.dirname(finalTemplatePath)
     console.log('[apiLibraryGenerator] Contents of parent directory:', parentDir, fs.readdirSync(parentDir))
