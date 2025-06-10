@@ -1,12 +1,10 @@
-import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
+import { addDependenciesToPackageJson, generateFiles, GeneratorCallback, logger, Tree } from '@nx/devkit'
 import {
   addScriptToPackageJson,
   pnpmInstallCallback,
   removeWorkspacesFromPackageJson,
   updatePnpmWorkspaceConfig,
 } from '@nestled/utils'
-import { logger } from '@nx/devkit'
-import { generateFiles } from '@nx/devkit'
 import * as path from 'path'
 
 function updateTypeScriptConfig(tree: Tree): void {
@@ -30,6 +28,8 @@ function updateTypeScriptConfig(tree: Tree): void {
       tsConfig.compilerOptions.moduleResolution = 'node'
       // Set module to esnext
       tsConfig.compilerOptions.module = 'esnext'
+      // Set esModuleInterop
+      tsConfig.compilerOptions.esModuleInterop = true
 
       // Remove emitDeclarationOnly if it exists
       if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
@@ -102,7 +102,7 @@ export default eslintConfig;
           onlyDependOnLibsWithTags: ['scope:shared'],
           allow: ['^libs/shared/']
         }
-      ]`
+      ]`,
     )
     tree.write(eslintConfigPath, updatedContent)
   }

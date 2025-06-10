@@ -13,6 +13,7 @@ vi.mock('@nx/devkit', async () => {
 vi.mock('@nestled/utils', () => ({
   pnpmInstallCallback: vi.fn(() => () => {}),
   removeWorkspacesFromPackageJson: vi.fn(),
+  updatePnpmWorkspaceConfig: vi.fn(),
 }))
 
 import { configSetupGenerator } from './generator'

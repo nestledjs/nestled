@@ -300,7 +300,7 @@ describe('generator-utils', () => {
       writeJson(tree, 'tsconfig.base.json', {
         compilerOptions: { paths: {} },
       })
-      updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib/src/index.ts')
+      updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib')
       const tsConfig = readJson(tree, 'tsconfig.base.json')
       expect(tsConfig.compilerOptions.paths['@my/lib']).toEqual(['libs/my-lib/src/index.ts'])
     })
@@ -309,13 +309,13 @@ describe('generator-utils', () => {
       writeJson(tree, 'tsconfig.base.json', {
         compilerOptions: {},
       })
-      updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib/src/index.ts')
+      updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib')
       const tsConfig = readJson(tree, 'tsconfig.base.json')
       expect(tsConfig.compilerOptions.paths['@my/lib']).toEqual(['libs/my-lib/src/index.ts'])
     })
 
     it('should not throw if tsconfig.base.json does not exist', () => {
-      expect(() => updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib/src/index.ts')).not.toThrow()
+      expect(() => updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib')).not.toThrow()
     })
   })
 

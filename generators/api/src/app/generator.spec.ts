@@ -43,15 +43,30 @@ module.exports = composePlugins(withNx(), (config) => {
   };
 });`
         )
+        // Add a mock tsconfig.app.json file with the compiler options we want to remove
+        tree.write('apps/api/tsconfig.app.json', JSON.stringify({
+          extends: '../../tsconfig.base.json',
+          compilerOptions: {
+            module: 'commonjs',
+            moduleResolution: 'node',
+            emitDecoratorMetadata: true,
+            experimentalDecorators: true,
+            outDir: '../../dist/out-tsc',
+            declaration: true,
+            types: ['node']
+          },
+          exclude: ['jest.config.ts', '**/*.spec.ts', '**/*.test.ts'],
+          include: ['**/*.ts']
+        }, null, 2))
         tree.write('apps/api/src/app/.gitkeep', '')
         tree.write('apps/api/src/assets/.gitkeep', '')
       }
       return ''
     })
 
-    vi.spyOn(console, 'log').mockImplementation(() => {})
-    vi.spyOn(console, 'warn').mockImplementation(() => {})
-    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(console, 'log').mockImplementation(() => { /* empty */ })
+    vi.spyOn(console, 'warn').mockImplementation(() => { /* empty */ })
+    vi.spyOn(console, 'error').mockImplementation(() => { /* empty */ })
   })
 
   afterEach(() => {
@@ -84,5 +99,15 @@ module.exports = composePlugins(withNx(), (config) => {
     expect(tree.exists('apps/api/src/app.module.ts')).toBe(true)
     expect(tree.exists('apps/api/src/applogger.middleware.ts')).toBe(true)
     expect(tree.exists('apps/api/src/main.ts')).toBe(true)
+
+    // Verify that the compiler options are removed from tsconfig.app.json
+    const tsConfig = JSON.parse(tree.read('apps/api/tsconfig.app.json', 'utf-8'))
+    expect(tsConfig.compilerOptions.module).toBeUndefined()
+    expect(tsConfig.compilerOptions.moduleResolution).toBeUndefined()
+    expect(tsConfig.compilerOptions.emitDecoratorMetadata).toBeUndefined()
+    expect(tsConfig.compilerOptions.experimentalDecorators).toBeUndefined()
+    // Verify that other compiler options are preserved
+    expect(tsConfig.compilerOptions.outDir).toBe('../../dist/out-tsc')
+    expect(tsConfig.compilerOptions.declaration).toBe(true)
   })
-}) 
+})
