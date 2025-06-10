@@ -6,6 +6,7 @@ import { Client } from 'pg'
 export const MAX_RETRIES = 30
 export const WORKSPACE_NAME = basename(process.cwd())
 export const DATABASE_URL = process.env.DATABASE_URL
+export const DOCKER_COMPOSE_FILE = '.dev/docker-compose.yml'
 
 export function log(...msg) {
   console.log(`[${WORKSPACE_NAME}]`, ...msg)
@@ -39,7 +40,7 @@ export function ensureDockerIsRunning() {
 
 export function isDockerComposeRunning(): boolean {
   try {
-    const res = execSync('docker compose top', {
+    const res = execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} top`, {
       stdio: ['inherit', 'inherit'],
     })
 
@@ -60,7 +61,7 @@ export async function ensureDockerComposeIsRunning() {
   }
 
   try {
-    execSync('docker compose up -d', { stdio: 'ignore' })
+    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, { stdio: 'ignore' })
     await waitForConnection()
     log('Docker Compose Started')
   } catch (e) {

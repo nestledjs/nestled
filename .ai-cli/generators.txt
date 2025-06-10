@@ -170,7 +170,7 @@ async function generateCore(tree: Tree, schema: ApiCoreGeneratorSchema, type: st
 
   // Run the Nx generator command directly
   execSync(
-    `nx g @nx/nest:library --name=${libraryName} --directory=${libraryRoot} --importPath=${importPath} --tags=scope:api,type:${type} --strict --no-interactive --linter=eslint --unitTestRunner=jest`,
+    `nx g @nx/nest:library --name=${libraryName} --directory=${libraryRoot} --importPath=${importPath} --tags=scope:api,type:${type} --strict --no-interactive --linter=eslint --unitTestRunner=vitest`,
     {
       stdio: 'inherit',
       cwd: tree.root,
@@ -311,7 +311,7 @@ async function apiCrudGenerator(tree: Tree, schema: ApiCrud, type: string) {
 
     // Run the Nx generator command directly
     execSync(
-      `nx g @nx/nest:library --name=${projectName} --directory=${filePath} --tags=scope:${schema.directory},type:${type} --linter=eslint --strict --no-interactive --unitTestRunner=jest`,
+      `nx g @nx/nest:library --name=${projectName} --directory=${filePath} --tags=scope:${schema.directory},type:${type} --linter=eslint --strict --no-interactive --unitTestRunner=vitest`,
       {
         stdio: 'inherit',
         cwd: tree.root,

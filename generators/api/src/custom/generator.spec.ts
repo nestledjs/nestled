@@ -5,7 +5,7 @@ import { execSync } from 'child_process'
 import { getDMMF } from '@prisma/internals'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import generator from './generator'
-import { apiLibraryGenerator } from '@nestled/utils'
+import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
 
 // Mock dependencies
 vi.mock('child_process')
@@ -15,27 +15,22 @@ vi.mock('@nestled/utils', async () => {
   return {
     ...actual,
     apiLibraryGenerator: vi.fn().mockResolvedValue(undefined),
+    getPrismaSchemaPath: vi.fn(),
+    readPrismaSchema: vi.fn(),
   }
 })
 vi.mock('@nx/js/src/utils/package-json/get-npm-scope')
 
 describe('custom-generator', () => {
   let tree: Tree
-  let utils: typeof import('@nestled/utils')
-  let getPrismaSchemaPath: typeof import('@nestled/utils').getPrismaSchemaPath
-  let readPrismaSchema: typeof import('@nestled/utils').readPrismaSchema
 
   beforeEach(async () => {
     tree = createTreeWithEmptyWorkspace()
     vi.clearAllMocks()
 
-    utils = await import('@nestled/utils')
-    getPrismaSchemaPath = utils.getPrismaSchemaPath
-    readPrismaSchema = utils.readPrismaSchema
-
     vi.mocked(getNpmScope).mockReturnValue('test-scope')
-    vi.spyOn(utils, 'getPrismaSchemaPath').mockReturnValue('prisma/schema.prisma')
-    vi.spyOn(utils, 'readPrismaSchema').mockReturnValue(`
+    vi.mocked(getPrismaSchemaPath).mockReturnValue('prisma/schema.prisma')
+    vi.mocked(readPrismaSchema).mockReturnValue(`
       model User {
         id Int @id @default(autoincrement())
         name String
@@ -81,4 +76,4 @@ describe('custom-generator', () => {
     await generator(tree, { name: 'custom' })
     expect(execSync).not.toHaveBeenCalled()
   })
-}) 
+})

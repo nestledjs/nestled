@@ -172,7 +172,7 @@ async function createLibraries(tree: Tree) {
 
     // Create the data-access library
     execSync(
-      `nx g @nx/nest:library --name=${dataAccessProjectName} --directory=libs/api/generated-crud/data-access --tags=scope:api,type:data-access --linter=eslint --strict --no-interactive --unitTestRunner=jest --importPath=@${getNpmScope(
+      `nx g @nx/nest:library --name=${dataAccessProjectName} --directory=libs/api/generated-crud/data-access --tags=scope:api,type:data-access --linter=eslint --strict --no-interactive --unitTestRunner=vitest --importPath=@${getNpmScope(
         tree,
       )}/api/generated-crud/data-access`,
       {
@@ -196,7 +196,7 @@ async function createLibraries(tree: Tree) {
 
     // Create the feature library
     execSync(
-      `nx g @nx/nest:library --name=${featureProjectName} --directory=libs/api/generated-crud/feature --tags=scope:api,type:feature --linter=eslint --strict --no-interactive --unitTestRunner=jest --importPath=@${getNpmScope(
+      `nx g @nx/nest:library --name=${featureProjectName} --directory=libs/api/generated-crud/feature --tags=scope:api,type:feature --linter=eslint --strict --no-interactive --unitTestRunner=vitest --importPath=@${getNpmScope(
         tree,
       )}/api/generated-crud/feature`,
       {

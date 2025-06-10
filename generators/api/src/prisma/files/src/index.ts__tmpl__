@@ -1,1 +1,1 @@
-export * from './prisma/prisma-generated'
+export * from './lib/prisma-generated'

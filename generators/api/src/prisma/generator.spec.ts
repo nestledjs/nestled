@@ -1,4 +1,4 @@
-import { formatFiles, installPackagesTask, Tree, updateJson } from '@nx/devkit'
+import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { describe, expect, it, vi } from 'vitest'
 import { apiLibraryGenerator } from '@nestled/utils'
@@ -41,7 +41,9 @@ describe('prisma generator', () => {
       seed: 'ts-node libs/api/prisma/src/lib/seed/seed.ts',
     })
 
-    expect(packageJson.scripts['generate:models']).toBe('ts-node libs/api/core/data-access/src/scripts/generate-models.ts')
+    expect(packageJson.scripts['generate:models']).toBe(
+      'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/core/models/src/lib/generate-models.ts',
+    )
 
     expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'prisma', overwrite: false }, expect.any(String))
     expect(formatFiles).toHaveBeenCalledWith(tree)
@@ -55,4 +57,4 @@ describe('prisma generator', () => {
 
     expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'prisma', overwrite: true }, expect.any(String))
   })
-}) 
+})

@@ -11,15 +11,12 @@ import * as workspace from '@nx/workspace'
 import { projectRootDir } from '@nx/workspace'
 import { getPrismaSchemaPath, parsePrismaSchema, readPrismaSchema } from '../shared/utils'
 import { execSync } from 'child_process'
-import { Linter } from '@nx/eslint'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
 function normalizeOptions(tree, options, projectType, type: string) {
   const directoryName = options.directory ? names(options.directory).fileName : ''
   const name = names(options.name).fileName
-  const projectDirectory = directoryName
-    ? `${directoryName}/${name}/${type}`
-    : `${name}/${type}`
+  const projectDirectory = directoryName ? `${directoryName}/${name}/${type}` : `${name}/${type}`
   const projectName = `${directoryName}-${name}-${type}`.replace(/\//g, '-')
   const projectRoot = `${projectRootDir(projectType)}/${projectDirectory}`
 
@@ -66,11 +63,11 @@ async function apiCrudGenerator(tree: Tree, schema: ApiCrud, type: string) {
 
     // Run the Nx generator command directly
     execSync(
-      `nx g @nx/nest:library --name=${projectName} --directory=${filePath} --tags=scope:${schema.directory},type:${type} --linter=eslint --strict --no-interactive --unitTestRunner=jest`,
+      `nx g @nx/nest:library --name=${projectName} --directory=${filePath} --tags=scope:${schema.directory},type:${type} --linter=eslint --strict --no-interactive --unitTestRunner=vitest`,
       {
         stdio: 'inherit',
         cwd: tree.root,
-      }
+      },
     )
 
     // Wait a bit for files to be created and project.json to be updated
@@ -112,12 +109,7 @@ async function apiCrudGenerator(tree: Tree, schema: ApiCrud, type: string) {
       modelFields,
     }
 
-    generateFiles(
-      tree,
-      joinPathFragments(__dirname, `./files/${type}`),
-      libraryRoot,
-      variables,
-    )
+    generateFiles(tree, joinPathFragments(__dirname, `./files/${type}`), libraryRoot, variables)
     await formatFiles(tree)
     return () => {
       installPackagesTask(tree)

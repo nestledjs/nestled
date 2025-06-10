@@ -42,77 +42,6 @@ function updateTypeScriptConfig(tree: Tree): void {
   }
 }
 
-function ensureAndUpdateESLintConfig(tree: Tree) {
-  const eslintConfigPath = 'eslint.config.mjs'
-  let created = false
-  let eslintConfigContent = ''
-  if (!tree.exists(eslintConfigPath)) {
-    // Create a default ESLint config if it doesn't exist
-    eslintConfigContent = `const eslintConfig = {
-  depConstraints: [
-    {
-      sourceTag: 'scope:api',
-      onlyDependOnLibsWithTags: ['scope:api', 'scope:shared'],
-      allow: ['^libs/api/', '^libs/shared/']
-    },
-    {
-      sourceTag: 'scope:web',
-      onlyDependOnLibsWithTags: ['scope:web', 'scope:web-ui', 'scope:shared'],
-      allow: ['^libs/web/', '^libs/shared/']
-    },
-    {
-      sourceTag: 'scope:expo',
-      onlyDependOnLibsWithTags: ['scope:expo', 'scope:expo-ui', 'scope:shared'],
-      allow: ['^libs/expo/', '^libs/shared/']
-    },
-    {
-      sourceTag: 'scope:shared',
-      onlyDependOnLibsWithTags: ['scope:shared'],
-      allow: ['^libs/shared/']
-    }
-  ]
-}
-export default eslintConfig;
-`
-    tree.write(eslintConfigPath, eslintConfigContent)
-    created = true
-  } else {
-    // Update existing config
-    const content = tree.read(eslintConfigPath, 'utf-8')
-    const updatedContent = content.replace(
-      /depConstraints:\s*\[.*?\]/,
-      `depConstraints: [
-        {
-          sourceTag: 'scope:api',
-          onlyDependOnLibsWithTags: ['scope:api', 'scope:shared'],
-          allow: ['^libs/api/', '^libs/shared/']
-        },
-        {
-          sourceTag: 'scope:web',
-          onlyDependOnLibsWithTags: ['scope:web', 'scope:web-ui', 'scope:shared'],
-          allow: ['^libs/web/', '^libs/shared/']
-        },
-        {
-          sourceTag: 'scope:expo',
-          onlyDependOnLibsWithTags: ['scope:expo', 'scope:expo-ui', 'scope:shared'],
-          allow: ['^libs/expo/', '^libs/shared/']
-        },
-        {
-          sourceTag: 'scope:shared',
-          onlyDependOnLibsWithTags: ['scope:shared'],
-          allow: ['^libs/shared/']
-        }
-      ]`,
-    )
-    tree.write(eslintConfigPath, updatedContent)
-  }
-  if (created) {
-    logger.info('✅ Created eslint.config.mjs with project boundary rules')
-  } else {
-    logger.info('✅ Updated ESLint configuration with project boundary rules')
-  }
-}
-
 function handlePrettierConfig(tree: Tree) {
   const filesDir = path.join(__dirname, 'files')
   generateFiles(tree, filesDir, '.', { dot: '.', tmpl: '' })
@@ -216,9 +145,6 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
   addDependenciesToPackageJson(tree, { '@prisma/internals': '^5.14.0' }, { yaml: '^2.4.2' })
   // Update TypeScript configuration
   updateTypeScriptConfig(tree)
-
-  // Ensure and update ESLint configuration
-  ensureAndUpdateESLintConfig(tree)
 
   // Always handle Prettier configuration
   handlePrettierConfig(tree)

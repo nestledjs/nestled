@@ -247,7 +247,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       output += `  ${decorator}\n`
       // Make all fields optional regardless of isRequired value
       const optionalMarker = '?' // Always add question mark
-      const fieldTypeSuffix = isList ? '[]' : ' | null' // Always add null for non-list fields
+      //const fieldTypeSuffix = isList ? '[]' : ' | null' // Always add null for non-list fields
 
       // For relations, use Partial<Type> only if it's not required and can be partially loaded
       // Otherwise, if it's a relation, it's either the full Type or Type[] or null/undefined.

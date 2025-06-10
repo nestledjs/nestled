@@ -18,7 +18,34 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
       json.scripts = {}
     }
     if (!json.scripts['generate:models']) {
-      json.scripts['generate:models'] = 'ts-node libs/api/core/data-access/src/scripts/generate-models.ts'
+      json.scripts['generate:models'] =
+        'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/core/models/src/lib/generate-models.ts'
+    }
+
+    // Add all requested prisma scripts if not already present
+    if (!json.scripts['prisma:apply']) {
+      json.scripts['prisma:apply'] = 'pnpm prisma:format && pnpm prisma db push'
+    }
+    if (!json.scripts['prisma:db-push']) {
+      json.scripts['prisma:db-push'] = 'pnpm prisma db push'
+    }
+    if (!json.scripts['prisma:format']) {
+      json.scripts['prisma:format'] = 'pnpm prisma format'
+    }
+    if (!json.scripts['prisma:generate']) {
+      json.scripts['prisma:generate'] = 'pnpm prisma generate'
+    }
+    if (!json.scripts['prisma:migrate']) {
+      json.scripts['prisma:migrate'] = 'pnpm prisma migrate save && pnpm prisma migrate up'
+    }
+    if (!json.scripts['prisma:seed']) {
+      json.scripts['prisma:seed'] = 'pnpm prisma seed'
+    }
+    if (!json.scripts['prisma:studio']) {
+      json.scripts['prisma:studio'] = 'pnpm nx prisma:studio api'
+    }
+    if (!json.scripts['prisma:reset']) {
+      json.scripts['prisma:reset'] = 'pnpm prisma migrate reset && pnpm prisma:seed'
     }
     return json
   })
