@@ -106,13 +106,13 @@ export default eslintConfig;
 
 function handlePrettierConfig(tree: Tree) {
   const filesDir = path.join(__dirname, 'files')
-  generateFiles(tree, filesDir, '.', { dot: '.' })
+  generateFiles(tree, filesDir, '.', { dot: '.', tmpl: '' })
   logger.info('✅ Generated .prettierrc and .prettierignore files')
 }
 
 function handleEnvExample(tree: Tree) {
   const filesDir = path.join(__dirname, 'files')
-  generateFiles(tree, filesDir, '.', { dot: '.' })
+  generateFiles(tree, filesDir, '.', { dot: '.', tmpl: '' })
   logger.info('✅ Generated .env.example file')
 
   // Copy .env.example to .env if .env does not exist
@@ -128,7 +128,7 @@ function handleEnvExample(tree: Tree) {
 function handleDockerFilesAndScripts(tree: Tree) {
   // Generate Docker files in .dev directory
   const filesDir = path.join(__dirname, 'files', '.dev')
-  generateFiles(tree, filesDir, '.dev', { dot: '.' })
+  generateFiles(tree, filesDir, '.dev', { dot: '.', tmpl: '' })
   logger.info('✅ Generated Dockerfile and docker-compose.yml in .dev directory')
 
   // Add only Docker-related scripts to package.json
@@ -204,7 +204,7 @@ function addNxScriptsToPackageJson(tree: Tree) {
 }
 
 export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback> {
-  addDependenciesToPackageJson(tree, {}, { yaml: '^2.4.2' })
+  addDependenciesToPackageJson(tree, { '@prisma/internals': '^5.14.0' }, { yaml: '^2.4.2' })
   // Update TypeScript configuration
   updateTypeScriptConfig(tree)
 

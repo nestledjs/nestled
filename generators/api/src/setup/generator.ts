@@ -1,9 +1,5 @@
 import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
-import {
-  pnpmInstallCallback,
-  removeWorkspacesFromPackageJson,
-  updatePnpmWorkspaceConfig,
-} from '@nestled/utils'
+import { pnpmInstallCallback, updatePnpmWorkspaceConfig } from '@nestled/utils'
 
 export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
@@ -32,10 +28,9 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'passport-jwt': '^4.0.1',
       'reflect-metadata': '^0.1.13',
       rxjs: '^7.8.0',
-      'type-graphql': '^1.1.1',
+      'type-graphql': '^2.0.0-rc.2',
       'graphql-scalars': '^1.22.4',
       'graphql-fields': '^2.0.3',
-      '@prisma/internals': '^5.0.0',
       'class-transformer': '^0.5.1',
       '@paljs/plugins': '^4.1.0',
     },
@@ -50,8 +45,8 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@types/express': '^4.17.17',
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^3.0.8',
-      '@prisma/internals': '^5.0.0',
-      prisma: '^6.6.0',
+      '@prisma/internals': '^6.9.0',
+      prisma: '^6.9.0',
       pg: '8.14.1',
       yaml: '^2.4.2',
     },
@@ -74,9 +69,6 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
     'express',
   ]
   updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: packagesToBuild })
-
-  // Remove the workspaces section from package.json if it exists
-  removeWorkspacesFromPackageJson(tree)
 
   // Return a callback that will run after the generator completes
   return pnpmInstallCallback()

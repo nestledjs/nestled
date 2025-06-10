@@ -4,6 +4,11 @@
       "factory": "./src/init/generator.js",
       "schema": "./src/init/schema.json",
       "description": "Initialize the configuration."
+    },
+    "setup": {
+      "factory": "./src/setup/generator.js",
+      "schema": "./src/setup/schema.json",
+      "description": "Install @prisma/internals as a dependency."
     }
   }
 } 

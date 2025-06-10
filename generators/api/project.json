@@ -33,6 +33,11 @@
             "input": "./generators/api",
             "glob": "executors.json",
             "output": "."
+          },
+          {
+            "input": "./generators/api/src",
+            "glob": "*/files/**/*",
+            "output": "./src"
           }
         ]
       }

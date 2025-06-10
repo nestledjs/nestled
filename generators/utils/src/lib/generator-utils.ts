@@ -19,7 +19,9 @@ import {
   GenerateTemplateOptions,
   ModelType,
 } from './generator-types'
-import { libraryGenerator } from '@nx/nest/src/generators/library/library'
+import { libraryGenerator } from '@nx/nest'
+import * as fs from 'fs'
+import * as path from 'path'
 
 export function removeWorkspacesFromPackageJson(tree: Tree): void {
   const packageJsonPath = 'package.json'
@@ -454,7 +456,12 @@ export function updatePnpmWorkspaceConfig(
         onlyBuiltSeq.add(pkg)
       }
     }
-    onlyBuiltSeq.items.sort((a, b) => a.localeCompare(b))
+    // Sort only if all items are strings
+    onlyBuiltSeq.items.sort((a, b) => {
+      const aStr = typeof a === 'string' ? a : String(a)
+      const bStr = typeof b === 'string' ? b : String(b)
+      return aStr.localeCompare(bStr)
+    })
   }
 
   tree.write(workspaceFilePath, doc.toString())
@@ -471,7 +478,9 @@ export function pnpmInstallCallback(): GeneratorCallback {
 }
 
 export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, importPath }: AddToModulesOptions) {
-  console.log(`[addToModules] Called with modulePath=${modulePath}, moduleArrayName=${moduleArrayName}, moduleToAdd=${moduleToAdd}, importPath=${importPath}`)
+  console.log(
+    `[addToModules] Called with modulePath=${modulePath}, moduleArrayName=${moduleArrayName}, moduleToAdd=${moduleToAdd}, importPath=${importPath}`,
+  )
   if (!tree.exists(modulePath)) {
     console.error(`[addToModules] Can't find ${modulePath}`)
     return
@@ -490,7 +499,10 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
   const importRegex = new RegExp(`import {([^}]*)} from ['"]${barrelImportPath}['"];?`, 'm')
   const existingImport = fileContent.match(importRegex)
   if (existingImport) {
-    const importedModules = existingImport[1].split(',').map(m => m.trim()).filter(Boolean)
+    const importedModules = existingImport[1]
+      .split(',')
+      .map((m) => m.trim())
+      .filter(Boolean)
     if (!importedModules.includes(moduleToAdd)) {
       const newImport = `import { ${[...importedModules, moduleToAdd].join(', ')} } from '${barrelImportPath}';`
       fileContent = fileContent.replace(importRegex, newImport)
@@ -509,10 +521,11 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
     const arrayContent = match[1]
     console.log(`[addToModules] Found array content for ${moduleArrayName}:\n${arrayContent}`)
     // Split by lines, filter out comments and whitespace, and remove trailing commas
-    const lines = arrayContent.split(/\n|,/)
-      .map(line => line.trim())
-      .filter(line => line && !line.startsWith('//'))
-      .map(line => line.replace(/,$/, ''))
+    const lines = arrayContent
+      .split(/\n|,/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith('//'))
+      .map((line) => line.replace(/,$/, ''))
     console.log(`[addToModules] Parsed lines:`, lines)
     // Only add if not already present (ignore comments)
     if (!lines.includes(moduleToAdd)) {
@@ -527,7 +540,7 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
       if (hasRealModules) {
         // Find the last module in the array (ignoring comments/whitespace)
         const lastModuleRegex = /(\w+)\s*$/m
-        before = before.replace(lastModuleRegex, (m) => m.endsWith(',') ? m : m + ',')
+        before = before.replace(lastModuleRegex, (m) => (m.endsWith(',') ? m : m + ','))
       }
       const insert = `  ${moduleToAdd},\n`
       const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
@@ -559,7 +572,7 @@ export async function apiLibraryGenerator(
   const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
   const tags = type ? `scope:api,type:${type}` : 'scope:api'
 
-  // Overwrite logic: remove existing library if requested
+  // Overwrite logic: remove an existing library if requested
   if (schema.overwrite && tree.exists(libraryRoot)) {
     try {
       execSync(`nx g rm ${libraryName} --forceRemove`, {
@@ -592,15 +605,26 @@ export async function apiLibraryGenerator(
   // Determine the correct template path for generateTemplateFiles
   let finalTemplatePath: string
   if (type) {
-    // For libraries with a type, templates are in '.../api-files/<name>/<type>/'
-    finalTemplatePath = joinPathFragments(templateRootPath, schema.name, type)
+    finalTemplatePath = joinPathFragments(templateRootPath, type)
   } else {
-    // For libraries without a type, templates are directly under '.../api-files/<name>/'
-    finalTemplatePath = joinPathFragments(templateRootPath, schema.name)
+    finalTemplatePath = templateRootPath
   }
 
-  // Only generate template files if the path exists and is not empty
-  if (templateRootPath && tree.exists(finalTemplatePath)) {
+  // Add logging for debugging template path resolution
+  console.log(`[apiLibraryGenerator] templateRootPath: ${templateRootPath}`)
+  console.log(`[apiLibraryGenerator] schema.name: ${schema.name}`)
+  console.log(`[apiLibraryGenerator] type: ${type}`)
+  console.log(`[apiLibraryGenerator] finalTemplatePath: ${finalTemplatePath}`)
+  console.log(`[apiLibraryGenerator] tree.exists(finalTemplatePath): ${tree.exists(finalTemplatePath)}`)
+  try {
+    const parentDir = path.dirname(finalTemplatePath)
+    console.log('[apiLibraryGenerator] Contents of parent directory:', parentDir, fs.readdirSync(parentDir))
+  } catch (e) {
+    console.warn('[apiLibraryGenerator] Could not read parent directory:', e)
+  }
+
+  // Use fs.existsSync for template files in node_modules
+  if (templateRootPath && fs.existsSync(finalTemplatePath)) {
     generateTemplateFiles({
       tree,
       schema,
@@ -608,6 +632,8 @@ export async function apiLibraryGenerator(
       templatePath: finalTemplatePath, // Pass the exact path
       npmScope,
     })
+  } else {
+    console.warn(`[apiLibraryGenerator] Template path does not exist on disk: ${finalTemplatePath}`)
   }
 
   // Update TypeScript configurations for the library itself

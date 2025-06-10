@@ -40,4 +40,6 @@ export interface AddToModulesOptions {
 export interface ApiLibraryGeneratorSchema {
   name: string
   overwrite?: boolean
+  linter?: 'eslint'
+  unitTestRunner?: 'vitest'
 }

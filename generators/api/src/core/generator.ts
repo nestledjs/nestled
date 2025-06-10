@@ -12,7 +12,7 @@ export default async function generateLibraries(tree: Tree, options: ApiCoreGene
     '@nestjs/common': '^10.0.0',
     '@nestjs/passport': '^10.0.0',
     '@nestjs/axios': '^3.0.0',
-    '@prisma/client': '^6.6.0',
+    '@prisma/client': '^6.9.0',
     '@apollo/server': '^4.9.0',
   }
 
