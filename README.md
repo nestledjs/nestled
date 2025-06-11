@@ -1,3 +1,19 @@
+nx g @nestled/config:setup && 
+nx g @nestled/config:init && 
+nx g @nestled/api:setup && 
+nx g @nestled/api:app &&
+nx g @nestled/api:prisma && 
+nx g @nestled/api:config && 
+nx g @nestled/api:core && 
+nx g @nestled/api:custom && 
+nx g @nestled/api:generate-crud && 
+nx g @nestled/api:workspace-setup &&
+nx g @nestled/web:setup &&
+nx g @nestled/web:app
+
+
+
+
 # Nestled
 
 Remove workspaces from package.json

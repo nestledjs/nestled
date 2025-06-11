@@ -63,6 +63,20 @@ function handleEnvExample(tree: Tree) {
   }
 }
 
+function getWorkspaceName(tree: Tree): string {
+  const nxJsonPath = 'nx.json';
+  if (tree.exists(nxJsonPath)) {
+    const nxJson = JSON.parse(tree.read(nxJsonPath, 'utf-8') || '{}');
+    if (nxJson?.npmScope) return nxJson.npmScope;
+  }
+  const packageJsonPath = 'package.json';
+  if (tree.exists(packageJsonPath)) {
+    const packageJson = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}');
+    if (packageJson.name) return packageJson.name;
+  }
+  return 'my-workspace';
+}
+
 function handleDockerFilesAndScripts(tree: Tree) {
   // Generate Docker files in .dev directory
   const filesDir = path.join(__dirname, 'files', '.dev')
@@ -72,13 +86,15 @@ function handleDockerFilesAndScripts(tree: Tree) {
   // Add only Docker-related scripts to package.json
   const packageJsonPath = 'package.json'
   if (tree.exists(packageJsonPath)) {
+    const workspaceName = getWorkspaceName(tree);
+    const imageName = `${workspaceName}/api`;
     const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
     packageJsonContent.scripts = {
       ...packageJsonContent.scripts,
-      'docker:build': 'docker build -f .dev/Dockerfile -t muzebook/api .',
+      'docker:build': `docker build -f .dev/Dockerfile -t ${imageName} .`,
       'docker:down': 'docker compose -f .dev/docker-compose.yml down',
-      'docker:push': 'docker push muzebook/api',
-      'docker:run': 'docker run -it -p 8000:3000 muzebook/api',
+      'docker:push': `docker push ${imageName}`,
+      'docker:run': `docker run -it -p 8000:3000 ${imageName}`,
       'docker:up': 'docker compose -f .dev/docker-compose.yml up',
     }
     tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))

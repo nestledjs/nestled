@@ -2,9 +2,8 @@ generator client {
   provider        = "prisma-client-js"
   previewFeatures = []
   binaryTargets   = ["native"]
-  output   = "../prisma-generated"
+  output          = "../prisma-generated"
 }
-
 
 datasource db {
   provider = "postgresql"
@@ -51,7 +50,7 @@ model Email {
   id             String        @id @default(cuid())
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @default(now()) @updatedAt
-  email          String        @unique
+  email          String        @unique // enforce lowercase logic at app level
   public         Boolean       @default(false)
   primary        Boolean       @default(false)
   verified       Boolean       @default(false)
@@ -154,6 +153,14 @@ model User {
   UserPreference      UserPreference[]
   TeamMember          TeamMember[]
   SecurityEvent       SecurityEvent[]
+
+  // Account lifecycle
+  isActive                  Boolean   @default(true)
+  deactivatedAt                 DateTime?
+
+  // Legal compliance
+  termsAcceptedAt           DateTime?
+  privacyPolicyAcceptedAt   DateTime?
 }
 
 model Organization {
@@ -184,6 +191,8 @@ model Invite {
   organizationId String
   organization   Organization @relation("Invite_belongsTo_Organization", fields: [organizationId], references: [id])
   accepted       Boolean      @default(false)
+  used           Boolean      @default(false)
+  issuedAt       DateTime?
 }
 
 model OrganizationMember {
@@ -357,4 +366,28 @@ enum SecurityEventType {
   SUSPICIOUS_LOGIN_ATTEMPT
   PASSWORD_RESET_REQUESTED
   LOGIN_LOCATION_CHANGE
+}
+
+// Add ApiToken model for API token support
+model ApiToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  token     String   @unique
+  name      String?
+  createdAt DateTime @default(now())
+  expiresAt DateTime?
+  revoked   Boolean  @default(false)
+}
+
+// Add OAuthAccount model for social login support
+model OAuthAccount {
+  id              String   @id @default(cuid())
+  provider        String
+  providerUserId  String
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@unique([provider, providerUserId])
 }

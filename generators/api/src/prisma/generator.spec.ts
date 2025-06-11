@@ -38,7 +38,7 @@ describe('prisma generator', () => {
 
     expect(packageJson.prisma).toEqual({
       schema: 'libs/api/prisma/src/lib/schemas',
-      seed: 'ts-node libs/api/prisma/src/lib/seed/seed.ts',
+      seed: 'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
     })
 
     expect(packageJson.scripts['generate:models']).toBe(

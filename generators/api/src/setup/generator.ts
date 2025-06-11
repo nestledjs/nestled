@@ -1,6 +1,12 @@
 import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
 import { pnpmInstallCallback, updatePnpmWorkspaceConfig } from '@nestled/utils'
 
+function ensureNpmrc(tree: Tree) {
+  const npmrcPath = '.npmrc'
+  const content = 'ignore-workspace-root-check=true\n'
+  tree.write(npmrcPath, content)
+}
+
 export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
   addDependenciesToPackageJson(
@@ -31,10 +37,14 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'type-graphql': '^2.0.0-rc.2',
       'graphql-scalars': '^1.22.4',
       'graphql-fields': '^2.0.3',
+      'graphql-ws': '^5.16.0',
       'class-transformer': '^0.5.1',
       '@paljs/plugins': '^4.1.0',
       'graphql-redis-subscriptions': '^2.7.0',
       ioredis: '^5.6.1',
+      'apollo-server-plugin-base': '^3.7.2',
+      'graphql-query-complexity': '0.12.0',
+      'prisma-graphql-type-decimal': '^3.0.1',
     },
     {
       nx: '21.1.3',
@@ -72,6 +82,9 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
     'express',
   ]
   updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: packagesToBuild })
+
+  // Ensure .npmrc exists with the required content
+  ensureNpmrc(tree)
 
   // Return a callback that will run after the generator completes
   return pnpmInstallCallback()
