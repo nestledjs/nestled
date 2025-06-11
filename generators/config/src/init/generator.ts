@@ -41,6 +41,11 @@ function updateTypeScriptConfig(tree: Tree): void {
         delete tsConfig.customConditions
       }
 
+      // Also check for customConditions in compilerOptions
+      if (tsConfig.compilerOptions && tsConfig.compilerOptions.customConditions !== undefined) {
+        delete tsConfig.compilerOptions.customConditions
+      }
+
       // Write back the updated configuration
       tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
     }
@@ -183,7 +188,7 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
   addScriptToPackageJson(
     tree,
     'clean',
-    'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && rm -rf app && rm -rf libs && pnpm install --enable-scripts',
+    'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && rm -rf app && rm -rf libs && pnpm install',
   )
 
   // Create or update pnpm-workspace.yaml

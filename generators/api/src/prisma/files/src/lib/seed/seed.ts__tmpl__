@@ -1,6 +1,6 @@
 import { PrismaClient } from '../prisma-generated'
 import { countries } from './seed-data/iso-3166-countries'
-import { seedUsers } from './seed-data/seed-users';
+import { seedUsers } from './seed-data/seed-users'
 import { hashSync } from 'bcryptjs'
 
 const prisma = new PrismaClient()
@@ -45,7 +45,7 @@ async function main() {
       });
       console.log(`User ${user.displayName} seeded.`);
     } catch (e) {
-      if (e.code === 'P2002' && e.meta?.target?.includes('displayName')) {
+      if ((e as any).code === 'P2002' && (e as any).meta?.target?.includes('displayName')) {
         console.log(`User with displayName \"${user.displayName}\" already exists. Skipping.`);
       } else {
         throw e;

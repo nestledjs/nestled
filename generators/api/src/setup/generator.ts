@@ -42,7 +42,6 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@paljs/plugins': '^4.1.0',
       'graphql-redis-subscriptions': '^2.7.0',
       ioredis: '^5.6.1',
-      'apollo-server-plugin-base': '^3.7.2',
       'graphql-query-complexity': '0.12.0',
       'prisma-graphql-type-decimal': '^3.0.1',
       'tsconfig-paths-webpack-plugin': '^4.2.0',

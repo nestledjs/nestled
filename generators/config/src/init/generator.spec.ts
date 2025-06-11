@@ -23,7 +23,9 @@ describe('init-config generator', () => {
       compilerOptions: {
         emitDeclarationOnly: true,
         someOtherOption: 'value',
+        customConditions: ['development'],
       },
+      customConditions: ['development'],
     }
     tree.write('tsconfig.base.json', JSON.stringify(initialTsConfig))
 
@@ -35,6 +37,8 @@ describe('init-config generator', () => {
     expect(updatedTsConfig.compilerOptions.someOtherOption).toBe('value')
     expect(updatedTsConfig.compilerOptions.moduleResolution).toBe('node')
     expect(updatedTsConfig.compilerOptions.module).toBe('esnext')
+    expect(updatedTsConfig.compilerOptions.customConditions).toBeUndefined()
+    expect(updatedTsConfig.customConditions).toBeUndefined()
   })
 
   it('should remove workspaces from package.json', async () => {
@@ -77,7 +81,9 @@ describe('init-config generator', () => {
   })
 
   it('should handle error during pnpm install', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
+      // Mock implementation
+    })
     mockedExecSync.mockImplementation(() => {
       throw new Error('pnpm failed')
     })

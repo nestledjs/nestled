@@ -149,7 +149,7 @@ export class ${model.modelName}Module {}
       modulePath: 'apps/api/src/app.module.ts',
       moduleArrayName: 'defaultModules',
       moduleToAdd: `${model.modelName}Module`,
-      importPath: `@${npmScope}/api/custom/lib/default/${kebabModel}/${kebabModel}.module`,
+      importPath: `${npmScope}/api/custom`,
     })
   }
 
@@ -191,7 +191,7 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
     }
 
     // Generate custom files per model
-    const npmScope = `@${getNpmScope(tree)}`
+    const npmScope = `${getNpmScope(tree)}`
     await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
 
     // Format files

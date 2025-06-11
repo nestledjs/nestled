@@ -1,8 +1,7 @@
 import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, names, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema, updateTypeScriptConfigs, apiLibraryGenerator } from '@nestled/utils'
+import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
 import { GenerateCrudGeneratorSchema } from './schema'
-import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'
 
@@ -160,21 +159,10 @@ async function createLibraries(tree: Tree) {
 
   try {
     // Use the shared apiLibraryGenerator to create the data-access library with templates
-    await apiLibraryGenerator(
-      tree,
-      { name },
-      dataAccessTemplatePath,
-      'data-access',
-    )
+    await apiLibraryGenerator(tree, { name }, dataAccessTemplatePath, 'data-access')
 
     // Use the shared apiLibraryGenerator to create the feature library with an empty template directory
-    await apiLibraryGenerator(
-      tree,
-      { name },
-      featureTemplatePath,
-      'feature',
-      true
-    )
+    await apiLibraryGenerator(tree, { name }, featureTemplatePath, 'feature', true)
   } catch (error) {
     console.error('Error creating libraries:', error)
     throw error
@@ -258,7 +246,7 @@ ${models
   imports: [ApiCrudDataAccessModule],
   providers: [${models.map((model) => `Generated${model.modelName}Resolver`).join(', ')}],
 })
-export class ApiCrudFeatureModule {}
+export class ApiGeneratedCrudFeatureModule {}
 `
 
   // Always write a feature module file
