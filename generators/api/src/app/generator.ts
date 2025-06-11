@@ -67,22 +67,14 @@ export default async function (tree: Tree, schema: Schema) {
       return json
     })
 
-    // Generate custom files
+    // Optionally, delete the unused default app files if they exist
     const targetPath = path.join('apps', 'api', 'src')
-    if (tree.exists(targetPath)) {
-      generateFiles(tree, joinPathFragments(__dirname, './files'), targetPath, { ...schema, tmpl: '' })
-
-      // Delete the unused default app files
-      const filesToDelete = [path.join(targetPath, 'assets'), path.join(targetPath, 'app')]
-
-      filesToDelete.forEach((filePath) => {
-        if (tree.exists(filePath)) {
-          tree.delete(filePath)
-        }
-      })
-    } else {
-      console.error(`Target path ${targetPath} does not exist after generation`)
-    }
+    const filesToDelete = [path.join(targetPath, 'assets'), path.join(targetPath, 'app')]
+    filesToDelete.forEach((filePath) => {
+      if (tree.exists(filePath)) {
+        tree.delete(filePath)
+      }
+    })
   } catch (error) {
     console.error('Error generating API app:', error)
     throw error

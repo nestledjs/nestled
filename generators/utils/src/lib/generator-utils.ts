@@ -634,6 +634,18 @@ export async function apiLibraryGenerator(
   updateTypeScriptConfigs(tree, libraryRoot)
   // Explicitly update the tsconfig.base.json paths after libraryGenerator has run
   updateTsConfigPaths(tree, importPath, libraryRoot)
+
+  // Remove 'baseUrl' from the generated tsconfig.lib.json if it exists
+  const tsconfigLibPath = path.join(libraryRoot, 'tsconfig.lib.json')
+  if (tree.exists(tsconfigLibPath)) {
+    updateJson(tree, tsconfigLibPath, (json) => {
+      if (json.compilerOptions && json.compilerOptions.baseUrl) {
+        delete json.compilerOptions.baseUrl
+      }
+      return json
+    })
+  }
+
   // Add the module import after generating the library
   if (addModuleImport) {
     const nameClassName = names(schema.name).className
