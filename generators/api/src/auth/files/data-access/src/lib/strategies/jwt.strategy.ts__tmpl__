@@ -3,21 +3,26 @@ import { PassportStrategy } from '@nestjs/passport'
 import { Request } from 'express'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 import { ApiAuthDataAccessService } from '../api-auth-data-access.service'
-import { JwtDto } from '../dto/jwt.dto'
-import { User } from '@<%= npmScope %>/api/core/data-access'
+// @ts-ignore
+import { User } from '@<%= npmScope %>/api/core/models'
 
-function headerAndCookieExtractor(req: Request): string {
-  const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req)
-  if (!token) {
-    return cookieExtractor(req)
+function headerAndCookieExtractor(req: Request): string | undefined {
+  const authHeaderToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req)
+  if (authHeaderToken) {
+    return authHeaderToken
   }
-  return token
+  const cookieToken = cookieExtractor(req)
+  if (cookieToken) {
+    return cookieToken
+  }
+  return undefined
 }
 
 function cookieExtractor(req: Request): string {
-  const name = process.env['API_COOKIE_NAME'] || '__session'
+  const name = process.env.API_COOKIE_NAME || '__session'
   return req?.cookies?.[name] ? req.cookies[name] : undefined
 }
+
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -25,13 +30,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: headerAndCookieExtractor,
       secretOrKey: process.env['JWT_SECRET'],
+      ignoreExpiration: false,
     })
   }
 
-  async validate(payload: JwtDto): Promise<User> {
+  async validate(payload: { userId: string }): Promise<User> {
+    if (!payload || !payload.userId) {
+      throw new UnauthorizedException('Invalid JWT payload.')
+    }
     const user = await this.auth.validateUser(payload.userId)
     if (!user) {
-      throw new UnauthorizedException()
+      throw new UnauthorizedException('User from token not found or invalid.')
     }
     return user
   }

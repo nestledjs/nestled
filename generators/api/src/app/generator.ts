@@ -50,8 +50,7 @@ export default async function (tree: Tree, schema: Schema) {
     // Update tsconfig.app.json to remove specific compiler options
     updateAppTsConfig(tree)
 
-    // Always generate our custom webpack.config.ts from template
-    const webpackTargetPath = path.join('apps', 'api', 'webpack.config.ts');
+    // Generate all files according to the template folder structure
     generateFiles(
       tree,
       joinPathFragments(__dirname, './files'),

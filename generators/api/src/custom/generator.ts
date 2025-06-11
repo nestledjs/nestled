@@ -191,7 +191,7 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
     }
 
     // Generate custom files per model
-    const npmScope = `${getNpmScope(tree)}`
+    const npmScope = `@${getNpmScope(tree)}`
     await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
 
     // Format files

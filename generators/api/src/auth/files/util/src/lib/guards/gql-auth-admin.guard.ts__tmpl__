@@ -1,12 +1,13 @@
 import { ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common'
 import { GqlExecutionContext } from '@nestjs/graphql'
 import { AuthGuard } from '@nestjs/passport'
+import { User } from '@<%= npmScope %>/api/core/models'
 
 @Injectable()
 export class GqlAuthAdminGuard extends AuthGuard('jwt') {
   private readonly _roles: string[] = ['Admin']
 
-  getRequest(context: ExecutionContext) {
+  override getRequest(context: ExecutionContext) {
     const ctx = GqlExecutionContext.create(context)
 
     return ctx.getContext().req
@@ -16,7 +17,7 @@ export class GqlAuthAdminGuard extends AuthGuard('jwt') {
     super()
   }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  override async canActivate(context: ExecutionContext): Promise<boolean> {
     await super.canActivate(context)
     const ctx = GqlExecutionContext.create(context)
     const req = ctx.getContext().req
@@ -32,7 +33,7 @@ export class GqlAuthAdminGuard extends AuthGuard('jwt') {
     return req && req.user && this.hasAccess(req.user)
   }
 
-  private hasAccess(user): boolean {
-    return user.role && this._roles.includes(user.role)
+  private hasAccess(user: User): boolean {
+    return !!(user.role && this._roles.includes(user.role))
   }
 }

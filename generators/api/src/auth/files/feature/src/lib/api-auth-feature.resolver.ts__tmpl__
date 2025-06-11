@@ -9,7 +9,6 @@ import {
 import {
   Args,
   Context,
-  Info,
   Mutation,
   Parent,
   Query,
@@ -19,8 +18,11 @@ import {
 import { Logger, UseGuards } from '@nestjs/common'
 import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/auth/util'
 import { User } from '@<%= npmScope %>/api/core/models'
-import { GraphQLResolveInfo } from 'graphql/type'
-import { NestContextType } from '@<%= npmScope %>/api/core/data-access'
+
+export interface NestContextType {
+  req: Request
+  res: Response
+}
 
 @Resolver(() => UserToken)
 export class ApiAuthFeatureResolver {
@@ -54,7 +56,7 @@ export class ApiAuthFeatureResolver {
   }
 
   @Mutation(() => Boolean, { nullable: true })
-  async logout(@Context() context) {
+  async logout(@Context() context: NestContextType) {
     Logger.log('logout')
     this.service.clearCookie(context.res)
     return true
@@ -80,6 +82,7 @@ export class ApiAuthFeatureResolver {
 
   @ResolveField('user')
   user(@Parent() auth: UserToken) {
+    if (!auth.token) { throw new Error('No token found') }
     return this.service.getUserFromToken(auth.token)
   }
 }

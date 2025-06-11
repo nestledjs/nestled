@@ -1,6 +1,5 @@
 import { compareSync, hashSync } from 'bcryptjs'
 import { createHash } from 'crypto'
-import { Request } from 'express'
 
 const getHash = (str: string): string => createHash('md5').update(str).digest('hex')
 
@@ -32,18 +31,4 @@ export function generateExpireDate(days = 1) {
 
 export function randomId(length = 8): string {
   return new Date().getTime().toString().substr(0, length)
-}
-
-export function rand<T>(items: T[]): T {
-  return items[Math.floor(Math.random() * items.length)]
-}
-
-export function uniqueSuffix(input: string, length = 5): string {
-  const suffix = generateMd5Hash(Date.now() + input).slice(0, length)
-  return `${input}-${suffix}`
-}
-
-export function cookieExtractor(req: { cookies: { [x: string]: never } }) {
-  const name = process.env['API_COOKIE_NAME'] || '__session'
-  return req?.cookies?.[name] ? req.cookies[name] : undefined
 }
