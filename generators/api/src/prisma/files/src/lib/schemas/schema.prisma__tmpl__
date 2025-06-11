@@ -155,12 +155,14 @@ model User {
   SecurityEvent       SecurityEvent[]
 
   // Account lifecycle
-  isActive                  Boolean   @default(true)
-  deactivatedAt                 DateTime?
+  isActive      Boolean   @default(true)
+  deactivatedAt DateTime?
 
   // Legal compliance
-  termsAcceptedAt           DateTime?
-  privacyPolicyAcceptedAt   DateTime?
+  termsAcceptedAt         DateTime?
+  privacyPolicyAcceptedAt DateTime?
+  apiTokens               ApiToken[]     @relation("User_hasMany_APITokens")
+  oAuthAccounts           OAuthAccount[] @relation("User_hasMany_OAuthAccounts")
 }
 
 model Organization {
@@ -370,24 +372,24 @@ enum SecurityEventType {
 
 // Add ApiToken model for API token support
 model ApiToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  token     String   @unique
+  user      User      @relation("User_hasMany_APITokens", fields: [userId], references: [id])
+  token     String    @unique
   name      String?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
   expiresAt DateTime?
-  revoked   Boolean  @default(false)
+  revoked   Boolean   @default(false)
 }
 
 // Add OAuthAccount model for social login support
 model OAuthAccount {
-  id              String   @id @default(cuid())
-  provider        String
-  providerUserId  String
-  userId          String
-  user            User     @relation(fields: [userId], references: [id])
-  createdAt       DateTime @default(now())
+  id             String   @id @default(cuid())
+  provider       String
+  providerUserId String
+  userId         String
+  user           User     @relation("User_hasMany_OAuthAccounts", fields: [userId], references: [id])
+  createdAt      DateTime @default(now())
 
   @@unique([provider, providerUserId])
 }

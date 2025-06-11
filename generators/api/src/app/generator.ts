@@ -50,50 +50,14 @@ export default async function (tree: Tree, schema: Schema) {
     // Update tsconfig.app.json to remove specific compiler options
     updateAppTsConfig(tree)
 
-    // Update webpack.config.js to remove assets and add sourceMap: false
-    const webpackConfigPath = 'apps/api/webpack.config.js'
-    if (tree.exists(webpackConfigPath)) {
-      try {
-        const webpackConfig = tree.read(webpackConfigPath, 'utf-8')
-        if (!webpackConfig) {
-          console.error('Failed to read webpack.config.js')
-          return
-        }
-        // Remove assets line - improved regex
-        // Match variations in quotes and spacing, ensure it's on its own line
-        const assetsRegex = /^\s*assets:\s*\[\s*['"]\.\/src\/assets['"]\s*\]\s*,?\s*$/m;
-        let updatedConfig = webpackConfig.replace(assetsRegex, '');
-        if (updatedConfig !== webpackConfig) {
-             console.log('Successfully removed assets line from webpack.config.js');
-        } else {
-             console.warn('Assets line "assets: [\'./src/assets\']" not found or not removed from webpack.config.js. Regex might need adjustment.');
-             // Optional: Log the content for debugging
-             // console.log('webpack.config.js content before removal attempt:\n', webpackConfig);
-        }
-
-        // Add sourceMap: false after generatePackageJson: true,
-        const generatePkgJsonRegex = /^(\s*)generatePackageJson: true,/m;
-        const match = updatedConfig.match(generatePkgJsonRegex);
-
-        if (match) {
-            const indentation = match[1]; // Capture the indentation
-            updatedConfig = updatedConfig.replace(
-                generatePkgJsonRegex,
-                `${match[0]}\n${indentation}sourceMap: false,` // Use captured indentation for the new line
-            );
-            console.log('Successfully added sourceMap: false to webpack.config.js');
-        } else {
-            // Log a warning if the anchor point isn't found, as the Nx generator output might change
-            console.warn('Could not find "generatePackageJson: true," line in webpack.config.js to insert sourceMap config.');
-        }
-
-        tree.write(webpackConfigPath, updatedConfig)
-      } catch (error) {
-        console.error('Error modifying webpack.config.js:', error)
-      }
-    } else {
-      console.error('webpack.config.js not found at:', webpackConfigPath)
-    }
+    // Always generate our custom webpack.config.ts from template
+    const webpackTargetPath = path.join('apps', 'api', 'webpack.config.ts');
+    generateFiles(
+      tree,
+      joinPathFragments(__dirname, './files'),
+      path.join('apps', 'api'),
+      { ...schema, tmpl: '' }
+    );
 
     // Add dev:api script to package.json
     updateJson(tree, 'package.json', (json) => {
