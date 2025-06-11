@@ -45,6 +45,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'apollo-server-plugin-base': '^3.7.2',
       'graphql-query-complexity': '0.12.0',
       'prisma-graphql-type-decimal': '^3.0.1',
+      'tsconfig-paths-webpack-plugin': '^4.2.0',
     },
     {
       nx: '21.1.3',

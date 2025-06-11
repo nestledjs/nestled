@@ -1,6 +1,6 @@
 import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, names, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema, updateTypeScriptConfigs } from '@nestled/utils'
+import { getPrismaSchemaPath, readPrismaSchema, updateTypeScriptConfigs, apiLibraryGenerator } from '@nestled/utils'
 import { GenerateCrudGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
@@ -151,62 +151,30 @@ async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
 async function createLibraries(tree: Tree) {
   // Create required libraries for CRUD
 
-  // Create a data-access library for generated-crud
+  // Define library names and roots
   const dataAccessLibraryRoot = `libs/api/generated-crud/data-access`
-  const dataAccessProjectName = 'api-crud-data-access'
-
-  // Create a feature library for generated-crud
   const featureLibraryRoot = `libs/api/generated-crud/feature`
-  const featureProjectName = 'api-crud-feature'
+  const name = 'generated-crud'
+  const dataAccessTemplatePath = joinPathFragments(__dirname, './files/data-access')
+  const featureTemplatePath = joinPathFragments(__dirname, './files/feature')
 
   try {
-    // First, try to remove the data-access library if it exists
-    try {
-      execSync(`nx g rm ${dataAccessProjectName} --forceRemove`, {
-        stdio: 'inherit',
-        cwd: tree.root,
-      })
-    } catch {
-      // No existing library found
-    }
-
-    // Create the data-access library
-    execSync(
-      `nx g @nx/nest:library --name=${dataAccessProjectName} --directory=libs/api/generated-crud/data-access --tags=scope:api,type:data-access --linter=eslint --strict --no-interactive --unitTestRunner=jest --importPath=@${getNpmScope(
-        tree,
-      )}/api/generated-crud/data-access`,
-      {
-        stdio: 'inherit',
-        cwd: tree.root,
-      },
+    // Use the shared apiLibraryGenerator to create the data-access library with templates
+    await apiLibraryGenerator(
+      tree,
+      { name },
+      dataAccessTemplatePath,
+      'data-access',
     )
 
-    // Update TypeScript configurations for data-access library
-    updateTypeScriptConfigs(tree, dataAccessLibraryRoot)
-
-    // First, try to remove the feature library if it exists
-    try {
-      execSync(`nx g rm ${featureProjectName} --forceRemove`, {
-        stdio: 'inherit',
-        cwd: tree.root,
-      })
-    } catch {
-      // No existing library found
-    }
-
-    // Create the feature library
-    execSync(
-      `nx g @nx/nest:library --name=${featureProjectName} --directory=libs/api/generated-crud/feature --tags=scope:api,type:feature --linter=eslint --strict --no-interactive --unitTestRunner=jest --importPath=@${getNpmScope(
-        tree,
-      )}/api/generated-crud/feature`,
-      {
-        stdio: 'inherit',
-        cwd: tree.root,
-      },
+    // Use the shared apiLibraryGenerator to create the feature library with an empty template directory
+    await apiLibraryGenerator(
+      tree,
+      { name },
+      featureTemplatePath,
+      'feature',
+      true
     )
-
-    // Update TypeScript configurations for the feature library
-    updateTypeScriptConfigs(tree, featureLibraryRoot)
   } catch (error) {
     console.error('Error creating libraries:', error)
     throw error

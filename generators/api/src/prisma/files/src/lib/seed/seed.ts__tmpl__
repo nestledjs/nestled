@@ -25,23 +25,32 @@ async function main() {
     })
   }
   for (const user of seedUsers) {
-    await prisma.user.upsert({
-      where: { id: user.id },
-      update: {},
-      create: {
-        firstName: user.firstName,
-        lastName: user.lastName,
-        displayName: user.displayName,
-        emails: {
-          create: {
-            email: user.email,
-            primary: true,
+    try {
+      await prisma.user.upsert({
+        where: { id: user.id },
+        update: {},
+        create: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          displayName: user.displayName,
+          emails: {
+            create: {
+              email: user.email,
+              primary: true,
+            },
           },
+          password: hashSync(user.password, 10),
+          role: user.role,
         },
-        password: hashSync(user.password, 10),
-        role: user.role,
-      },
-    })
+      });
+      console.log(`User ${user.displayName} seeded.`);
+    } catch (e) {
+      if (e.code === 'P2002' && e.meta?.target?.includes('displayName')) {
+        console.log(`User with displayName \"${user.displayName}\" already exists. Skipping.`);
+      } else {
+        throw e;
+      }
+    }
   }
 }
 main()

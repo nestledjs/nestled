@@ -1,13 +1,11 @@
 import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getPrismaSchemaPath, readPrismaSchema, apiLibraryGenerator, addToModules } from '@nestled/utils'
+import { addToModules, apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
 import { GenerateCustomGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'
-import { existsSync, mkdirSync, rmSync } from 'fs'
 import { join } from 'path'
-import { removeProjectConfiguration } from '@nx/devkit'
 
 interface ModelType {
   name: string
@@ -81,15 +79,10 @@ function toKebabCase(str: string): string {
   return str
     .replace(/([a-z])([A-Z])/g, '$1-$2')
     .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2')
-    .toLowerCase();
+    .toLowerCase()
 }
 
-async function generateCustomFiles(
-  tree: Tree,
-  customLibraryRoot: string,
-  models: ModelType[],
-  npmScope: string,
-) {
+async function generateCustomFiles(tree: Tree, customLibraryRoot: string, models: ModelType[], npmScope: string) {
   const defaultDir = join(customLibraryRoot, 'src/lib/default')
   const pluginsDir = join(customLibraryRoot, 'src/lib/plugins')
   await ensureDirExists(tree, defaultDir)
@@ -161,20 +154,16 @@ export class ${model.modelName}Module {}
   }
 
   // Update index.ts to export all model modules
-  const modelFolders = models.map(m => toKebabCase(m.modelName))
-  const indexContent = modelFolders.map(m => `export * from './lib/default/${m}/${m}.module'`).join('\n')
+  const modelFolders = models.map((m) => toKebabCase(m.modelName))
+  const indexContent = modelFolders.map((m) => `export * from './lib/default/${m}/${m}.module'`).join('\n')
   tree.write(join(customLibraryRoot, 'src/index.ts'), indexContent)
 }
 
 export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema) {
   try {
     const name = schema.name || 'custom'
-    const customLibraryRoot = schema.directory
-      ? `libs/api/${schema.directory}/${name}`
-      : `libs/api/${name}`
-    const projectName = schema.directory
-      ? `api-${schema.directory.replace(/\//g, '-')}-${name}`
-      : `api-${name}`
+    const customLibraryRoot = schema.directory ? `libs/api/${schema.directory}/${name}` : `libs/api/${name}`
+    const projectName = schema.directory ? `api-${schema.directory.replace(/\//g, '-')}-${name}` : `api-${name}`
 
     // Overwrite logic: use Nx workspace:remove to fully remove the project and all references
     if (schema.overwrite && tree.exists(customLibraryRoot)) {
@@ -202,7 +191,7 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
     }
 
     // Generate custom files per model
-    const npmScope = `${getNpmScope(tree)}`
+    const npmScope = `@${getNpmScope(tree)}`
     await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
 
     // Format files

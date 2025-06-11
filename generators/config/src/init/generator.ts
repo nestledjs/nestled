@@ -36,6 +36,11 @@ function updateTypeScriptConfig(tree: Tree): void {
         delete tsConfig.compilerOptions.emitDeclarationOnly
       }
 
+      // Remove customConditions if it exists
+      if (tsConfig.customConditions !== undefined) {
+        delete tsConfig.customConditions
+      }
+
       // Write back the updated configuration
       tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
     }
@@ -64,17 +69,17 @@ function handleEnvExample(tree: Tree) {
 }
 
 function getWorkspaceName(tree: Tree): string {
-  const nxJsonPath = 'nx.json';
+  const nxJsonPath = 'nx.json'
   if (tree.exists(nxJsonPath)) {
-    const nxJson = JSON.parse(tree.read(nxJsonPath, 'utf-8') || '{}');
-    if (nxJson?.npmScope) return nxJson.npmScope;
+    const nxJson = JSON.parse(tree.read(nxJsonPath, 'utf-8') || '{}')
+    if (nxJson?.npmScope) return nxJson.npmScope
   }
-  const packageJsonPath = 'package.json';
+  const packageJsonPath = 'package.json'
   if (tree.exists(packageJsonPath)) {
-    const packageJson = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}');
-    if (packageJson.name) return packageJson.name;
+    const packageJson = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
+    if (packageJson.name) return packageJson.name
   }
-  return 'my-workspace';
+  return 'my-workspace'
 }
 
 function handleDockerFilesAndScripts(tree: Tree) {
@@ -86,8 +91,8 @@ function handleDockerFilesAndScripts(tree: Tree) {
   // Add only Docker-related scripts to package.json
   const packageJsonPath = 'package.json'
   if (tree.exists(packageJsonPath)) {
-    const workspaceName = getWorkspaceName(tree);
-    const imageName = `${workspaceName}/api`;
+    const workspaceName = getWorkspaceName(tree)
+    const imageName = `${workspaceName}/api`
     const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
     packageJsonContent.scripts = {
       ...packageJsonContent.scripts,
@@ -178,7 +183,7 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
   addScriptToPackageJson(
     tree,
     'clean',
-    'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && pnpm install',
+    'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && rm -rf app && rm -rf libs && pnpm install --enable-scripts',
   )
 
   // Create or update pnpm-workspace.yaml
