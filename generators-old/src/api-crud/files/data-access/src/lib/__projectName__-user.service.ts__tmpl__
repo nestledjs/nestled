@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { PrismaSelect } from '@paljs/plugins'
-import { GraphQLResolveInfo } from 'graphql'
+import type { GraphQLResolveInfo } from 'graphql'
 import { Prisma } from '@prisma/client'
 import { <%= apiClassName %>CoreDataAccessService, CorePaging } from '<%= npmScope %>/<%= directory %>/core/data-access'
 import { UserCreate<%= modelClassName %>Input, UserList<%= modelClassName %>Input, UserUpdate<%= modelClassName %>Input } from '<%= npmScope %>/<%= directory %>/core/data-access/src/graphql-types'

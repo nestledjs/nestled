@@ -1,5 +1,5 @@
 import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
-import { GraphQLResolveInfo } from 'graphql'
+import type { GraphQLResolveInfo } from 'graphql'
 import {
   <%= apiClassName %><%= modelClassName %>DataAccessUserService,
 } from '<%= npmScope %>/<%= directory %>/<%= modelName %>/data-access'

@@ -271,7 +271,7 @@ ${models.map((model) => `export * from './lib/${toKebabCase(model.modelName)}.re
 
     const resolverContent = `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
-import { GraphQLResolveInfo } from 'graphql'
+import type { GraphQLResolveInfo } from 'graphql'
 import {
   CorePaging
 } from '@${getNpmScope(tree)}/api/core/data-access'
