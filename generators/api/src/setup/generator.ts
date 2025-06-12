@@ -62,6 +62,8 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       prisma: '^6.9.0',
       pg: '8.14.1',
       yaml: '^2.4.2',
+      'ts-loader': '^9.5.2',
+      'webpack-node-externals': '^3.0.0',
     },
   )
 

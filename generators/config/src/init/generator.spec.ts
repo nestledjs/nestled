@@ -18,29 +18,6 @@ describe('init-config generator', () => {
     mockedExecSync.mockClear()
   })
 
-  it('should update tsconfig.base.json correctly', async () => {
-    const initialTsConfig = {
-      compilerOptions: {
-        emitDeclarationOnly: true,
-        someOtherOption: 'value',
-        customConditions: ['development'],
-      },
-      customConditions: ['development'],
-    }
-    tree.write('tsconfig.base.json', JSON.stringify(initialTsConfig))
-
-    await initConfigGenerator(tree)
-
-    const updatedTsConfig = readJson(tree, 'tsconfig.base.json')
-    expect(updatedTsConfig.compilerOptions.baseUrl).toBe('.')
-    expect(updatedTsConfig.compilerOptions.emitDeclarationOnly).toBeUndefined()
-    expect(updatedTsConfig.compilerOptions.someOtherOption).toBe('value')
-    expect(updatedTsConfig.compilerOptions.moduleResolution).toBe('node')
-    expect(updatedTsConfig.compilerOptions.module).toBe('esnext')
-    expect(updatedTsConfig.compilerOptions.customConditions).toBeUndefined()
-    expect(updatedTsConfig.customConditions).toBeUndefined()
-  })
-
   it('should remove workspaces from package.json', async () => {
     const initialPackageJson = {
       name: 'test-repo',
@@ -59,7 +36,7 @@ describe('init-config generator', () => {
     await initConfigGenerator(tree)
     const updatedPackageJson = readJson(tree, 'package.json')
     expect(updatedPackageJson.scripts.clean).toBe(
-      'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && pnpm install',
+      'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && rm -rf apps && rm -rf libs && pnpm install',
     )
   })
 

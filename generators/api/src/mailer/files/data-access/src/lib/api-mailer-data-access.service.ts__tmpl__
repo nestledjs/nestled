@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { createTransport, Transporter } from 'nodemailer'
-import * as Mail from 'nodemailer/lib/mailer'
 import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature'
 import { SentMessageInfo } from 'nodemailer/lib/smtp-transport'
 
@@ -10,6 +9,7 @@ export interface MailerParams {
   appEmail: string
   appName: string
   siteUrl: string
+  appSupportEmail?: string
 }
 
 export interface PreparedMail {
@@ -49,6 +49,7 @@ export class ApiMailerDataAccessService {
       appEmail: this.appEmail,
       appName: this.appName,
       siteUrl: this.siteUrl,
+      appSupportEmail: this.appSupportEmail,
     })
 
     const from = `${this.appName} <${this.appEmail}>`

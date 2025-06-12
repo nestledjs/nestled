@@ -1,4 +1,4 @@
-import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
+import { addDependenciesToPackageJson, GeneratorCallback, Tree, updateJson } from '@nx/devkit'
 import { pnpmInstallCallback, removeWorkspacesFromPackageJson, updatePnpmWorkspaceConfig } from '@nestled/utils'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -17,6 +17,17 @@ export async function configSetupGenerator(tree: Tree): Promise<GeneratorCallbac
       yaml: '^2.8.0',
     },
   )
+  // Remove 'composite' and 'declarationMap' from tsconfig.base.json
+  const tsConfigPath = 'tsconfig.base.json'
+  if (tree.exists(tsConfigPath)) {
+    updateJson(tree, tsConfigPath, (json) => {
+      if (json.compilerOptions) {
+        delete json.compilerOptions.composite
+        delete json.compilerOptions.declarationMap
+      }
+      return json
+    })
+  }
   removeWorkspacesFromPackageJson(tree)
   updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: ['@prisma/engines'] })
   return pnpmInstallCallback()

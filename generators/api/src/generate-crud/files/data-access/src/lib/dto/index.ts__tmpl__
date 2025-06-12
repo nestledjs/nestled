@@ -5,8 +5,9 @@ let usesGraphQLJSON = false;
 let usesInt = false;
 let usesFloat = false;
 let usesID = false;
+let enumNames = new Set();
 
-// First pass to determine necessary imports
+// First pass to determine necessary imports and enums
 for (const model of models) {
   for (const field of model.fields) {
     if (field.type === 'Int') usesInt = true;
@@ -23,6 +24,8 @@ for (const model of models) {
             // If no pre-existing '...Id' scalar, we'll generate one, so 'ID' import is needed.
             usesID = true;
         }
+    } else if (field.kind === 'enum') {
+        enumNames.add(field.type);
     }
   }
 }
@@ -33,7 +36,8 @@ if (usesID) gqlImports.add('ID');
 %>
 import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
 import * as PrismaSchema from '<%= npmScope %>/api/prisma'
-<% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
+<% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '@<%= npmScope %>/api/core/models'
+<% } %><% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
 import { CorePagingInput } from '<%= npmScope %>/api/core/data-access'
 
 <% for (const model of models) { %>
@@ -69,8 +73,8 @@ export class Create<%= model.modelName %>Input {
         else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
         else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
         else if (field.kind === 'enum') {
-            baseGqlType = `PrismaSchema.${field.type}`;
-            tsType = `PrismaSchema.${field.type}`;
+            baseGqlType = field.type;
+            tsType = field.type;
         } else { // Fallback, should ideally not be reached if all model types are known
             baseGqlType = 'String'; tsType = 'string';
         }
@@ -129,8 +133,8 @@ export class Update<%= model.modelName %>Input {
         else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
         else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
         else if (field.kind === 'enum') {
-            baseGqlType = `PrismaSchema.${field.type}`;
-            tsType = `PrismaSchema.${field.type}`;
+            baseGqlType = field.type;
+            tsType = field.type;
         } else {
             baseGqlType = 'String'; tsType = 'string';
         }
@@ -189,8 +193,8 @@ export class List<%= model.modelName %>Input extends CorePagingInput {
         else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
         else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
         else if (field.kind === 'enum') {
-            baseGqlType = `PrismaSchema.${field.type}`;
-            tsType = `PrismaSchema.${field.type}`;
+            baseGqlType = field.type;
+            tsType = field.type;
         } else {
             baseGqlType = 'String'; tsType = 'string';
         }

@@ -1,6 +1,7 @@
 import { generateFiles, joinPathFragments, Tree, updateJson } from '@nx/devkit'
 import { execSync } from 'child_process'
 import * as path from 'path'
+import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
 /**
  * Removes specific compiler options from tsconfig.app.json to use the settings from tsconfig.base.json
@@ -55,7 +56,7 @@ export default async function (tree: Tree, schema: Schema) {
       tree,
       joinPathFragments(__dirname, './files'),
       path.join('apps', 'api'),
-      { ...schema, tmpl: '' }
+      { ...schema, tmpl: '', npmScope: getNpmScope(tree) }
     );
 
     // Add dev:api script to package.json
@@ -66,6 +67,28 @@ export default async function (tree: Tree, schema: Schema) {
       json.scripts['dev:api'] = 'nx serve api --skip-nx-cache'
       return json
     })
+
+    // Update the build target in apps/api/project.json to use custom webpack command
+    const projectJsonPath = path.join('apps', 'api', 'project.json')
+    if (tree.exists(projectJsonPath)) {
+      updateJson(tree, projectJsonPath, (json) => {
+        json.targets = json.targets || {}
+        json.targets.build = {
+          executor: 'nx:run-commands',
+          options: {
+            command: 'NODE_ENV=production webpack-cli --config apps/api/webpack.config.js',
+          },
+          configurations: {
+            development: {
+              command: 'NODE_ENV=development webpack-cli --config apps/api/webpack.config.js',
+            },
+          },
+        }
+        return json
+      })
+    } else {
+      console.warn(`project.json not found at: ${projectJsonPath}`)
+    }
 
     // Optionally, delete the unused default app files if they exist
     const targetPath = path.join('apps', 'api', 'src')

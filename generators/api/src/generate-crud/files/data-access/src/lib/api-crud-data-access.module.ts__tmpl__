@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common'
 
 import { ApiCrudDataAccessService } from './api-crud-data-access.service'
-import { ApiCoreDataAccessModule } from ''
+import { ApiCoreDataAccessModule } from '<%= npmScope %>/api/core/data-access'
 
 @Module({
   imports: [ApiCoreDataAccessModule],

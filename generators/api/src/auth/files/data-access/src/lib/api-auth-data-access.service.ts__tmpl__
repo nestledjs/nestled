@@ -12,7 +12,8 @@ import {
 import { LoginInput } from './dto/login.input'
 import { UserToken } from './models/user-token'
 import { UserCreateInput } from './dto/user-create.input'
-import { Prisma, UserRole } from '@<%= npmScope %>/api/prisma'
+import { Prisma } from '@<%= npmScope %>/api/prisma'
+import { UserRole } from '@<%= npmScope %>/api/core/models'
 import { ApiMailerDataAccessService } from '@<%= npmScope %>/api/mailer/data-access'
 import { passwordResetEmail } from './templates/password-reset-email.template'
 

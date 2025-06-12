@@ -7,51 +7,6 @@ import {
 } from '@nestled/utils'
 import * as path from 'path'
 
-function updateTypeScriptConfig(tree: Tree): void {
-  const tsConfigPath = 'tsconfig.base.json'
-  if (tree.exists(tsConfigPath)) {
-    const tsConfigContent = tree.read(tsConfigPath, 'utf-8')
-    if (tsConfigContent) {
-      const tsConfig = JSON.parse(tsConfigContent)
-
-      if (!tsConfig.compilerOptions) {
-        tsConfig.compilerOptions = {}
-      }
-      // Set baseUrl for path aliases
-      tsConfig.compilerOptions.baseUrl = '.'
-      // Set rootDir
-      tsConfig.compilerOptions.rootDir = '.'
-      // Enable decorator metadata
-      tsConfig.compilerOptions.experimentalDecorators = true
-      tsConfig.compilerOptions.emitDecoratorMetadata = true
-      // Set moduleResolution to node
-      tsConfig.compilerOptions.moduleResolution = 'node'
-      // Set module to esnext
-      tsConfig.compilerOptions.module = 'esnext'
-      // Set esModuleInterop
-      tsConfig.compilerOptions.esModuleInterop = true
-
-      // Remove emitDeclarationOnly if it exists
-      if (tsConfig.compilerOptions.emitDeclarationOnly !== undefined) {
-        delete tsConfig.compilerOptions.emitDeclarationOnly
-      }
-
-      // Remove customConditions if it exists
-      if (tsConfig.customConditions !== undefined) {
-        delete tsConfig.customConditions
-      }
-
-      // Also check for customConditions in compilerOptions
-      if (tsConfig.compilerOptions && tsConfig.compilerOptions.customConditions !== undefined) {
-        delete tsConfig.compilerOptions.customConditions
-      }
-
-      // Write back the updated configuration
-      tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
-    }
-  }
-}
-
 function handlePrettierConfig(tree: Tree) {
   const filesDir = path.join(__dirname, 'files')
   generateFiles(tree, filesDir, '.', { dot: '.', tmpl: '' })
@@ -169,9 +124,6 @@ function addNxScriptsToPackageJson(tree: Tree) {
 
 export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback> {
   addDependenciesToPackageJson(tree, { '@prisma/internals': '^5.14.0' }, { yaml: '^2.4.2' })
-  // Update TypeScript configuration
-  updateTypeScriptConfig(tree)
-
   // Always handle Prettier configuration
   handlePrettierConfig(tree)
 
@@ -188,7 +140,7 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
   addScriptToPackageJson(
     tree,
     'clean',
-    'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && rm -rf app && rm -rf libs && pnpm install',
+    'git reset --hard HEAD && git clean -fd && rm -rf node_modules && rm -rf tmp && rm -rf dist && rm -rf apps && rm -rf libs && pnpm install',
   )
 
   // Create or update pnpm-workspace.yaml

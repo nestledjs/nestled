@@ -17,6 +17,12 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+  redis:
+    image: redis:alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - ./tmp/redis:/data
 
   mailhog:
     image: mailhog/mailhog

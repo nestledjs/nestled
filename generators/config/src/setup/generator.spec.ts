@@ -11,7 +11,7 @@ vi.mock('@nx/devkit', async () => {
   }
 })
 vi.mock('@nestled/utils', () => ({
-  pnpmInstallCallback: vi.fn(() => () => {}),
+  pnpmInstallCallback: vi.fn(() => undefined),
   removeWorkspacesFromPackageJson: vi.fn(),
   updatePnpmWorkspaceConfig: vi.fn(),
 }))
@@ -38,5 +38,25 @@ describe('configSetupGenerator', () => {
     expect(['^6.9.0', '^']).toContain(devDeps['@prisma/internals'])
     expect(removeWorkspacesFromPackageJson).toHaveBeenCalledWith(tree)
     expect(pnpmInstallCallback).toHaveBeenCalled()
+  })
+
+  it('should remove composite and declarationMap from tsconfig.base.json but not emitDeclarationOnly', async () => {
+    const initialTsConfig = {
+      compilerOptions: {
+        composite: true,
+        declarationMap: true,
+        emitDeclarationOnly: true,
+        someOtherOption: 'value',
+      },
+    }
+    tree.write('tsconfig.base.json', JSON.stringify(initialTsConfig, null, 2))
+
+    await configSetupGenerator(tree)
+
+    const updatedTsConfig = JSON.parse(tree.read('tsconfig.base.json', 'utf-8'))
+    expect(updatedTsConfig.compilerOptions.composite).toBeUndefined()
+    expect(updatedTsConfig.compilerOptions.declarationMap).toBeUndefined()
+    expect(updatedTsConfig.compilerOptions.emitDeclarationOnly).toBe(true)
+    expect(updatedTsConfig.compilerOptions.someOtherOption).toBe('value')
   })
 }) 

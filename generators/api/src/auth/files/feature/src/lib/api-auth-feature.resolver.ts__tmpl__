@@ -18,6 +18,7 @@ import {
 import { Logger, UseGuards } from '@nestjs/common'
 import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/auth/util'
 import { User } from '@<%= npmScope %>/api/core/models'
+import { Request, Response } from 'express'
 
 export interface NestContextType {
   req: Request

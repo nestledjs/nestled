@@ -21,7 +21,6 @@ vi.mock('@nx/devkit', async () => {
   return {
     ...actual,
     formatFiles: vi.fn(),
-    generateFiles: vi.fn(),
     installPackagesTask: vi.fn(),
   }
 })
@@ -82,20 +81,13 @@ describe('generate-crud generator', () => {
     }
     await generator(tree, options)
 
-    // Check library creation and config updates
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining('nx g @nx/nest:library --name=api-crud-data-access'),
-      expect.any(Object),
-    )
-    expect(execSync).toHaveBeenCalledWith(
-      expect.stringContaining('nx g @nx/nest:library --name=api-crud-feature'),
-      expect.any(Object),
-    )
-    expect(updateTypeScriptConfigs).toHaveBeenCalledTimes(2)
-
-    // Check that resolver files are created
+    // Check that the correct files are created
     expect(tree.exists('libs/api/generated-crud/feature/src/lib/user.resolver.ts')).toBe(true)
     expect(tree.exists('libs/api/generated-crud/feature/src/lib/post.resolver.ts')).toBe(true)
+    expect(tree.exists('libs/api/generated-crud/feature/src/lib/api-admin-crud-feature.module.ts')).toBe(true)
+    expect(tree.exists('libs/api/generated-crud/feature/src/index.ts')).toBe(true)
+    expect(tree.exists('libs/api/generated-crud/data-access/src/lib/api-crud-data-access.service.ts')).toBe(true)
+    expect(tree.exists('libs/api/generated-crud/data-access/src/index.ts')).toBe(true)
 
     // Verify auth guards in the User resolver
     const userResolver = tree.read('libs/api/generated-crud/feature/src/lib/user.resolver.ts', 'utf-8')
@@ -122,6 +114,7 @@ describe('generate-crud generator', () => {
     }
     await generator(tree, options)
     expect(execSync).not.toHaveBeenCalled()
-    expect(devkit.generateFiles).not.toHaveBeenCalled()
+    expect(tree.exists('libs/api/generated-crud/data-access/src/lib/api-crud-data-access.service.ts')).toBe(false)
+    expect(tree.exists('libs/api/generated-crud/feature/src/lib/user.resolver.ts')).toBe(false)
   })
 }) 

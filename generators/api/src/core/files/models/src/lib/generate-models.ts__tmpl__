@@ -141,17 +141,24 @@ async function main() {
 }
 
 function generateModels(models: readonly any[], enums: readonly any[]): string {
-  let output = `import { Field, ObjectType, Int, Float } from '@nestjs/graphql';\n`
+  // Check if any model field uses Float
+  const usesFloat = models.some(model => model.fields.some(field => field.type === 'Float'));
+  let output = `import { Field, ObjectType${usesFloat ? ', Float' : ''}, Int } from '@nestjs/graphql';\n`
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`
-  output += `import { Decimal } from '@prisma/client/runtime/library';\n`
-  output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
+
+  // Check if any model field uses Decimal
+  const usesDecimal = models.some(model => model.fields.some(field => field.type === 'Decimal'));
+  if (usesDecimal) {
+    output += `import { Decimal } from '@prisma/client/runtime/library';\n`;
+    output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`;
+  }
   // Ensure Prisma and enums are imported correctly
   const enumNames = enums.map((e) => e.name)
-  const prismaTypesToImport = ['Prisma']
+  output += `import { Prisma } from '${prismaImportPath}';\n`
   if (enumNames.length > 0) {
-    prismaTypesToImport.push(...enumNames)
+    output += `import { ${enumNames.join(', ')} } from './enums';\n`;
   }
-  output += `import { ${prismaTypesToImport.join(', ')} } from '${prismaImportPath}';\n\n`
+  output += `\n`
 
   for (const model of models) {
     output += `@ObjectType({ description: undefined })\nexport class ${model.name} {\n` // Added description: undefined for clarity if not set
@@ -275,6 +282,7 @@ function generateEnums(enums: readonly any[]): string {
   if (enums.length > 0) {
     const enumNames = enums.map((e) => e.name).join(', ')
     output += `import { ${enumNames} } from '${prismaImportPath}';\n\n`
+    output += `export { ${enumNames} };\n\n`
 
     enums.forEach((enumType) => {
       output += `registerEnumType(${enumType.name}, { name: '${enumType.name}' });\n\n`

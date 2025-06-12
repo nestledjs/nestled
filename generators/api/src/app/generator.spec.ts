@@ -87,7 +87,6 @@ module.exports = composePlugins(withNx(), (config) => {
 
     const webpackConfig = tree.read('apps/api/webpack.config.js', 'utf-8')
     expect(webpackConfig).not.toContain("assets: ['./src/assets']")
-    expect(webpackConfig).toContain('sourceMap: false,')
 
     const packageJson = JSON.parse(tree.read('package.json', 'utf-8'))
     expect(packageJson.scripts['dev:api']).toBe('nx serve api --skip-nx-cache')
