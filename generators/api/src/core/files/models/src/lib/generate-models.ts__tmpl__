@@ -142,12 +142,12 @@ async function main() {
 
 function generateModels(models: readonly any[], enums: readonly any[]): string {
   // Check if any model field uses Float
-  const usesFloat = models.some(model => model.fields.some(field => field.type === 'Float'));
+  const usesFloat = models.some(model => model.fields.some((field: { type: string }) => field.type === 'Float'));
   let output = `import { Field, ObjectType${usesFloat ? ', Float' : ''}, Int } from '@nestjs/graphql';\n`
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`
 
   // Check if any model field uses Decimal
-  const usesDecimal = models.some(model => model.fields.some(field => field.type === 'Decimal'));
+  const usesDecimal = models.some(model => model.fields.some((field: { type: string }) => field.type === 'Decimal'));
   if (usesDecimal) {
     output += `import { Decimal } from '@prisma/client/runtime/library';\n`;
     output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`;
