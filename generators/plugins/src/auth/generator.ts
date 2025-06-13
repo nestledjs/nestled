@@ -1,29 +1,6 @@
 import { Tree, formatFiles, generateFiles, joinPathFragments } from '@nx/devkit'
-import * as fs from 'fs'
-import * as path from 'path'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
-import { addToModules } from 'generators/utils/src/lib/generator-utils'
-
-
-function copyAndReplace(srcDir: string, destDir: string, replacements: Record<string, string>, overwrite = false) {
-  if (!fs.existsSync(srcDir)) return
-  if (!fs.existsSync(destDir)) fs.mkdirSync(destDir, { recursive: true })
-  for (const item of fs.readdirSync(srcDir)) {
-    const srcPath = path.join(srcDir, item)
-    const destPath = path.join(destDir, item)
-    if (fs.statSync(srcPath).isDirectory()) {
-      copyAndReplace(srcPath, destPath, replacements, overwrite)
-    } else {
-      let content = fs.readFileSync(srcPath, 'utf-8')
-      for (const [from, to] of Object.entries(replacements)) {
-        content = content.split(from).join(to)
-      }
-      if (!fs.existsSync(destPath) || overwrite) {
-        fs.writeFileSync(destPath, content)
-      }
-    }
-  }
-}
+import { addToModules } from '@nestled/utils'
 
 export default async function generator(tree: Tree) {
   const directory = 'api/custom/plugins'
