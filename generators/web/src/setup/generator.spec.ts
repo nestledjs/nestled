@@ -30,16 +30,15 @@ describe('webSetupGenerator', () => {
     expect(addDependenciesSpy).toHaveBeenCalledWith(
       tree,
       expect.objectContaining({
-        '@react-router/dev': expect.any(String),
         'react-router-dom': expect.any(String),
-        '@react-router/html': expect.any(String),
-        'vite-tsconfig-paths': expect.any(String),
-        isbot: expect.any(String),
+        'isbot': expect.any(String),
       }),
       expect.objectContaining({
+        '@react-router/dev': expect.any(String),
         '@nx/react': expect.any(String),
+        'vite-tsconfig-paths': expect.any(String),
         '@tailwindcss/vite': expect.any(String),
-        tailwindcss: expect.any(String),
+        'tailwindcss': expect.any(String),
         '@tailwindcss/postcss': expect.any(String),
       })
     )
