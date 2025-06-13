@@ -1,7 +1,0 @@
-{
-  "$schema": "https://json-schema.org/schema",
-  "$id": "ApiMailer",
-  "title": "Create an API Mailer Library",
-  "type": "object",
-  "properties": {}
-}

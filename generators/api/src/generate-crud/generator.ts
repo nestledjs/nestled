@@ -305,7 +305,7 @@ ${(() => {
   if (usedGuards.size === 0) return ''
 
   // CHANGED: Import guards from '@namespace/api/custom' instead of auth util
-  return `import { ${Array.from(usedGuards).sort().join(', ')} } from '@namespace/api/custom'`
+  return `import { ${Array.from(usedGuards).sort().join(', ')} } from '@${getNpmScope(tree)}/api/utils'`
 })()}
 
 @Resolver(() => ${model.modelName})

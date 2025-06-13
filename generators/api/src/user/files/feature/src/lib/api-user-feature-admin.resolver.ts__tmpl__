@@ -2,7 +2,7 @@ import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import { CorePaging, CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
 import { User } from '@<%= npmScope %>/api/core/models'
-import { CtxUser, GqlAuthAdminGuard } from '@<%= npmScope %>/api/auth/util'
+import { CtxUser, GqlAuthAdminGuard } from '@<%= npmScope %>/api/custom'
 import {
   AdminCreateUserInput,
   AdminUpdateUserInput,

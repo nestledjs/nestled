@@ -7,9 +7,10 @@ nx g @nestled/api:config &&
 nx g @nestled/api:core && 
 nx g @nestled/api:custom && 
 nx g @nestled/api:mailer &&
-nx g @nestled/api:auth &&
 nx g @nestled/api:generate-crud && 
+nx g @nestled/api:utils &&
 nx g @nestled/api:custom &&
+nx g @nestled/plugins:auth && 
 nx g @nestled/api:workspace-setup &&
 nx g @nestled/web:setup &&
 nx g @nestled/web:app

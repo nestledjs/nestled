@@ -1,0 +1,10 @@
+import { Module } from '@nestjs/common'
+import { SmtpMailerService } from './.service'
+import { ApiCoreFeatureModule } from '@<%= npmScope %>/api/core/feature'
+
+@Module({
+  imports: [ApiCoreFeatureModule],
+  providers: [SmtpMailerService],
+  exports: [SmtpMailerService],
+})
+export class ApiMailerDataAccessModule {}

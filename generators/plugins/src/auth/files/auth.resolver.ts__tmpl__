@@ -3,12 +3,14 @@ import {
   LoginInput,
   RegisterInput,
   ResetPasswordInput,
+  VerifyEmailInput,
+  InviteUserInput,
+  AcceptInviteInput
 } from './dto'
-import { UserToken} from './models/user-token'
+import { UserToken, InviteToken } from './models/user-token'
 import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
 import { Logger, UseGuards } from '@nestjs/common'
-import { CtxUser } from './decorators/ctx-user.decorator'
-import { GqlAuthGuard } from '@<%= npmScope %>/api/core/data-access'
+import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/utils'
 import { User } from '@<%= npmScope %>/api/core/models'
 import { Request, Response } from 'express'
 import { AuthService } from './auth.service';
@@ -69,6 +71,22 @@ export class AuthResolver {
   @Mutation(() => User, { nullable: true })
   resetPassword(@Args('input') input: ResetPasswordInput): Promise<User> {
     return this.service.resetPassword(input.password, input.token)
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  async verifyEmail(@Args('input') input: VerifyEmailInput) {
+    return this.service.verifyEmail(input)
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  @UseGuards(GqlAuthGuard)
+  async inviteToOrganization(@CtxUser() user, @Args('input') input: InviteUserInput) {
+    return this.service.inviteToOrganization(input, user.id)
+  }
+
+  @Mutation(() => InviteToken, { nullable: true })
+  async acceptInvite(@Args('input') input: AcceptInviteInput) {
+    return this.service.acceptInvite(input)
   }
 
   @ResolveField('user')

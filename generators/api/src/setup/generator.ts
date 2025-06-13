@@ -40,6 +40,8 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'class-transformer': '^0.5.1',
       'graphql-redis-subscriptions': '^2.7.0',
       ioredis: '^5.6.1',
+      'cookie-parser': '^1.4.7',
+      'passport-jwt': '^4.0.1',
     },
     {
       nx: '21.1.3',
@@ -72,9 +74,9 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'webpack-node-externals': '^3.0.0',
       'tsconfig-paths-webpack-plugin': '^4.2.0',
       'prisma-graphql-type-decimal': '^3.0.1',
-      'graphql-type-json': '^0.3.2'
-    }
-  );
+      'graphql-type-json': '^0.3.2',
+    },
+  )
 
   // Update pnpm-workspace.yaml with build dependencies
   const packagesToBuild = [

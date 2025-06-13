@@ -6,7 +6,7 @@ import {
   AccountUpdateProfileInput,
   ApiAccountDataAccessService,
 } from '@<%= npmScope %>/api/account/data-access'
-import { CtxUser } from '@<%= npmScope %>/api/auth/util'
+import { CtxUser } from '@<%= npmScope %>/api/custom'
 import { GqlAuthGuard} from '@<%= npmScope %>/api/core/data-access'
 import { User, Email } from '@<%= npmScope %>/api/core/models'
 

@@ -1,4 +1,4 @@
-import { Tree, formatFiles, generateFiles, joinPathFragments } from '@nx/devkit'
+import { formatFiles, generateFiles, joinPathFragments, Tree } from '@nx/devkit'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { addToModules } from '@nestled/utils'
 
@@ -23,16 +23,23 @@ export default async function generator(tree: Tree) {
     importPath: `@${npmScope}/api/custom`,
   })
 
-  // Add export to /libs/api/custom/src/index.ts
+  // Add exports to /libs/api/custom/src/index.ts
   const indexPath = 'libs/api/custom/src/index.ts'
-  const exportStatement = `export * from './lib/plugins/auth/auth.module'\n`
+  const exportPaths = ['./lib/plugins/auth/auth.module']
+  let content = ''
   if (tree.exists(indexPath)) {
-    const content = tree.read(indexPath, 'utf-8')
+    content = tree.read(indexPath, 'utf-8')
+  }
+  let updated = false
+  for (const path of exportPaths) {
+    const exportStatement = `export * from '${path}'\n`
     if (!content.includes(exportStatement.trim())) {
-      tree.write(indexPath, content + '\n' + exportStatement)
+      content += (content.endsWith('\n') ? '' : '\n') + exportStatement
+      updated = true
     }
-  } else {
-    tree.write(indexPath, exportStatement)
+  }
+  if (updated || !tree.exists(indexPath)) {
+    tree.write(indexPath, content)
   }
 
   await formatFiles(tree)
