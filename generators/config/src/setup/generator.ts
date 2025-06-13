@@ -63,6 +63,9 @@ export async function configSetupGenerator(tree: Tree): Promise<GeneratorCallbac
     {
       '@prisma/internals': '^6.9.0',
       yaml: '^2.8.0',
+      'eslint-plugin-jsx-a11y': '6.10.2',
+      prettier: '^3.5.3',
+      typescript: '~5.8.3',
     },
   )
   // Update all TypeScript config settings

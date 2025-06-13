@@ -5,8 +5,7 @@ export async function webSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
   // Add dependencies
   addDependenciesToPackageJson(
     tree,
-    {
-      
+    { 
       'react-router-dom': '^7.6.2',
       isbot: '5.1.28',
     },

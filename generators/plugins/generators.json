@@ -1,0 +1,9 @@
+{
+  "generators": {
+    "auth": {
+      "factory": "./src/auth/generator.js",
+      "schema": "./src/auth/schema.json",
+      "description": "Generate an auth plugin by copying files and replacing MuseBook with the provided namespace."
+    }
+  }
+}

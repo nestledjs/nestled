@@ -1,0 +1,81 @@
+import {
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+} from './dto'
+import { UserToken} from './models/user-token'
+import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
+import { Logger, UseGuards } from '@nestjs/common'
+import { CtxUser } from './decorators/ctx-user.decorator'
+import { GqlAuthGuard } from '@<%= npmScope %>/api/core/data-access'
+import { User } from '@<%= npmScope %>/api/core/models'
+import { Request, Response } from 'express'
+import { AuthService } from './auth.service';
+
+export interface NestContextType {
+  req: Request
+  res: Response
+}
+
+@Resolver(() => UserToken)
+export class AuthResolver {
+  constructor(private readonly service: AuthService) {}
+
+  @Query(() => User, { nullable: true })
+  @UseGuards(GqlAuthGuard)
+  async me(@CtxUser() user: User) {
+    return user
+  }
+
+  @Mutation(() => UserToken, { nullable: true })
+  async login(@Context() context: NestContextType, @Args('input') input: LoginInput) {
+    try {
+      const userToken = await this.service.login(input)
+
+      if (!userToken || !userToken.token) {
+        Logger.warn('Login failed: No user token returned')
+        return null
+      }
+
+      this.service.setCookie(context.res, userToken.token)
+      return userToken
+    } catch (error) {
+      Logger.error(`Login failed: ${(error as Error).message}`, (error as Error).stack)
+      return null
+    }
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  async logout(@Context() context: NestContextType) {
+    Logger.log('logout')
+    this.service.clearCookie(context.res)
+    return true
+  }
+
+  @Mutation(() => UserToken, { nullable: true })
+  async register(@Context() context: NestContextType, @Args('input') input: RegisterInput) {
+    Logger.log('register', input)
+    const userToken = await this.service.register(input)
+    this.service.setCookie(context.res, userToken.token)
+    return userToken
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  forgotPassword(@Args('input') input: ForgotPasswordInput): Promise<boolean> {
+    return this.service.forgotPassword(input.email)
+  }
+
+  @Mutation(() => User, { nullable: true })
+  resetPassword(@Args('input') input: ResetPasswordInput): Promise<User> {
+    return this.service.resetPassword(input.password, input.token)
+  }
+
+  @ResolveField('user')
+  user(@Parent() auth: UserToken) {
+    if (!auth.token) {
+      throw new Error('No token found')
+    }
+    return this.service.getUserFromToken(auth.token)
+  }
+}

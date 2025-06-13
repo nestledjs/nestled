@@ -162,7 +162,7 @@ async function createLibraries(tree: Tree) {
     await apiLibraryGenerator(tree, { name }, dataAccessTemplatePath, 'data-access')
 
     // Use the shared apiLibraryGenerator to create the feature library with an empty template directory
-    await apiLibraryGenerator(tree, { name }, featureTemplatePath, 'feature', true)
+    await apiLibraryGenerator(tree, { name }, featureTemplatePath, 'feature')
   } catch (error) {
     console.error('Error creating libraries:', error)
     throw error
@@ -304,7 +304,8 @@ ${(() => {
   // Only include the import if we have guards to import
   if (usedGuards.size === 0) return ''
 
-  return `import { ${Array.from(usedGuards).sort().join(', ')} } from '@${getNpmScope(tree)}/api/auth/util'`
+  // CHANGED: Import guards from '@namespace/api/custom' instead of auth util
+  return `import { ${Array.from(usedGuards).sort().join(', ')} } from '@namespace/api/custom'`
 })()}
 
 @Resolver(() => ${model.modelName})

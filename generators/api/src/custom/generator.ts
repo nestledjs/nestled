@@ -196,6 +196,29 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
     const npmScope = `@${getNpmScope(tree)}`
     await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
 
+    // Generate guards from template folder
+    const { generateFiles, joinPathFragments } = await import('@nx/devkit')
+    const guardsTemplatePath = joinPathFragments(__dirname, './files/guards')
+    const guardsTargetPath = joinPathFragments(customLibraryRoot, 'src/lib/guards')
+    generateFiles(tree, guardsTemplatePath, guardsTargetPath, { tmpl: '', npmScope })
+
+    // Update index.ts to export guards as well
+    const indexPath = join(customLibraryRoot, 'src/index.ts')
+    let indexContent = ''
+    if (tree.exists(indexPath)) {
+      indexContent = tree.read(indexPath, 'utf-8')
+    }
+    const guardExports = [
+      "export * from './lib/guards/gql-auth-admin.guard'",
+      "export * from './lib/guards/gql-auth.guard'",
+    ]
+    for (const guardExport of guardExports) {
+      if (!indexContent.includes(guardExport)) {
+        indexContent += (indexContent.endsWith('\n') ? '' : '\n') + guardExport + '\n'
+      }
+    }
+    tree.write(indexPath, indexContent)
+
     // Format files
     await formatFiles(tree)
 

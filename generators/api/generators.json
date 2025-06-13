@@ -59,6 +59,11 @@
       "factory": "./src/workspace-setup/generator.js",
       "schema": "./src/workspace-setup/schema.json",
       "description": "Set up the workspace environment"
+    },
+    "plugin": {
+      "factory": "./src/plugin/generator.js",
+      "schema": "./src/plugin/schema.json",
+      "description": "Generate a blank plugin (module, service, resolver) in the custom library's plugins folder."
     }
   }
 }

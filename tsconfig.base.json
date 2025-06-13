@@ -18,6 +18,7 @@
     "paths": {
       "@nestled/api": ["generators/api/src/index.ts"],
       "@nestled/config": ["generators/config/src/index.ts"],
+      "@nestled/plugins": ["generators/plugins/src/index.ts"],
       "@nestled/utils": ["generators/utils/src/index.ts"],
       "@nestled/web": ["generators/web/src/index.ts"]
     }
