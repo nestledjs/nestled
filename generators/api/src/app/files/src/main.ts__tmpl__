@@ -8,19 +8,22 @@ import { AppModule } from './app.module'
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
   const configService = app.get(ConfigService)
-  const globalPrefix = configService.get('app.prefix')
-  app.setGlobalPrefix(globalPrefix)
+
+  // Get individual properties with fallbacks
+  const prefix = configService.get('app.prefix') || 'api';
+  const port = configService.get('app.port') || 3000;
+  const host = configService.get('app.host') || 'localhost';
+
+  app.setGlobalPrefix(prefix)
   app.enableCors({
     credentials: true,
-    origin: configService.get('app.api.cors.origin'),
+    origin: configService.get('app.api.cors.origin') || '*',
   })
-  app.use(cookieParser(configService.get('app.api.cookie.secret')))
+  app.use(cookieParser(configService.get('app.api.cookie.secret') || 'secret'));
 
-  const port = configService.get('app.port');
-  const host = configService.get('app.host');
   await app.listen(port, host, () => {
-    Logger.log('Listening at http://localhost:' + port + '/' + globalPrefix)
-    Logger.log('Listening at http://localhost:' + port + '/graphql')
+    Logger.log(`Listening at http://${host}:${port}/${prefix}`)
+    Logger.log(`Listening at http://${host}:${port}/graphql`)
   })
 }
 

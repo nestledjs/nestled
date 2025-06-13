@@ -4,7 +4,7 @@ const nodeExternals = require('webpack-node-externals');
 
 module.exports = {
   target: 'node',
-  mode: 'production',
+  mode: 'development',
   entry: path.resolve(__dirname, 'src/main.ts'),
   output: {
     path: path.resolve(__dirname, '../../dist/apps/api'),
@@ -34,7 +34,7 @@ module.exports = {
   externals: [
     nodeExternals({
       allowlist: [
-        /^<%= npmScope %>\/api/, // allow your own libs
+        /^@<%= npmScope %>\/api/, // allow your own libs
       ],
       // Manually exclude Prisma internals if needed
       function ({ request }, callback) {
@@ -44,8 +44,8 @@ module.exports = {
         if (request && request.includes('.prisma/client')) {
           return callback(null, 'commonjs .prisma/client')
         }
-        if (request && request === '<%= npmScope %>/api/prisma') {
-          return callback(null, 'commonjs <%= npmScope %>/api/prisma')
+        if (request && request === '@<%= npmScope %>/api/prisma') {
+          return callback(null, 'commonjs @<%= npmScope %>/api/prisma')
         }
         callback()
       }

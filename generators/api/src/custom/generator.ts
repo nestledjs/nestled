@@ -110,7 +110,7 @@ export class ${model.modelName}Service {
     tree.write(join(modelFolder, `${kebabModel}.service.ts`), serviceContent)
 
     // Generate resolver.ts
-    const resolverContent = `import { ${model.modelName}Service } from './${kebabModel}.service'
+    const resolverContent = `
 import { ApiCrudDataAccessService } from '${npmScope}/api/generated-crud/data-access'
 import { Generated${model.modelName}Resolver } from '${npmScope}/api/generated-crud/feature'
 import { Injectable } from '@nestjs/common'
@@ -121,8 +121,8 @@ import { ${model.modelName} } from '${npmScope}/api/core/models'
 @Injectable()
 export class ${model.modelName}Resolver extends Generated${model.modelName}Resolver {
   constructor(
-    private readonly customService: ${model.modelName}Service,
-    private readonly generatedService: ApiCrudDataAccessService,
+    // private readonly customService: ${model.modelName}Service,
+    generatedService: ApiCrudDataAccessService,
   ) {
     super(generatedService)
   }
@@ -134,8 +134,10 @@ export class ${model.modelName}Resolver extends Generated${model.modelName}Resol
     const moduleContent = `import { Module } from '@nestjs/common'
 import { ${model.modelName}Service } from './${kebabModel}.service'
 import { ${model.modelName}Resolver } from './${kebabModel}.resolver'
+import { ApiCrudDataAccessModule } from '${npmScope}/api/generated-crud/data-access'
 
 @Module({
+  imports: [ApiCrudDataAccessModule],
   providers: [${model.modelName}Service, ${model.modelName}Resolver],
   exports: [${model.modelName}Service, ${model.modelName}Resolver],
 })

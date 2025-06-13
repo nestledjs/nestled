@@ -35,8 +35,8 @@ if (usesFloat) gqlImports.add('Float');
 if (usesID) gqlImports.add('ID');
 %>
 import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
-import * as PrismaSchema from '<%= npmScope %>/api/prisma'
-<% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '@<%= npmScope %>/api/core/models'
+
+<% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '<%= npmScope %>/api/core/models'
 <% } %><% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
 import { CorePagingInput } from '<%= npmScope %>/api/core/data-access'
 

@@ -56,7 +56,7 @@ describe('configSetupGenerator', () => {
     const updatedTsConfig = JSON.parse(tree.read('tsconfig.base.json', 'utf-8'))
     expect(updatedTsConfig.compilerOptions.composite).toBeUndefined()
     expect(updatedTsConfig.compilerOptions.declarationMap).toBeUndefined()
-    expect(updatedTsConfig.compilerOptions.emitDeclarationOnly).toBe(true)
+    expect(updatedTsConfig.compilerOptions.emitDeclarationOnly).toBeUndefined()
     expect(updatedTsConfig.compilerOptions.someOtherOption).toBe('value')
   })
 }) 

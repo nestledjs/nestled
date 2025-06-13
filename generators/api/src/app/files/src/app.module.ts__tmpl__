@@ -17,6 +17,7 @@ export const pluginModules = [
 ];
 // Combined modules used in the app
 export const appModules = [
+  ...coreModules,
   ...defaultModules,
   ...pluginModules,
 ];

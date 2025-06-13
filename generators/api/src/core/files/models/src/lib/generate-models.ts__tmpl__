@@ -168,7 +168,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       const isEnum = field.kind === 'enum'
       const isRelation = field.kind === 'object'
       const originalType = field.type
-      const isRequired = field.isRequired // Natively supported by DMMF
+      // const isRequired = field.isRequired // Natively supported by DMMF
 
       // DEBUG LINE
       // console.log(`DEBUG: Processing field: ${model.name}.${field.name}, Kind: ${field.kind}, OriginalType: ${originalType}, IsList: ${isList}, IsRequired: ${isRequired}`);
@@ -201,12 +201,11 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
 
       let decorator = '@Field('
       const options: string[] = []
-      if (!isRequired) {
-        options.push('nullable: true')
-      }
+      // Always add nullable: true for all fields
+      options.push('nullable: true')
 
+      // Always declare the type in the decorator
       let decoratorType = ''
-
       if (isList) {
         let listItemGraphQLType = originalType
         if (originalType === 'Int') listItemGraphQLType = 'Int'
@@ -215,46 +214,34 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         else if (originalType === 'Json') listItemGraphQLType = 'GraphQLJSONObject'
         else if (isEnum || isRelation)
           listItemGraphQLType = originalType // Assumes enum/type is registered with GraphQL
-        else if (originalType === 'DateTime') listItemGraphQLType = 'Date' // Or GraphQLISODateTime if you use it
-        else if (originalType === 'Boolean') listItemGraphQLType = 'Boolean' // Standard GraphQL Boolean
+        else if (originalType === 'DateTime') listItemGraphQLType = 'Date'
+        else if (originalType === 'Boolean') listItemGraphQLType = 'Boolean'
         else if (originalType.toLowerCase() === 'string' || originalType === 'ID') {
-          listItemGraphQLType = 'String' // For String or ID
+          listItemGraphQLType = 'String'
         } else {
-          // Fallback for other scalar types in a list if not explicitly handled
-          // This might need adjustment based on your GraphQL scalar setup
           listItemGraphQLType = originalType
         }
         decoratorType = `() => [${listItemGraphQLType}]`
-      } else if (originalType === 'Json') {
-        decoratorType = `() => GraphQLJSONObject`
-      } else if (originalType === 'Int') {
-        decoratorType = `() => Int`
-      } else if (originalType === 'Float') {
-        decoratorType = `() => Float`
-      } else if (originalType === 'Decimal') {
-        decoratorType = `() => GraphQLDecimal`
-      } else if (isEnum || isRelation) {
-        // Non-list enum or relation
-        decoratorType = `() => ${originalType}`
-      } else if (isScalarType(originalType) && !['Int', 'Float', 'Decimal', 'Json'].includes(originalType)) {
-        // For other scalars (String, Boolean, DateTime, ID), NestJS infers type if decoratorType is omitted.
-        // decoratorType can be omitted if options are provided.
+      } else {
+        // Always declare the type for non-list fields
+        if (originalType === 'Int') decoratorType = '() => Int'
+        else if (originalType === 'Float') decoratorType = '() => Float'
+        else if (originalType === 'Decimal') decoratorType = '() => GraphQLDecimal'
+        else if (originalType === 'Json') decoratorType = '() => GraphQLJSONObject'
+        else if (isEnum || isRelation) decoratorType = `() => ${originalType}`
+        else if (originalType === 'DateTime') decoratorType = '() => Date'
+        else if (originalType === 'Boolean') decoratorType = '() => Boolean'
+        else if (originalType.toLowerCase() === 'string' || originalType === 'ID') decoratorType = '() => String'
+        else decoratorType = `() => ${originalType}`
       }
 
-      if (decoratorType) {
-        decorator += decoratorType
-        if (options.length > 0) {
-          decorator += `, { ${options.join(', ')} }`
-        }
-      } else if (options.length > 0) {
-        decorator += `{ ${options.join(', ')} }`
-      }
+      decorator += decoratorType
+      decorator += `, { ${options.join(', ')} }`
       decorator += ')'
 
       output += `  ${decorator}\n`
       // Make all fields optional regardless of isRequired value
-      const optionalMarker = '?' // Always add question mark
-      //const fieldTypeSuffix = isList ? '[]' : ' | null' // Always add null for non-list fields
+      const optionalMarker = '?' // Always add a question mark
 
       // For relations, use Partial<Type> only if it's not required and can be partially loaded
       // Otherwise, if it's a relation, it's either the full Type or Type[] or null/undefined.
@@ -266,9 +253,8 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         finalTsType = `${tsType}` // Not Partial<Type> by default for GQL object types
       }
 
-      output += `  ${field.name}${optionalMarker}: ${finalTsType}${isList ? '[]' : ''}${
-        !isList ? ' | null' : ''
-      };\n\n`
+      // Never add '| null' to any field
+      output += `  ${field.name}${optionalMarker}: ${finalTsType}${isList ? '[]' : ''} | null;\n\n`
     }
     output += `}\n\n`
   }
@@ -299,10 +285,6 @@ function generateIndex(): string {
 export * from './models';
 export * from './enums';
 `
-}
-
-function isScalarType(type: string): boolean {
-  return ['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Json', 'ID', 'BigInt', 'Decimal', 'Bytes'].includes(type)
 }
 
 main().catch((e) => {
