@@ -19,7 +19,6 @@ export class SmtpMailerService {
   private readonly appEmail: string
   private readonly appName: string
   private readonly appSupportEmail: string
-  private readonly siteUrl: string
 
   constructor(private readonly config: ApiCoreFeatureService) {
     this.mailer = createTransport({
@@ -33,7 +32,6 @@ export class SmtpMailerService {
     this.appEmail = this.config.appEmail
     this.appName = this.config.appName
     this.appSupportEmail = this.config.appSupportEmail
-    this.siteUrl = this.config.siteUrl
   }
 
   async send(params: SendMailParams) {

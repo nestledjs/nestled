@@ -34,7 +34,7 @@ describe('mailer generator', () => {
     const callback = await generator(tree)
     callback()
 
-    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'mailer' }, expect.any(String), 'data-access')
+    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'smtp-mailer' }, expect.any(String), 'data-access')
     expect(formatFiles).toHaveBeenCalledWith(tree)
     expect(installPackagesTask).toHaveBeenCalledWith(tree)
   })

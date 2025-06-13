@@ -1,62 +1,62 @@
-import { Tree } from '@nx/devkit'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import * as fs from 'fs'
+import { formatFiles, generateFiles, joinPathFragments, Tree } from '@nx/devkit'
+import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
+import { addToModules } from '@nestled/utils'
 import generator from './generator'
 
-vi.mock('fs')
+vi.mock('@nx/devkit', async () => {
+  const actual = await vi.importActual('@nx/devkit')
+  return {
+    ...actual,
+    formatFiles: vi.fn(),
+    generateFiles: vi.fn(),
+    joinPathFragments: actual.joinPathFragments,
+  }
+})
 
-const mockFiles = {
-  '/Users/justinhandley/IdeaProjects/muzebook/libs/api/custom/src/lib/plugins/auth/file.txt': 'MuseBook is cool',
-}
+vi.mock('@nx/js/src/utils/package-json/get-npm-scope', async () => {
+  return {
+    getNpmScope: vi.fn(() => 'myscope'),
+  }
+})
 
-const GENERATED_FILES = [
-  'libs/api/custom/plugins/auth/auth.service.ts',
-  'libs/api/custom/plugins/auth/auth.resolver.ts',
-  'libs/api/custom/plugins/auth/auth.module.ts',
-  'libs/api/custom/plugins/auth/auth.helper.ts',
-  'libs/api/custom/plugins/auth/dto/index.ts',
-  'libs/api/custom/plugins/auth/dto/register.input.ts',
-  'libs/api/custom/plugins/auth/dto/reset-password.input.ts',
-  'libs/api/custom/plugins/auth/dto/forgot-password.input.ts',
-  'libs/api/custom/plugins/auth/dto/login.input.ts',
-  'libs/api/custom/plugins/auth/dto/user-create.input.ts',
-  'libs/api/custom/plugins/auth/models/user-token.ts',
-  'libs/api/custom/plugins/auth/templates/password-reset-email.template.ts',
-]
+vi.mock('@nestled/utils', async () => {
+  return {
+    addToModules: vi.fn(),
+  }
+})
 
-function setupFsMock() {
-  vi.mocked(fs.existsSync).mockImplementation(
-    (p) =>
-      !!mockFiles[p as string] ||
-      p === '/Users/justinhandley/IdeaProjects/muzebook/libs/api/custom/src/lib/plugins/auth' ||
-      p === 'libs/plugins/auth',
-  )
-  vi.mocked(fs.readdirSync).mockImplementation(
-    (p) =>
-      (p === '/Users/justinhandley/IdeaProjects/muzebook/libs/api/custom/src/lib/plugins/auth'
-        ? ['file.txt']
-        : []) as any,
-  )
-  vi.mocked(fs.statSync).mockImplementation((p) => ({ isDirectory: () => false } as any))
-  vi.mocked(fs.readFileSync).mockImplementation((p) => mockFiles[p as string] || '')
-  vi.mocked(fs.writeFileSync).mockImplementation((p, content) => {
-    mockFiles[p as string] = content as string
-  })
-  vi.mocked(fs.mkdirSync).mockImplementation(() => undefined as unknown as string)
-}
-
-describe('auth-generator', () => {
+describe('auth generator', () => {
   let tree: Tree
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
+    // Simulate the index file existing
+    tree.write('libs/api/custom/src/index.ts', '')
+    vi.clearAllMocks()
   })
 
-  it('should generate all expected auth files', async () => {
+  it('should generate files, add to modules, and update index', async () => {
     await generator(tree)
-    for (const file of GENERATED_FILES) {
-      expect(tree.exists(file)).toBe(true)
-    }
+
+    expect(generateFiles).toHaveBeenCalledWith(
+      tree,
+      expect.any(String),
+      joinPathFragments('libs', 'api/custom/src/lib/plugins', 'auth'),
+      expect.objectContaining({ npmScope: 'myscope', overwrite: false })
+    )
+    expect(addToModules).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tree,
+        modulePath: 'apps/api/src/app.module.ts',
+        moduleArrayName: 'pluginModules',
+        moduleToAdd: 'AuthModule',
+        importPath: '@myscope/api/custom',
+      })
+    )
+    const indexContent = tree.read('libs/api/custom/src/index.ts', 'utf-8')
+    expect(indexContent).toContain("export * from './lib/plugins/auth/auth.module'")
+    expect(formatFiles).toHaveBeenCalledWith(tree)
   })
-})
+}) 

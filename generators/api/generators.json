@@ -40,9 +40,9 @@
       "schema": "./src/generate-crud/schema.json",
       "description": "Generate CRUD libraries based on Prisma models"
     },
-    "mailer": {
-      "factory": "./src/mailer/generator.js",
-      "schema": "./src/mailer/schema.json",
+    "smtp-mailer": {
+      "factory": "./src/smtp-mailer/generator.js",
+      "schema": "./src/smtp-mailer/schema.json",
       "description": "Create an API Mailer Library"
     },
     "user": {

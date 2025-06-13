@@ -6,7 +6,7 @@ nx g @nestled/api:prisma &&
 nx g @nestled/api:config && 
 nx g @nestled/api:core && 
 nx g @nestled/api:custom && 
-nx g @nestled/api:mailer &&
+nx g @nestled/api:smtp-mailer &&
 nx g @nestled/api:generate-crud && 
 nx g @nestled/api:utils &&
 nx g @nestled/api:custom &&

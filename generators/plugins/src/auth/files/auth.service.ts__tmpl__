@@ -158,7 +158,7 @@ export class AuthService {
   async inviteToOrganization(input: InviteUserInput, inviterId: string): Promise<boolean> {
     const inviteToken = generateToken()
     const expiresAt = generateExpireDate(7)
-    const invite = await this.data.invite.create({
+    await this.data.invite.create({
       data: {
         email: input.email,
         organizationId: input.organizationId,
@@ -167,7 +167,15 @@ export class AuthService {
         expiresAt,
       },
     })
-    const inviter = await this.data.user.findUnique({ where: { id: inviterId } })
+      const inviter = await this.data.user.findUnique({ 
+      where: { id: inviterId },
+      include: {
+        emails: {
+          where: { primary: true },
+          select: { email: true }
+        }
+      }
+    })
     const org = await this.data.organization.findUnique({ where: { id: input.organizationId } })
     const appName = this.core.appName || 'App'
     const siteUrl = this.core.siteUrl || 'http://localhost:4200'
@@ -175,7 +183,7 @@ export class AuthService {
       organizationInviteEmail({
         email: input.email,
         firstName: '',
-        inviterName: inviter?.displayName || inviter?.email || 'Someone',
+        inviterName: inviter?.displayName || inviter?.emails[0]?.email || 'Someone',
         organizationName: org?.name || 'Organization',
         inviteToken,
         appName,
@@ -251,11 +259,15 @@ export class AuthService {
       where: { id: user.id },
       data: { passwordResetToken, passwordResetExpires },
     })
+    const appName = this.core.appName || 'App';
+    const siteUrl = this.core.siteUrl || 'http://localhost:4200';
     await this.mailer.send(
       passwordResetEmail({
         email: email,
         firstName: user.firstName || '',
         passwordResetToken,
+        appName,
+        siteUrl,
       }),
     )
     return true

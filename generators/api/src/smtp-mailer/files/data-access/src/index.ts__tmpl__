@@ -1,2 +1,2 @@
-export * from './lib/smtp-mailer.module'
-export * from './lib/smtp-mailer.service'
+export * from './lib/api-smtp-mailer-data-access.module'
+export * from './lib/api-smtp-mailer-data-access.service'
