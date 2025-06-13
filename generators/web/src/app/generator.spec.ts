@@ -3,7 +3,6 @@ import { Tree } from '@nx/devkit'
 import { execSync } from 'child_process'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import generator from './generator'
-import { applicationGenerator } from '@nx/react/src/generators/application/application'
 
 vi.mock('child_process', async (importOriginal) => {
   const originalModule = await importOriginal()
@@ -43,9 +42,15 @@ describe('web app generator', () => {
       return ''
     })
 
-    vi.spyOn(console, 'log').mockImplementation(() => { /* empty */ })
-    vi.spyOn(console, 'warn').mockImplementation(() => { /* empty */ })
-    vi.spyOn(console, 'error').mockImplementation(() => { /* empty */ })
+    vi.spyOn(console, 'log').mockImplementation(() => {
+      /* empty */
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {
+      /* empty */
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {
+      /* empty */
+    })
   })
 
   afterEach(() => {
@@ -69,4 +74,4 @@ describe('web app generator', () => {
     expect(tree.exists('apps/web/vite.config.ts')).toBe(true)
     expect(tree.exists('apps/web/src/app.tsx')).toBe(true)
   })
-}) 
+})

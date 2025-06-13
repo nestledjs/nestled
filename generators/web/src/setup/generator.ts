@@ -6,14 +6,14 @@ export async function webSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
   addDependenciesToPackageJson(
     tree,
     {
-      '@react-router/dev': '^7.6.2',
+      
       'react-router-dom': '^7.6.2',
-      '@react-router/html': '^7.6.2',
-      'vite-tsconfig-paths': '^5.1.4',
       isbot: '5.1.28',
     },
     {
+      '@react-router/dev': '^7.6.2',
       '@nx/react': '21.1.3',
+      'vite-tsconfig-paths': '^5.1.4',
       '@tailwindcss/vite': '^4.1.8',
       tailwindcss: '^4.1.8',
       '@tailwindcss/postcss': '^4.1.8',

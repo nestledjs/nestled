@@ -6,7 +6,7 @@ import { ApiAuthDataAccessService } from '../api-auth-data-access.service'
 // @ts-ignore
 import { User } from '@<%= npmScope %>/api/core/models'
 
-function headerAndCookieExtractor(req: Request): string | undefined {
+function headerAndCookieExtractor(req: Request): string | null {
   const authHeaderToken = ExtractJwt.fromAuthHeaderAsBearerToken()(req)
   if (authHeaderToken) {
     return authHeaderToken
@@ -15,21 +15,26 @@ function headerAndCookieExtractor(req: Request): string | undefined {
   if (cookieToken) {
     return cookieToken
   }
-  return undefined
+  return null
 }
 
-function cookieExtractor(req: Request): string {
+
+function cookieExtractor(req: Request): string | undefined {
   const name = process.env['API_COOKIE_NAME'] || '__session'
   return req?.cookies?.[name] ? req.cookies[name] : undefined
 }
 
-
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly auth: ApiAuthDataAccessService) {
+    const jwtSecret = process.env['JWT_SECRET'];
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET environment variable is not set');
+    }
+
     super({
       jwtFromRequest: headerAndCookieExtractor,
-      secretOrKey: process.env['JWT_SECRET'],
+      secretOrKey: jwtSecret,
       ignoreExpiration: false,
     })
   }
