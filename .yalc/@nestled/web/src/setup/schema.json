@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "cli": "nx",
+  "id": "web-setup",
+  "type": "object",
+  "properties": {},
+  "required": []
+}

@@ -4,4 +4,5 @@ export interface GenerateCrudGeneratorSchema {
   model: string;
   plural: string;
   description?: string;
+  overwrite?: boolean;
 }

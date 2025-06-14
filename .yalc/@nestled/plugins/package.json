@@ -1,0 +1,12 @@
+{
+  "name": "@nestled/plugins",
+  "version": "0.0.1",
+  "generators": "./generators.json",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "dependencies": {
+    "tslib": "^2.3.0"
+  },
+  "type": "commonjs",
+  "yalcSig": "86b71f2c7d630691b270b6b5f7b76b19"
+}

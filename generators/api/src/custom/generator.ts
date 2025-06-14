@@ -7,6 +7,22 @@ import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'
 import { join } from 'path'
 
+// Group all dependencies into a single object
+const defaultDependencies = {
+  formatFiles,
+  installPackagesTask,
+  getDMMF,
+  addToModules,
+  apiLibraryGenerator,
+  getPrismaSchemaPath,
+  readPrismaSchema,
+  execSync,
+  getNpmScope,
+  pluralize,
+  join,
+}
+export type CustomGeneratorDependencies = typeof defaultDependencies
+
 interface ModelType {
   name: string
   pluralName: string
@@ -18,19 +34,19 @@ interface ModelType {
   pluralModelPropertyName: string
 }
 
-async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
-  const prismaPath = getPrismaSchemaPath(tree)
-  const prismaSchema = readPrismaSchema(tree, prismaPath)
+async function getAllPrismaModels(tree: Tree, dependencies: CustomGeneratorDependencies): Promise<ModelType[]> {
+  const prismaPath = dependencies.getPrismaSchemaPath(tree)
+  const prismaSchema = dependencies.readPrismaSchema(tree, prismaPath)
   if (!prismaSchema) {
     console.error(`No Prisma schema found at ${prismaPath}`)
     return []
   }
 
   try {
-    const dmmf = await getDMMF({ datamodel: prismaSchema })
+    const dmmf = await dependencies.getDMMF({ datamodel: prismaSchema })
     return dmmf.datamodel.models.map((model) => {
       const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
-      const pluralPropertyName = pluralize(singularPropertyName)
+      const pluralPropertyName = dependencies.pluralize(singularPropertyName)
 
       // Create a properly typed fields array
       const fields = model.fields.map((field) => ({
@@ -51,12 +67,12 @@ async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
       // Create and return the model
       const modelData: ModelType = {
         name: model.name,
-        pluralName: pluralize(model.name),
+        pluralName: dependencies.pluralize(model.name),
         fields,
         primaryField: model.fields.find((f) => !f.isId && f.type === 'String')?.name || 'name',
         modelName: model.name,
         modelPropertyName: singularPropertyName,
-        pluralModelName: pluralize(model.name),
+        pluralModelName: dependencies.pluralize(model.name),
         pluralModelPropertyName: pluralPropertyName,
       }
 
@@ -82,17 +98,17 @@ function toKebabCase(str: string): string {
     .toLowerCase()
 }
 
-async function generateCustomFiles(tree: Tree, customLibraryRoot: string, models: ModelType[], npmScope: string) {
-  const defaultDir = join(customLibraryRoot, 'src/lib/default')
-  const pluginsDir = join(customLibraryRoot, 'src/lib/plugins')
+async function generateCustomFiles(tree: Tree, customLibraryRoot: string, models: ModelType[], npmScope: string, dependencies: CustomGeneratorDependencies) {
+  const defaultDir = dependencies.join(customLibraryRoot, 'src/lib/default')
+  const pluginsDir = dependencies.join(customLibraryRoot, 'src/lib/plugins')
   await ensureDirExists(tree, defaultDir)
   await ensureDirExists(tree, pluginsDir)
   // Only write .gitkeep in pluginsDir
-  tree.write(join(pluginsDir, '.gitkeep'), '')
+  tree.write(dependencies.join(pluginsDir, '.gitkeep'), '')
 
   for (const model of models) {
     const kebabModel = toKebabCase(model.modelName)
-    const modelFolder = join(defaultDir, kebabModel)
+    const modelFolder = dependencies.join(defaultDir, kebabModel)
     if (tree.exists(modelFolder)) {
       // Skip if model folder already exists
       continue
@@ -107,7 +123,7 @@ export class ${model.modelName}Service {
   // Empty for now; will override or extend later if needed
 }
 `
-    tree.write(join(modelFolder, `${kebabModel}.service.ts`), serviceContent)
+    tree.write(dependencies.join(modelFolder, `${kebabModel}.service.ts`), serviceContent)
 
     // Generate resolver.ts
     const resolverContent = `
@@ -128,7 +144,7 @@ export class ${model.modelName}Resolver extends Generated${model.modelName}Resol
   }
 }
 `
-    tree.write(join(modelFolder, `${kebabModel}.resolver.ts`), resolverContent)
+    tree.write(dependencies.join(modelFolder, `${kebabModel}.resolver.ts`), resolverContent)
 
     // Generate module.ts
     const moduleContent = `import { Module } from '@nestjs/common'
@@ -143,10 +159,10 @@ import { ApiCrudDataAccessModule } from '${npmScope}/api/generated-crud/data-acc
 })
 export class ${model.modelName}Module {}
 `
-    tree.write(join(modelFolder, `${kebabModel}.module.ts`), moduleContent)
+    tree.write(dependencies.join(modelFolder, `${kebabModel}.module.ts`), moduleContent)
 
     // Add to defaultModules in app.module.ts__tmpl__
-    addToModules({
+    dependencies.addToModules({
       tree,
       modulePath: 'apps/api/src/app.module.ts',
       moduleArrayName: 'defaultModules',
@@ -158,19 +174,23 @@ export class ${model.modelName}Module {}
   // Update index.ts to export all model modules
   const modelFolders = models.map((m) => toKebabCase(m.modelName))
   const indexContent = modelFolders.map((m) => `export * from './lib/default/${m}/${m}.module'`).join('\n')
-  tree.write(join(customLibraryRoot, 'src/index.ts'), indexContent)
+  tree.write(dependencies.join(customLibraryRoot, 'src/index.ts'), indexContent)
 }
 
-export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema) {
+export async function customGeneratorLogic(
+  tree: Tree,
+  schema: GenerateCustomGeneratorSchema,
+  dependencies: CustomGeneratorDependencies = defaultDependencies,
+) {
   try {
     const name = schema.name || 'custom'
     const customLibraryRoot = schema.directory ? `libs/api/${schema.directory}/${name}` : `libs/api/${name}`
     const projectName = schema.directory ? `api-${schema.directory.replace(/\//g, '-')}-${name}` : `api-${name}`
 
-    // Overwrite logic: use Nx workspace:remove to fully remove the project and all references
+    // Overwrite logic
     if (schema.overwrite && tree.exists(customLibraryRoot)) {
       try {
-        execSync(`nx g @nx/workspace:remove ${projectName} --forceRemove`, {
+        dependencies.execSync(`nx g @nx/workspace:remove ${projectName} --forceRemove`, {
           stdio: 'inherit',
           cwd: tree.root,
         })
@@ -179,31 +199,35 @@ export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema
       }
     }
 
-    // Use the shared apiLibraryGenerator to create the custom library
-    await apiLibraryGenerator(tree, { name }, '', undefined, false)
+    // Use the shared apiLibraryGenerator
+    await dependencies.apiLibraryGenerator(tree, { name }, '', undefined, false)
 
-    await ensureDirExists(tree, join(customLibraryRoot, 'src/lib/default'))
-    await ensureDirExists(tree, join(customLibraryRoot, 'src/lib/plugins'))
+    await ensureDirExists(tree, dependencies.join(customLibraryRoot, 'src/lib/default'))
+    await ensureDirExists(tree, dependencies.join(customLibraryRoot, 'src/lib/plugins'))
 
     // Get all Prisma models
-    const models = await getAllPrismaModels(tree)
+    const models = await getAllPrismaModels(tree, dependencies)
     if (models.length === 0) {
       console.error('No Prisma models found')
       return
     }
 
     // Generate custom files per model
-    const npmScope = `@${getNpmScope(tree)}`
-    await generateCustomFiles(tree, customLibraryRoot, models, npmScope)
+    const npmScope = `@${dependencies.getNpmScope(tree)}`
+    await generateCustomFiles(tree, customLibraryRoot, models, npmScope, dependencies)
 
     // Format files
-    await formatFiles(tree)
+    await dependencies.formatFiles(tree)
 
     return () => {
-      installPackagesTask(tree)
+      dependencies.installPackagesTask(tree)
     }
   } catch (error) {
     console.error('Error in Custom generator:', error)
     throw error
   }
+}
+
+export default async function (tree: Tree, schema: GenerateCustomGeneratorSchema) {
+  return customGeneratorLogic(tree, schema)
 }

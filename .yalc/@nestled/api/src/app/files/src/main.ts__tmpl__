@@ -1,0 +1,33 @@
+import { Logger } from '@nestjs/common'
+import { NestFactory } from '@nestjs/core'
+import { ConfigService } from '@nestjs/config'
+import cookieParser from 'cookie-parser'
+
+import { AppModule } from './app.module'
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule)
+  const configService = app.get(ConfigService)
+
+  // Get individual properties with fallbacks
+  const prefix = configService.get('app.prefix') || 'api';
+  const port = configService.get('app.port') || 3000;
+  const host = configService.get('app.host') || 'localhost';
+
+  app.setGlobalPrefix(prefix)
+  app.enableCors({
+    credentials: true,
+    origin: configService.get('app.api.cors.origin') || '*',
+  })
+  app.use(cookieParser(configService.get('app.api.cookie.secret') || 'secret'));
+
+  await app.listen(port, host, () => {
+    Logger.log(`Listening at http://${host}:${port}/${prefix}`)
+    Logger.log(`Listening at http://${host}:${port}/graphql`)
+  })
+}
+
+bootstrap().catch((error) => {
+  Logger.error('Failed to start the application', error);
+  process.exit(1);
+});

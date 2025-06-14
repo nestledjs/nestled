@@ -1,0 +1,43 @@
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
+import { LoggerMiddleware } from './applogger.middleware'
+import { ConfigModule } from '@nestjs/config'
+import { appConfig, validationSchema } from './app.config'
+
+// Auto-generated modules with special functions
+export const coreModules = [
+  // Auto-generated modules with special functions
+]
+// Auto-generated modules for each data type/model
+export const defaultModules = [
+  // Auto-generated modules for each data type/model
+];
+// Manually maintained plugin modules (never overwritten by generator)
+export const pluginModules = [
+  // Manually maintained plugin modules (never overwritten by generator)
+];
+// Combined modules used in the app
+export const appModules = [
+  ...coreModules,
+  ...defaultModules,
+  ...pluginModules,
+];
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      load: [appConfig],
+      validationSchema: validationSchema,
+      validationOptions: {
+        allowUnknown: true,
+        abortEarly: false,
+      },
+      isGlobal: true,
+    }),
+    ...appModules,
+  ],
+})
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(LoggerMiddleware).forRoutes('*', { path: '*', method: RequestMethod.ALL })
+  }
+}

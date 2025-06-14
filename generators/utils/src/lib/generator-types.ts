@@ -42,4 +42,5 @@ export interface ApiLibraryGeneratorSchema {
   overwrite?: boolean
   linter?: 'eslint'
   unitTestRunner?: 'vitest'
+  models?: ModelType[]
 }

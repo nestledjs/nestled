@@ -8,10 +8,8 @@ import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nes
 
 // Mock dependencies
 vi.mock('@prisma/internals')
-vi.mock('@nestled/utils', async () => {
-  const actual = await vi.importActual<typeof import('@nestled/utils')>('@nestled/utils')
+vi.mock('@nestled/utils', () => {
   return {
-    ...actual,
     apiLibraryGenerator: vi.fn().mockResolvedValue(undefined),
     getPrismaSchemaPath: vi.fn(),
     readPrismaSchema: vi.fn(),

@@ -1,0 +1,12 @@
+{
+  "$schema": "../../node_modules/@nx/devkit/schema.d.json",
+  "extends": "../../node_modules/@nx/devkit/generators.json",
+  "properties": {
+    "overwrite": {
+      "description": "Whether to overwrite existing files",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": []
+} 

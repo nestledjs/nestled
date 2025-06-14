@@ -7,7 +7,9 @@
     "serve-docs": "docsify serve ./docs --port 3020",
     "build": "nx run-many --target=build --all",
     "publish-lib": "ts-node scripts/yalc-publish.ts publish",
-    "push": "ts-node scripts/yalc-publish.ts push"
+    "push": "ts-node scripts/yalc-publish.ts push",
+    "push-all": "pnpm push api && pnpm push web && pnpm push utils && pnpm push config && pnpm push plugins",
+    "test": "nx affected --target=test --base=develop"
   },
   "private": true,
   "dependencies": {
@@ -15,11 +17,16 @@
     "@nestjs/core": "^10.0.2",
     "@nestjs/graphql": "latest",
     "@nestjs/platform-express": "^10.0.2",
+    "@nestled/api": "file:.yalc/@nestled/api",
+    "@nestled/config": "file:.yalc/@nestled/config",
+    "@nestled/plugins": "file:.yalc/@nestled/plugins",
+    "@nestled/utils": "file:.yalc/@nestled/utils",
+    "@nestled/web": "file:.yalc/@nestled/web",
+    "@nx/devkit": "21.1.3",
     "@prisma/internals": "^6.9.0",
     "@types/js-yaml": "^4.0.9",
     "enquirer": "^2.4.1",
     "graphql-type-json": "^0.3.2",
-    "@nx/devkit": "21.1.3",
     "js-yaml": "^4.1.0",
     "pluralize": "^8.0.0",
     "prisma-datamodel": "^1.34.12",

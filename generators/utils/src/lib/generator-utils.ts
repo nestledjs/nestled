@@ -22,6 +22,7 @@ import {
 import { libraryGenerator } from '@nx/nest'
 import * as fs from 'fs'
 import * as path from 'path'
+import pluralize from 'pluralize'
 
 export function removeWorkspacesFromPackageJson(tree: Tree): void {
   const packageJsonPath = 'package.json'
@@ -213,16 +214,16 @@ export function getNpmScope(tree: Tree): string {
   return match[1] // Returns just "nestled" from "@nestled/source"
 }
 
-export function generateTemplateFiles({
+export function generateTemplateFiles<T = any>({
   tree,
   schema,
   libraryRoot,
   templatePath,
   npmScope,
-}: GenerateTemplateOptions): void {
+}: GenerateTemplateOptions & { schema: T }): void {
   const variables = {
     ...schema,
-    ...names(`${schema.name}`),
+    ...names(`${(schema as any).name}`),
     npmScope,
     tmpl: '',
   }
@@ -556,9 +557,9 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
   tree.write(modulePath, fileContent)
 }
 
-export async function apiLibraryGenerator(
+export async function apiLibraryGenerator<T = any>(
   tree: Tree,
-  schema: ApiLibraryGeneratorSchema,
+  schema: T,
   templateRootPath: string,
   type?: string,
   addModuleImport?: boolean,
@@ -566,14 +567,14 @@ export async function apiLibraryGenerator(
   const npmScope = getNpmScope(tree)
   const API_LIBS_SCOPE = 'libs/api'
   const libraryRoot = type
-    ? joinPathFragments(API_LIBS_SCOPE, schema.name, type)
-    : joinPathFragments(API_LIBS_SCOPE, schema.name)
-  const libraryName = type ? `api-${schema.name}-${type}` : `api-${schema.name}`
-  const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
+    ? joinPathFragments(API_LIBS_SCOPE, (schema as any).name, type)
+    : joinPathFragments(API_LIBS_SCOPE, (schema as any).name)
+  const libraryName = type ? `api-${(schema as any).name}-${type}` : `api-${(schema as any).name}`
+  const importPath = type ? `@${npmScope}/api/${(schema as any).name}/${type}` : `@${npmScope}/api/${(schema as any).name}`
   const tags = type ? `scope:api,type:${type}` : 'scope:api'
 
   // Overwrite logic: remove an existing library if requested
-  if (schema.overwrite && tree.exists(libraryRoot)) {
+  if ((schema as any).overwrite && tree.exists(libraryRoot)) {
     try {
       execSync(`nx g rm ${libraryName} --forceRemove`, {
         stdio: 'inherit',
@@ -619,7 +620,7 @@ export async function apiLibraryGenerator(
 
   // Use fs.existsSync for template files in node_modules
   if (templateRootPath && fs.existsSync(finalTemplatePath)) {
-    generateTemplateFiles({
+    generateTemplateFiles<T>({
       tree,
       schema,
       libraryRoot,
@@ -648,7 +649,7 @@ export async function apiLibraryGenerator(
 
   // Add the module import after generating the library
   if (addModuleImport) {
-    const nameClassName = names(schema.name).className
+    const nameClassName = names((schema as any).name).className
     const typeClassName = type ? names(type).className : ''
     const moduleToAdd = `Api${nameClassName}${typeClassName}Module`
     addToModules({
@@ -663,4 +664,12 @@ export async function apiLibraryGenerator(
   return () => {
     installPackagesTask(tree)
   }
+}
+
+export function getPluralName(name: string): string {
+  if (!name || typeof name !== 'string') {
+    throw new Error('getPluralName: name must be a non-empty string');
+  }
+  const plural = pluralize(name);
+  return plural === name ? name + 'List' : plural;
 }

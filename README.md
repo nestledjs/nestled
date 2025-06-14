@@ -10,6 +10,7 @@ nx g @nestled/api:smtp-mailer &&
 nx g @nestled/api:generate-crud && 
 nx g @nestled/api:utils &&
 nx g @nestled/api:custom &&
+nx g @nestled/api:sdk &&
 nx g @nestled/plugins:auth && 
 nx g @nestled/api:workspace-setup &&
 nx g @nestled/web:setup &&

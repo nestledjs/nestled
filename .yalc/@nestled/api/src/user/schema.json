@@ -1,0 +1,7 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "ApiUser",
+  "title": "Create an API User Library",
+  "type": "object",
+  "properties": {}
+}

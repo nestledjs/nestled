@@ -1,0 +1,23 @@
+import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, names, Tree } from '@nx/devkit';
+import { getDMMF } from '@prisma/internals';
+import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema, deleteFiles, getPluralName } from '@nestled/utils';
+import { GenerateCrudGeneratorSchema } from './schema';
+import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope';
+declare const defaultDependencies: {
+    formatFiles: typeof formatFiles;
+    generateFiles: typeof generateFiles;
+    installPackagesTask: typeof installPackagesTask;
+    joinPathFragments: typeof joinPathFragments;
+    names: typeof names;
+    getDMMF: typeof getDMMF;
+    apiLibraryGenerator: typeof apiLibraryGenerator;
+    getPrismaSchemaPath: typeof getPrismaSchemaPath;
+    readPrismaSchema: typeof readPrismaSchema;
+    deleteFiles: typeof deleteFiles;
+    getPluralName: typeof getPluralName;
+    getNpmScope: typeof getNpmScope;
+};
+export type GenerateCrudGeneratorDependencies = typeof defaultDependencies;
+export declare function generateCrudLogic(tree: Tree, schema: GenerateCrudGeneratorSchema, dependencies?: GenerateCrudGeneratorDependencies): Promise<() => void>;
+export default function (tree: Tree, schema: GenerateCrudGeneratorSchema): Promise<() => void>;
+export {};

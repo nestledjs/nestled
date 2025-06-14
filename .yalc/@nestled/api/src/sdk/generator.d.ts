@@ -1,0 +1,24 @@
+import { Tree, formatFiles, installPackagesTask, generateFiles, joinPathFragments, readJson, addDependenciesToPackageJson } from '@nx/devkit';
+import * as fs from 'fs';
+import { addScriptToPackageJson, getPluralName } from '@nestled/utils';
+import { libraryGenerator } from '@nx/js';
+declare const defaultDependencies: {
+    formatFiles: typeof formatFiles;
+    installPackagesTask: typeof installPackagesTask;
+    generateFiles: typeof generateFiles;
+    joinPathFragments: typeof joinPathFragments;
+    readJson: typeof readJson;
+    addDependenciesToPackageJson: typeof addDependenciesToPackageJson;
+    addScriptToPackageJson: typeof addScriptToPackageJson;
+    getPluralName: typeof getPluralName;
+    libraryGenerator: typeof libraryGenerator;
+    join: (...paths: string[]) => string;
+    existsSync: typeof fs.existsSync;
+    statSync: fs.StatSyncFn;
+    readdirSync: typeof fs.readdirSync;
+    readFileSync: typeof fs.readFileSync;
+};
+export type SdkGeneratorDependencies = typeof defaultDependencies;
+export declare function sdkGeneratorLogic(tree: Tree, schema: any, dependencies?: SdkGeneratorDependencies): Promise<() => void>;
+export default function (tree: Tree, schema: any): Promise<() => void>;
+export {};

@@ -55,7 +55,6 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@swc-node/register': '~1.10.10',
       '@swc/cli': '~0.7.7',
       '@swc/core': '~1.12.1',
-      '@types/bcryptjs': '^3.0.0',
       '@types/cookie-parser': '^1.4.3',
       '@types/express': '^5.0.3',
       '@types/nodemailer': '^6.4.7',

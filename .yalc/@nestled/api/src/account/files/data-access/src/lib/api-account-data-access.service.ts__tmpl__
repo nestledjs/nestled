@@ -1,0 +1,152 @@
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common'
+import { ApiCoreDataAccessService, Prisma } from '@<%= npmScope %>/api/core/data-access'
+import {
+  hashPassword,
+  validatePassword,
+} from '@<%= npmScope %>/api/auth/data-access'
+import { AccountCreateEmailInput } from './dto/account-create-email.input'
+import { AccountUpdatePasswordInput } from './dto/account-update-password.input'
+import { AccountUpdateProfileInput } from './dto/account-update-profile.input'
+
+@Injectable()
+export class ApiAccountDataAccessService {
+  constructor(private readonly data: ApiCoreDataAccessService) {}
+
+  accountEmails(userId: string) {
+    return this.data.email.findMany({
+      where: { userId },
+      orderBy: { primary: 'desc' },
+    })
+  }
+
+  accountProfile(userId: string) {
+    return this.data.findUserById(userId)
+  }
+
+  async accountCreateEmail(userId: string, input: AccountCreateEmailInput) {
+    const exists = await this.data.findUserByEmail(input.email)
+    if (exists) {
+      throw new BadRequestException(`Can't add email address ${input.email}`)
+    }
+    return this.data.email.create({
+      data: { userId, email: input.email, primary: false },
+    })
+  }
+
+  async accountDeleteEmail(userId: string, userEmailId: string) {
+    const email = await this.data.email.findUnique({
+      where: { id: userEmailId },
+      include: { user: true },
+    })
+    if (!email || !email.user) {
+      throw new BadRequestException(`Email not found`)
+    }
+    if (email.user.id !== userId) {
+      throw new UnauthorizedException()
+    }
+    if (email.primary) {
+      throw new BadRequestException(`You can't delete your primary email`)
+    }
+    return this.data.email.delete({ where: { id: userEmailId } })
+  }
+
+  accountUpdateProfile(userId: string, input: AccountUpdateProfileInput) {
+    return this.data.user.update({
+      where: { id: userId },
+      data: {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        bio: input.bio,
+      },
+    })
+  }
+
+  async accountUpdateDisplayName(userId: string, displayName: string) {
+    const available = await this.accountDisplayNameAvailable(userId, displayName)
+
+    if (!available) {
+      throw new BadRequestException(`Display name ${displayName} is not available`)
+    }
+
+    return this.data.user.update({ where: { id: userId }, data: { displayName } })
+  }
+
+  async accountDisplayNameAvailable(userId: string, displayName: string): Promise<boolean> {
+    const denied = await this.data.displayNameDenyList(displayName)
+
+    if (denied) {
+      throw new BadRequestException(`Display name ${displayName} is not available`)
+    }
+
+    const count = await this.data.user.count({
+      where: { displayName },
+    })
+    return count === 0
+  }
+
+  async userEmailOwner(userId: string, userEmailId: string) {
+    const email = await this.data.email.findUnique({
+      where: { id: userEmailId },
+      include: { user: true }
+    })
+    if (!email || !email.user) {
+      throw new BadRequestException(`Email not found`)
+    }
+    if (email.user.id !== userId) {
+      throw new UnauthorizedException()
+    }
+    return email.user
+  }
+
+  async updateUserEmail(userId: string, userEmailId: string, input: Prisma.EmailUpdateInput) {
+    await this.userEmailOwner(userId, userEmailId)
+    return this.data.email.update({ where: { id: userEmailId }, data: { ...input } })
+  }
+
+  async accountMarkEmailPrivate(userId: string, userEmailId: string) {
+    return this.updateUserEmail(userId, userEmailId, { public: false })
+  }
+
+  async accountMarkEmailPublic(userId: string, userEmailId: string) {
+    return this.updateUserEmail(userId, userEmailId, { public: true })
+  }
+
+  async accountMarkEmailPrimary(userId: string, userEmailId: string) {
+    await this.userEmailOwner(userId, userEmailId)
+    await this.data.email.updateMany({
+      where: { userId },
+      data: { primary: false },
+    })
+    return this.updateUserEmail(userId, userEmailId, { primary: true })
+  }
+
+  async accountResetPassword(userId: string) {
+    const emails = await this.accountEmails(userId)
+    const primary = emails.find((email) => email.primary)
+
+    if (!primary) {
+      throw new BadRequestException(`Could not find primary email for user with id ${userId}`)
+    }
+    Logger.verbose(`TODO: Implement Account Reset Password`)
+    return true
+  }
+
+  async accountUpdatePassword(userId: string, input: AccountUpdatePasswordInput) {
+    const user = await this.data.findUserById(userId)
+    if (!user || !user.password) {
+      throw new BadRequestException(`User not found or password not set`)
+    }
+    await validatePassword(input.currentPassword, user.password)
+
+    if (input.password !== input.verified) {
+      throw new BadRequestException(`Passwords do not match!`)
+    }
+    await this.data.user.update({ where: { id: userId }, data: { password: hashPassword(input.password) } })
+    return true
+  }
+}

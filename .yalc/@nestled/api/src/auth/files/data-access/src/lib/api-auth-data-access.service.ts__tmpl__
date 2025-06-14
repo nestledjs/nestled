@@ -1,0 +1,198 @@
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
+import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature'
+import { Response } from 'express'
+import {
+  generateExpireDate,
+  generateToken,
+  hashPassword,
+  validatePassword,
+} from './api-auth-data-access.helper'
+import { LoginInput } from './dto/login.input'
+import { UserToken } from './models/user-token'
+import { UserCreateInput } from './dto/user-create.input'
+import { Prisma } from '@<%= npmScope %>/api/prisma'
+import { UserRole } from '@<%= npmScope %>/api/core/models'
+import { ApiSmtpMailerDataAccessService } from '@<%= npmScope %>/api/smtp-mailer/data-access'
+import { passwordResetEmail } from './templates/password-reset-email.template'
+
+
+@Injectable()
+export class ApiAuthDataAccessService {
+  constructor(
+    private readonly data: ApiCoreDataAccessService,
+    private readonly core: ApiCoreFeatureService,
+    private readonly jwtService: JwtService,
+    private readonly mailer: ApiMailerDataAccessService,
+  ) {}
+
+  async createUser(input: Partial<UserCreateInput>) {
+    if (!input.password) {
+      throw new BadRequestException('Password is required')
+    }
+
+    if (!input.email) {
+      throw new BadRequestException('Email is required')
+    }
+    const password = input.password
+    const hashedPassword = hashPassword(password)
+    const email = input.email.trim()
+    const displayName =
+      input.displayName ||
+      `${input.firstName || ''} ${input.lastName || ''}`.trim() ||
+      email
+
+    return this.data.user
+      .create({
+        data: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          emails: { create: { email, primary: true, emailType: 'PERSONAL' } },
+          phoneNumbers: input?.phone ? { create: { phone: input.phone, primary: true, phoneType: 'MOBILE' } } : undefined,
+          displayName,
+          password: hashedPassword,
+          role: UserRole.USER,
+        },
+      })
+      .catch((e) => {
+        if (e instanceof Prisma.PrismaClientKnownRequestError) {
+          if (e.code === 'P2002') {
+            throw new BadRequestException('This email is already in use')
+          }
+        }
+        throw e;
+      })
+  }
+
+  async register(input: UserCreateInput): Promise<any> {
+    if (!input.password) {
+      throw new BadRequestException('Password is required')
+    }
+
+    if (!input.email) {
+      throw new BadRequestException('Email is required')
+    }
+
+    const email = input.email.toLowerCase()
+    const displayName = input.displayName || email.split('@')[0]
+
+    const user = await this.data.user.create({
+      data: {
+        role: UserRole.USER,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        emails: { create: { email, primary: true, emailType: 'PERSONAL' } },
+        phoneNumbers: input?.phone ? { create: { phone: input.phone, primary: true, phoneType: 'MOBILE' } } : undefined,
+        displayName,
+        password: hashPassword(input.password),
+      },
+    })
+
+    return user
+  }
+
+  async login(
+    input: LoginInput,
+  ): Promise<UserToken> {
+    const email = input.email.trim()
+    const password = input.password.trim()
+
+    const user = await this.findUserByEmail(email)
+    if (!user?.password) {
+      throw new NotFoundException(`No user found for email: ${email}`)
+    }
+
+    const passwordValid = validatePassword(password, user.password)
+    if (!passwordValid) {
+      throw new BadRequestException('Invalid password')
+    }
+
+    return this.signUser(user)
+  }
+
+  async forgotPassword(email: string): Promise<boolean> {
+    const user = await this.findUserByEmail(email)
+
+    if (!user) {
+      Logger.warn(`Forgot password reset for non-existing user ${email}`)
+      throw new Error(`${email} is not a user`)
+    }
+
+    const passwordResetToken = generateToken()
+    const passwordResetExpires = generateExpireDate()
+
+    await this.data.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken, passwordResetExpires },
+    })
+    await this.mailer.send(
+      passwordResetEmail({
+        email: email,
+        firstName: user.firstName || '',
+        passwordResetToken,
+      })
+    )
+    return true
+  }
+
+  async resetPassword(password: string, token: string): Promise<any> {
+    const user = await this.data.user.findFirst({ where: { passwordResetToken: token } })
+
+    if (!user) {
+      Logger.warn(`There is no user associated with the password reset token ${token}`)
+      throw new Error(`This token has been used or is invalid.`)
+    }
+
+    if (user.passwordResetExpires && user.passwordResetExpires.valueOf() < new Date(Date.now()).valueOf()) {
+      Logger.warn(
+        `PasswordResetToken ${token} expired on ${user.passwordResetExpires}.`
+      )
+      throw new Error(`Your password reset token has expired.`)
+    }
+
+    const hashedPassword = hashPassword(password)
+    return this.data.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        password: hashedPassword,
+      },
+    })
+  }
+
+  signUser(user: any): UserToken {
+    const token = this.jwtService.sign({ userId: user?.id })
+    return { token, user }
+  }
+
+  validateUser(userId: string) {
+    return this.findUserById(userId);
+  }
+
+  getUserFromToken(token: string) {
+    const userId = this.jwtService.decode(token)['userId'];
+
+    return this.findUserById(userId);
+  }
+
+  public findUserByEmail(email: string) {
+    return this.data.user.findFirst({
+      where: { emails: { some: { email, primary: true } } },
+      include: { emails: { where: { primary: true } } },
+    });
+  }
+
+  public findUserById(userId: string) {
+    return this.data.user.findUnique({ where: { id: userId } });
+  }
+
+  public setCookie(res: Response, token: string) {
+    return res?.cookie(this.core.cookie.name, token, this.core.cookie.options);
+  }
+
+  public clearCookie(res: Response) {
+    return res.clearCookie(this.core.cookie.name, this.core.cookie.options);
+  }
+}

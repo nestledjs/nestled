@@ -1,0 +1,336 @@
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
+import {
+  generateExpireDate,
+  generateToken,
+  hashPassword,
+  validatePassword,
+} from './auth.helper'
+import { LoginInput } from './dto/login.input'
+import { UserToken } from './models/user-token'
+import { UserCreateInput } from './dto/user-create.input'
+import { Prisma } from '@<%= npmScope %>/api/prisma'
+import { UserRole } from '@<%= npmScope %>/api/core/models'
+import { SmtpMailerService } from '@<%= npmScope %>/api/smtp-mailer/data-access'
+import { passwordResetEmail } from './templates/password-reset-email.template'
+import { Response } from 'express'
+import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature';
+import { emailVerificationEmail } from './templates/email-verification-email.template'
+import { organizationInviteEmail } from './templates/organization-invite-email.template'
+import { InviteToken } from './models/invite-token'
+import { RegisterInput } from './dto/register.input'
+import { VerifyEmailInput } from './dto/verify-email.input'
+import { InviteUserInput } from './dto/invite-user.input'
+import { AcceptInviteInput } from './dto/accept-invite.input'
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly data: ApiCoreDataAccessService,
+    private readonly jwtService: JwtService,
+    private readonly mailer: SmtpMailerService,
+    private readonly core: ApiCoreFeatureService,
+  ) {}
+
+  async createUser(input: Partial<UserCreateInput>) {
+    if (!input.password) {
+      throw new BadRequestException('Password is required')
+    }
+
+    if (!input.email) {
+      throw new BadRequestException('Email is required')
+    }
+    const password = input.password
+    const hashedPassword = hashPassword(password)
+    const email = input.email.trim()
+    const displayName =
+      input.displayName || `${input.firstName || ''} ${input.lastName || ''}`.trim() || email
+
+    return this.data.user
+    .create({
+      data: {
+        firstName: input.firstName,
+        lastName: input.lastName,
+        emails: { create: { email, primary: true, emailType: 'PERSONAL' } },
+        phoneNumbers: input?.phone
+          ? { create: { phone: input.phone, primary: true, phoneType: 'MOBILE' } }
+          : undefined,
+        displayName,
+        password: hashedPassword,
+        role: UserRole.USER,
+      },
+    })
+    .catch(e => {
+      if (e instanceof Prisma.PrismaClientKnownRequestError) {
+        if (e.code === 'P2002') {
+          throw new BadRequestException('This email is already in use')
+        }
+      }
+      throw e
+    })
+  }
+
+  async register(input: RegisterInput & { organizationId?: string }): Promise<UserToken> {
+    if (!input.password) throw new BadRequestException('Password is required')
+    if (!input.email) throw new BadRequestException('Email is required')
+    const email = input.email.toLowerCase()
+    const displayName = input.displayName || email.split('@')[0]
+    const hashedPassword = hashPassword(input.password)
+    const verifyToken = generateToken()
+    const verifyExpires = generateExpireDate(2)
+    const user = await this.data.user.create({
+      data: {
+        role: UserRole.USER,
+        firstName: input.firstName,
+        lastName: input.lastName,
+        emails: {
+          create: {
+            email,
+            primary: true,
+            emailType: 'PERSONAL',
+            verifyToken,
+            verifyExpires,
+          },
+        },
+        phoneNumbers: input?.phone
+          ? { create: { phone: input.phone, primary: true, phoneType: 'MOBILE' } }
+          : undefined,
+        displayName,
+        password: hashedPassword,
+      },
+    })
+    if (input.organizationId) {
+      await this.data.organizationMember.create({
+        data: {
+          userId: user.id,
+          organizationId: input.organizationId,
+        },
+      })
+    }
+    await this.sendVerificationEmail({
+      email,
+      firstName: user.firstName || '',
+      verifyToken,
+    })
+    return this.signUser(user)
+  }
+
+  async sendVerificationEmail({ email, firstName, verifyToken }: { email: string; firstName: string; verifyToken: string }) {
+    const appName = this.core.appName || 'App'
+    const siteUrl = this.core.siteUrl || 'http://localhost:4200'
+    await this.mailer.send(
+      emailVerificationEmail({
+        email,
+        firstName,
+        verifyToken,
+        appName,
+        siteUrl,
+      })
+    )
+  }
+
+  async verifyEmail(input: VerifyEmailInput): Promise<boolean> {
+    const email = await this.data.email.findFirst({
+      where: {
+        verifyToken: input.token,
+        verifyExpires: { gt: new Date() },
+      },
+    })
+    if (!email) throw new BadRequestException('Invalid or expired verification token')
+    await this.data.email.update({
+      where: { id: email.id },
+      data: {
+        verified: true,
+        verifyToken: null,
+        verifyExpires: null,
+      },
+    })
+    if (email.userId) {
+      await this.data.user.update({
+        where: { id: email.userId },
+        data: { emailValidated: true },
+      })
+    }
+    return true
+  }
+
+  async inviteToOrganization(input: InviteUserInput, inviterId: string): Promise<boolean> {
+    const inviteToken = generateToken()
+    const expiresAt = generateExpireDate(7)
+    await this.data.invite.create({
+      data: {
+        email: input.email,
+        organizationId: input.organizationId,
+        inviterId,
+        token: inviteToken,
+        expiresAt,
+      },
+    })
+      const inviter = await this.data.user.findUnique({ 
+      where: { id: inviterId },
+      include: {
+        emails: {
+          where: { primary: true },
+          select: { email: true }
+        }
+      }
+    })
+    const org = await this.data.organization.findUnique({ where: { id: input.organizationId } })
+    const appName = this.core.appName || 'App'
+    const siteUrl = this.core.siteUrl || 'http://localhost:4200'
+    await this.mailer.send(
+      organizationInviteEmail({
+        email: input.email,
+        firstName: '',
+        inviterName: inviter?.displayName || inviter?.emails[0]?.email || 'Someone',
+        organizationName: org?.name || 'Organization',
+        inviteToken,
+        appName,
+        siteUrl,
+      })
+    )
+    return true
+  }
+
+  async acceptInvite(input: AcceptInviteInput): Promise<InviteToken> {
+    const invite = await this.data.invite.findFirst({
+      where: {
+        token: input.token,
+        expiresAt: { gt: new Date() },
+        used: false,
+      },
+      include: { organization: true },
+    })
+    if (!invite) throw new BadRequestException('Invalid or expired invite token')
+    let user = await this.data.user.findFirst({ where: { emails: { some: { email: invite.email } } } })
+    if (!user) {
+      user = await this.data.user.create({
+        data: {
+          emails: { create: { email: invite.email, primary: true, emailType: 'PERSONAL', verified: true } },
+          firstName: input.firstName,
+          lastName: input.lastName,
+          password: input.password ? hashPassword(input.password) : undefined,
+          displayName: input.firstName || invite.email.split('@')[0],
+          role: UserRole.USER,
+        },
+      })
+    }
+    await this.data.organizationMember.create({
+      data: {
+        userId: user.id,
+        organizationId: invite.organizationId,
+      },
+    })
+    await this.data.invite.update({ where: { id: invite.id }, data: { used: true } })
+    const token = this.jwtService.sign({ userId: user.id })
+    return { token, user, organizationId: invite.organizationId }
+  }
+
+  async login(input: LoginInput): Promise<UserToken> {
+    const email = input.email.trim()
+    const password = input.password.trim()
+
+    const user = await this.findUserByEmail(email)
+    if (!user?.password) {
+      throw new NotFoundException(`No user found for email: ${email}`)
+    }
+
+    const passwordValid = validatePassword(password, user.password)
+    if (!passwordValid) {
+      throw new BadRequestException('Invalid password')
+    }
+
+    return this.signUser(user)
+  }
+
+  async forgotPassword(email: string): Promise<boolean> {
+    const user = await this.findUserByEmail(email)
+
+    if (!user) {
+      Logger.warn(`Forgot password reset for non-existing user ${email}`)
+      throw new Error(`${email} is not a user`)
+    }
+
+    const passwordResetToken = generateToken()
+    const passwordResetExpires = generateExpireDate()
+
+    await this.data.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken, passwordResetExpires },
+    })
+    const appName = this.core.appName || 'App';
+    const siteUrl = this.core.siteUrl || 'http://localhost:4200';
+    await this.mailer.send(
+      passwordResetEmail({
+        email: email,
+        firstName: user.firstName || '',
+        passwordResetToken,
+        appName,
+        siteUrl,
+      }),
+    )
+    return true
+  }
+
+  async resetPassword(password: string, token: string): Promise<any> {
+    const user = await this.data.user.findFirst({ where: { passwordResetToken: token } })
+
+    if (!user) {
+      Logger.warn(`There is no user associated with the password reset token ${token}`)
+      throw new Error(`This token has been used or is invalid.`)
+    }
+
+    if (
+      user.passwordResetExpires &&
+      user.passwordResetExpires.valueOf() < new Date(Date.now()).valueOf()
+    ) {
+      Logger.warn(`PasswordResetToken ${token} expired on ${user.passwordResetExpires}.`)
+      throw new Error(`Your password reset token has expired.`)
+    }
+
+    const hashedPassword = hashPassword(password)
+    return this.data.user.update({
+      where: { id: user.id },
+      data: {
+        passwordResetToken: null,
+        passwordResetExpires: null,
+        password: hashedPassword,
+      },
+    })
+  }
+
+  signUser(user: any): UserToken {
+    const token = this.jwtService.sign({ userId: user?.id })
+    return { token, user }
+  }
+
+  validateUser(userId: string) {
+    return this.findUserById(userId)
+  }
+
+  public findUserByEmail(email: string) {
+    return this.data.user.findFirst({
+      where: { emails: { some: { email, primary: true } } },
+      include: { emails: { where: { primary: true } } },
+    })
+  }
+
+  public findUserById(userId: string) {
+    return this.data.user.findUnique({ where: { id: userId } })
+  }
+
+  getUserFromToken(token: string) {
+    const userId = this.jwtService.decode(token)['userId'];
+
+    return this.findUserById(userId);
+  }
+
+  public setCookie(res: Response, token: string) {
+    return res?.cookie(this.core.cookie.name, token, this.core.cookie.options);
+  }
+
+  public clearCookie(res: Response) {
+    return res.clearCookie(this.core.cookie.name, this.core.cookie.options);
+  }
+}

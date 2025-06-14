@@ -1,0 +1,64 @@
+import { PrismaClient } from '../prisma-generated'
+import { countries } from './seed-data/iso-3166-countries'
+import { seedUsers } from './seed-data/seed-users'
+import { hashSync } from 'bcryptjs'
+
+const prisma = new PrismaClient()
+async function main() {
+  for (const country of countries) {
+    await prisma.country.upsert({
+      where: { alpha2: country['alpha-2'] },
+      update: {},
+      create: {
+        name: country.name,
+        alpha2: country['alpha-2'],
+        alpha3: country['alpha-3'],
+        countryCode: country['country-code'],
+        iso3166_2: country['iso_3166-2'],
+        region: country.region,
+        subRegion: country['sub-region'],
+        intermediateRegion: country['intermediate-region'],
+        regionCode: country['region-code'],
+        subRegionCode: country['sub-region-code'],
+        intermediateRegionCode: country['intermediate-region-code'],
+      },
+    })
+  }
+  for (const user of seedUsers) {
+    try {
+      await prisma.user.upsert({
+        where: { id: user.id },
+        update: {},
+        create: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          displayName: user.displayName,
+          emails: {
+            create: {
+              email: user.email,
+              primary: true,
+            },
+          },
+          password: hashSync(user.password, 10),
+          role: user.role,
+        },
+      });
+      console.log(`User ${user.displayName} seeded.`);
+    } catch (e) {
+      if ((e as any).code === 'P2002' && (e as any).meta?.target?.includes('displayName')) {
+        console.log(`User with displayName \"${user.displayName}\" already exists. Skipping.`);
+      } else {
+        throw e;
+      }
+    }
+  }
+}
+main()
+  .then(async () => {
+    await prisma.$disconnect()
+  })
+  .catch(async (e) => {
+    console.error(e)
+    await prisma.$disconnect()
+    process.exit(1)
+  })

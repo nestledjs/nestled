@@ -1,0 +1,2 @@
+export * from './lib/api-smtp-mailer-data-access.module'
+export * from './lib/api-smtp-mailer-data-access.service'

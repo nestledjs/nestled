@@ -1,0 +1,26 @@
+import { ApiCoreDataAccessModule } from '@<%= npmScope %>/api/core/data-access'
+import { ApiCoreFeatureModule } from '@<%= npmScope %>/api/core/feature'
+import { Module } from '@nestjs/common'
+import { HttpModule } from '@nestjs/axios'
+import { JwtModule } from '@nestjs/jwt'
+import { PassportModule } from '@nestjs/passport'
+import { AuthService } from './auth.service'
+import { JwtStrategy } from './strategies/jwt.strategy'
+import { SmtpMailerModule } from '@<%= npmScope %>/api/smtp-mailer/data-access'
+import { AuthResolver } from './auth.resolver';
+
+@Module({
+  imports: [
+    ApiCoreDataAccessModule,
+    ApiCoreFeatureModule,
+    SmtpMailerModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
+    HttpModule,
+    JwtModule.register({
+      secret: process.env['JWT_SECRET'],
+    }),
+  ],
+  exports: [AuthService],
+  providers: [AuthService, AuthResolver, JwtStrategy],
+})
+export class AuthModule {}

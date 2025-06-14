@@ -1,0 +1,105 @@
+import {
+  ForgotPasswordInput,
+  LoginInput,
+  RegisterInput,
+  ResetPasswordInput,
+  VerifyEmailInput,
+  InviteUserInput,
+  AcceptInviteInput
+} from './dto'
+import { UserToken, InviteToken } from './models'
+import { Args, Context, Mutation, Parent, Query, ResolveField, Resolver } from '@nestjs/graphql'
+import { Logger, UseGuards } from '@nestjs/common'
+import { CtxUser, GqlAuthGuard } from '@<%= npmScope %>/api/utils'
+import { User } from '@<%= npmScope %>/api/core/models'
+import { Request, Response } from 'express'
+import { AuthService } from './auth.service';
+
+export interface NestContextType {
+  req: Request
+  res: Response
+}
+
+@Resolver(() => UserToken)
+export class AuthResolver {
+  constructor(private readonly service: AuthService) {}
+
+  @Query(() => User, { nullable: true })
+  @UseGuards(GqlAuthGuard)
+  async me(@CtxUser() user: User) {
+    return user
+  }
+
+  @Mutation(() => UserToken, { nullable: true })
+  async login(@Context() context: NestContextType, @Args('input') input: LoginInput) {
+    try {
+      const userToken = await this.service.login(input)
+
+      if (!userToken || !userToken.token) {
+        Logger.warn('Login failed: No user token returned')
+        return null
+      }
+
+      this.service.setCookie(context.res, userToken.token)
+      return userToken
+    } catch (error) {
+      Logger.error(`Login failed: ${(error as Error).message}`, (error as Error).stack)
+      return null
+    }
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  async logout(@Context() context: NestContextType) {
+    Logger.log('logout')
+    this.service.clearCookie(context.res)
+    return true
+  }
+
+  @Mutation(() => UserToken, { nullable: true })
+  async register(@Context() context: NestContextType, @Args('input') input: RegisterInput) {
+    Logger.log('register', input)
+    const userToken = await this.service.register(input)
+    if (!userToken?.token) {
+      throw new Error('No user token returned on registration')
+    }
+    this.service.setCookie(context.res, userToken.token)
+    return userToken
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  forgotPassword(@Args('input') input: ForgotPasswordInput): Promise<boolean> {
+    return this.service.forgotPassword(input.email)
+  }
+
+  @Mutation(() => User, { nullable: true })
+  resetPassword(@Args('input') input: ResetPasswordInput): Promise<User> {
+    return this.service.resetPassword(input.password, input.token)
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  async verifyEmail(@Args('input') input: VerifyEmailInput) {
+    return this.service.verifyEmail(input)
+  }
+
+  @Mutation(() => Boolean, { nullable: true })
+  @UseGuards(GqlAuthGuard)
+  async inviteToOrganization(@CtxUser() user: User, @Args('input') input: InviteUserInput) {
+    if (!user?.id) {
+      throw new Error('No user found')
+    }
+    return this.service.inviteToOrganization(input, user.id)
+  }
+
+  @Mutation(() => InviteToken, { nullable: true })
+  async acceptInvite(@Args('input') input: AcceptInviteInput) {
+    return this.service.acceptInvite(input)
+  }
+
+  @ResolveField('user')
+  user(@Parent() auth: UserToken) {
+    if (!auth.token) {
+      throw new Error('No token found')
+    }
+    return this.service.getUserFromToken(auth.token)
+  }
+}

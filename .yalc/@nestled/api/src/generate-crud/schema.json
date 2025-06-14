@@ -1,0 +1,32 @@
+{
+  "$schema": "../../node_modules/@nx/devkit/schema.d.json",
+  "extends": "../../node_modules/@nx/devkit/generators.json",
+  "properties": {
+    "name": {
+      "description": "Name of the library to generate",
+      "type": "string"
+    },
+    "directory": {
+      "description": "Optional directory to place the library",
+      "type": "string"
+    },
+    "model": {
+      "description": "Name of the model",
+      "type": "string"
+    },
+    "plural": {
+      "description": "Plural form of the model name",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the model",
+      "type": "string"
+    },
+    "overwrite": {
+      "description": "Whether to overwrite existing files in the public libraries",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": []
+}
