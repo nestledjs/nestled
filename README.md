@@ -1,3 +1,5 @@
+npx create-nx-workspace NAME --preset=none --cli=nx --no-nxCloud --packageManager=pnpm --prettier --ci=github
+
 nx g @nestled/config:setup && 
 nx g @nestled/config:init && 
 nx g @nestled/api:setup && 
