@@ -1,0 +1,4 @@
+import { createApolloLoaderHandler } from '@apollo/client-integration-react-router'
+import { makeClient } from '@<%= npmScope %>/shared/apollo'
+
+export const apolloLoader = createApolloLoaderHandler(req => makeClient(req))

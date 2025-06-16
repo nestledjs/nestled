@@ -9,16 +9,15 @@ function webSetupGenerator(tree) {
         // Add dependencies
         (0, devkit_1.addDependenciesToPackageJson)(tree, {
             'react-router-dom': '^7.6.2',
+            '@react-router/dev': '^7.6.2',
             isbot: '5.1.28',
             '@apollo/client': '^3.13.8',
             '@apollo/client-integration-react-router': '0.12.0-alpha.4',
         }, {
-            '@react-router/dev': '^7.6.2',
             '@nx/react': '21.1.3',
             'vite-tsconfig-paths': '^5.1.4',
             '@tailwindcss/vite': '^4.1.8',
             tailwindcss: '^4.1.8',
-            '@tailwindcss/postcss': '^4.1.8',
         });
         // Update pnpm-workspace.yaml with build dependencies
         const packagesToBuild = ['@tailwindcss/oxide'];

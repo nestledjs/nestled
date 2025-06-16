@@ -14,5 +14,4 @@ tslib_1.__exportStar(require("./user/generator"), exports);
 tslib_1.__exportStar(require("./workspace-setup/generator"), exports);
 tslib_1.__exportStar(require("./plugin/generator"), exports);
 tslib_1.__exportStar(require("./utils/generator"), exports);
-tslib_1.__exportStar(require("./sdk/generator"), exports);
 //# sourceMappingURL=index.js.map

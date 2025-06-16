@@ -98,7 +98,13 @@ function toKebabCase(str: string): string {
     .toLowerCase()
 }
 
-async function generateCustomFiles(tree: Tree, customLibraryRoot: string, models: ModelType[], npmScope: string, dependencies: CustomGeneratorDependencies) {
+async function generateCustomFiles(
+  tree: Tree,
+  customLibraryRoot: string,
+  models: ModelType[],
+  npmScope: string,
+  dependencies: CustomGeneratorDependencies,
+) {
   const defaultDir = dependencies.join(customLibraryRoot, 'src/lib/default')
   const pluginsDir = dependencies.join(customLibraryRoot, 'src/lib/plugins')
   await ensureDirExists(tree, defaultDir)

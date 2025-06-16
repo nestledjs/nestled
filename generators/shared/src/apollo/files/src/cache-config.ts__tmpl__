@@ -1,0 +1,15 @@
+import { InMemoryCache } from '@apollo/client'
+
+/**
+ * Apollo cache configuration
+ * This configuration can be customized based on your needs
+ */
+export const cache = new InMemoryCache({
+  typePolicies: {
+    Query: {
+      fields: {
+        // Add your field policies here
+      },
+    },
+  },
+})

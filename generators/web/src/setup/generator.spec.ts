@@ -29,18 +29,19 @@ describe('webSetupGenerator', () => {
 
     expect(addDependenciesSpy).toHaveBeenCalledWith(
       tree,
-      expect.objectContaining({
-        'react-router-dom': expect.any(String),
-        'isbot': expect.any(String),
-      }),
-      expect.objectContaining({
-        '@react-router/dev': expect.any(String),
-        '@nx/react': expect.any(String),
-        'vite-tsconfig-paths': expect.any(String),
-        '@tailwindcss/vite': expect.any(String),
-        'tailwindcss': expect.any(String),
-        '@tailwindcss/postcss': expect.any(String),
-      })
+      {
+        '@apollo/client': '^3.13.8',
+        '@apollo/client-integration-react-router': '0.12.0-alpha.4',
+        '@react-router/dev': '^7.6.2',
+        'isbot': '5.1.28',
+        'react-router-dom': '^7.6.2',
+      },
+      {
+        '@nx/react': '21.1.3',
+        '@tailwindcss/vite': '^4.1.8',
+        'tailwindcss': '^4.1.8',
+        'vite-tsconfig-paths': '^5.1.4',
+      }
     )
     expect(updatePnpmWorkspaceConfigSpy).toHaveBeenCalledWith(tree, { onlyBuiltDependencies: ['@tailwindcss/oxide'] })
     expect(pnpmInstallCallbackSpy).toHaveBeenCalled()
