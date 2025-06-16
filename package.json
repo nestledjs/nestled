@@ -24,6 +24,7 @@
     "graphql-type-json": "^0.3.2",
     "js-yaml": "^4.1.0",
     "pluralize": "^8.0.0",
+    "prisma": "^6.9.0",
     "prisma-datamodel": "^1.34.12",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.0",
