@@ -6,15 +6,15 @@
       "pure": true
     },
     "@nestled/api": {
-      "signature": "c8f81ff6373696291d6c26778bb90f15",
+      "signature": "47e8e92b7178a30ac0e3ee52dbeabe31",
       "pure": true
     },
     "@nestled/utils": {
-      "signature": "40a94351195f915c9ef8c05f0ffdd0ef",
+      "signature": "5640b60bc1ba933f96b13e82c05b2e26",
       "pure": true
     },
     "@nestled/web": {
-      "signature": "79c7891ede76a7c06fedfc1c3206b6e2",
+      "signature": "7350b2e6828921629f8de5a4687d10a1",
       "pure": true
     },
     "@nestled/plugins": {

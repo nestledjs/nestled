@@ -14,7 +14,7 @@ function webSetupGenerator(tree) {
             '@apollo/client': '^3.13.8',
             '@apollo/client-integration-react-router': '0.12.0-alpha.4',
         }, {
-            '@nx/react': '21.1.3',
+            '@nx/react': '21.2.0',
             'vite-tsconfig-paths': '^5.1.4',
             '@tailwindcss/vite': '^4.1.8',
             tailwindcss: '^4.1.8',

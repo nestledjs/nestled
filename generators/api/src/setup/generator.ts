@@ -44,11 +44,11 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'passport-jwt': '^4.0.1',
     },
     {
-      nx: '21.1.3',
-      '@nx/js': '21.1.3',
-      '@nx/nest': '21.1.3',
-      '@nx/node': '21.1.3',
-      '@nx/webpack': '21.1.3',
+      nx: '21.2.0',
+      '@nx/js': '21.2.0',
+      '@nx/nest': '21.2.0',
+      '@nx/node': '21.2.0',
+      '@nx/webpack': '21.2.0',
       '@nestjs/schematics': '^11.0.5',
       '@nestjs/testing': '^11.1.3',
       '@prisma/extension-optimize': '2.0.0',
@@ -93,6 +93,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
     'type-graphql',
     'express',
     'unrs-resolver',
+    '@swc/core',
   ]
   updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: packagesToBuild })
 
