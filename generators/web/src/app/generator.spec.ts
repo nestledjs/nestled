@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { Tree, generateFiles, updateJson, joinPathFragments } from '@nx/devkit'
+import { generateFiles, Tree, updateJson } from '@nx/devkit'
 import { applicationGenerator as realApplicationGenerator } from '@nx/react/src/generators/application/application'
 import * as path from 'path'
 import generator from './generator'
@@ -41,17 +41,20 @@ describe('web generator', () => {
 
   it('should call applicationGenerator with correct options', async () => {
     await generator(tree, schema)
-    expect(realApplicationGenerator).toHaveBeenCalledWith(tree, expect.objectContaining({
-      name: 'web',
-      directory: 'apps/web',
-      bundler: 'vite',
-      style: 'none',
-      routing: true,
-      useReactRouter: true,
-      unitTestRunner: 'vitest',
-      e2eTestRunner: 'none',
-      linter: 'eslint',
-    }))
+    expect(realApplicationGenerator).toHaveBeenCalledWith(
+      tree,
+      expect.objectContaining({
+        name: 'web',
+        directory: 'apps/web',
+        bundler: 'vite',
+        style: 'none',
+        routing: true,
+        useReactRouter: true,
+        unitTestRunner: 'vitest',
+        e2eTestRunner: 'none',
+        linter: 'eslint',
+      }),
+    )
   })
 
   it('should update package.json with dev:web script', async () => {
@@ -62,7 +65,7 @@ describe('web generator', () => {
   })
 
   it('should call generateFiles with correct arguments if targetPath exists', async () => {
-    const generateFilesMock = (generateFiles as unknown as ReturnType<typeof vi.fn>)
+    const generateFilesMock = generateFiles as unknown as ReturnType<typeof vi.fn>
     tree.write(path.join('apps', 'web', 'dummy.txt'), 'test')
     await generator(tree, schema)
     expect(generateFilesMock).toHaveBeenCalled()
@@ -84,10 +87,12 @@ describe('web generator', () => {
   it('should throw and log error if an exception occurs', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     // Force updateJson to throw
-    const updateJsonMock = (updateJson as unknown as ReturnType<typeof vi.fn>)
-    updateJsonMock.mockImplementation(() => { throw new Error('test error') })
+    const updateJsonMock = updateJson as unknown as ReturnType<typeof vi.fn>
+    updateJsonMock.mockImplementation(() => {
+      throw new Error('test error')
+    })
     await expect(generator(tree, schema)).rejects.toThrow('test error')
     expect(errorSpy).toHaveBeenCalledWith('Error generating Web app:', expect.any(Error))
     errorSpy.mockRestore()
   })
-}) 
+})

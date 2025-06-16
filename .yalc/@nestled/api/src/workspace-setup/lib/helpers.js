@@ -37,7 +37,7 @@ function canConnect(url) {
             log('Connected to Postgres');
             return true;
         }
-        catch (e) {
+        catch (_a) {
             return false;
         }
     });
@@ -48,7 +48,7 @@ function ensureDockerIsRunning() {
         log('Docker is Up');
         return true;
     }
-    catch (e) {
+    catch (_a) {
         throw new Error(`Make sure Docker is running, then run this again`);
     }
 }
@@ -63,7 +63,7 @@ function isDockerComposeRunning() {
         }
         return false;
     }
-    catch (e) {
+    catch (_a) {
         return false;
     }
 }
@@ -78,7 +78,7 @@ function ensureDockerComposeIsRunning() {
             yield waitForConnection();
             log('Docker Compose Started');
         }
-        catch (e) {
+        catch (_a) {
             throw new Error(`Make sure Docker Compose is running`);
         }
     });
@@ -93,7 +93,7 @@ function ensureDotEnv() {
             log('.env exists');
         }
     }
-    catch (e) {
+    catch (_a) {
         throw new Error(`Error creating or reading.env file`);
     }
 }
@@ -103,7 +103,7 @@ function runPrismaSetup() {
         log('Prisma Setup is Done');
         return true;
     }
-    catch (e) {
+    catch (_a) {
         throw new Error(`There was an issue running 'pnpm prisma:apply'`);
     }
 }

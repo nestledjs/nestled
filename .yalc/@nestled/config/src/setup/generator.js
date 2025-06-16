@@ -50,7 +50,7 @@ function updateTypeScriptConfig(tree) {
 }
 function configSetupGenerator(tree) {
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        // Remove 'packages' directory from root if it exists
+        // Remove the 'packages' directory from the root if it exists
         const packagesDir = path.join(tree.root, 'packages');
         if (fs.existsSync(packagesDir)) {
             fs.rmSync(packagesDir, { recursive: true, force: true });

@@ -6,8 +6,9 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
-    "@prisma/internals": "^6.9.0",
+    "@nestled/utils": "0.0.1",
+    "@nx/devkit": "^21.2.0",
     "tslib": "^2.3.0"
   },
-  "yalcSig": "bae7df0f17cb72fd2a29f43ea714bd61"
+  "yalcSig": "f8c435aae4580df4b8e13a6aba06433d"
 }

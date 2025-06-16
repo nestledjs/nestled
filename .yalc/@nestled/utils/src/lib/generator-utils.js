@@ -165,7 +165,7 @@ function mapPrismaTypeToNestJsType(prismaType) {
         Float: 'number',
         Decimal: 'number',
         DateTime: 'Date',
-        Json: 'Record<string, any>',
+        Json: 'Record<string, unknown>',
         Bytes: 'Buffer',
     };
     return typeMap[prismaType] || prismaType;
@@ -222,10 +222,10 @@ function isPackageInstalled(tree, packageName) {
  * @param tree - The Nx Tree object (virtual filesystem).
  * @param dependencies - An object containing the dependencies to be added.
  * @param devDependencies - An object containing the devDependencies to be added.
- * @param options - Additional options for plugin configuration
+ * @param _options - Additional options for plugin configuration
  */
 function installPlugins(tree_1) {
-    return tslib_1.__awaiter(this, arguments, void 0, function* (tree, dependencies = {}, devDependencies = {}, options = {}) {
+    return tslib_1.__awaiter(this, arguments, void 0, function* (tree, dependencies = {}, devDependencies = {}, _options = {}) {
         const depsToInstall = {};
         const devDepsToInstall = {};
         // Filter dependencies that are not yet installed
@@ -472,21 +472,22 @@ function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, importPa
         if (!lines.includes(moduleToAdd)) {
             console.log(`[addToModules] Module ${moduleToAdd} not found in array, adding it.`);
             // Find the position of the closing bracket
-            const arrayStart = match.index + match[0].indexOf('[') + 1;
-            const arrayEnd = match.index + match[0].lastIndexOf(']');
-            let before = fileContent.slice(0, arrayEnd).replace(/(\s*\n)*$/, '');
-            const after = fileContent.slice(arrayEnd);
-            const hasRealModules = lines.length > 0;
-            // Ensure the last real module ends with a comma
-            if (hasRealModules) {
-                // Find the last module in the array (ignoring comments/whitespace)
-                const lastModuleRegex = /(\w+)\s*$/m;
-                before = before.replace(lastModuleRegex, (m) => (m.endsWith(',') ? m : m + ','));
+            if (typeof match.index === 'number') {
+                const arrayEnd = match.index + match[0].lastIndexOf(']');
+                let before = fileContent.slice(0, arrayEnd).replace(/(\s*\n)*$/, '');
+                const after = fileContent.slice(arrayEnd);
+                const hasRealModules = lines.length > 0;
+                // Ensure the last real module ends with a comma
+                if (hasRealModules) {
+                    // Find the last module in the array (ignoring comments/whitespace)
+                    const lastModuleRegex = /(\w+)\s*$/m;
+                    before = before.replace(lastModuleRegex, (m) => (m.endsWith(',') ? m : m + ','));
+                }
+                const insert = `  ${moduleToAdd},\n`;
+                const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after;
+                fileContent = newContent;
+                console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`);
             }
-            const insert = `  ${moduleToAdd},\n`;
-            const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after;
-            fileContent = newContent;
-            console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`);
         }
         else {
             console.log(`[addToModules] Module ${moduleToAdd} already present in ${moduleArrayName}`);

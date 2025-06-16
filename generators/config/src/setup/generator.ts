@@ -1,4 +1,4 @@
-import { addDependenciesToPackageJson, GeneratorCallback, Tree, updateJson } from '@nx/devkit'
+import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
 import { pnpmInstallCallback, removeWorkspacesFromPackageJson, updatePnpmWorkspaceConfig } from '@nestled/utils'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -52,7 +52,7 @@ function updateTypeScriptConfig(tree: Tree): void {
 }
 
 export async function configSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
-  // Remove 'packages' directory from root if it exists
+  // Remove the 'packages' directory from the root if it exists
   const packagesDir = path.join(tree.root, 'packages')
   if (fs.existsSync(packagesDir)) {
     fs.rmSync(packagesDir, { recursive: true, force: true })

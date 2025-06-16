@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { formatFiles, generateFiles, joinPathFragments, Tree } from '@nx/devkit'
-import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { addToModules } from '@nestled/utils'
 import generator from './generator'
 

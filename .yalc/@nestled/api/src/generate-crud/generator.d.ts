@@ -15,7 +15,10 @@ interface CrudAuthConfig {
 interface ModelType {
     name: string;
     pluralName: string;
-    fields: ReadonlyArray<any>;
+    fields: ReadonlyArray<Record<string, unknown> & {
+        name: string;
+        type: string;
+    }>;
     primaryField: string;
     modelName: string;
     modelPropertyName: string;

@@ -5,8 +5,11 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
+    "@nestled/utils": "file:.yalc/@nestled/utils",
+    "@nx/devkit": "21.2.0",
+    "@nx/js": "21.2.0",
     "tslib": "^2.3.0"
   },
   "type": "commonjs",
-  "yalcSig": "86b71f2c7d630691b270b6b5f7b76b19"
+  "yalcSig": "1e4a940cd30a31758e484d24b3ad6e92"
 }

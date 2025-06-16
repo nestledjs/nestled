@@ -23,7 +23,7 @@ export interface ModelType {
 }
 export interface GenerateTemplateOptions {
     tree: Tree;
-    schema: any;
+    schema: unknown;
     libraryRoot: string;
     templatePath: string;
     npmScope: string;

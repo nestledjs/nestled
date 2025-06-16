@@ -8,13 +8,13 @@ import {
 import * as path from 'path'
 
 function handlePrettierConfig(tree: Tree) {
-  const filesDir = path.join(__dirname, 'files')
+  const filesDir = path.join(__dirname, 'files', 'prettier')
   generateFiles(tree, filesDir, '.', { dot: '.', tmpl: '' })
   logger.info('✅ Generated .prettierrc and .prettierignore files')
 }
 
 function handleEnvExample(tree: Tree) {
-  const filesDir = path.join(__dirname, 'files')
+  const filesDir = path.join(__dirname, 'files', 'env')
   generateFiles(tree, filesDir, '.', { dot: '.', tmpl: '' })
   logger.info('✅ Generated .env.example file')
 
@@ -45,14 +45,14 @@ function getWorkspaceName(tree: Tree): string {
 function handleDockerFilesAndScripts(tree: Tree) {
   // Generate Docker files in .dev directory
   const filesDir = path.join(__dirname, 'files', '.dev')
-  generateFiles(tree, filesDir, '.dev', { dot: '.', tmpl: '' })
+  const npmScope = getWorkspaceName(tree)
+  generateFiles(tree, filesDir, '.dev', { dot: '.', tmpl: '', npmScope })
   logger.info('✅ Generated Dockerfile and docker-compose.yml in .dev directory')
 
   // Add only Docker-related scripts to package.json
   const packageJsonPath = 'package.json'
   if (tree.exists(packageJsonPath)) {
-    const workspaceName = getWorkspaceName(tree)
-    const imageName = `${workspaceName}/api`
+    const imageName = `${npmScope}/api`
     const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
     packageJsonContent.scripts = {
       ...packageJsonContent.scripts,

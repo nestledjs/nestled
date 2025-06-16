@@ -1,6 +1,6 @@
 import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema, addToModules } from '@nestled/utils'
+import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
 import { GenerateExtendedGeneratorSchema } from './schema'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'

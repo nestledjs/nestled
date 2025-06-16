@@ -91,6 +91,7 @@ function apiSetupGenerator(tree) {
             'type-graphql',
             'express',
             'unrs-resolver',
+            '@swc/core',
         ];
         (0, utils_1.updatePnpmWorkspaceConfig)(tree, { onlyBuiltDependencies: packagesToBuild });
         // Ensure .npmrc exists with the required content

@@ -5,8 +5,12 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
+    "@nx/devkit": "21.2.0",
     "@nx/nest": "21.2.0",
-    "tslib": "^2.3.0"
+    "@prisma/internals": "^6.9.0",
+    "pluralize": "^8.0.0",
+    "tslib": "^2.3.0",
+    "yaml": "^2.8.0"
   },
-  "yalcSig": "5640b60bc1ba933f96b13e82c05b2e26"
+  "yalcSig": "cf89372c5dd3f58bfa2f44c89822a04d"
 }

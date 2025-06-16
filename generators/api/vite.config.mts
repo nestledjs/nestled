@@ -1,6 +1,5 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin'
 import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin'
 import path from 'path'
 
@@ -10,10 +9,7 @@ export default defineConfig(() => ({
   plugins: [nxCopyAssetsPlugin(['*.md'])],
   resolve: {
     alias: {
-      '@nestled/utils': path.resolve(
-        __dirname,
-        '../../dist/generators/utils/src/index.js'
-      ),
+      '@nestled/utils': path.resolve(__dirname, '../../dist/generators/utils/src/index.js'),
     },
   },
   // Uncomment this if you are using workers.

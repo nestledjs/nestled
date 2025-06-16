@@ -14,7 +14,6 @@ import { getDMMF } from '@prisma/internals'
 import * as yaml from 'yaml'
 import {
   AddToModulesOptions,
-  ApiLibraryGeneratorSchema,
   CrudAuthConfig,
   GenerateTemplateOptions,
   ModelType,
@@ -175,7 +174,7 @@ export function mapPrismaTypeToNestJsType(prismaType: string) {
     Float: 'number',
     Decimal: 'number',
     DateTime: 'Date',
-    Json: 'Record<string, any>',
+    Json: 'Record<string, unknown>',
     Bytes: 'Buffer',
   }
 
@@ -214,7 +213,7 @@ export function getNpmScope(tree: Tree): string {
   return match[1] // Returns just "nestled" from "@nestled/source"
 }
 
-export function generateTemplateFiles<T = any>({
+export function generateTemplateFiles<T extends { name: string }>({
   tree,
   schema,
   libraryRoot,
@@ -223,7 +222,7 @@ export function generateTemplateFiles<T = any>({
 }: GenerateTemplateOptions & { schema: T }): void {
   const variables = {
     ...schema,
-    ...names(`${(schema as any).name}`),
+    ...names(`${schema.name}`),
     npmScope,
     tmpl: '',
   }
@@ -254,13 +253,13 @@ function isPackageInstalled(tree: Tree, packageName: string): boolean {
  * @param tree - The Nx Tree object (virtual filesystem).
  * @param dependencies - An object containing the dependencies to be added.
  * @param devDependencies - An object containing the devDependencies to be added.
- * @param options - Additional options for plugin configuration
+ * @param _options - Additional options for plugin configuration
  */
 export async function installPlugins(
   tree: Tree,
   dependencies: Record<string, string> = {},
   devDependencies: Record<string, string> = {},
-  options: {
+  _options: {
     configureProjectGraph?: boolean
     pluginNames?: string[]
   } = {},
@@ -532,21 +531,22 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
     if (!lines.includes(moduleToAdd)) {
       console.log(`[addToModules] Module ${moduleToAdd} not found in array, adding it.`)
       // Find the position of the closing bracket
-      const arrayStart = match.index! + match[0].indexOf('[') + 1
-      const arrayEnd = match.index! + match[0].lastIndexOf(']')
-      let before = fileContent.slice(0, arrayEnd).replace(/(\s*\n)*$/, '')
-      const after = fileContent.slice(arrayEnd)
-      const hasRealModules = lines.length > 0
-      // Ensure the last real module ends with a comma
-      if (hasRealModules) {
-        // Find the last module in the array (ignoring comments/whitespace)
-        const lastModuleRegex = /(\w+)\s*$/m
-        before = before.replace(lastModuleRegex, (m) => (m.endsWith(',') ? m : m + ','))
+      if (typeof match.index === 'number') {
+        const arrayEnd = match.index + match[0].lastIndexOf(']')
+        let before = fileContent.slice(0, arrayEnd).replace(/(\s*\n)*$/, '')
+        const after = fileContent.slice(arrayEnd)
+        const hasRealModules = lines.length > 0
+        // Ensure the last real module ends with a comma
+        if (hasRealModules) {
+          // Find the last module in the array (ignoring comments/whitespace)
+          const lastModuleRegex = /(\w+)\s*$/m
+          before = before.replace(lastModuleRegex, (m) => (m.endsWith(',') ? m : m + ','))
+        }
+        const insert = `  ${moduleToAdd},\n`
+        const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
+        fileContent = newContent
+        console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`)
       }
-      const insert = `  ${moduleToAdd},\n`
-      const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
-      fileContent = newContent
-      console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`)
     } else {
       console.log(`[addToModules] Module ${moduleToAdd} already present in ${moduleArrayName}`)
     }
@@ -557,7 +557,7 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
   tree.write(modulePath, fileContent)
 }
 
-export async function apiLibraryGenerator<T = any>(
+export async function apiLibraryGenerator<T extends { name: string; overwrite?: boolean }>(
   tree: Tree,
   schema: T,
   templateRootPath: string,
@@ -567,14 +567,14 @@ export async function apiLibraryGenerator<T = any>(
   const npmScope = getNpmScope(tree)
   const API_LIBS_SCOPE = 'libs/api'
   const libraryRoot = type
-    ? joinPathFragments(API_LIBS_SCOPE, (schema as any).name, type)
-    : joinPathFragments(API_LIBS_SCOPE, (schema as any).name)
-  const libraryName = type ? `api-${(schema as any).name}-${type}` : `api-${(schema as any).name}`
-  const importPath = type ? `@${npmScope}/api/${(schema as any).name}/${type}` : `@${npmScope}/api/${(schema as any).name}`
+    ? joinPathFragments(API_LIBS_SCOPE, schema.name, type)
+    : joinPathFragments(API_LIBS_SCOPE, schema.name)
+  const libraryName = type ? `api-${schema.name}-${type}` : `api-${schema.name}`
+  const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
   const tags = type ? `scope:api,type:${type}` : 'scope:api'
 
   // Overwrite logic: remove an existing library if requested
-  if ((schema as any).overwrite && tree.exists(libraryRoot)) {
+  if (schema.overwrite && tree.exists(libraryRoot)) {
     try {
       execSync(`nx g rm ${libraryName} --forceRemove`, {
         stdio: 'inherit',
@@ -649,7 +649,7 @@ export async function apiLibraryGenerator<T = any>(
 
   // Add the module import after generating the library
   if (addModuleImport) {
-    const nameClassName = names((schema as any).name).className
+    const nameClassName = names(schema.name).className
     const typeClassName = type ? names(type).className : ''
     const moduleToAdd = `Api${nameClassName}${typeClassName}Module`
     addToModules({

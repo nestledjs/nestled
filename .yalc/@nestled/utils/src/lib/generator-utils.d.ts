@@ -15,7 +15,9 @@ export declare function parsePrismaSchema(schemaContent: string, modelName: stri
     optional: boolean;
 }[]>;
 export declare function getNpmScope(tree: Tree): string;
-export declare function generateTemplateFiles<T = any>({ tree, schema, libraryRoot, templatePath, npmScope, }: GenerateTemplateOptions & {
+export declare function generateTemplateFiles<T extends {
+    name: string;
+}>({ tree, schema, libraryRoot, templatePath, npmScope, }: GenerateTemplateOptions & {
     schema: T;
 }): void;
 /**
@@ -25,9 +27,9 @@ export declare function generateTemplateFiles<T = any>({ tree, schema, libraryRo
  * @param tree - The Nx Tree object (virtual filesystem).
  * @param dependencies - An object containing the dependencies to be added.
  * @param devDependencies - An object containing the devDependencies to be added.
- * @param options - Additional options for plugin configuration
+ * @param _options - Additional options for plugin configuration
  */
-export declare function installPlugins(tree: Tree, dependencies?: Record<string, string>, devDependencies?: Record<string, string>, options?: {
+export declare function installPlugins(tree: Tree, dependencies?: Record<string, string>, devDependencies?: Record<string, string>, _options?: {
     configureProjectGraph?: boolean;
     pluginNames?: string[];
 }): Promise<() => any>;
@@ -46,5 +48,8 @@ export declare function updatePnpmWorkspaceConfig(tree: Tree, options: {
 }): void;
 export declare function pnpmInstallCallback(): GeneratorCallback;
 export declare function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, importPath }: AddToModulesOptions): void;
-export declare function apiLibraryGenerator<T = any>(tree: Tree, schema: T, templateRootPath: string, type?: string, addModuleImport?: boolean): Promise<() => void>;
+export declare function apiLibraryGenerator<T extends {
+    name: string;
+    overwrite?: boolean;
+}>(tree: Tree, schema: T, templateRootPath: string, type?: string, addModuleImport?: boolean): Promise<() => void>;
 export declare function getPluralName(name: string): string;

@@ -23,7 +23,7 @@ export async function canConnect(url: string): Promise<boolean> {
     await connectToPostgres(url)
     log('Connected to Postgres')
     return true
-  } catch (e) {
+  } catch {
     return false
   }
 }
@@ -33,7 +33,7 @@ export function ensureDockerIsRunning() {
     execSync('docker ps', { stdio: 'ignore' })
     log('Docker is Up')
     return true
-  } catch (e) {
+  } catch {
     throw new Error(`Make sure Docker is running, then run this again`)
   }
 }
@@ -49,7 +49,7 @@ export function isDockerComposeRunning(): boolean {
       return true
     }
     return false
-  } catch (e) {
+  } catch {
     return false
   }
 }
@@ -64,7 +64,7 @@ export async function ensureDockerComposeIsRunning() {
     execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, { stdio: 'ignore' })
     await waitForConnection()
     log('Docker Compose Started')
-  } catch (e) {
+  } catch {
     throw new Error(`Make sure Docker Compose is running`)
   }
 }
@@ -77,7 +77,7 @@ export function ensureDotEnv() {
     } else {
       log('.env exists')
     }
-  } catch (e) {
+  } catch {
     throw new Error(`Error creating or reading.env file`)
   }
 }
@@ -87,7 +87,7 @@ export function runPrismaSetup() {
     execSync('pnpm prisma:apply', { stdio: 'ignore' })
     log('Prisma Setup is Done')
     return true
-  } catch (e) {
+  } catch {
     throw new Error(`There was an issue running 'pnpm prisma:apply'`)
   }
 }
