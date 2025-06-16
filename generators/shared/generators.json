@@ -1,0 +1,14 @@
+{
+  "generators": {
+    "apollo": {
+      "factory": "./src/apollo/generator.js",
+      "schema": "./src/apollo/schema.json",
+      "description": "Generate a shared Apollo library with index and cache-config files"
+    },
+    "sdk": {
+      "factory": "./src/sdk/generator.js",
+      "schema": "./src/sdk/schema.json",
+      "description": "Generate the graphql sdk."
+    }
+  }
+}

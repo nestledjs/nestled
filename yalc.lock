@@ -3,23 +3,23 @@
   "packages": {
     "@nestled/config": {
       "signature": "bae7df0f17cb72fd2a29f43ea714bd61",
-      "file": true
+      "pure": true
     },
     "@nestled/api": {
-      "signature": "352d4fbfb5eca4244fc3be710e7c5de5",
-      "file": true
+      "signature": "c8f81ff6373696291d6c26778bb90f15",
+      "pure": true
     },
     "@nestled/utils": {
       "signature": "40a94351195f915c9ef8c05f0ffdd0ef",
       "pure": true
     },
     "@nestled/web": {
-      "signature": "514cf45bac8da08e181ae8ae21a3f046",
-      "file": true
+      "signature": "79c7891ede76a7c06fedfc1c3206b6e2",
+      "pure": true
     },
     "@nestled/plugins": {
       "signature": "86b71f2c7d630691b270b6b5f7b76b19",
-      "file": true
+      "pure": true
     }
   }
 }

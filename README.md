@@ -1,3 +1,5 @@
+npx create-nx-workspace NAME --preset=none --cli=nx --no-nxCloud --packageManager=pnpm --prettier --ci=github
+
 nx g @nestled/config:setup && 
 nx g @nestled/config:init && 
 nx g @nestled/api:setup && 
@@ -10,11 +12,12 @@ nx g @nestled/api:smtp-mailer &&
 nx g @nestled/api:generate-crud && 
 nx g @nestled/api:utils &&
 nx g @nestled/api:custom &&
-nx g @nestled/api:sdk &&
+nx g @nestled/shared:sdk &&
 nx g @nestled/plugins:auth && 
 nx g @nestled/api:workspace-setup &&
 nx g @nestled/web:setup &&
-nx g @nestled/web:app
+nx g @nestled/web:app &&
+nx g @nestled/shared:apollo
 
 
 

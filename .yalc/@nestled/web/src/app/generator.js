@@ -5,11 +5,10 @@ const tslib_1 = require("tslib");
 const devkit_1 = require("@nx/devkit");
 const application_1 = require("@nx/react/src/generators/application/application");
 const path = tslib_1.__importStar(require("path"));
+const get_npm_scope_1 = require("@nx/js/src/utils/package-json/get-npm-scope");
 function default_1(tree, schema) {
     return tslib_1.__awaiter(this, void 0, void 0, function* () {
         try {
-            const workspaceRoot = tree.root;
-            // Create the apps directory if it doesn't exist
             if (!tree.exists('apps')) {
                 tree.write('apps/.gitkeep', '');
             }
@@ -18,7 +17,7 @@ function default_1(tree, schema) {
                 name: 'web',
                 directory: 'apps/web',
                 bundler: 'vite',
-                style: 'tailwind',
+                style: 'none',
                 routing: true,
                 useReactRouter: true,
                 unitTestRunner: 'vitest',
@@ -28,19 +27,19 @@ function default_1(tree, schema) {
             // Wait a bit for files to be created
             // await new Promise((resolve) => setTimeout(resolve, 2000))
             // Delete the postcss.config.js file from the apps/web directory if it exists
-            const postcssConfigPath = path.join('apps', 'web', 'postcss.config.js');
-            if (tree.exists(postcssConfigPath)) {
-                tree.delete(postcssConfigPath);
-            }
+            // const postcssConfigPath = path.join('apps', 'web', 'postcss.config.js')
+            // if (tree.exists(postcssConfigPath)) {
+            //   tree.delete(postcssConfigPath)
+            // }
             // Delete the tailwind config file from the apps/web directory if it exists
-            const tailwindConfigJsPath = path.join('apps', 'web', 'tailwind.config.js');
-            const tailwindConfigTsPath = path.join('apps', 'web', 'tailwind.config.ts');
-            if (tree.exists(tailwindConfigJsPath)) {
-                tree.delete(tailwindConfigJsPath);
-            }
-            if (tree.exists(tailwindConfigTsPath)) {
-                tree.delete(tailwindConfigTsPath);
-            }
+            // const tailwindConfigJsPath = path.join('apps', 'web', 'tailwind.config.js')
+            // const tailwindConfigTsPath = path.join('apps', 'web', 'tailwind.config.ts')
+            // if (tree.exists(tailwindConfigJsPath)) {
+            //   tree.delete(tailwindConfigJsPath)
+            // }
+            // if (tree.exists(tailwindConfigTsPath)) {
+            //   tree.delete(tailwindConfigTsPath)
+            // }
             // Add dev:web script to package.json
             (0, devkit_1.updateJson)(tree, 'package.json', (json) => {
                 if (!json.scripts) {
@@ -50,9 +49,9 @@ function default_1(tree, schema) {
                 return json;
             });
             // Generate custom files
-            const targetPath = path.join('apps', 'web', 'src');
+            const targetPath = path.join('apps', 'web');
             if (tree.exists(targetPath)) {
-                (0, devkit_1.generateFiles)(tree, (0, devkit_1.joinPathFragments)(__dirname, './files'), targetPath, Object.assign(Object.assign({}, schema), { tmpl: '' }));
+                (0, devkit_1.generateFiles)(tree, (0, devkit_1.joinPathFragments)(__dirname, './files'), targetPath, Object.assign(Object.assign({}, schema), { tmpl: '', npmScope: (0, get_npm_scope_1.getNpmScope)(tree) }));
                 // Delete the unused default app files
                 // const filesToDelete = [path.join(targetPath, 'assets'), path.join(targetPath, 'app')]
                 // filesToDelete.forEach((filePath) => {
@@ -61,8 +60,8 @@ function default_1(tree, schema) {
                 //   }
                 // })
                 // Overwrite vite.config.ts in the apps/web directory with the custom template
-                const viteConfigPath = path.join('apps', 'web', 'vite.config.ts');
-                (0, devkit_1.generateFiles)(tree, (0, devkit_1.joinPathFragments)(__dirname, './files'), 'apps/web', Object.assign(Object.assign({}, schema), { tmpl: '' }));
+                // const viteConfigPath = path.join('apps', 'web', 'vite.config.ts')
+                // generateFiles(tree, joinPathFragments(__dirname, './files'), 'apps/web', { ...schema, tmpl: '' })
             }
             else {
                 console.error(`Target path ${targetPath} does not exist after generation`);

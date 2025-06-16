@@ -8,7 +8,7 @@
     "build": "nx run-many --target=build --all",
     "publish-lib": "ts-node scripts/yalc-publish.ts publish",
     "push": "ts-node scripts/yalc-publish.ts push",
-    "push-all": "pnpm push api && pnpm push web && pnpm push utils && pnpm push config && pnpm push plugins",
+    "push-all": "pnpm push api && pnpm push web && pnpm push utils && pnpm push config && pnpm push plugins && pnpm push shared",
     "test": "nx affected --target=test --base=develop"
   },
   "private": true,

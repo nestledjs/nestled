@@ -1,5 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.parseCrudAuth = parseCrudAuth;
+exports.getCrudAuthForModel = getCrudAuthForModel;
+exports.getGuardForAuthLevel = getGuardForAuthLevel;
+exports.generateResolverContent = generateResolverContent;
+exports.generateFeatureModuleContent = generateFeatureModuleContent;
+exports.generateFeatureIndexContent = generateFeatureIndexContent;
 exports.generateCrudLogic = generateCrudLogic;
 exports.default = default_1;
 const tslib_1 = require("tslib");
@@ -7,28 +13,14 @@ const devkit_1 = require("@nx/devkit");
 const internals_1 = require("@prisma/internals");
 const utils_1 = require("@nestled/utils");
 const get_npm_scope_1 = require("@nx/js/src/utils/package-json/get-npm-scope");
-// Group all dependencies into a single object
-const defaultDependencies = {
-    formatFiles: devkit_1.formatFiles,
-    generateFiles: devkit_1.generateFiles,
-    installPackagesTask: devkit_1.installPackagesTask,
-    joinPathFragments: devkit_1.joinPathFragments,
-    names: devkit_1.names,
-    getDMMF: internals_1.getDMMF,
-    apiLibraryGenerator: utils_1.apiLibraryGenerator,
-    getPrismaSchemaPath: utils_1.getPrismaSchemaPath,
-    readPrismaSchema: utils_1.readPrismaSchema,
-    deleteFiles: utils_1.deleteFiles,
-    getPluralName: utils_1.getPluralName,
-    getNpmScope: get_npm_scope_1.getNpmScope,
-};
+const pluralize_1 = tslib_1.__importDefault(require("pluralize"));
+// STEP 2: DEFINE PURE HELPER & CONTENT GENERATION FUNCTIONS
+// These functions are side-effect free and can be tested independently.
 function parseCrudAuth(comment) {
     try {
-        // Match @crudAuth: { ... } in a single line
         const match = comment.match(/@crudAuth:\s*(\{.*\})/);
         if (!match)
             return null;
-        // The captured group should be valid JSON
         return JSON.parse(match[1]);
     }
     catch (e) {
@@ -45,44 +37,35 @@ function getCrudAuthForModel(schema, modelName) {
         update: 'admin',
         delete: 'admin',
     };
-    // Split the schema into lines for precise model matching
     const lines = schema.split('\n');
     let modelDoc = [];
     let foundModel = false;
-    for (let i = 0; i < lines.length; i++) {
-        const line = lines[i].trim();
-        // Check if this is the start of our target model
-        if (line.startsWith(`model ${modelName}`) ||
-            line.startsWith(`model ${modelName} `) ||
-            line.startsWith(`model ${modelName}{`)) {
-            // We found our model, use the collected documentation
+    for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.startsWith(`model ${modelName}`) ||
+            trimmedLine.startsWith(`model ${modelName} `) ||
+            trimmedLine.startsWith(`model ${modelName}{`)) {
             foundModel = true;
             break;
         }
-        else if (line.startsWith('model ')) {
-            // Reset documentation when we hit a different model
+        else if (trimmedLine.startsWith('model ')) {
             modelDoc = [];
         }
-        else if (line.startsWith('///') && !foundModel) {
-            // Only collect documentation if it's before our model
-            modelDoc.push(line);
+        else if (trimmedLine.startsWith('///') && !foundModel) {
+            modelDoc.push(trimmedLine);
         }
     }
     if (!foundModel)
         return defaultConfig;
-    // Find the @crudAuth line in the model's documentation
     const authLine = modelDoc.find((line) => line.includes('@crudAuth:'));
     if (!authLine)
         return defaultConfig;
     const config = parseCrudAuth(authLine);
-    if (config) {
-        return Object.assign(Object.assign({}, defaultConfig), config);
-    }
-    return defaultConfig;
+    return config ? Object.assign(Object.assign({}, defaultConfig), config) : defaultConfig;
 }
 function getGuardForAuthLevel(level) {
     if (!level)
-        return 'GqlAuthAdminGuard'; // Default to admin if not specified
+        return 'GqlAuthAdminGuard';
     level = level.toLowerCase();
     if (level === 'public')
         return null;
@@ -90,220 +73,224 @@ function getGuardForAuthLevel(level) {
         return 'GqlAuthGuard';
     if (level === 'admin')
         return 'GqlAuthAdminGuard';
-    // For custom roles, convert to PascalCase and prepend 'GqlAuth' and append 'Guard'
-    // Example: 'custom' -> 'GqlAuthCustomGuard'
     const pascalCase = level.charAt(0).toUpperCase() + level.slice(1).toLowerCase();
     return `GqlAuth${pascalCase}Guard`;
 }
-function getAllPrismaModels(tree, dependencies) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        const prismaPath = dependencies.getPrismaSchemaPath(tree);
-        if (!prismaPath || !tree.exists(prismaPath)) {
-            console.error(`Prisma schema not found. Looked for ${prismaPath}`);
-            return [];
-        }
-        const prismaSchema = dependencies.readPrismaSchema(tree, prismaPath);
-        if (!prismaSchema) {
-            console.error(`No Prisma schema found at ${prismaPath}`);
-            return [];
-        }
-        try {
-            const dmmf = yield dependencies.getDMMF({ datamodel: prismaSchema });
-            return dmmf.datamodel.models
-                .filter((model) => {
-                if (!model.name || typeof model.name !== 'string' || !model.name.trim()) {
-                    console.error('Skipping model with invalid or missing name:', model);
-                    return false;
-                }
-                return true;
-            })
-                .map((model) => {
-                var _a;
-                const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1);
-                const pluralName = dependencies.getPluralName(model.name);
-                const pluralModelPropertyName = dependencies.getPluralName(singularPropertyName);
-                // Create a properly typed fields array
-                const fields = model.fields.map((field) => (Object.assign({ name: field.name, type: field.type, isId: field.isId, isRequired: field.isRequired, isList: field.isList, isUnique: field.isUnique, isReadOnly: field.isReadOnly, isGenerated: field.isGenerated, isUpdatedAt: field.isUpdatedAt, documentation: field.documentation }, field)));
-                // Get auth config for this model
-                const authConfig = getCrudAuthForModel(prismaSchema, model.name);
-                // Create and return the model with auth configuration
-                const modelWithAuth = {
-                    name: model.name,
-                    pluralName: pluralName,
-                    fields,
-                    primaryField: ((_a = model.fields.find((f) => !f.isId && f.type === 'String')) === null || _a === void 0 ? void 0 : _a.name) || 'name',
-                    modelName: model.name,
-                    modelPropertyName: singularPropertyName,
-                    pluralModelName: pluralName,
-                    pluralModelPropertyName: pluralModelPropertyName,
-                    auth: authConfig,
-                };
-                return modelWithAuth;
-            });
-        }
-        catch (error) {
-            console.error('Error parsing Prisma schema:', error);
-            return [];
-        }
-    });
-}
-function createLibraries(tree, name, models, dependencies) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        // Create required libraries for CRUD
-        // Define library names and roots
-        const dataAccessLibraryRoot = `libs/api/generated-crud/data-access`;
-        const featureLibraryRoot = `libs/api/generated-crud/feature`;
-        const templatePath = dependencies.joinPathFragments(__dirname, './files');
-        try {
-            // Use the shared apiLibraryGenerator to create the data-access library with templates and models
-            yield dependencies.apiLibraryGenerator(tree, { name, models }, templatePath, 'data-access');
-            // Use the shared apiLibraryGenerator to create the feature library with an empty template directory
-            yield dependencies.apiLibraryGenerator(tree, { name }, templatePath, 'feature');
-        }
-        catch (error) {
-            console.error('Error creating libraries:', error);
-            throw error;
-        }
-        return { dataAccessLibraryRoot, featureLibraryRoot };
-    });
-}
-// Helper function to convert camelCase to kebab-case
 function toKebabCase(str) {
     return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
 }
-function generateDataAccessFiles(tree, libraryRoot, models, schema, dependencies) {
-    const npmScope = `@${dependencies.getNpmScope(tree)}`;
-    const templateOptions = Object.assign(Object.assign({}, dependencies.names(schema.name || 'crud')), { models,
-        npmScope, tmpl: '' });
-    // Generate the shared data-access files
-    dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files/data-access/src/lib'), dependencies.joinPathFragments(libraryRoot, 'src/lib'), templateOptions);
-    // Create the index file for the data-access library
-    const indexPath = dependencies.joinPathFragments(libraryRoot, 'src/index.ts');
-    const indexContent = `export * from './lib/api-crud-data-access.module';
-export * from './lib/api-crud-data-access.service';
-export * from './lib/dto';
-`;
-    tree.write(indexPath, indexContent);
-}
-function generateFeatureFiles(tree, libraryRoot, model, schema, dependencies) {
+function generateResolverContent(model, npmScope) {
     var _a, _b, _c, _d, _e, _f;
-    const npmScope = `@${dependencies.getNpmScope(tree)}`;
-    const kebabCaseModelName = toKebabCase(model.name);
-    const resolverPath = dependencies.joinPathFragments(libraryRoot, 'src/lib', `${kebabCaseModelName}.resolver.ts`);
-    // The content for the resolver is generated dynamically.
-    const resolverContent = `import { UseGuards } from '@nestjs/common'
-import { Args, Mutation, Query, Resolver } from '@nestjs/graphql'
-import { ApiCrudDataAccessService, PagingResponse } from '${npmScope}/api/generated-crud/data-access'
-import { ${model.modelName} } from '${npmScope}/api/core/data-access'
-import { GqlAuthAdminGuard, GqlAuthGuard } from '${npmScope}/api/auth/data-access'
-import { Create${model.modelName}Input, Update${model.modelName}Input, List${model.modelName}Input } from './dto'
+    const usedGuards = new Set();
+    if (model.auth) {
+        Object.values(model.auth).forEach((level) => {
+            if (level === 'public')
+                return;
+            const guard = getGuardForAuthLevel(level);
+            if (guard)
+                usedGuards.add(guard);
+        });
+    }
+    else {
+        usedGuards.add('GqlAuthAdminGuard');
+    }
+    const guardImports = usedGuards.size > 0 ? `import { ${Array.from(usedGuards).sort().join(', ')} } from '@${npmScope}/api/utils'` : '';
+    const readManyGuardDecorator = ((_a = model.auth) === null || _a === void 0 ? void 0 : _a.readMany) ? getGuardForAuthLevel(model.auth.readMany) : 'GqlAuthAdminGuard';
+    const countGuardDecorator = ((_b = model.auth) === null || _b === void 0 ? void 0 : _b.count) ? getGuardForAuthLevel(model.auth.count) : 'GqlAuthAdminGuard';
+    const readOneGuardDecorator = ((_c = model.auth) === null || _c === void 0 ? void 0 : _c.readOne) ? getGuardForAuthLevel(model.auth.readOne) : 'GqlAuthAdminGuard';
+    const createGuardDecorator = ((_d = model.auth) === null || _d === void 0 ? void 0 : _d.create) ? getGuardForAuthLevel(model.auth.create) : 'GqlAuthAdminGuard';
+    const updateGuardDecorator = ((_e = model.auth) === null || _e === void 0 ? void 0 : _e.update) ? getGuardForAuthLevel(model.auth.update) : 'GqlAuthAdminGuard';
+    const deleteGuardDecorator = ((_f = model.auth) === null || _f === void 0 ? void 0 : _f.delete) ? getGuardForAuthLevel(model.auth.delete) : 'GqlAuthAdminGuard';
+    const readManyMethodName = model.pluralModelPropertyName;
+    const countMethodName = `${model.pluralModelPropertyName}Count`;
+    const readOneMethodName = model.modelPropertyName;
+    return `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
+import { UseGuards } from '@nestjs/common'
+import type { GraphQLResolveInfo } from 'graphql'
+import { CorePaging } from '@${npmScope}/api/core/data-access'
+import { ApiCrudDataAccessService } from '@${npmScope}/api/generated-crud/data-access'
+import { ${model.modelName} } from '@${npmScope}/api/core/models'
+import { Create${model.modelName}Input, List${model.modelName}Input, Update${model.modelName}Input } from '@${npmScope}/api/generated-crud/data-access'
+${guardImports}
 
-@Resolver()
-export class ${model.modelName}Resolver {
+@Resolver(() => ${model.modelName})
+export class Generated${model.modelName}Resolver {
   constructor(private readonly service: ApiCrudDataAccessService) {}
 
   @Query(() => [${model.modelName}], { nullable: true })
-  @UseGuards(${((_a = model.auth) === null || _a === void 0 ? void 0 : _a.readMany) ? getGuardForAuthLevel(model.auth.readMany) : 'GqlAuthAdminGuard'})
-  async ${model.pluralModelPropertyName}(@Args('input') input: List${model.modelName}Input) {
-    return this.service.${model.pluralModelPropertyName}(input)
+  ${readManyGuardDecorator ? `@UseGuards(${readManyGuardDecorator})` : ''}
+  ${readManyMethodName}(
+    @Info() info: GraphQLResolveInfo,
+    @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${model.modelName}Input,
+  ) {
+    return this.service.${readManyMethodName}(info, input)
   }
 
-  @Query(() => PagingResponse, { nullable: true })
-  @UseGuards(${((_b = model.auth) === null || _b === void 0 ? void 0 : _b.count) ? getGuardForAuthLevel(model.auth.count) : 'GqlAuthAdminGuard'})
-  async ${model.pluralModelPropertyName}Paging(@Args('input') input: List${model.modelName}Input) {
-    return this.service.${model.pluralModelPropertyName}Paging(input)
+  @Query(() => CorePaging, { nullable: true })
+  ${countGuardDecorator ? `@UseGuards(${countGuardDecorator})` : ''}
+  ${countMethodName}(
+    @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${model.modelName}Input,
+  ) {
+    return this.service.${countMethodName}(input)
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
-  @UseGuards(${((_c = model.auth) === null || _c === void 0 ? void 0 : _c.readOne) ? getGuardForAuthLevel(model.auth.readOne) : 'GqlAuthAdminGuard'})
-  async ${model.modelPropertyName}(@Args('id') id: string) {
-    return this.service.${model.modelPropertyName}(id)
+  ${readOneGuardDecorator ? `@UseGuards(${readOneGuardDecorator})` : ''}
+  ${readOneMethodName}(
+    @Info() info: GraphQLResolveInfo,
+    @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string
+  ) {
+    return this.service.${readOneMethodName}(info, ${model.modelPropertyName}Id)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  @UseGuards(${((_d = model.auth) === null || _d === void 0 ? void 0 : _d.create) ? getGuardForAuthLevel(model.auth.create) : 'GqlAuthAdminGuard'})
-  async create${model.modelName}(@Args('input') input: Create${model.modelName}Input) {
-    return this.service.create${model.modelName}(input)
+  ${createGuardDecorator ? `@UseGuards(${createGuardDecorator})` : ''}
+  create${model.modelName}(
+    @Info() info: GraphQLResolveInfo,
+    @Args('input') input: Create${model.modelName}Input,
+  ) {
+    return this.service.create${model.modelName}(info, input)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  @UseGuards(${((_e = model.auth) === null || _e === void 0 ? void 0 : _e.update) ? getGuardForAuthLevel(model.auth.update) : 'GqlAuthAdminGuard'})
-  async update${model.modelName}(@Args('id') id: string, @Args('input') input: Update${model.modelName}Input) {
-    return this.service.update${model.modelName}(id, input)
+  ${updateGuardDecorator ? `@UseGuards(${updateGuardDecorator})` : ''}
+  update${model.modelName}(
+    @Info() info: GraphQLResolveInfo,
+    @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
+    @Args('input') input: Update${model.modelName}Input,
+  ) {
+    return this.service.update${model.modelName}(info, ${model.modelPropertyName}Id, input)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  @UseGuards(${((_f = model.auth) === null || _f === void 0 ? void 0 : _f.delete) ? getGuardForAuthLevel(model.auth.delete) : 'GqlAuthAdminGuard'})
-  async delete${model.modelName}(@Args('id') id: string) {
-    return this.service.delete${model.modelName}(id)
+  ${deleteGuardDecorator ? `@UseGuards(${deleteGuardDecorator})` : ''}
+  delete${model.modelName}(
+    @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
+  ) {
+    return this.service.delete${model.modelName}(${model.modelPropertyName}Id)
   }
 }
 `;
-    // Write the dynamically generated resolver file.
-    tree.write(resolverPath, resolverContent);
-    // Update the index file for the feature library
-    updateFeatureIndexFile(tree, libraryRoot, model.name, dependencies);
 }
-function updateFeatureIndexFile(tree, libraryRoot, modelName, dependencies) {
-    const kebabCaseModelName = toKebabCase(modelName);
-    const indexPath = dependencies.joinPathFragments(libraryRoot, 'src/index.ts');
-    let indexContent = '';
-    if (tree.exists(indexPath)) {
-        indexContent = tree.read(indexPath, 'utf-8') || '';
-    }
-    const resolverExport = `export * from './lib/${kebabCaseModelName}.resolver';\n`;
-    if (!indexContent.includes(resolverExport)) {
-        indexContent += resolverExport;
-    }
-    tree.write(indexPath, indexContent);
+function generateFeatureModuleContent(models, npmScope) {
+    return `import { Module } from '@nestjs/common'\nimport { ApiCrudDataAccessModule } from '@${npmScope}/api/generated-crud/data-access'\n${models
+        .map((model) => `import { Generated${model.modelName}Resolver } from './${toKebabCase(model.modelName)}.resolver'`)
+        .join('\n')}\n\n@Module({\n  imports: [ApiCrudDataAccessModule],\n  providers: [${models
+        .map((model) => `Generated${model.modelName}Resolver`)
+        .join(', ')}],\n})\nexport class ApiGeneratedCrudFeatureModule {}\n`;
 }
-function generateCrudLogic(tree_1, schema_1) {
-    return tslib_1.__awaiter(this, arguments, void 0, function* (tree, schema, dependencies = defaultDependencies) {
+function generateFeatureIndexContent(models) {
+    return `export * from './lib/api-admin-crud-feature.module'\n${models
+        .map((model) => `export * from './lib/${toKebabCase(model.modelName)}.resolver'`)
+        .join('\n')}\n`;
+}
+// STEP 3: DEFINE THE CORE LOGIC FUNCTION
+// This function contains all the generator's logic but uses injected dependencies, making it testable.
+function generateCrudLogic(tree, schema, dependencies) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        // Helper functions that now use injected dependencies
+        function getAllPrismaModels(tree) {
+            return tslib_1.__awaiter(this, void 0, void 0, function* () {
+                const prismaPath = dependencies.getPrismaSchemaPath(tree);
+                const prismaSchema = dependencies.readPrismaSchema(tree, prismaPath);
+                if (!prismaSchema) {
+                    console.error(`No Prisma schema found at ${prismaPath}`);
+                    return [];
+                }
+                try {
+                    const dmmf = yield dependencies.getDMMF({ datamodel: prismaSchema });
+                    return dmmf.datamodel.models.map((model) => {
+                        var _a;
+                        const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1);
+                        const pluralPropertyName = dependencies.pluralize(singularPropertyName);
+                        const authConfig = getCrudAuthForModel(prismaSchema, model.name);
+                        return {
+                            name: model.name,
+                            pluralName: dependencies.pluralize(model.name),
+                            fields: model.fields.map((field) => (Object.assign({}, field))),
+                            primaryField: ((_a = model.fields.find((f) => !f.isId && f.type === 'String')) === null || _a === void 0 ? void 0 : _a.name) || 'name',
+                            modelName: model.name,
+                            modelPropertyName: singularPropertyName,
+                            pluralModelName: dependencies.pluralize(model.name),
+                            pluralModelPropertyName: pluralPropertyName,
+                            auth: authConfig,
+                        };
+                    });
+                }
+                catch (error) {
+                    console.error('Error parsing Prisma schema:', error);
+                    return [];
+                }
+            });
+        }
+        function createLibraries(tree, name) {
+            return tslib_1.__awaiter(this, void 0, void 0, function* () {
+                const dataAccessLibraryRoot = `libs/api/${name}/data-access`;
+                const featureLibraryRoot = `libs/api/${name}/feature`;
+                const dataAccessTemplatePath = dependencies.joinPathFragments(__dirname, './files/data-access');
+                const featureTemplatePath = dependencies.joinPathFragments(__dirname, './files/feature');
+                yield dependencies.apiLibraryGenerator(tree, { name }, dataAccessTemplatePath, 'data-access');
+                yield dependencies.apiLibraryGenerator(tree, { name }, featureTemplatePath, 'feature');
+                return { dataAccessLibraryRoot, featureLibraryRoot };
+            });
+        }
+        function generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models, name) {
+            return tslib_1.__awaiter(this, void 0, void 0, function* () {
+                const npmScope = dependencies.getNpmScope(tree);
+                const nameObj = dependencies.names(name);
+                const substitutions = Object.assign(Object.assign({}, nameObj), { name, models, npmScope: `@${npmScope}`, apiClassName: 'PrismaCrud', tmpl: '' });
+                dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files/data-access/src/lib'), dependencies.joinPathFragments(dataAccessLibraryRoot, 'src/lib'), Object.assign(Object.assign({}, substitutions), { type: 'data-access' }));
+                dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files/data-access/src'), dependencies.joinPathFragments(dataAccessLibraryRoot, 'src'), Object.assign(Object.assign({}, substitutions), { type: 'data-access' }));
+                const featureModuleContent = generateFeatureModuleContent(models, npmScope);
+                tree.write(dependencies.joinPathFragments(featureLibraryRoot, 'src/lib/api-admin-crud-feature.module.ts'), featureModuleContent);
+                const featureIndexContent = generateFeatureIndexContent(models);
+                tree.write(dependencies.joinPathFragments(featureLibraryRoot, 'src/index.ts'), featureIndexContent);
+                for (const model of models) {
+                    const resolverFilePath = dependencies.joinPathFragments(featureLibraryRoot, `src/lib/${toKebabCase(model.modelName)}.resolver.ts`);
+                    const resolverContent = generateResolverContent(model, npmScope);
+                    tree.write(resolverFilePath, resolverContent);
+                }
+            });
+        }
+        // Main Orchestration Logic
+        const name = schema.name || 'generated-crud';
+        const models = yield getAllPrismaModels(tree);
+        if (models.length === 0) {
+            console.error('No Prisma models found');
+            return; // Return early for the test case
+        }
+        const { dataAccessLibraryRoot, featureLibraryRoot } = yield createLibraries(tree, name);
+        yield generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models, name);
+        yield dependencies.formatFiles(tree);
+        return () => {
+            dependencies.installPackagesTask(tree);
+        };
+    });
+}
+// STEP 4: DEFINE THE DEFAULT EXPORT
+// This is what Nx CLI executes. It's a simple wrapper that provides the *real* dependencies to the logic function.
+function default_1(tree, schema) {
+    return tslib_1.__awaiter(this, void 0, void 0, function* () {
+        const dependencies = {
+            formatFiles: devkit_1.formatFiles,
+            generateFiles: devkit_1.generateFiles,
+            installPackagesTask: devkit_1.installPackagesTask,
+            joinPathFragments: devkit_1.joinPathFragments,
+            names: devkit_1.names,
+            getDMMF: internals_1.getDMMF,
+            apiLibraryGenerator: utils_1.apiLibraryGenerator,
+            getPrismaSchemaPath: utils_1.getPrismaSchemaPath,
+            readPrismaSchema: utils_1.readPrismaSchema,
+            getNpmScope: get_npm_scope_1.getNpmScope,
+            pluralize: pluralize_1.default,
+        };
         try {
-            const name = schema.name || 'generated-crud';
-            // Get all Prisma models
-            const models = yield getAllPrismaModels(tree, dependencies);
-            if (!models || models.length === 0) {
-                console.error('No Prisma models found. Make sure your schema.prisma is correctly defined.');
-                return;
-            }
-            // Create required libraries for CRUD
-            const { dataAccessLibraryRoot, featureLibraryRoot } = yield createLibraries(tree, name, models, dependencies);
-            // Overwrite logic for specific models
-            if (schema.overwrite && schema.model) {
-                const modelToDelete = schema.model;
-                const modelObject = models.find((m) => m.name === modelToDelete);
-                if (modelObject) {
-                    const kebabCaseModelName = toKebabCase(modelObject.name);
-                    const dataAccessPath = dependencies.joinPathFragments(dataAccessLibraryRoot, 'src/lib', `${kebabCaseModelName}.service.ts`);
-                    const featurePath = dependencies.joinPathFragments(featureLibraryRoot, 'src/lib', `${kebabCaseModelName}.resolver.ts`);
-                    dependencies.deleteFiles(tree, [dataAccessPath, featurePath]);
-                }
-            }
-            // Generate shared data-access files
-            generateDataAccessFiles(tree, dataAccessLibraryRoot, models, schema, dependencies);
-            // Generate feature files for each model
-            for (const model of models) {
-                if (schema.model && model.name !== schema.model) {
-                    continue;
-                }
-                generateFeatureFiles(tree, featureLibraryRoot, model, schema, dependencies);
-            }
-            // Format files
-            yield dependencies.formatFiles(tree);
-            return () => {
-                dependencies.installPackagesTask(tree);
-            };
+            return yield generateCrudLogic(tree, schema, dependencies);
         }
         catch (error) {
             console.error('Error in CRUD generator:', error);
             throw error;
         }
-    });
-}
-function default_1(tree, schema) {
-    return tslib_1.__awaiter(this, void 0, void 0, function* () {
-        return generateCrudLogic(tree, schema, defaultDependencies);
     });
 }
 //# sourceMappingURL=generator.js.map
