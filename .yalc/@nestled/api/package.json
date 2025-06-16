@@ -6,7 +6,14 @@
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "dependencies": {
+    "@nestled/utils": "file:.yalc/@nestled/utils",
+    "@nx/devkit": "21.2.0",
+    "@nx/js": "21.2.0",
+    "@prisma/internals": "^6.9.0",
+    "dotenv": "16.4.5",
+    "pg": "^8.13.0",
+    "pluralize": "^8.0.0",
     "tslib": "^2.3.0"
   },
-  "yalcSig": "c8f81ff6373696291d6c26778bb90f15"
+  "yalcSig": "6ec8f6ae915f9ae8c9cd82f5472109f2"
 }

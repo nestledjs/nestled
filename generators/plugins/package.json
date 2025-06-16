@@ -1,6 +1,6 @@
 {
   "name": "@nestled/plugins",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "generators": "./generators.json",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -8,6 +8,6 @@
     "tslib": "^2.3.0",
     "@nx/devkit": "21.2.0",
     "@nx/js": "21.2.0",
-    "@nestled/utils": "file:.yalc/@nestled/utils"
+    "@nestled/utils": "workspace:*"
   }
 }

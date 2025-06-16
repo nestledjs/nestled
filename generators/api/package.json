@@ -1,6 +1,6 @@
 {
   "name": "@nestled/api",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
@@ -8,7 +8,7 @@
   "dependencies": {
     "tslib": "^2.3.0",
     "@nx/devkit": "21.2.0",
-    "@nestled/utils": "file:.yalc/@nestled/utils",
+    "@nestled/utils": "workspace:*",
     "@nx/js": "21.2.0",
     "@prisma/internals": "^6.9.0",
     "pluralize": "^8.0.0",

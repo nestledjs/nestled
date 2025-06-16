@@ -1,6 +1,6 @@
 {
   "name": "@nestled/web",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "generators": "./generators.json",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -9,6 +9,6 @@
     "@nx/devkit": "^21.2.0",
     "@nx/react": "^21.2.0",
     "@nx/js": "^21.2.0",
-    "@nestled/utils": "0.0.1"
+    "@nestled/utils": "workspace:*"
   }
 }

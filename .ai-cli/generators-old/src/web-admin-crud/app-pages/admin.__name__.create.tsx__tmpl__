@@ -1,0 +1,16 @@
+import React from 'react'
+import { AdminCreate<%= className %>Document } from '<%= npmScope %>/shared/util-sdk'
+import { admin<%= className %>Fields } from '<%= npmScope %>/shared/fields'
+import { WebAdminCreateForm } from '<%= npmScope %>/web-admin/crud-helper'
+
+export default function WebAdmin<%= className %>Create() {
+  return (
+    <WebAdminCreateForm
+      document={AdminCreate<%= className %>Document}
+      navigateTo={'/admin/<%= name %>'}
+      mutationName={'create<%= className %>'}
+      buttonText={' <%= className %>'}
+      fields={admin<%= className %>Fields}
+      />
+  )
+}

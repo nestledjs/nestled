@@ -1,6 +1,6 @@
 {
   "name": "@nestled/config",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
@@ -8,7 +8,7 @@
   "dependencies": {
     "tslib": "^2.3.0",
     "@nx/devkit": "^21.2.0",
-    "@nestled/utils": "0.0.1"
+    "@nestled/utils": "workspace:*"
   },
   "devDependencies": {
     "@types/yaml": "^1.9.7",

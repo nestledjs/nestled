@@ -1,0 +1,78 @@
+import { Injectable } from '@nestjs/common'
+import { PrismaSelect } from '@paljs/plugins'
+import type { GraphQLResolveInfo } from 'graphql'
+import { Prisma } from '@prisma/client'
+import { <%= apiClassName %>CoreDataAccessService, CorePaging } from '<%= npmScope %>/<%= directory %>/core/data-access'
+import { UserCreate<%= modelClassName %>Input, UserList<%= modelClassName %>Input, UserUpdate<%= modelClassName %>Input } from '<%= npmScope %>/<%= directory %>/core/data-access/src/graphql-types'
+import { UseGuards } from '@nestjs/common'
+import {GqlAuthGuard} from '<%= npmScope %>/api/auth/util'
+
+@Injectable()
+@UseGuards(GqlAuthGuard)
+export class <%= apiClassName %><%= modelClassName %>DataAccessUserService {
+  constructor(private readonly data: <%= apiClassName %>CoreDataAccessService) {}
+
+    private readonly searchFields = [<%- searchFields %>]
+    private where(input?: UserList<%= modelClassName %>Input): Prisma.<%= modelClassName %>WhereInput {
+      let conditions: Prisma.<%= modelClassName %>WhereInput[] = []
+
+      if (input?.search) {
+        conditions = this.data.search(conditions, input.search, this.searchFields)
+      }
+
+      return {
+        AND: conditions,
+      }
+    }
+
+  user<%= pluralClassName %>(info: GraphQLResolveInfo, input?: UserList<%= modelClassName %>Input) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= modelPropertyName %>.findMany({
+      take: input?.take,
+      skip: input?.skip,
+      where: this.where(input),
+      ...select,
+    })
+  }
+
+  async userCount<%= pluralClassName %>(input?: UserList<%= modelClassName %>Input): Promise<CorePaging> {
+    const total = await this.data.<%= modelPropertyName %>.count()
+    const count = await this.data.<%= modelPropertyName %>.count({ where: this.where(input) })
+    const take = input?.take ?? 10
+    const skip = input?.skip ?? 0
+    const page = Math.floor(skip / take)
+    return {
+      take,
+      skip,
+      page,
+      count,
+      total,
+    }
+  }
+
+  user<%= modelClassName %>(info: GraphQLResolveInfo, <%= modelPropertyName %>Id: string) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= modelPropertyName %>.findUnique({ where: { id: <%= modelPropertyName %>Id }, ...select })
+  }
+
+  userCreate<%= modelClassName %>(info: GraphQLResolveInfo, input: UserCreate<%= modelClassName %>Input) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= modelPropertyName %>.create({
+      data: { ...input },
+      ...select,
+    })
+  }
+
+  userUpdate<%= modelClassName %>(info: GraphQLResolveInfo, <%= modelPropertyName %>Id: string, input: UserUpdate<%= modelClassName %>Input) {
+    const select = new PrismaSelect(info).value
+    return this.data.<%= modelPropertyName %>.update({
+      where: { id: <%= modelPropertyName %>Id },
+      data: { ...input },
+      ...select,
+    })
+  }
+
+  userDelete<%= modelClassName %>(<%= modelPropertyName %>Id: string) {
+    return this.data.<%= modelPropertyName %>.delete({ where: { id: <%= modelPropertyName %>Id } })
+  }
+}

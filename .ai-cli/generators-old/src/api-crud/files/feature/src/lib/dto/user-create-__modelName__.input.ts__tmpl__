@@ -1,0 +1,8 @@
+import { Field, InputType } from '@nestjs/graphql'
+
+@InputType()
+export class UserCreate<%= modelClassName %>Input {
+  @Field({nullable: true})
+  <%= primaryField %>?: string
+}
+

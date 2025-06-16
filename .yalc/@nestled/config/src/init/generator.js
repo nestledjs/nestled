@@ -6,12 +6,12 @@ const devkit_1 = require("@nx/devkit");
 const utils_1 = require("@nestled/utils");
 const path = tslib_1.__importStar(require("path"));
 function handlePrettierConfig(tree) {
-    const filesDir = path.join(__dirname, 'files');
+    const filesDir = path.join(__dirname, 'files', 'prettier');
     (0, devkit_1.generateFiles)(tree, filesDir, '.', { dot: '.', tmpl: '' });
     devkit_1.logger.info('✅ Generated .prettierrc and .prettierignore files');
 }
 function handleEnvExample(tree) {
-    const filesDir = path.join(__dirname, 'files');
+    const filesDir = path.join(__dirname, 'files', 'env');
     (0, devkit_1.generateFiles)(tree, filesDir, '.', { dot: '.', tmpl: '' });
     devkit_1.logger.info('✅ Generated .env.example file');
     // Copy .env.example to .env if .env does not exist
@@ -41,13 +41,13 @@ function getWorkspaceName(tree) {
 function handleDockerFilesAndScripts(tree) {
     // Generate Docker files in .dev directory
     const filesDir = path.join(__dirname, 'files', '.dev');
-    (0, devkit_1.generateFiles)(tree, filesDir, '.dev', { dot: '.', tmpl: '' });
+    const npmScope = getWorkspaceName(tree);
+    (0, devkit_1.generateFiles)(tree, filesDir, '.dev', { dot: '.', tmpl: '', npmScope });
     devkit_1.logger.info('✅ Generated Dockerfile and docker-compose.yml in .dev directory');
     // Add only Docker-related scripts to package.json
     const packageJsonPath = 'package.json';
     if (tree.exists(packageJsonPath)) {
-        const workspaceName = getWorkspaceName(tree);
-        const imageName = `${workspaceName}/api`;
+        const imageName = `${npmScope}/api`;
         const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}');
         packageJsonContent.scripts = Object.assign(Object.assign({}, packageJsonContent.scripts), { 'docker:build': `docker build -f .dev/Dockerfile -t ${imageName} .`, 'docker:down': 'docker compose -f .dev/docker-compose.yml down', 'docker:push': `docker push ${imageName}`, 'docker:run': `docker run -it -p 8000:3000 ${imageName}`, 'docker:up': 'docker compose -f .dev/docker-compose.yml up' });
         tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2));

@@ -2,22 +2,22 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { generateFiles, names, readJson, Tree, writeJson } from '@nx/devkit'
 import {
+  addScriptToPackageJson,
   deleteDirectory,
   deleteFiles,
   endsWithQuestionMark,
+  generateTemplateFiles,
+  getAllPrismaModels,
+  getNpmScope,
+  getPrismaSchemaPath,
+  installPlugins,
+  mapPrismaTypeToNestJsType,
+  parsePrismaSchema,
+  readPrismaSchema,
   removeQuestionMarkAtEnd,
   removeWorkspacesFromPackageJson,
-  getPrismaSchemaPath,
-  readPrismaSchema,
-  mapPrismaTypeToNestJsType,
-  getNpmScope,
-  parsePrismaSchema,
-  generateTemplateFiles,
-  installPlugins,
   updateTsConfigPaths,
   updateTypeScriptConfigs,
-  getAllPrismaModels,
-  addScriptToPackageJson,
 } from './generator-utils'
 import { getDMMF } from '@prisma/internals'
 

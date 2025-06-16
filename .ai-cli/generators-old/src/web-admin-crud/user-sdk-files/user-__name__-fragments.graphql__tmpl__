@@ -1,0 +1,13 @@
+fragment User<%= className %>Basics on <%= className %> {
+  id
+  createdAt
+  updatedAt
+  <%= primaryField %>
+}
+
+fragment User<%= className %>Details on <%= className %> {
+  id
+  createdAt
+  updatedAt
+  <%= primaryField %>
+}
