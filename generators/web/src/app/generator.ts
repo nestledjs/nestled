@@ -2,12 +2,10 @@ import { generateFiles, joinPathFragments, Tree, updateJson } from '@nx/devkit'
 import { applicationGenerator } from '@nx/react/src/generators/application/application'
 import * as path from 'path'
 import { WebAppGeneratorSchema } from './schema'
+import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
 export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
   try {
-    const workspaceRoot = tree.root
-
-    // Create the apps directory if it doesn't exist
     if (!tree.exists('apps')) {
       tree.write('apps/.gitkeep', '')
     }
@@ -17,7 +15,7 @@ export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
       name: 'web',
       directory: 'apps/web',
       bundler: 'vite',
-      style: 'tailwind',
+      style: 'none',
       routing: true,
       useReactRouter: true,
       unitTestRunner: 'vitest',
@@ -29,20 +27,20 @@ export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
     // await new Promise((resolve) => setTimeout(resolve, 2000))
 
     // Delete the postcss.config.js file from the apps/web directory if it exists
-    const postcssConfigPath = path.join('apps', 'web', 'postcss.config.js')
-    if (tree.exists(postcssConfigPath)) {
-      tree.delete(postcssConfigPath)
-    }
+    // const postcssConfigPath = path.join('apps', 'web', 'postcss.config.js')
+    // if (tree.exists(postcssConfigPath)) {
+    //   tree.delete(postcssConfigPath)
+    // }
 
     // Delete the tailwind config file from the apps/web directory if it exists
-    const tailwindConfigJsPath = path.join('apps', 'web', 'tailwind.config.js')
-    const tailwindConfigTsPath = path.join('apps', 'web', 'tailwind.config.ts')
-    if (tree.exists(tailwindConfigJsPath)) {
-      tree.delete(tailwindConfigJsPath)
-    }
-    if (tree.exists(tailwindConfigTsPath)) {
-      tree.delete(tailwindConfigTsPath)
-    }
+    // const tailwindConfigJsPath = path.join('apps', 'web', 'tailwind.config.js')
+    // const tailwindConfigTsPath = path.join('apps', 'web', 'tailwind.config.ts')
+    // if (tree.exists(tailwindConfigJsPath)) {
+    //   tree.delete(tailwindConfigJsPath)
+    // }
+    // if (tree.exists(tailwindConfigTsPath)) {
+    //   tree.delete(tailwindConfigTsPath)
+    // }
 
     // Add dev:web script to package.json
     updateJson(tree, 'package.json', (json) => {
@@ -54,9 +52,13 @@ export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
     })
 
     // Generate custom files
-    const targetPath = path.join('apps', 'web', 'src')
+    const targetPath = path.join('apps', 'web')
     if (tree.exists(targetPath)) {
-      generateFiles(tree, joinPathFragments(__dirname, './files'), targetPath, { ...schema, tmpl: '' })
+      generateFiles(tree, joinPathFragments(__dirname, './files'), targetPath, {
+        ...schema,
+        tmpl: '',
+        npmScope: getNpmScope(tree),
+      })
 
       // Delete the unused default app files
       // const filesToDelete = [path.join(targetPath, 'assets'), path.join(targetPath, 'app')]
@@ -68,8 +70,8 @@ export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
       // })
 
       // Overwrite vite.config.ts in the apps/web directory with the custom template
-      const viteConfigPath = path.join('apps', 'web', 'vite.config.ts')
-      generateFiles(tree, joinPathFragments(__dirname, './files'), 'apps/web', { ...schema, tmpl: '' })
+      // const viteConfigPath = path.join('apps', 'web', 'vite.config.ts')
+      // generateFiles(tree, joinPathFragments(__dirname, './files'), 'apps/web', { ...schema, tmpl: '' })
     } else {
       console.error(`Target path ${targetPath} does not exist after generation`)
     }

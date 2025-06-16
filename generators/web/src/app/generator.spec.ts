@@ -1,77 +1,93 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { Tree } from '@nx/devkit'
-import { execSync } from 'child_process'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { Tree, generateFiles, updateJson, joinPathFragments } from '@nx/devkit'
+import { applicationGenerator as realApplicationGenerator } from '@nx/react/src/generators/application/application'
+import * as path from 'path'
 import generator from './generator'
 
-vi.mock('child_process', async (importOriginal) => {
-  const originalModule = await importOriginal()
+vi.mock('@nx/react/src/generators/application/application', () => ({
+  applicationGenerator: vi.fn(),
+}))
+
+vi.mock('@nx/devkit', async () => {
+  const actual = await import('@nx/devkit')
   return {
-    ...(originalModule as object),
-    execSync: vi.fn(),
+    ...actual,
+    generateFiles: vi.fn(actual.generateFiles),
+    updateJson: vi.fn(actual.updateJson),
+    joinPathFragments: actual.joinPathFragments,
   }
 })
 
-vi.mock('@nx/react/src/generators/application/application', async (importOriginal) => {
-  const originalModule = await importOriginal()
-  return {
-    ...(originalModule as object),
-    applicationGenerator: vi.fn(async (tree) => {
-      tree.write('apps/web/src/app.tsx', '// app entry')
-      tree.write('apps/web/vite.config.ts', '// vite config')
-      return Promise.resolve()
-    }),
-  }
-})
+vi.mock('@nx/js/src/utils/package-json/get-npm-scope', () => ({
+  getNpmScope: vi.fn(() => 'test-scope'),
+}))
 
-describe('web app generator', () => {
+describe('web generator', () => {
   let tree: Tree
-  const mockedExecSync = execSync as ReturnType<(typeof vi)['fn']>
+  let schema: Record<string, unknown>
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
-    tree.write('package.json', JSON.stringify({ name: 'test-repo', scripts: {} }))
-
-    mockedExecSync.mockImplementation(() => {
-      // Simulate file creation as if the Nx generator ran
-      tree.write('apps/web/src/app/app.tsx', '// app entry')
-      tree.write('apps/web/vite.config.ts', '// vite config')
-      tree.write('apps/web/postcss.config.js', '// postcss config')
-      tree.write('apps/web/tailwind.config.js', '// tailwind config')
-      tree.write('apps/web/tailwind.config.ts', '// tailwind config ts')
-      return ''
-    })
-
-    vi.spyOn(console, 'log').mockImplementation(() => {
-      /* empty */
-    })
-    vi.spyOn(console, 'warn').mockImplementation(() => {
-      /* empty */
-    })
-    vi.spyOn(console, 'error').mockImplementation(() => {
-      /* empty */
-    })
+    schema = {}
+    vi.clearAllMocks()
   })
 
-  afterEach(() => {
-    vi.restoreAllMocks()
-    mockedExecSync.mockClear()
+  it('should create apps/.gitkeep if apps does not exist', async () => {
+    tree.delete('apps')
+    await generator(tree, schema)
+    expect(tree.exists('apps/.gitkeep')).toBe(true)
   })
 
-  it('should run successfully and update files', async () => {
-    await generator(tree, {})
-
-    // postcss and tailwind config files should be deleted
-    expect(tree.exists('apps/web/postcss.config.js')).toBe(false)
-    expect(tree.exists('apps/web/tailwind.config.js')).toBe(false)
-    expect(tree.exists('apps/web/tailwind.config.ts')).toBe(false)
-
-    // dev:web script should be added
-    const packageJson = JSON.parse(tree.read('package.json', 'utf-8'))
-    expect(packageJson.scripts['dev:web']).toBe('nx serve web')
-
-    // Custom files should be generated (example: vite.config.ts)
-    expect(tree.exists('apps/web/vite.config.ts')).toBe(true)
-    expect(tree.exists('apps/web/src/app.tsx')).toBe(true)
+  it('should call applicationGenerator with correct options', async () => {
+    await generator(tree, schema)
+    expect(realApplicationGenerator).toHaveBeenCalledWith(tree, expect.objectContaining({
+      name: 'web',
+      directory: 'apps/web',
+      bundler: 'vite',
+      style: 'none',
+      routing: true,
+      useReactRouter: true,
+      unitTestRunner: 'vitest',
+      e2eTestRunner: 'none',
+      linter: 'eslint',
+    }))
   })
-})
+
+  it('should update package.json with dev:web script', async () => {
+    tree.write('package.json', JSON.stringify({}))
+    await generator(tree, schema)
+    const pkg = JSON.parse(tree.read('package.json', 'utf-8')!)
+    expect(pkg.scripts['dev:web']).toBe('nx serve web')
+  })
+
+  it('should call generateFiles with correct arguments if targetPath exists', async () => {
+    const generateFilesMock = (generateFiles as unknown as ReturnType<typeof vi.fn>)
+    tree.write(path.join('apps', 'web', 'dummy.txt'), 'test')
+    await generator(tree, schema)
+    expect(generateFilesMock).toHaveBeenCalled()
+    // Check that the target path is correct
+    const callArgs = generateFilesMock.mock.calls[0]
+    expect(callArgs[2]).toBe(path.join('apps', 'web'))
+    expect(callArgs[3].npmScope).toBe('test-scope')
+  })
+
+  it('should log error if targetPath does not exist', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Remove apps/web to trigger error
+    if (tree.exists('apps/web')) tree.delete('apps/web')
+    await generator(tree, schema)
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('does not exist after generation'))
+    errorSpy.mockRestore()
+  })
+
+  it('should throw and log error if an exception occurs', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Force updateJson to throw
+    const updateJsonMock = (updateJson as unknown as ReturnType<typeof vi.fn>)
+    updateJsonMock.mockImplementation(() => { throw new Error('test error') })
+    await expect(generator(tree, schema)).rejects.toThrow('test error')
+    expect(errorSpy).toHaveBeenCalledWith('Error generating Web app:', expect.any(Error))
+    errorSpy.mockRestore()
+  })
+}) 

@@ -11,4 +11,3 @@ export * from './user/generator';
 export * from './workspace-setup/generator';
 export * from './plugin/generator';
 export * from './utils/generator';
-export * from './sdk/generator';

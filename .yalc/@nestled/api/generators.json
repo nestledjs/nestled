@@ -64,11 +64,6 @@
       "factory": "./src/utils/generator.js",
       "schema": "./src/utils/schema.json",
       "description": "Generate a utility plugin with auth utils."
-    },
-    "sdk": {
-      "factory": "./src/sdk/generator.js",
-      "schema": "./src/sdk/schema.json",
-      "description": "Generate the graphql sdk."
     }
   }
 }

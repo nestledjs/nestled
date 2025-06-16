@@ -1,0 +1,41 @@
+{
+  "name": "shared",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "generators/shared/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/generators/shared",
+        "main": "generators/shared/src/index.ts",
+        "tsConfig": "generators/shared/tsconfig.lib.json",
+        "assets": [
+          "generators/shared/*.md",
+          {
+            "input": "./generators/shared/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/shared/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/shared",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./generators/shared",
+            "glob": "executors.json",
+            "output": "."
+          }
+        ]
+      }
+    }
+  }
+}
