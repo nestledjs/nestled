@@ -20,7 +20,7 @@ describe('init-config generator', () => {
 
   it('should remove workspaces from package.json', async () => {
     const initialPackageJson = {
-      name: 'test-repo',
+      name: '@test/test-repo',
       workspaces: ['packages/*'],
     }
     tree.write('package.json', JSON.stringify(initialPackageJson))
@@ -32,7 +32,7 @@ describe('init-config generator', () => {
   })
 
   it('should add the clean script to package.json', async () => {
-    tree.write('package.json', JSON.stringify({ name: 'test-repo' }))
+    tree.write('package.json', JSON.stringify({ name: '@test/test-repo' }))
     await initConfigGenerator(tree)
     const updatedPackageJson = readJson(tree, 'package.json')
     expect(updatedPackageJson.scripts.clean).toBe(

@@ -13,5 +13,5 @@ COPY . .
 RUN pnpm build
 
 # When building, tag the image with your project name, e.g.:
-# docker build -f .dev/Dockerfile -t your-scope/api .
+# docker build -f .dev/Dockerfile -t your-scope .
 CMD ["pnpm", "start"]
