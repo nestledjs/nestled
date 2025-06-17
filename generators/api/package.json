@@ -1,5 +1,5 @@
 {
-  "name": "@nestled/api",
+  "name": "@nestledjs/api",
   "version": "0.0.1",
   "generators": "./generators.json",
   "type": "commonjs",

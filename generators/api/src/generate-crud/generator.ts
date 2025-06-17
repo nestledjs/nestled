@@ -1,6 +1,6 @@
 import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, names, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
+import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestledjs/utils'
 import { GenerateCrudGeneratorSchema } from './schema'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import pluralize from 'pluralize'
@@ -18,7 +18,7 @@ interface CrudAuthConfig {
 interface ModelType {
   name: string
   pluralName: string
-  fields: ReadonlyArray<any>
+  fields: ReadonlyArray<Record<string, unknown> & { name: string; type: string }>
   primaryField: string
   modelName: string
   modelPropertyName: string

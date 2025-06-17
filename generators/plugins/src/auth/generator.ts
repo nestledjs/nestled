@@ -1,6 +1,6 @@
 import { formatFiles, generateFiles, joinPathFragments, Tree } from '@nx/devkit'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
-import { addToModules } from '@nestled/utils'
+import { addToModules } from '@nestledjs/utils'
 
 export default async function generator(tree: Tree) {
   const directory = 'api/custom/src/lib/plugins'

@@ -1,6 +1,6 @@
 
 {
-  "name": "@nestled/generators",
+  "name": "@nestledjs/generators",
   "version": "0.0.1",
   "dependencies": {
     "@nx/devkit": ">=20.0.0",

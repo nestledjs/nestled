@@ -10,10 +10,7 @@ export default defineConfig(() => ({
   plugins: [nxCopyAssetsPlugin(['*.md'])],
   resolve: {
     alias: {
-      '@nestled/utils': path.resolve(
-        __dirname,
-        '../../dist/generators/utils/src/index.js'
-      ),
+      '@nestledjs/utils': path.resolve(__dirname, '../../dist/generators/utils/src/index.js'),
     },
   },
   // Uncomment this if you are using workers.
