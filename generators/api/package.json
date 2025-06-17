@@ -5,6 +5,13 @@
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "description": "API generators for Nestled projects",
+  "author": "Nestled Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nestledjs/nestled"
+  },
   "dependencies": {
     "tslib": "^2.3.0"
   }
