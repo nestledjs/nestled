@@ -46,7 +46,9 @@ describe('webSetupGenerator', () => {
       },
     )
     expect(updatePnpmWorkspaceConfigSpy).toHaveBeenCalledWith(tree, { onlyBuiltDependencies: ['@tailwindcss/oxide'] })
+    expect(pnpmInstallCallbackSpy).not.toHaveBeenCalled()
+    await result()
     expect(pnpmInstallCallbackSpy).toHaveBeenCalled()
-    expect(result).toBe(installCallback)
+    expect(installCallback).toHaveBeenCalled()
   })
 })
