@@ -1,35 +1,57 @@
 import { execSync } from 'child_process'
 import { resolve } from 'path'
 
+// Define dependency order - dependencies first, dependents last
+const DEPENDENCY_ORDER = ['utils', 'shared', 'plugins', 'config', 'web', 'api']
+
 async function main() {
   const [, , action, libName] = process.argv
 
-  if (!action || !libName) {
-    console.error('❌ Usage: pnpm push <lib> or pnpm publish <lib>')
+  if (!action) {
+    console.error('❌ Usage: pnpm publish-all or pnpm push <lib> or pnpm push-all')
     process.exit(1)
   }
 
-  console.log('🗺️ Generating Nx project graph...')
-  execSync('pnpm nx graph --file=tmp.html --no-interactive --no-daemon', { stdio: 'inherit' })
+  if (action === 'publish-all' || action === 'push-all') {
+    // Publish/push all packages in dependency order
+    const baseAction = action === 'publish-all' ? 'publish' : 'push'
+    for (const lib of DEPENDENCY_ORDER) {
+      await processPackage(baseAction, lib)
+    }
+    return
+  }
+
+  if (action === 'push') {
+    if (!libName) {
+      console.error('❌ Usage: pnpm push <lib>')
+      process.exit(1)
+    }
+    await processPackage('push', libName)
+    return
+  }
+
+  console.error(`❌ Unknown action: ${action}`)
+  process.exit(1)
+}
+
+async function processPackage(action, libName) {
+  console.log(`\n🚀 Processing ${libName}...`)
 
   console.log('🔧 Building with dependencies...')
   try {
-    execSync(`pnpm nx run-many --target=build --projects=${libName} --with-deps --skip-nx-cache --no-daemon --output-style=static`, { stdio: 'inherit' })
+    execSync(
+      `pnpm nx run-many --target=build --projects=${libName} --with-deps --skip-nx-cache --no-daemon --output-style=static`,
+      { stdio: 'inherit' },
+    )
   } catch (e) {
-    console.error('🚨 Build failed:', e)
+    console.error(`🚨 Build failed for ${libName}:`, e)
     process.exit(1)
   }
 
   const distPath = resolve(__dirname, `../dist/generators/${libName}`)
-  const command =
-    action === 'push' ? `cd ${distPath} && yalc push` : action === 'publish' ? `cd ${distPath} && yalc publish` : null
+  const command = `cd ${distPath} && yalc ${action}`
 
-  if (!command) {
-    console.error(`❌ Unknown action: ${action}`)
-    process.exit(1)
-  }
-
-  console.log(`📦 Running "${action}" for ${libName} from ${distPath}`)
+  console.log(`📦 Running "yalc ${action}" for ${libName} from ${distPath}`)
   execSync(command, { stdio: 'inherit' })
 }
 

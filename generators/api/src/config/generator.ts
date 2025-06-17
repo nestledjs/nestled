@@ -1,5 +1,5 @@
 import { formatFiles, installPackagesTask, joinPathFragments, Tree } from '@nx/devkit'
-import { apiLibraryGenerator } from '@nestled/utils'
+import { apiLibraryGenerator } from '@nestledjs/utils'
 import { ApiConfigGeneratorSchema } from './schema'
 
 export default async function generateLibraries(tree: Tree, options: ApiConfigGeneratorSchema = {}) {

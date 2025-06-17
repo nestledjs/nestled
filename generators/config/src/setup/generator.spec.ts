@@ -10,7 +10,7 @@ vi.mock('@nx/devkit', async () => {
     addDependenciesToPackageJson: vi.fn(),
   }
 })
-vi.mock('@nestled/utils', () => ({
+vi.mock('@nestledjs/utils', () => ({
   pnpmInstallCallback: vi.fn(() => undefined),
   removeWorkspacesFromPackageJson: vi.fn(),
   updatePnpmWorkspaceConfig: vi.fn(),
@@ -18,7 +18,7 @@ vi.mock('@nestled/utils', () => ({
 
 import { configSetupGenerator } from './generator'
 import { addDependenciesToPackageJson } from '@nx/devkit'
-import { pnpmInstallCallback, removeWorkspacesFromPackageJson } from '@nestled/utils'
+import { pnpmInstallCallback, removeWorkspacesFromPackageJson } from '@nestledjs/utils'
 
 describe('configSetupGenerator', () => {
   let tree: Tree
@@ -59,4 +59,4 @@ describe('configSetupGenerator', () => {
     expect(updatedTsConfig.compilerOptions.emitDeclarationOnly).toBeUndefined()
     expect(updatedTsConfig.compilerOptions.someOtherOption).toBe('value')
   })
-}) 
+})

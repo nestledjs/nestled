@@ -1,8 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { formatFiles, generateFiles, joinPathFragments, Tree } from '@nx/devkit'
-import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
-import { addToModules } from '@nestled/utils'
+import { addToModules } from '@nestledjs/utils'
 import generator from './generator'
 
 vi.mock('@nx/devkit', async () => {
@@ -21,7 +20,7 @@ vi.mock('@nx/js/src/utils/package-json/get-npm-scope', async () => {
   }
 })
 
-vi.mock('@nestled/utils', async () => {
+vi.mock('@nestledjs/utils', async () => {
   return {
     addToModules: vi.fn(),
   }
@@ -44,7 +43,7 @@ describe('auth generator', () => {
       tree,
       expect.any(String),
       joinPathFragments('libs', 'api/custom/src/lib/plugins', 'auth'),
-      expect.objectContaining({ npmScope: 'myscope', overwrite: false })
+      expect.objectContaining({ npmScope: 'myscope', overwrite: false }),
     )
     expect(addToModules).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -53,10 +52,10 @@ describe('auth generator', () => {
         moduleArrayName: 'pluginModules',
         moduleToAdd: 'AuthModule',
         importPath: '@myscope/api/custom',
-      })
+      }),
     )
     const indexContent = tree.read('libs/api/custom/src/index.ts', 'utf-8')
     expect(indexContent).toContain("export * from './lib/plugins/auth/auth.module'")
     expect(formatFiles).toHaveBeenCalledWith(tree)
   })
-}) 
+})

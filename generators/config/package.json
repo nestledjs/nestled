@@ -1,17 +1,23 @@
 {
-  "name": "@nestled/config",
+  "name": "@nestledjs/config",
   "version": "0.0.1",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
+  "description": "Configuration generators for Nestled projects",
+  "author": "Nestled Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nestledjs/nestled"
+  },
   "dependencies": {
     "tslib": "^2.3.0",
     "@prisma/internals": "^6.9.0"
 
   },
   "devDependencies": {
-    "@types/yaml": "^1.9.7",
     "yaml": "^2.8.0"
   }
 }

@@ -2,7 +2,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres
-    container_name: dev_postgres
+    container_name: <%= npmScope %>_postgres
     ports:
       - 5432:5432
     environment:
@@ -10,7 +10,7 @@ services:
       POSTGRES_USER: prisma
       POSTGRES_PASSWORD: prisma
     volumes:
-      - ./tmp/postgres:/var/lib/postgresql/data
+      - ./tmp/<%= npmScope %>_postgres:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
       interval: 10s
@@ -19,14 +19,15 @@ services:
     restart: unless-stopped
   redis:
     image: redis:alpine
+    container_name: <%= npmScope %>_redis
     ports:
       - '6379:6379'
     volumes:
-      - ./tmp/redis:/data
+      - ./tmp/<%= npmScope %>_redis:/data
 
   mailhog:
     image: mailhog/mailhog
-    container_name: dev_mailhog
+    container_name: <%= npmScope %>_mailhog
     ports:
       - '1025:1025'
       - '8025:8025'

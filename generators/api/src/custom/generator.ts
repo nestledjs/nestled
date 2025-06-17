@@ -1,6 +1,6 @@
 import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { addToModules, apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
+import { addToModules, apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestledjs/utils'
 import { GenerateCustomGeneratorSchema } from './schema'
 import { execSync } from 'child_process'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
