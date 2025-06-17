@@ -1,23 +1,23 @@
 {
   "version": "v1",
   "packages": {
-    "@nestled/config": {
+    "@nestledjs/config": {
       "signature": "bae7df0f17cb72fd2a29f43ea714bd61",
       "pure": true
     },
-    "@nestled/api": {
+    "@nestledjs/api": {
       "signature": "c8f81ff6373696291d6c26778bb90f15",
       "pure": true
     },
-    "@nestled/utils": {
+    "@nestledjs/utils": {
       "signature": "40a94351195f915c9ef8c05f0ffdd0ef",
       "pure": true
     },
-    "@nestled/web": {
+    "@nestledjs/web": {
       "signature": "79c7891ede76a7c06fedfc1c3206b6e2",
       "pure": true
     },
-    "@nestled/plugins": {
+    "@nestledjs/plugins": {
       "signature": "86b71f2c7d630691b270b6b5f7b76b19",
       "pure": true
     }

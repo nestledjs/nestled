@@ -1,5 +1,5 @@
 import { formatFiles, joinPathFragments, Tree } from '@nx/devkit'
-import { apiLibraryGenerator, deleteFiles } from '@nestled/utils'
+import { apiLibraryGenerator, deleteFiles } from '@nestledjs/utils'
 
 export default async function generator(tree: Tree) {
   const templateRootPath = joinPathFragments(__dirname, './files')

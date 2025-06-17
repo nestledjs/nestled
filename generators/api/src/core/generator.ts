@@ -1,8 +1,11 @@
 import { formatFiles, GeneratorCallback, installPackagesTask, joinPathFragments, Tree } from '@nx/devkit'
-import { apiLibraryGenerator, installPlugins } from '@nestled/utils'
+import { apiLibraryGenerator, installPlugins } from '@nestledjs/utils'
 import { ApiCoreGeneratorSchema } from './schema'
 
-export default async function generateLibraries(tree: Tree, options: ApiCoreGeneratorSchema = {}): Promise<GeneratorCallback> {
+export default async function generateLibraries(
+  tree: Tree,
+  options: ApiCoreGeneratorSchema = {},
+): Promise<GeneratorCallback> {
   const templateRootPath = joinPathFragments(__dirname, './files')
   const overwrite = options.overwrite === true
 

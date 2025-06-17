@@ -9,7 +9,7 @@ import {
 } from '@nx/devkit'
 import * as path from 'path'
 import * as fs from 'fs'
-import { addScriptToPackageJson, getPluralName } from '@nestled/utils'
+import { addScriptToPackageJson, getPluralName } from '@nestledjs/utils'
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
@@ -37,7 +37,7 @@ function parsePrismaModels(schemaContent: string) {
     for (const line of lines) {
       const fieldMatch = fieldRegex.exec(line)
       if (fieldMatch) {
-        const [, name, type, nullable, attrs] = fieldMatch
+        const [, name, type, , attrs] = fieldMatch
         const isList = type.endsWith('[]')
         const isRelation = attrs && attrs.includes('@relation')
         fields.push({
@@ -117,7 +117,7 @@ export type SdkGeneratorDependencies = typeof defaultDependencies
 
 export async function sdkGeneratorLogic(
   tree: Tree,
-  schema: any,
+  schema: unknown,
   dependencies: SdkGeneratorDependencies = defaultDependencies,
 ) {
   // 1. Read prisma schema path from package.json
@@ -193,6 +193,6 @@ export async function sdkGeneratorLogic(
   }
 }
 
-export default async function (tree: Tree, schema: any) {
+export default async function (tree: Tree, schema: unknown) {
   return sdkGeneratorLogic(tree, schema)
 }

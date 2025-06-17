@@ -1,5 +1,5 @@
 import { addDependenciesToPackageJson, GeneratorCallback, Tree } from '@nx/devkit'
-import { pnpmInstallCallback, updatePnpmWorkspaceConfig } from '@nestled/utils'
+import { pnpmInstallCallback, updatePnpmWorkspaceConfig } from '@nestledjs/utils'
 
 export async function webSetupGenerator(tree: Tree): Promise<GeneratorCallback> {
   // Add dependencies
