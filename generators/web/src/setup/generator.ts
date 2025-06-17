@@ -25,7 +25,10 @@ export async function webSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
   updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: packagesToBuild })
 
   // Return a callback that will run after the generator completes
-  return pnpmInstallCallback()
+  return async () => {
+    await pnpmInstallCallback()()
+    // Do not return anything (void)
+  }
 }
 
 export default webSetupGenerator

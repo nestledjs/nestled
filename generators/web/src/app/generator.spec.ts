@@ -5,9 +5,16 @@ import { applicationGenerator as realApplicationGenerator } from '@nx/react/src/
 import * as path from 'path'
 import generator from './generator'
 
-vi.mock('@nx/react/src/generators/application/application', () => ({
-  applicationGenerator: vi.fn(),
-}))
+vi.mock('@nx/react/src/generators/application/application', () => {
+  return {
+    applicationGenerator: vi.fn(async (tree) => {
+      // Simulate creation of 'apps/web' directory as the real generator would
+      if (!tree.exists('apps/web')) {
+        tree.write('apps/web/.gitkeep', '')
+      }
+    }),
+  }
+})
 
 vi.mock('@nx/devkit', async () => {
   const actual = await import('@nx/devkit')
@@ -77,6 +84,9 @@ describe('web generator', () => {
 
   it('should log error if targetPath does not exist', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Override the mock to NOT create the directory for this test
+    const appGenMock = (realApplicationGenerator as unknown as ReturnType<typeof vi.fn>)
+    appGenMock.mockImplementationOnce(async () => { /* do nothing */ })
     // Remove apps/web to trigger error
     if (tree.exists('apps/web')) tree.delete('apps/web')
     await generator(tree, schema)
