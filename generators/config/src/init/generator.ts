@@ -1,6 +1,7 @@
 import { addDependenciesToPackageJson, generateFiles, GeneratorCallback, logger, Tree } from '@nx/devkit'
 import {
   addScriptToPackageJson,
+  getNpmScope,
   pnpmInstallCallback,
   removeWorkspacesFromPackageJson,
   updatePnpmWorkspaceConfig,
@@ -28,38 +29,24 @@ function handleEnvExample(tree: Tree) {
   }
 }
 
-function getWorkspaceName(tree: Tree): string {
-  const nxJsonPath = 'nx.json'
-  if (tree.exists(nxJsonPath)) {
-    const nxJson = JSON.parse(tree.read(nxJsonPath, 'utf-8') || '{}')
-    if (nxJson?.npmScope) return nxJson.npmScope
-  }
-  const packageJsonPath = 'package.json'
-  if (tree.exists(packageJsonPath)) {
-    const packageJson = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
-    if (packageJson.name) return packageJson.name
-  }
-  return 'my-workspace'
-}
-
 function handleDockerFilesAndScripts(tree: Tree) {
+  const npmScope = getNpmScope(tree)
   // Generate Docker files in .dev directory
   const filesDir = path.join(__dirname, 'files', '.dev')
-  const npmScope = getWorkspaceName(tree)
+
   generateFiles(tree, filesDir, '.dev', { dot: '.', tmpl: '', npmScope })
   logger.info('✅ Generated Dockerfile and docker-compose.yml in .dev directory')
 
   // Add only Docker-related scripts to package.json
   const packageJsonPath = 'package.json'
   if (tree.exists(packageJsonPath)) {
-    const imageName = `${npmScope}/api`
     const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
     packageJsonContent.scripts = {
       ...packageJsonContent.scripts,
-      'docker:build': `docker build -f .dev/Dockerfile -t ${imageName} .`,
+      'docker:build': `docker build -f .dev/Dockerfile -t ${npmScope} .`,
       'docker:down': `docker compose -f .dev/docker-compose.yml -p ${npmScope} down`,
-      'docker:push': `docker push ${imageName}`,
-      'docker:run': `docker run -it -p 8000:3000 ${imageName}`,
+      'docker:push': `docker push ${npmScope}`,
+      'docker:run': `docker run -it -p 8000:3000 ${npmScope}`,
       'docker:up': `docker compose -f .dev/docker-compose.yml -p ${npmScope} up`,
     }
     tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))
