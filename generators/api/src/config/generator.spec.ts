@@ -1,12 +1,12 @@
 import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { describe, expect, it, vi } from 'vitest'
-import { apiLibraryGenerator } from '@nestled/utils'
+import { apiLibraryGenerator } from '@nestledjs/utils'
 
 import generator from './generator'
 
-vi.mock('@nestled/utils', async () => {
-  const actual = await vi.importActual('@nestled/utils')
+vi.mock('@nestledjs/utils', async () => {
+  const actual = await vi.importActual('@nestledjs/utils')
   return {
     ...actual,
     apiLibraryGenerator: vi.fn(),
@@ -44,4 +44,4 @@ describe('config generator', () => {
 
     expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'config', overwrite: true }, expect.any(String))
   })
-}) 
+})

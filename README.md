@@ -1,24 +1,26 @@
 npx create-nx-workspace NAME --preset=none --cli=nx --no-nxCloud --packageManager=pnpm --prettier --ci=github
 
-nx g @nestled/config:setup && 
-nx g @nestled/config:init && 
-nx g @nestled/api:setup && 
-nx g @nestled/api:app &&
-nx g @nestled/api:prisma && 
-nx g @nestled/api:config && 
-nx g @nestled/api:core && 
-nx g @nestled/api:custom && 
-nx g @nestled/api:smtp-mailer &&
-nx g @nestled/api:generate-crud && 
-nx g @nestled/api:utils &&
-nx g @nestled/api:custom &&
-nx g @nestled/shared:sdk &&
-nx g @nestled/plugins:auth && 
-nx g @nestled/api:workspace-setup &&
-nx g @nestled/web:setup &&
-nx g @nestled/web:app &&
-nx g @nestled/shared:apollo
+nx g @nestledjs/config:setup && 
+nx g @nestledjs/config:init && 
+nx g @nestledjs/api:setup && 
+nx g @nestledjs/api:app &&
+nx g @nestledjs/api:prisma && 
+nx g @nestledjs/api:config && 
+nx g @nestledjs/api:core && 
+nx g @nestledjs/api:custom && 
+nx g @nestledjs/api:smtp-mailer &&
+nx g @nestledjs/api:generate-crud && 
+nx g @nestledjs/api:utils &&
+nx g @nestledjs/api:custom &&
+nx g @nestledjs/shared:sdk &&
+nx g @nestledjs/plugins:auth && 
+nx g @nestledjs/api:workspace-setup &&
+nx g @nestledjs/web:setup &&
+nx g @nestledjs/web:app &&
+nx g @nestledjs/shared:apollo
 
+
+yalc add @nestledjs/utils @nestledjs/config @nestledjs/api @nestledjs/web @nestledjs/plugins @nestledjs/shared && pnpm install
 
 
 
@@ -31,11 +33,11 @@ Remove workspaces from package.json
 To build an api, run tasks in this order:
 
 ```sh
-  nx g @nestled/generators:api-setup 
+  nx g @nestledjs/generators:api-setup 
 ```
 
 ```sh
-  nx g @nestled/generators:api-app
+  nx g @nestledjs/generators:api-app
 ```
 
 ```sh
@@ -43,15 +45,15 @@ To build an api, run tasks in this order:
 ```
 
 ```sh
-  nx g @nestled/generators:api-libs
+  nx g @nestledjs/generators:api-libs
 ``` 
 
 ```sh
-  nx g @nestled/generators:project-config
+  nx g @nestledjs/generators:project-config
 ```
 
 ```sh
-  nx g @nestled/generators:workspace-setup
+  nx g @nestledjs/generators:workspace-setup
 ```
 <a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
 

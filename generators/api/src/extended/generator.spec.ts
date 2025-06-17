@@ -4,11 +4,11 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { getDMMF } from '@prisma/internals'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import generator from './generator'
-import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestled/utils'
+import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestledjs/utils'
 
 // Mock dependencies
 vi.mock('@prisma/internals')
-vi.mock('@nestled/utils', () => {
+vi.mock('@nestledjs/utils', () => {
   return {
     apiLibraryGenerator: vi.fn().mockResolvedValue(undefined),
     getPrismaSchemaPath: vi.fn(),
@@ -66,7 +66,7 @@ describe('extended-generator', () => {
       { name: 'extended-user', overwrite: true },
       '',
       undefined,
-      false
+      false,
     )
     expect(tree.exists('libs/api/extended/user/src/lib/user.service.ts')).toBe(true)
     expect(tree.exists('libs/api/extended/user/src/lib/user.resolver.ts')).toBe(true)
@@ -78,7 +78,7 @@ describe('extended-generator', () => {
       { name: 'extended-post', overwrite: true },
       '',
       undefined,
-      false
+      false,
     )
     expect(tree.exists('libs/api/extended/post/src/lib/post.service.ts')).toBe(true)
     expect(tree.exists('libs/api/extended/post/src/lib/post.resolver.ts')).toBe(true)
@@ -92,4 +92,4 @@ describe('extended-generator', () => {
     // No libraries should be created
     expect(apiLibraryGenerator).not.toHaveBeenCalled()
   })
-}) 
+})

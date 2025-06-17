@@ -16,12 +16,12 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@nestled/api": ["generators/api/src/index.ts"],
-      "@nestled/config": ["generators/config/src/index.ts"],
-      "@nestled/plugins": ["generators/plugins/src/index.ts"],
-      "@nestled/shared": ["generators/shared/src/index.ts"],
-      "@nestled/utils": ["generators/utils/src/index.ts"],
-      "@nestled/web": ["generators/web/src/index.ts"]
+      "@nestledjs/api": ["generators/api/src/index.ts"],
+      "@nestledjs/config": ["generators/config/src/index.ts"],
+      "@nestledjs/plugins": ["generators/plugins/src/index.ts"],
+      "@nestledjs/shared": ["generators/shared/src/index.ts"],
+      "@nestledjs/utils": ["generators/utils/src/index.ts"],
+      "@nestledjs/web": ["generators/web/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]
