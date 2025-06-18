@@ -9,17 +9,15 @@ describe('webSetupGenerator', () => {
   let tree: Tree
   let addDependenciesSpy: ReturnType<(typeof vi)['spyOn']>
   let updatePnpmWorkspaceConfigSpy: ReturnType<(typeof vi)['spyOn']>
-  let pnpmInstallCallbackSpy: ReturnType<(typeof vi)['spyOn']>
   let installCallback: ReturnType<(typeof vi)['fn']>
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
-    addDependenciesSpy = vi.spyOn(devkit, 'addDependenciesToPackageJson').mockImplementation(() => undefined as any)
+    installCallback = vi.fn()
+    addDependenciesSpy = vi.spyOn(devkit, 'addDependenciesToPackageJson').mockReturnValue(installCallback)
     updatePnpmWorkspaceConfigSpy = vi
       .spyOn(utils, 'updatePnpmWorkspaceConfig')
       .mockImplementation(() => undefined as any)
-    installCallback = vi.fn()
-    pnpmInstallCallbackSpy = vi.spyOn(utils, 'pnpmInstallCallback').mockReturnValue(installCallback)
   })
 
   afterEach(() => {
@@ -32,23 +30,35 @@ describe('webSetupGenerator', () => {
     expect(addDependenciesSpy).toHaveBeenCalledWith(
       tree,
       {
+        '@react-router/node': '7.6.2',
+        '@react-router/serve': '7.6.2',
+        'react': '19.0.0',
+        'react-dom': '19.0.0',
+        'react-router': '7.6.2',
+        'react-router-dom': '^7.6.2',
+        '@react-router/dev': '^7.6.2',
+        'isbot': '5.1.28',
         '@apollo/client': '^3.13.8',
         '@apollo/client-integration-react-router': '0.12.0-alpha.4',
-        '@react-router/dev': '^7.6.2',
-        isbot: '5.1.28',
-        'react-router-dom': '^7.6.2',
       },
       {
         '@nx/react': '21.2.0',
         '@tailwindcss/vite': '^4.1.8',
-        tailwindcss: '^4.1.8',
+        'tailwindcss': '^4.1.8',
         'vite-tsconfig-paths': '^5.1.4',
+        '@testing-library/dom': '10.4.0',
+        '@testing-library/react': '16.1.0',
+        '@types/react': '19.0.0',
+        '@types/react-dom': '19.0.0',
+        '@vitejs/plugin-react': '4.5.2',
+        'eslint-plugin-import': '2.31.0',
+        'eslint-plugin-react': '7.35.0',
+        'eslint-plugin-react-hooks': '5.0.0',
+        'jsonc-eslint-parser': '2.4.0',
       },
     )
     expect(updatePnpmWorkspaceConfigSpy).toHaveBeenCalledWith(tree, { onlyBuiltDependencies: ['@tailwindcss/oxide'] })
-    expect(pnpmInstallCallbackSpy).not.toHaveBeenCalled()
     await result()
-    expect(pnpmInstallCallbackSpy).toHaveBeenCalled()
     expect(installCallback).toHaveBeenCalled()
   })
 })
