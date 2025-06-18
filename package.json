@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "vpub": "node ./tools/scripts/publish-local.js",
+    "release": "ts-node ./scripts/release.ts",
     "serve-docs": "docsify serve ./docs --port 3020",
     "publish-all": "ts-node scripts/yalc-publish.ts publish-all",
     "push": "ts-node scripts/yalc-publish.ts push",
