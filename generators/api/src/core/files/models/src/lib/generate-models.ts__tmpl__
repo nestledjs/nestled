@@ -170,8 +170,15 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       const originalType = field.type
       // const isRequired = field.isRequired // Natively supported by DMMF
 
-      // DEBUG LINE
-      // console.log(`DEBUG: Processing field: ${model.name}.${field.name}, Kind: ${field.kind}, OriginalType: ${originalType}, IsList: ${isList}, IsRequired: ${isRequired}`);
+      // ALWAYS LOG: Print every field processed for debugging
+      console.log('*** FIELD DEBUG ***', {
+        model: model.name,
+        field: field.name,
+        kind: field.kind,
+        type: field.type,
+        isList: field.isList,
+        isRequired: field.isRequired,
+      });
 
       let tsType = originalType
 
@@ -248,9 +255,18 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       // For simplicity, let's assume if it's a relation object, it's the Type itself.
       // Partial is useful for inputs or update DTOs, less so for GQL ObjectTypes unless specifically designed.
       let finalTsType = tsType
-      if (isRelation && !isList) {
-        // Single related object
-        finalTsType = `${tsType}` // Not Partial<Type> by default for GQL object types
+      if (isRelation) {
+        // For relations, always use Partial<Type> (for both single and list)
+        finalTsType = `Partial<${tsType}>`;
+        // DEBUG: Log relation fields
+        console.log('DEBUG: Relation field detected:', {
+          model: model.name,
+          field: field.name,
+          kind: field.kind,
+          type: field.type,
+          isList: field.isList,
+          isRequired: field.isRequired,
+        });
       }
 
       // Never add '| null' to any field
