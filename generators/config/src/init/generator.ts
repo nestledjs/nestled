@@ -47,7 +47,7 @@ function handleDockerFilesAndScripts(tree: Tree) {
       'docker:down': `docker compose -f .dev/docker-compose.yml -p ${npmScope} down`,
       'docker:push': `docker push ${npmScope}`,
       'docker:run': `docker run -it -p 8000:3000 ${npmScope}`,
-      'docker:up': `docker compose -f .dev/docker-compose.yml -p ${npmScope} up`,
+      'docker:up': `docker compose -f .dev/docker-compose.yml -p ${npmScope} up -d`,
     }
     tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))
     logger.info('✅ Added Docker scripts to package.json')

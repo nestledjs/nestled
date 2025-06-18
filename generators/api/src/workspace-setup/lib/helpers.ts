@@ -2,6 +2,7 @@ import { execSync } from 'child_process'
 import { existsSync, readFileSync, writeFileSync } from 'fs'
 import { basename } from 'path'
 import { Client } from 'pg'
+import { workspaceRoot } from '@nx/devkit'
 
 export const MAX_RETRIES = 30
 export const WORKSPACE_NAME = basename(process.cwd())
@@ -40,10 +41,7 @@ export function ensureDockerIsRunning() {
 
 export function isDockerComposeRunning(): boolean {
   try {
-    const res = execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} top`, {
-      stdio: ['inherit', 'inherit'],
-    })
-
+    const res = execSync('pnpm run docker:ps', { stdio: ['inherit', 'inherit'], cwd: workspaceRoot })
     if (res) {
       log('Docker Compose is Running')
       return true
@@ -63,7 +61,7 @@ export async function ensureDockerComposeIsRunning() {
 
   log('Starting Docker Compose...')
   try {
-    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, { stdio: 'inherit' })
+    execSync('pnpm run docker:up', { stdio: 'inherit', cwd: workspaceRoot })
   } catch (e) {
     throw new Error(`Failed to start Docker Compose: ${e.message}`)
   }
@@ -72,7 +70,7 @@ export async function ensureDockerComposeIsRunning() {
     await waitForConnection()
     log('Docker Compose Started and DB connection confirmed')
   } catch {
-    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} logs postgres || true`, { stdio: 'inherit' })
+    execSync('pnpm run docker:logs', { stdio: 'inherit', cwd: workspaceRoot })
     throw new Error(`Database failed to start or respond in time`)
   }
 }
@@ -92,11 +90,11 @@ export function ensureDotEnv() {
 
 export function runPrismaSetup() {
   try {
-    execSync('pnpm prisma:apply', { stdio: 'inherit' })
+    execSync('pnpm prisma:apply', { stdio: 'inherit', cwd: workspaceRoot })
     log('Prisma Setup is Done')
     return true
   } catch (e) {
-    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} logs postgres || true`, { stdio: 'inherit' })
+    execSync('pnpm run docker:logs', { stdio: 'inherit', cwd: workspaceRoot })
     throw new Error(`There was an issue running 'pnpm prisma:apply': ${e.message}`)
   }
 }
