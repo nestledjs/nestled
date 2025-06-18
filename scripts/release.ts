@@ -1,5 +1,4 @@
-#!/usr/bin/env ts-node
-
+import { execSync } from 'node:child_process'
 import { releasePublish, releaseVersion } from 'nx/release'
 import { parseArgs } from 'node:util'
 
@@ -27,6 +26,11 @@ async function main() {
 
   console.log(`🛠  Releasing: type=${specifier}, skipPublish=${skipPublish}`)
 
+  // ✅ Step 1: Build all affected publishable libraries
+  console.log(`🔨 Building affected packages...`)
+  execSync(`nx run-many --target=build --all`, { stdio: 'inherit' })
+
+  // ✅ Step 2: Version
   await releaseVersion({
     specifier,
     firstRelease,
@@ -34,10 +38,11 @@ async function main() {
     gitCommit: true,
     gitTag: true,
     versionActionsOptionsOverrides: {
-      skipLockFileUpdate: true, // ✅ Always skip lockfile update
+      skipLockFileUpdate: true,
     },
   })
 
+  // ✅ Step 3: Publish
   if (!skipPublish) {
     await releasePublish({ firstRelease })
   } else {
