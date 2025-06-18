@@ -86,15 +86,15 @@ export function deleteDirectory(tree: Tree, dirPath: string) {
 //   return json;
 // });
 
-export function endsWithQuestionMark(str) {
+export function endsWithQuestionMark(str: string) {
   return /\?$/.test(str)
 }
 
-export function removeQuestionMarkAtEnd(str) {
+export function removeQuestionMarkAtEnd(str: string) {
   return str.replace(/\?$/, '')
 }
 
-export function getPrismaSchemaPath(tree) {
+export function getPrismaSchemaPath(tree: Tree) {
   const packageJsonContent = tree.read('package.json')
   if (!packageJsonContent) {
     console.error("Can't find package.json")
@@ -105,7 +105,7 @@ export function getPrismaSchemaPath(tree) {
   return packageJson.prisma?.schema || null
 }
 
-export function readPrismaSchema(tree, prismaPath) {
+export function readPrismaSchema(tree: Tree, prismaPath: string) {
   if (!prismaPath) {
     console.error('Prisma schema path is not provided')
     return null
@@ -242,22 +242,17 @@ function isPackageInstalled(tree: Tree, packageName: string): boolean {
 }
 
 /**
- * Installs dependencies and devDependencies in the package.json file,
+ * Installs dependencies and devDependencies in the package.json file
  * and configures Nx project graph plugins when appropriate.
  *
  * @param tree - The Nx Tree object (virtual filesystem).
  * @param dependencies - An object containing the dependencies to be added.
  * @param devDependencies - An object containing the devDependencies to be added.
- * @param _options - Additional options for plugin configuration
  */
 export async function installPlugins(
   tree: Tree,
   dependencies: Record<string, string> = {},
   devDependencies: Record<string, string> = {},
-  _options: {
-    configureProjectGraph?: boolean
-    pluginNames?: string[]
-  } = {},
 ) {
   const depsToInstall: Record<string, string> = {}
   const devDepsToInstall: Record<string, string> = {}
@@ -281,7 +276,7 @@ export async function installPlugins(
     return addDependenciesToPackageJson(tree, depsToInstall, devDepsToInstall)
   }
 
-  return () => undefined // Return a no-op function instead of empty arrow function
+  return () => undefined // Return a no-op function instead of an empty arrow function
 }
 
 /**
@@ -316,7 +311,7 @@ export function updateTypeScriptConfigs(tree: Tree, libraryRoot: string): void {
         }
         const newReference = { path: `./${libraryRoot}` }
         // Avoid adding duplicate references
-        if (!json.references.some((ref) => ref.path === newReference.path)) {
+        if (!json.references.some((ref: { path: string }) => ref.path === newReference.path)) {
           json.references.push(newReference)
         }
         return json
@@ -538,8 +533,7 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
           before = before.replace(lastModuleRegex, (m) => (m.endsWith(',') ? m : m + ','))
         }
         const insert = `  ${moduleToAdd},\n`
-        const newContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
-        fileContent = newContent
+        fileContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
         console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`)
       }
     } else {
