@@ -17,9 +17,12 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@prisma/internals": "^6.9.0"
+    "@nx/devkit": "21.2.0"
   },
   "devDependencies": {
     "yaml": "^2.8.0"
+  },
+  "peerDependencies": {
+    "@nestledjs/utils": "0.0.1"
   }
 }

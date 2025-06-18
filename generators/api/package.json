@@ -12,7 +12,19 @@
     "type": "git",
     "url": "https://github.com/nestledjs/nestled"
   },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
-    "tslib": "^2.3.0"
+    "tslib": "^2.3.0",
+    "@nx/devkit": "21.2.0",
+    "@nx/js": "21.2.0",
+    "@prisma/internals": "^6.9.0",
+    "pluralize": "^8.0.0",
+    "dotenv": "16.4.5",
+    "pg": "^8.13.0"
+  },
+  "peerDependencies": {
+    "@nestledjs/utils": "0.0.1"
   }
 }

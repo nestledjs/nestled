@@ -15,7 +15,7 @@
     ],
     "sharedGlobals": ["{workspaceRoot}/.github/workflows/ci.yml"]
   },
-  "nxCloudId": "6701e4ce1b2a2b08e8dd47d1",
+  "nxCloudId": "6852e899c6189c97ea989f09",
   "targetDefaults": {
     "@nx/js:tsc": {
       "cache": true,
@@ -52,10 +52,11 @@
   "release": {
     "projectsRelationship": "independent",
     "changelog": {
-      "projectChangelogs": true
+      "projectChangelogs": true,
+      "workspaceChangelog": true,
     },
     "version": {
-      "preVersionCommand": "pnpm dlx nx run-many -t build"
+      "conventionalCommits": true
     }
   },
   "plugins": [
