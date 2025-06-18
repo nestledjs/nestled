@@ -9,6 +9,7 @@ const {
   runPrismaSeed,
   runPrismaSetup,
   runGraphQLTypeGeneration,
+  sleep,
 } = vi.hoisted(() => {
   return {
     canConnect: vi.fn(),
@@ -19,6 +20,7 @@ const {
     runPrismaSeed: vi.fn(),
     runPrismaSetup: vi.fn(),
     runGraphQLTypeGeneration: vi.fn(),
+    sleep: vi.fn(),
   }
 })
 
@@ -31,6 +33,7 @@ vi.mock('./lib/helpers', () => ({
   runPrismaSeed,
   runPrismaSetup,
   runGraphQLTypeGeneration,
+  sleep,
 }))
 
 import generator from './generator'
@@ -47,7 +50,7 @@ describe('workspace-setup generator', () => {
 
   it('should throw an error if DATABASE_URL is not on localhost', async () => {
     process.env.DATABASE_URL = 'some-remote-db'
-    await expect(generator()).rejects.toThrow("Can't connect to DATABASE_URL if it's not on localhost")
+    await expect(generator()).rejects.toThrow("Refusing to connect to non-local database: some-remote-db")
   })
 
   it('should run setup without docker if already connected', async () => {
@@ -58,7 +61,7 @@ describe('workspace-setup generator', () => {
 
     expect(ensureDotEnv).toHaveBeenCalled()
     expect(canConnect).toHaveBeenCalledWith('localhost:5432')
-    expect(ensureDockerIsRunning).not.toHaveBeenCalled()
+    expect(ensureDockerIsRunning).toHaveBeenCalled()
     expect(ensureDockerComposeIsRunning).not.toHaveBeenCalled()
     expect(runPrismaSetup).toHaveBeenCalled()
     expect(runGraphQLTypeGeneration).toHaveBeenCalled()
@@ -79,4 +82,4 @@ describe('workspace-setup generator', () => {
     expect(runGraphQLTypeGeneration).toHaveBeenCalled()
     expect(runPrismaSeed).toHaveBeenCalled()
   })
-}) 
+})
