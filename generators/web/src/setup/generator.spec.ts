@@ -39,7 +39,7 @@ describe('webSetupGenerator', () => {
         'react-router-dom': '^7.6.2',
       },
       {
-        '@nx/react': '21.1.3',
+        '@nx/react': '21.2.0',
         '@tailwindcss/vite': '^4.1.8',
         tailwindcss: '^4.1.8',
         'vite-tsconfig-paths': '^5.1.4',
