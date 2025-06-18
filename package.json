@@ -5,11 +5,18 @@
   "scripts": {
     "vpub": "node ./tools/scripts/publish-local.js",
     "serve-docs": "docsify serve ./docs --port 3020",
-    "build": "nx run-many --target=build --all",
     "publish-all": "ts-node scripts/yalc-publish.ts publish-all",
     "push": "ts-node scripts/yalc-publish.ts push",
     "push-all": "ts-node scripts/yalc-publish.ts push-all",
-    "test": "nx affected --target=test --base=develop"
+    "test": "nx affected -t test --base=develop",
+    "test-all": "nx run-many -t test --all",
+    "build": "nx affected -t build --base=develop",
+    "build-all": "nx run-many -t build --all",
+    "lint": "nx affected -t lint --base=develop",
+    "lint:fix": "nx affected -t lint --fix --base=develop",
+    "lint-all": "nx run-many -t lint --all",
+    "lint-all:fix": "nx run-many -t lint --all --fix",
+    "test-suite": "nx run-many -t lint test build --all"
   },
   "private": true,
   "dependencies": {
