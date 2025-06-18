@@ -93,6 +93,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
     'type-graphql',
     'express',
     'unrs-resolver',
+    '@swc/core',
   ]
   updatePnpmWorkspaceConfig(tree, { onlyBuiltDependencies: packagesToBuild })
 
