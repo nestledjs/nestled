@@ -1,6 +1,6 @@
 {
   "name": "@nestled/config",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
