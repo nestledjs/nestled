@@ -57,15 +57,23 @@ export function isDockerComposeRunning(): boolean {
 export async function ensureDockerComposeIsRunning() {
   const isRunning = isDockerComposeRunning()
   if (isRunning) {
+    log('Docker Compose already running')
     return true
   }
 
+  log('Starting Docker Compose...')
   try {
-    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, { stdio: 'ignore' })
+    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} up -d`, { stdio: 'inherit' })
+  } catch (e) {
+    throw new Error(`Failed to start Docker Compose: ${e.message}`)
+  }
+
+  try {
     await waitForConnection()
-    log('Docker Compose Started')
+    log('Docker Compose Started and DB connection confirmed')
   } catch {
-    throw new Error(`Make sure Docker Compose is running`)
+    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} logs postgres || true`, { stdio: 'inherit' })
+    throw new Error(`Database failed to start or respond in time`)
   }
 }
 
@@ -84,11 +92,12 @@ export function ensureDotEnv() {
 
 export function runPrismaSetup() {
   try {
-    execSync('pnpm prisma:apply', { stdio: 'ignore' })
+    execSync('pnpm prisma:apply', { stdio: 'inherit' })
     log('Prisma Setup is Done')
     return true
-  } catch {
-    throw new Error(`There was an issue running 'pnpm prisma:apply'`)
+  } catch (e) {
+    execSync(`docker compose -f ${DOCKER_COMPOSE_FILE} logs postgres || true`, { stdio: 'inherit' })
+    throw new Error(`There was an issue running 'pnpm prisma:apply': ${e.message}`)
   }
 }
 
