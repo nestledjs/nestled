@@ -17,11 +17,7 @@
   },
   "nxCloudId": "6852e899c6189c97ea989f09",
   "targetDefaults": {
-    "@nx/js:tsc": {
-      "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["production", "^production"]
-    },
+    "@nx/js:tsc": { "cache": true, "dependsOn": ["^build"], "inputs": ["production", "^production"] },
     "@nx/eslint:lint": {
       "cache": true,
       "inputs": [
@@ -34,20 +30,10 @@
     "@nx/jest:jest": {
       "cache": true,
       "inputs": ["default", "^production", "{workspaceRoot}/jest.preset.js"],
-      "options": {
-        "passWithNoTests": true
-      },
-      "configurations": {
-        "ci": {
-          "ci": true,
-          "codeCoverage": true
-        }
-      }
+      "options": { "passWithNoTests": true },
+      "configurations": { "ci": { "ci": true, "codeCoverage": true } }
     },
-    "@nx/vite:test": {
-      "cache": true,
-      "inputs": ["default", "^production"]
-    }
+    "@nx/vite:test": { "cache": true, "inputs": ["default", "^production"] }
   },
   "release": {
     "projectsRelationship": "independent",
@@ -60,19 +46,8 @@
     }
   },
   "plugins": [
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "eslint:lint"
-      }
-    },
-    {
-      "plugin": "@nx/eslint/plugin",
-      "options": {
-        "targetName": "lint"
-      },
-      "include": ["generators/**/*"]
-    },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "eslint:lint" } },
+    { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" }, "include": ["generators/**/*"] },
     {
       "plugin": "@nx/vite/plugin",
       "options": {
