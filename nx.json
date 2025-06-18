@@ -37,8 +37,13 @@
   },
   "release": {
     "projectsRelationship": "independent",
-    "changelog": { "projectChangelogs": true },
-    "version": { "preVersionCommand": "pnpm dlx nx run-many -t build" }
+    "changelog": {
+      "projectChangelogs": true,
+      "workspaceChangelog": true,
+    },
+    "version": {
+      "conventionalCommits": true
+    }
   },
   "plugins": [
     { "plugin": "@nx/eslint/plugin", "options": { "targetName": "eslint:lint" } },
