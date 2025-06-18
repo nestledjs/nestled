@@ -4,6 +4,7 @@
   "sourceRoot": "generators/utils/src",
   "projectType": "library",
   "tags": [],
+  "publishable": true,
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",

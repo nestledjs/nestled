@@ -52,10 +52,11 @@
   "release": {
     "projectsRelationship": "independent",
     "changelog": {
-      "projectChangelogs": true
+      "projectChangelogs": true,
+      "workspaceChangelog": true,
     },
     "version": {
-      "preVersionCommand": "pnpm dlx nx run-many -t build"
+      "conventionalCommits": true
     }
   },
   "plugins": [
