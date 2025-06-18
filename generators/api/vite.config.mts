@@ -1,18 +1,12 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin'
-import path from 'path'
 import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../../node_modules/.vite/generators/api',
   plugins: [nxCopyAssetsPlugin(['*.md']), tsconfigPaths()],
-  resolve: {
-    alias: {
-      '@nestledjs/utils': path.resolve(__dirname, '../../dist/generators/utils/src/index.js'),
-    },
-  },
   // Uncomment this if you are using workers.
   // worker: {
   //  plugins: [ nxViteTsPaths() ],
