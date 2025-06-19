@@ -33,7 +33,13 @@
       "options": { "passWithNoTests": true },
       "configurations": { "ci": { "ci": true, "codeCoverage": true } }
     },
-    "@nx/vite:test": { "cache": true, "inputs": ["default", "^production"] }
+    "@nx/vite:test": { "cache": true, "inputs": ["default", "^production"] },
+    "nx-release-publish": {
+      "dependsOn": ["build"],
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    }
   },
   "release": {
     "projectsRelationship": "independent",
@@ -54,6 +60,8 @@
       }
     }
   },
+
+
   "plugins": [
     { "plugin": "@nx/eslint/plugin", "options": { "targetName": "eslint:lint" } },
     { "plugin": "@nx/eslint/plugin", "options": { "targetName": "lint" }, "include": ["generators/**/*"] },

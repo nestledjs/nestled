@@ -20,6 +20,6 @@
     "@nx/js": "21.2.0"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "workspace:*"
+    "@nestledjs/utils": "0.0.8"
   }
 }
