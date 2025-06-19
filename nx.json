@@ -38,11 +38,20 @@
   "release": {
     "projectsRelationship": "independent",
     "changelog": {
-      "projectChangelogs": true,
-      "workspaceChangelog": true,
+      "projectChangelogs": {
+        "createRelease": "github"
+      },
+      "workspaceChangelog": false
     },
     "version": {
-      "conventionalCommits": true
+      "conventionalCommits": true,
+      "preVersionCommand": "nx affected --target=test --base=develop",
+      "git": {
+        "commit": true,
+        "commitMessage": "chore(release): release {projectName} v{version}",
+        "tag": true,
+        "tagMessage": "Release {projectName} v{version}"
+      }
     }
   },
   "plugins": [
