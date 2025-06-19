@@ -1,9 +1,0 @@
-{
-  "$schema": "https://json-schema.org/schema",
-  "cli": "nx",
-  "$id": "WebAppGenerator",
-  "title": "Web Application Generator",
-  "type": "object",
-  "properties": {},
-  "required": []
-}
