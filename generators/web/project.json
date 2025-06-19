@@ -37,6 +37,10 @@
           }
         ]
       }
+    },
+    "publish": {
+      "command": "npm publish dist/generators/web",
+      "dependsOn": ["build"]
     }
   }
 }
