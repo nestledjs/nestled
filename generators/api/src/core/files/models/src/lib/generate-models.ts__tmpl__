@@ -30,16 +30,19 @@ function getPrismaImportPath(): string {
     const schemaPathSetting = packageJson.prisma?.schema || ''
 
     // Updated logic: if the schema path includes 'libs/api/prisma' (or similar new structure)
-    if (schemaPathSetting.includes('libs/api/prisma') || schemaPathSetting.includes('prisma/src/lib')) {
-      return '@<%= npmScope %>/api/prisma'
+    if (
+      schemaPathSetting.includes('libs/api/prisma') ||
+      schemaPathSetting.includes('prisma/src/lib')
+    ) {
+      return '@mi-api/api/prisma'
     }
 
     // Fallback to the original path if not explicitly the new structure
-    return '@<%= npmScope %>/api/core/data-access'
+    return '@mi-api/api/core/data-access'
   } catch (error) {
     console.error('Error determining Prisma import path:', error)
     // Default to the new path as a sensible fallback
-    return '@<%= npmScope %>/api/prisma'
+    return '@mi-api/api/prisma'
   }
 }
 
@@ -101,7 +104,7 @@ async function main() {
 
   // Read and parse all schema files for DMMF
   console.log('Reading Prisma schema files for DMMF generation...')
-  const schemaFiles = readdirSync(schemaDir).filter((file) => file.endsWith('.prisma'))
+  const schemaFiles = readdirSync(schemaDir).filter(file => file.endsWith('.prisma'))
 
   if (schemaFiles.length === 0) {
     console.error(`Error: No .prisma files found in directory ${schemaDir}`)
@@ -142,21 +145,25 @@ async function main() {
 
 function generateModels(models: readonly any[], enums: readonly any[]): string {
   // Check if any model field uses Float
-  const usesFloat = models.some(model => model.fields.some((field: { type: string }) => field.type === 'Float'));
+  const usesFloat = models.some(model =>
+    model.fields.some((field: { type: string }) => field.type === 'Float'),
+  )
   let output = `import { Field, ObjectType${usesFloat ? ', Float' : ''}, Int } from '@nestjs/graphql';\n`
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`
 
   // Check if any model field uses Decimal
-  const usesDecimal = models.some(model => model.fields.some((field: { type: string }) => field.type === 'Decimal'));
+  const usesDecimal = models.some(model =>
+    model.fields.some((field: { type: string }) => field.type === 'Decimal'),
+  )
   if (usesDecimal) {
-    output += `import { Decimal } from '@prisma/client/runtime/library';\n`;
-    output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`;
+    output += `import { Decimal } from '@prisma/client/runtime/library';\n`
+    output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
   }
   // Ensure Prisma and enums are imported correctly
-  const enumNames = enums.map((e) => e.name)
+  const enumNames = enums.map(e => e.name)
   output += `import { Prisma } from '${prismaImportPath}';\n`
   if (enumNames.length > 0) {
-    output += `import { ${enumNames.join(', ')} } from './enums';\n`;
+    output += `import { ${enumNames.join(', ')} } from './enums';\n`
   }
   output += `\n`
 
@@ -168,6 +175,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       const isEnum = field.kind === 'enum'
       const isRelation = field.kind === 'object'
       const originalType = field.type
+      const isFieldRequired = isRelation ? false : field.isRequired
       // const isRequired = field.isRequired // Natively supported by DMMF
 
       // ALWAYS LOG: Print every field processed for debugging
@@ -178,7 +186,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         type: field.type,
         isList: field.isList,
         isRequired: field.isRequired,
-      });
+      })
 
       let tsType = originalType
 
@@ -208,8 +216,10 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
 
       let decorator = '@Field('
       const options: string[] = []
-      // Always add nullable: true for all fields
-      options.push('nullable: true')
+      // Only add nullable: true for optional fields
+      if (!isFieldRequired) {
+        options.push('nullable: true')
+      }
 
       // Always declare the type in the decorator
       let decoratorType = ''
@@ -238,26 +248,26 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         else if (isEnum || isRelation) decoratorType = `() => ${originalType}`
         else if (originalType === 'DateTime') decoratorType = '() => Date'
         else if (originalType === 'Boolean') decoratorType = '() => Boolean'
-        else if (originalType.toLowerCase() === 'string' || originalType === 'ID') decoratorType = '() => String'
+        else if (originalType.toLowerCase() === 'string' || originalType === 'ID')
+          decoratorType = '() => String'
         else decoratorType = `() => ${originalType}`
       }
 
       decorator += decoratorType
-      decorator += `, { ${options.join(', ')} }`
+      if (options.length > 0) {
+        decorator += `, { ${options.join(', ')} }`
+      }
       decorator += ')'
 
       output += `  ${decorator}\n`
-      // Make all fields optional regardless of isRequired value
-      const optionalMarker = '?' // Always add a question mark
+      // Add optional marker (?) for non-required fields, or ! for required fields
+      const typeMarker = isFieldRequired ? '!' : '?'
 
       // For relations, use Partial<Type> only if it's not required and can be partially loaded
-      // Otherwise, if it's a relation, it's either the full Type or Type[] or null/undefined.
-      // For simplicity, let's assume if it's a relation object, it's the Type itself.
-      // Partial is useful for inputs or update DTOs, less so for GQL ObjectTypes unless specifically designed.
       let finalTsType = tsType
       if (isRelation) {
         // For relations, always use Partial<Type> (for both single and list)
-        finalTsType = `Partial<${tsType}>`;
+        finalTsType = `Partial<${tsType}>`
         // DEBUG: Log relation fields
         console.log('DEBUG: Relation field detected:', {
           model: model.name,
@@ -266,11 +276,12 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
           type: field.type,
           isList: field.isList,
           isRequired: field.isRequired,
-        });
+        })
       }
 
-      // Never add '| null' to any field
-      output += `  ${field.name}${optionalMarker}: ${finalTsType}${isList ? '[]' : ''} | null;\n\n`
+      // Add null union type only for non-required fields
+      const nullUnion = isFieldRequired ? '' : ' | null'
+      output += `  ${field.name}${typeMarker}: ${finalTsType}${isList ? '[]' : ''}${nullUnion};\n\n`
     }
     output += `}\n\n`
   }
@@ -282,11 +293,11 @@ function generateEnums(enums: readonly any[]): string {
   output += "import { registerEnumType } from '@nestjs/graphql';\n"
 
   if (enums.length > 0) {
-    const enumNames = enums.map((e) => e.name).join(', ')
+    const enumNames = enums.map(e => e.name).join(', ')
     output += `import { ${enumNames} } from '${prismaImportPath}';\n\n`
     output += `export { ${enumNames} };\n\n`
 
-    enums.forEach((enumType) => {
+    enums.forEach(enumType => {
       output += `registerEnumType(${enumType.name}, { name: '${enumType.name}' });\n\n`
     })
   } else {
@@ -304,7 +315,7 @@ export * from './core-paging.model'
 `
 }
 
-main().catch((e) => {
+main().catch(e => {
   console.error('Error during generation:', e)
   process.exit(1)
 })
