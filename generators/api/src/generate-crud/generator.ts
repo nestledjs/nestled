@@ -226,6 +226,10 @@ export async function generateCrudLogic(
   schema: GenerateCrudGeneratorSchema,
   dependencies: GenerateCrudGeneratorDependencies,
 ) {
+  const customPluralize = (str: string) => {
+    const plural = dependencies.pluralize(str)
+    return plural === str ? `${str}List` : plural
+  }
   // Helper functions that now use injected dependencies
   async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
     const prismaPath = dependencies.getPrismaSchemaPath(tree)
@@ -238,16 +242,16 @@ export async function generateCrudLogic(
       const dmmf = await dependencies.getDMMF({ datamodel: prismaSchema })
       return dmmf.datamodel.models.map((model) => {
         const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
-        const pluralPropertyName = dependencies.pluralize(singularPropertyName)
+        const pluralPropertyName = customPluralize(singularPropertyName)
         const authConfig = getCrudAuthForModel(prismaSchema, model.name)
         return {
           name: model.name,
-          pluralName: dependencies.pluralize(model.name),
+          pluralName: customPluralize(model.name),
           fields: model.fields.map((field) => ({ ...field })),
           primaryField: model.fields.find((f) => !f.isId && f.type === 'String')?.name || 'name',
           modelName: model.name,
           modelPropertyName: singularPropertyName,
-          pluralModelName: dependencies.pluralize(model.name),
+          pluralModelName: customPluralize(model.name),
           pluralModelPropertyName: pluralPropertyName,
           auth: authConfig,
         }
@@ -258,12 +262,12 @@ export async function generateCrudLogic(
     }
   }
 
-  async function createLibraries(tree: Tree, name: string) {
+  async function createLibraries(tree: Tree, name: string, models: ModelType[]) {
     const dataAccessLibraryRoot = `libs/api/${name}/data-access`
     const featureLibraryRoot = `libs/api/${name}/feature`
     const templatePath = dependencies.joinPathFragments(__dirname, './files')
-    await dependencies.apiLibraryGenerator(tree, { name }, templatePath, 'data-access')
-    await dependencies.apiLibraryGenerator(tree, { name }, templatePath, 'feature')
+    await dependencies.apiLibraryGenerator(tree, { name, models }, templatePath, 'data-access')
+    await dependencies.apiLibraryGenerator(tree, { name, models }, templatePath, 'feature')
     return { dataAccessLibraryRoot, featureLibraryRoot }
   }
 
@@ -275,22 +279,6 @@ export async function generateCrudLogic(
     name: string,
   ) {
     const npmScope = dependencies.getNpmScope(tree)
-    const nameObj = dependencies.names(name)
-    const substitutions = { ...nameObj, name, models, npmScope: `@${npmScope}`, apiClassName: 'PrismaCrud', tmpl: '' }
-
-    dependencies.generateFiles(
-      tree,
-      dependencies.joinPathFragments(__dirname, './files/data-access/src/lib'),
-      dependencies.joinPathFragments(dataAccessLibraryRoot, 'src/lib'),
-      { ...substitutions, type: 'data-access' },
-    )
-    dependencies.generateFiles(
-      tree,
-      dependencies.joinPathFragments(__dirname, './files/data-access/src'),
-      dependencies.joinPathFragments(dataAccessLibraryRoot, 'src'),
-      { ...substitutions, type: 'data-access' },
-    )
-
     const featureModuleContent = generateFeatureModuleContent(models, npmScope)
     tree.write(
       dependencies.joinPathFragments(featureLibraryRoot, 'src/lib/api-admin-crud-feature.module.ts'),
@@ -318,7 +306,7 @@ export async function generateCrudLogic(
     return // Return early for the test case
   }
 
-  const { dataAccessLibraryRoot, featureLibraryRoot } = await createLibraries(tree, name)
+  const { dataAccessLibraryRoot, featureLibraryRoot } = await createLibraries(tree, name, models)
   await generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models, name)
   await dependencies.formatFiles(tree)
 
