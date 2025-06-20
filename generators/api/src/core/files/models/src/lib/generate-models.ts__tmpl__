@@ -34,15 +34,15 @@ function getPrismaImportPath(): string {
       schemaPathSetting.includes('libs/api/prisma') ||
       schemaPathSetting.includes('prisma/src/lib')
     ) {
-      return '@mi-api/api/prisma'
+      return '@<%= npmScope %>/api/prisma'
     }
 
     // Fallback to the original path if not explicitly the new structure
-    return '@mi-api/api/core/data-access'
+    return '@<%= npmScope %>/api/core/data-access'
   } catch (error) {
     console.error('Error determining Prisma import path:', error)
     // Default to the new path as a sensible fallback
-    return '@mi-api/api/prisma'
+    return '@<%= npmScope %>/api/prisma'
   }
 }
 
