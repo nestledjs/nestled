@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common'
-import { ApiCoreDataAccessService } from '<%= npmScope %>/api/core/data-access'
+import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
 import { PrismaSelect } from '@paljs/plugins'
 import type { GraphQLResolveInfo } from 'graphql'
 import * as dto from './dto'

@@ -36,9 +36,9 @@ if (usesID) gqlImports.add('ID');
 %>
 import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
 
-<% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '<%= npmScope %>/api/core/models'
+<% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '@<%= npmScope %>/api/core/models'
 <% } %><% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
-import { CorePagingInput } from '<%= npmScope %>/api/core/data-access'
+import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
 
 <% for (const model of models) { %>
 @InputType()
