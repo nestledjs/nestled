@@ -261,10 +261,9 @@ export async function generateCrudLogic(
   async function createLibraries(tree: Tree, name: string) {
     const dataAccessLibraryRoot = `libs/api/${name}/data-access`
     const featureLibraryRoot = `libs/api/${name}/feature`
-    const dataAccessTemplatePath = dependencies.joinPathFragments(__dirname, './files/data-access')
-    const featureTemplatePath = dependencies.joinPathFragments(__dirname, './files/feature')
-    await dependencies.apiLibraryGenerator(tree, { name }, dataAccessTemplatePath, 'data-access')
-    await dependencies.apiLibraryGenerator(tree, { name }, featureTemplatePath, 'feature')
+    const templatePath = dependencies.joinPathFragments(__dirname, './files')
+    await dependencies.apiLibraryGenerator(tree, { name }, templatePath, 'data-access')
+    await dependencies.apiLibraryGenerator(tree, { name }, templatePath, 'feature')
     return { dataAccessLibraryRoot, featureLibraryRoot }
   }
 
