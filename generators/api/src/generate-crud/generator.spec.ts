@@ -6,7 +6,7 @@ import { GenerateCrudGeneratorDependencies, generateCrudLogic } from './generato
 import { Tree } from '@nx/devkit'
 
 // The mocked DMMF object
-const dmmf = {
+const userDmmf = {
   datamodel: {
     models: [
       {
@@ -40,7 +40,7 @@ describe('generate-crud generator', () => {
         constantName: name.toUpperCase(),
         fileName: name,
       })),
-      getDMMF: vi.fn().mockResolvedValue(dmmf),
+      getDMMF: vi.fn().mockResolvedValue(userDmmf),
       apiLibraryGenerator: vi.fn().mockResolvedValue(undefined),
       getPrismaSchemaPath: vi.fn(() => 'prisma/schema.prisma'),
       readPrismaSchema: vi.fn(
@@ -79,5 +79,32 @@ describe('generate-crud generator', () => {
     expect(typeof callback).toBe('function')
     if (callback) callback()
     expect(mockDependencies.installPackagesTask).toHaveBeenCalled()
+  })
+
+  it('appends "List" to plural when singular and plural forms are the same', async () => {
+    const dataDmmf = {
+      datamodel: {
+        models: [
+          {
+            name: 'Data',
+            fields: [{ name: 'id', type: 'Int', isId: true }],
+          },
+        ],
+      },
+    }
+    mockDependencies.getDMMF = vi.fn().mockResolvedValue(dataDmmf)
+    mockDependencies.pluralize = vi.fn((name: string) => {
+      if (name.toLowerCase() === 'data') {
+        return name // Simulate plural('data') => 'data'
+      }
+      return name.endsWith('s') ? name : `${name}s`
+    }) as any
+
+    await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+    const modelsArg = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1].models[0]
+    expect(modelsArg.pluralName).toBe('DataList')
+    expect(modelsArg.pluralModelName).toBe('DataList')
+    expect(modelsArg.pluralModelPropertyName).toBe('dataList')
   })
 })
