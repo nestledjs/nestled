@@ -1,10 +1,10 @@
 import { Injectable } from '@nestjs/common'
-import { ConfigService } from '@nestjs/config'
+import { ConfigService as NestConfigService } from '@nestjs/config'
 import { CookieOptions } from 'express'
 
 @Injectable()
-export class ApiConfigService {
-  constructor(public readonly config: ConfigService) {}
+export class ConfigService {
+  constructor(public readonly config: NestConfigService) {}
 
   get apiUrl(): string {
     return this.config.getOrThrow<string>('apiUrl')
