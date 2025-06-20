@@ -143,7 +143,7 @@ ${guardImports}
 
 @Resolver(() => ${model.modelName})
 export class Generated${model.modelName}Resolver {
-  constructor(private readonly service: ApiCrudDataAccessService) {}
+  constructor(private readonly generatedService: ApiCrudDataAccessService) {}
 
   @Query(() => [${model.modelName}], { nullable: true })
   ${readManyGuardDecorator ? `@UseGuards(${readManyGuardDecorator})` : ''}
@@ -153,7 +153,7 @@ export class Generated${model.modelName}Resolver {
     model.modelName
   }Input,
   ) {
-    return this.service.${readManyMethodName}(info, input)
+    return this.generatedService.${readManyMethodName}(info, input)
   }
 
   @Query(() => CorePaging, { nullable: true })
@@ -163,7 +163,7 @@ export class Generated${model.modelName}Resolver {
     model.modelName
   }Input,
   ) {
-    return this.service.${countMethodName}(input)
+    return this.generatedService.${countMethodName}(input)
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
@@ -172,7 +172,7 @@ export class Generated${model.modelName}Resolver {
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string
   ) {
-    return this.service.${readOneMethodName}(info, ${model.modelPropertyName}Id)
+    return this.generatedService.${readOneMethodName}(info, ${model.modelPropertyName}Id)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
@@ -181,7 +181,7 @@ export class Generated${model.modelName}Resolver {
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: Create${model.modelName}Input,
   ) {
-    return this.service.create${model.modelName}(info, input)
+    return this.generatedService.create${model.modelName}(info, input)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
@@ -191,7 +191,7 @@ export class Generated${model.modelName}Resolver {
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
     @Args('input') input: Update${model.modelName}Input,
   ) {
-    return this.service.update${model.modelName}(info, ${model.modelPropertyName}Id, input)
+    return this.generatedService.update${model.modelName}(info, ${model.modelPropertyName}Id, input)
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
@@ -199,7 +199,7 @@ export class Generated${model.modelName}Resolver {
   delete${model.modelName}(
     @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
   ) {
-    return this.service.delete${model.modelName}(${model.modelPropertyName}Id)
+    return this.generatedService.delete${model.modelName}(${model.modelPropertyName}Id)
   }
 }
 `
