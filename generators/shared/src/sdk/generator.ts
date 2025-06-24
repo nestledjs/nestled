@@ -62,7 +62,7 @@ function getFragmentFields(fields: { name: string; type: string; isList: boolean
         !f.isRelation &&
         f.name !== 'id' &&
         !f.name.endsWith('Id') &&
-        (SCALAR_TYPES.includes(f.type) || true) // allow all non-relation, non-list, non-id fields (including enums)
+        SCALAR_TYPES.includes(f.type) // allow all non-relation, non-list, non-id fields (including enums)
     )
     .map((f) => f.name)
     .join('\n  ')
