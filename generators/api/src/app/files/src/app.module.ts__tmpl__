@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { LoggerMiddleware } from './applogger.middleware'
 import { ConfigModule } from '@nestjs/config'
-import { appConfig, validationSchema } from './app.config'
+import { configuration, validationSchema } from '@<%= npmScope %>>/api/config'
 
 // Auto-generated modules with special functions
 export const coreModules = [
@@ -25,7 +25,7 @@ export const appModules = [
 @Module({
   imports: [
     ConfigModule.forRoot({
-      load: [appConfig],
+      load: [configuration],
       validationSchema: validationSchema,
       validationOptions: {
         allowUnknown: true,
