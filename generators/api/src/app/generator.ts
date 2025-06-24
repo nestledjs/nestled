@@ -34,12 +34,12 @@ export default async function (tree: Tree, schema: Schema) {
     // Get the workspace root directory
     const workspaceRoot = tree.root
 
-    // Create apps directory if it doesn't exist
+    // Create the apps directory if it doesn't exist
     if (!tree.exists('apps')) {
       tree.write('apps/.gitkeep', '')
     }
 
-    // Run the Nx generator command directly from the workspace root with proper workspace layout
+    // Run the Nx generator command directly from the workspace root with the proper workspace layout
     execSync('nx g @nx/nest:application --name api --directory apps/api --no-interactive', {
       stdio: 'inherit',
       cwd: workspaceRoot,
@@ -52,23 +52,20 @@ export default async function (tree: Tree, schema: Schema) {
     updateAppTsConfig(tree)
 
     // Generate all files according to the template folder structure
-    generateFiles(
-      tree,
-      joinPathFragments(__dirname, './files'),
-      path.join('apps', 'api'),
-      { ...schema, tmpl: '', npmScope: getNpmScope(tree) }
-    );
+    generateFiles(tree, joinPathFragments(__dirname, './files'), path.join('apps', 'api'), {
+      ...schema,
+      tmpl: '',
+      npmScope: getNpmScope(tree),
+    })
 
     // Add dev:api script to package.json
     updateJson(tree, 'package.json', (json) => {
-      if (!json.scripts) {
-        json.scripts = {}
-      }
+      json.scripts ??= {}
       json.scripts['dev:api'] = 'nx serve api --skip-nx-cache'
       return json
     })
 
-    // Update the build target in apps/api/project.json to use custom webpack command
+    // Update the build target in apps/api/project.json to use the custom webpack command
     const projectJsonPath = path.join('apps', 'api', 'project.json')
     if (tree.exists(projectJsonPath)) {
       updateJson(tree, projectJsonPath, (json) => {
