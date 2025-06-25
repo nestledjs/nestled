@@ -94,7 +94,6 @@ module.exports = composePlugins(withNx(), (config) => {
     expect(tree.exists('apps/api/src/app')).toBe(false)
     expect(tree.exists('apps/api/src/assets')).toBe(false)
 
-    expect(tree.exists('apps/api/src/app.config.ts')).toBe(true)
     expect(tree.exists('apps/api/src/app.module.ts')).toBe(true)
     expect(tree.exists('apps/api/src/applogger.middleware.ts')).toBe(true)
     expect(tree.exists('apps/api/src/main.ts')).toBe(true)

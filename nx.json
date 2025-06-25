@@ -50,6 +50,9 @@
       "workspaceChangelog": false
     },
     "version": {
+      "versionActionsOptions": {
+        "installIgnoreScripts": true
+      },
       "conventionalCommits": true,
       "preVersionCommand": "nx affected --target=test --base=develop",
       "git": {
