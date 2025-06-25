@@ -57,7 +57,12 @@ function parsePrismaModels(schemaContent: string) {
 function getFragmentFields(fields: { name: string; type: string; isList: boolean; isRelation: boolean }[]) {
   return fields
     .filter(
-      (f) => !f.isList && !f.isRelation && SCALAR_TYPES.includes(f.type) && f.name !== 'id' && !f.name.endsWith('Id'),
+      (f) =>
+        !f.isList &&
+        !f.isRelation &&
+        f.name !== 'id' &&
+        !f.name.endsWith('Id') &&
+        SCALAR_TYPES.includes(f.type) // allow all non-relation, non-list, non-id fields (including enums)
     )
     .map((f) => f.name)
     .join('\n  ')
