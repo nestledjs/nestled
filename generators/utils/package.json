@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/utils",
-  "version": "0.0.10",
+  "version": "0.1.0",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -16,8 +16,8 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nx/nest": "21.2.0",
-    "@nx/devkit": "21.2.0",
+    "@nx/nest": "21.2.1",
+    "@nx/devkit": "21.2.1",
     "@prisma/internals": "^6.9.0",
     "yaml": "^2.8.0",
     "pluralize": "^8.0.0"

@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/api",
-  "version": "0.0.10",
+  "version": "0.1.0",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
@@ -17,14 +17,14 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nx/devkit": "21.2.0",
-    "@nx/js": "21.2.0",
+    "@nx/devkit": "21.2.1",
+    "@nx/js": "21.2.1",
     "@prisma/internals": "^6.9.0",
     "pluralize": "^8.0.0",
     "dotenv": "16.4.5",
     "pg": "^8.13.0"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.0.10"
+    "@nestledjs/utils": "0.1.0"
   }
 }

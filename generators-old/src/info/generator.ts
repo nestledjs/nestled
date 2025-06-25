@@ -10,7 +10,7 @@ Run the following commands in order to set up your project:
 nx g @nestledjs/generators:api-dependencies
 \`\`\`
 > Note: This will automatically run \`pnpm install\` to install all dependencies.
-> It will also set up Nx packages to version 21.2.0 for compatibility.
+> It will also set up Nx packages to version 21.2.1 for compatibility.
 
 \`\`\`sh
 nx g @nestledjs/generators:api-app

@@ -18,7 +18,7 @@ export async function webSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@apollo/client-integration-react-router': '0.12.0-alpha.4',
     },
     {
-      '@nx/react': '21.2.0',
+      '@nx/react': '21.2.1',
       'vite-tsconfig-paths': '^5.1.4',
       '@tailwindcss/vite': '^4.1.8',
       tailwindcss: '^4.1.8',
