@@ -5,6 +5,7 @@ import {
   pnpmInstallCallback,
   removeWorkspacesFromPackageJson,
   updatePnpmWorkspaceConfig,
+  addToGitignore,
 } from '@nestledjs/utils'
 import * as path from 'path'
 
@@ -51,23 +52,6 @@ function handleDockerFilesAndScripts(tree: Tree) {
     }
     tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))
     logger.info('✅ Added Docker scripts to package.json')
-  }
-}
-
-function ensureEnvInGitignore(tree: Tree) {
-  const gitignorePath = '.gitignore'
-  if (tree.exists(gitignorePath)) {
-    let gitignoreContent = tree.read(gitignorePath, 'utf-8')
-    if (!gitignoreContent.includes('.env')) {
-      gitignoreContent += '\n.env\n'
-      tree.write(gitignorePath, gitignoreContent)
-      logger.info('✅ Added .env to .gitignore')
-    } else {
-      logger.info('ℹ️  .env already exists in .gitignore')
-    }
-  } else {
-    tree.write(gitignorePath, '.env\n')
-    logger.info('✅ Created .gitignore and added .env')
   }
 }
 
@@ -134,7 +118,7 @@ export async function initConfigGenerator(tree: Tree): Promise<GeneratorCallback
   updatePnpmWorkspaceConfig(tree, { packages: ['apps/**', 'libs/**', 'tools/*'] })
 
   // Always ensure .env is in .gitignore
-  ensureEnvInGitignore(tree)
+  addToGitignore(tree, '.env')
 
   // Always add Nx-related scripts
   addNxScriptsToPackageJson(tree)
