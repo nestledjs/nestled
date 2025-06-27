@@ -30,7 +30,7 @@ export function DatePickerField({
     }
     // Render as plain value (formatted)
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{formatDateFromDateTime(value || '') || '—'}</div>
+      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{formatDateFromDateTime(value ?? '') ?? '—'}</div>
     );
   }
 
@@ -39,7 +39,7 @@ export function DatePickerField({
       <Controller
         name={field.key}
         control={form.control}
-        defaultValue={getDateFromDateTime(field.options.defaultValue || '')}
+        defaultValue={getDateFromDateTime(field.options.defaultValue ?? '')}
         render={({ field: { value, onChange, ...controllerField } }) => (
           <input
             {...controllerField}
@@ -67,7 +67,7 @@ export function DatePickerField({
       max="9999-12-31"
       contentEditable={false}
       disabled={field.options.disabled}
-      defaultValue={getDateFromDateTime(field.options.defaultValue || '') || ''}
+      defaultValue={getDateFromDateTime(field.options.defaultValue ?? '') ?? ''}
       {...form.register(field.key, {
         required: field.options.required,
         setValueAs: (v) => (v ? v.split('T')[0] : ''),

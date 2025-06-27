@@ -3,9 +3,7 @@
 }
 
 .react-select__control--is-focused {
-  background-color: gray;
-}
-.react-select__control--is-focused {
+  background-color: gray;  
   border-color: #007674 !important;
   box-shadow: none !important;
 }

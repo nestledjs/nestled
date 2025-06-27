@@ -8,7 +8,7 @@ import { RenderFormField } from './render-form-field' // Import the new renderer
 export interface FormProps extends UseFormProps {
   fields?: (FormField | null)[] // For declarative rendering
   children?: React.ReactNode // For imperative rendering
-  submit: (values: Record<string, unknown>) => Promise<unknown> | unknown
+  submit: (values: Record<string, unknown>) => void | Promise<unknown>
   buttonText?: string
   loading?: boolean
   className?: string
@@ -34,7 +34,7 @@ export function Form({
   className,
   readOnly = false,
   readOnlyStyle = 'value',
-}: FormProps) {
+}: Readonly<FormProps>) {
   const form = useForm({ defaultValues })
 
   useEffect(() => {

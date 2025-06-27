@@ -1,4 +1,4 @@
-import { generateFiles, joinPathFragments, Tree, updateJson } from '@nx/devkit'
+import { generateFiles, joinPathFragments, Tree } from '@nx/devkit'
 import { applicationGenerator } from '@nx/react/src/generators/application/application'
 import * as path from 'path'
 import { WebAppGeneratorSchema } from './schema'
