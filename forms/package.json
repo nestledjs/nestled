@@ -1,8 +1,14 @@
 {
   "name": "@nestledjs/forms",
-  "version": "0.0.3",
-  "main": "./src/index.js",
-  "types": "./src/index.d.ts",
+  "version": "0.0.4",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    }
+  },
+  "main": "./index.js",
+  "types": "./index.d.ts",
   "type": "module",
   "description": "Form Library for Nestled projects",
   "author": "Nestled Contributors",
