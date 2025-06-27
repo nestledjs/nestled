@@ -7,7 +7,6 @@ import { useDebounce } from '../utils/debounce'
 import './select-field-style.css'
 import { Controller } from 'react-hook-form'
 
-// Extracted component for rendering selected items
 function SelectedItems({ value, onChange }: { value: { label: string; value: string | number }[]; onChange: (val: any) => void }) {
   return (
     <>
@@ -32,7 +31,6 @@ function SelectedItems({ value, onChange }: { value: { label: string; value: str
   );
 }
 
-// Extracted component for rendering options
 function MultiSelectOptions({ filteredOptions }: { filteredOptions: { label: string; value: string | number }[] }) {
   return (
     <ComboboxOptions className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
@@ -72,7 +70,6 @@ function MultiSelectOptions({ filteredOptions }: { filteredOptions: { label: str
   );
 }
 
-// Extracted render function for Controller
 function renderMultiSelectCombobox({
   value,
   onChange,
