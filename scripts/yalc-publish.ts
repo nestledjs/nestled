@@ -1,8 +1,9 @@
 import { execSync } from 'child_process'
 import { resolve } from 'path'
+import { existsSync } from 'fs'
 
 // Define dependency order - dependencies first, dependents last
-const DEPENDENCY_ORDER = ['utils', 'shared', 'plugins', 'config', 'web', 'api']
+const DEPENDENCY_ORDER = ['utils', 'shared', 'plugins', 'config', 'web', 'api', 'forms']
 
 async function main() {
   const [, , action, libName] = process.argv
@@ -48,7 +49,16 @@ async function processPackage(action, libName) {
     process.exit(1)
   }
 
-  const distPath = resolve(__dirname, `../dist/generators/${libName}`)
+  // Determine correct dist path
+  let distPath = resolve(__dirname, `../dist/generators/${libName}`)
+  if (!existsSync(distPath)) {
+    distPath = resolve(__dirname, `../dist/${libName}`)
+    if (!existsSync(distPath)) {
+      console.error(`❌ Could not find dist directory for ${libName} in either dist/generators/ or dist/`)
+      process.exit(1)
+    }
+  }
+
   const command = `cd ${distPath} && yalc ${action}`
 
   console.log(`📦 Running "yalc ${action}" for ${libName} from ${distPath}`)

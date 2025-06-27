@@ -546,24 +546,28 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
   tree.write(modulePath, fileContent)
 }
 
-export async function apiLibraryGenerator<T extends { name: string; overwrite?: boolean }>(
-  tree: Tree,
-  schema: T,
-  templateRootPath: string,
-  type?: string,
-  addModuleImport?: boolean,
-): Promise<() => void> {
+// --- Helper functions for apiLibraryGenerator ---
+function getApiLibraryNaming(tree: Tree, schema: { name: string; customName?: boolean }, type?: string) {
   const npmScope = getNpmScope(tree)
   const API_LIBS_SCOPE = 'libs/api'
   const libraryRoot = type
     ? joinPathFragments(API_LIBS_SCOPE, schema.name, type)
     : joinPathFragments(API_LIBS_SCOPE, schema.name)
-  const libraryName = type ? `api-${schema.name}-${type}` : `api-${schema.name}`
+  let libraryName: string
+  if (schema.customName) {
+    libraryName = schema.name
+  } else if (type) {
+    libraryName = `api-${schema.name}-${type}`
+  } else {
+    libraryName = `api-${schema.name}`
+  }
   const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
   const tags = type ? `scope:api,type:${type}` : 'scope:api'
+  return { npmScope, API_LIBS_SCOPE, libraryRoot, libraryName, importPath, tags }
+}
 
-  // Overwrite logic: remove an existing library if requested
-  if (schema.overwrite && tree.exists(libraryRoot)) {
+function removeExistingLibrary(tree: Tree, libraryRoot: string, libraryName: string) {
+  if (tree.exists(libraryRoot)) {
     try {
       execSync(`nx g rm ${libraryName} --forceRemove`, {
         stdio: 'inherit',
@@ -573,15 +577,16 @@ export async function apiLibraryGenerator<T extends { name: string; overwrite?: 
       console.warn(`Failed to remove existing library ${libraryName}:`, error)
     }
   }
+}
 
-  // Check if the directory already exists, if not, create it
-  if (!tree.exists(API_LIBS_SCOPE)) {
-    tree.write(joinPathFragments(API_LIBS_SCOPE, '.gitkeep'), '')
-  }
-
-  // Only call libraryGenerator if the library does not already exist
+async function createLibraryIfNotExists(
+  tree: Tree,
+  libraryRoot: string,
+  libraryName: string,
+  importPath: string,
+  tags: string,
+) {
   if (!tree.exists(libraryRoot)) {
-    // Use explicit naming to avoid conflicts
     await libraryGenerator(tree, {
       name: libraryName,
       directory: libraryRoot,
@@ -591,41 +596,44 @@ export async function apiLibraryGenerator<T extends { name: string; overwrite?: 
       strict: true,
     })
   }
+}
 
-  // Determine the correct template path for generateTemplateFiles
+function generateTemplatesIfAvailable<T extends { name: string }>(
+  tree: Tree,
+  schema: T,
+  libraryRoot: string,
+  templateRootPath: string,
+  type: string | undefined,
+  npmScope: string,
+) {
   let finalTemplatePath: string
   if (type) {
     finalTemplatePath = joinPathFragments(templateRootPath, type)
   } else {
     finalTemplatePath = templateRootPath
   }
-
   try {
     const parentDir = path.dirname(finalTemplatePath)
     console.log('[apiLibraryGenerator] Contents of parent directory:', parentDir, fs.readdirSync(parentDir))
   } catch (e) {
     console.warn('[apiLibraryGenerator] Could not read parent directory:', e)
   }
-
-  // Use fs.existsSync for template files in node_modules
   if (templateRootPath && fs.existsSync(finalTemplatePath)) {
     generateTemplateFiles<T>({
       tree,
       schema,
       libraryRoot,
-      templatePath: finalTemplatePath, // Pass the exact path
+      templatePath: finalTemplatePath,
       npmScope,
     })
   } else {
     console.warn(`[apiLibraryGenerator] Template path does not exist on disk: ${finalTemplatePath}`)
   }
+}
 
-  // Update TypeScript configurations for the library itself
+function updateLibraryTypeScriptConfigs(tree: Tree, libraryRoot: string, importPath: string) {
   updateTypeScriptConfigs(tree, libraryRoot)
-  // Explicitly update the tsconfig.base.json paths after libraryGenerator has run
   updateTsConfigPaths(tree, importPath, libraryRoot)
-
-  // Remove 'baseUrl' from the generated tsconfig.lib.json if it exists
   const tsconfigLibPath = path.join(libraryRoot, 'tsconfig.lib.json')
   if (tree.exists(tsconfigLibPath)) {
     updateJson(tree, tsconfigLibPath, (json) => {
@@ -635,20 +643,58 @@ export async function apiLibraryGenerator<T extends { name: string; overwrite?: 
       return json
     })
   }
+}
+
+function addModuleImportIfNeeded(
+  tree: Tree,
+  schema: { name: string },
+  type: string | undefined,
+  addModuleImport: boolean | undefined,
+  importPath: string,
+) {
+  if (!addModuleImport) return
+  const nameClassName = names(schema.name).className
+  const typeClassName = type ? names(type).className : ''
+  const moduleToAdd = `Api${nameClassName}${typeClassName}Module`
+  addToModules({
+    tree,
+    modulePath: `apps/api/src/app.module.ts`,
+    moduleArrayName: 'coreModules',
+    moduleToAdd,
+    importPath,
+  })
+}
+
+export async function apiLibraryGenerator<T extends { name: string; overwrite?: boolean; customName?: boolean }>(
+  tree: Tree,
+  schema: T,
+  templateRootPath: string,
+  type?: string,
+  addModuleImport?: boolean,
+): Promise<() => void> {
+  const { npmScope, API_LIBS_SCOPE, libraryRoot, libraryName, importPath, tags } = getApiLibraryNaming(tree, schema, type)
+
+  // Overwrite logic: remove an existing library if requested
+  if (schema.overwrite) {
+    removeExistingLibrary(tree, libraryRoot, libraryName)
+  }
+
+  // Ensure API_LIBS_SCOPE exists
+  if (!tree.exists(API_LIBS_SCOPE)) {
+    tree.write(joinPathFragments(API_LIBS_SCOPE, '.gitkeep'), '')
+  }
+
+  // Only call libraryGenerator if the library does not already exist
+  await createLibraryIfNotExists(tree, libraryRoot, libraryName, importPath, tags)
+
+  // Generate template files if available
+  generateTemplatesIfAvailable(tree, schema, libraryRoot, templateRootPath, type, npmScope)
+
+  // Update TypeScript configurations for the library itself
+  updateLibraryTypeScriptConfigs(tree, libraryRoot, importPath)
 
   // Add the module import after generating the library
-  if (addModuleImport) {
-    const nameClassName = names(schema.name).className
-    const typeClassName = type ? names(type).className : ''
-    const moduleToAdd = `Api${nameClassName}${typeClassName}Module`
-    addToModules({
-      tree,
-      modulePath: `apps/api/src/app.module.ts`,
-      moduleArrayName: 'coreModules',
-      moduleToAdd,
-      importPath,
-    })
-  }
+  addModuleImportIfNeeded(tree, schema, type, addModuleImport, importPath)
 
   return () => {
     installPackagesTask(tree)
@@ -661,4 +707,36 @@ export function getPluralName(name: string): string {
   }
   const plural = pluralize(name)
   return plural === name ? name + 'List' : plural
+}
+
+/**
+ * Adds a line to .gitignore if it does not already exist.
+ * @param tree The Nx Tree (virtual filesystem)
+ * @param entry The line to add to .gitignore
+ */
+export function addToGitignore(tree: Tree, entry: string) {
+  const gitignorePath = '.gitignore'
+  let updated = false
+  if (tree.exists(gitignorePath)) {
+    let gitignoreContent = tree.read(gitignorePath, 'utf-8')
+    if (!gitignoreContent.split(/\r?\n/).includes(entry)) {
+      gitignoreContent += (gitignoreContent.endsWith('\n') ? '' : '\n') + entry + '\n'
+      tree.write(gitignorePath, gitignoreContent)
+      updated = true
+    }
+  } else {
+    tree.write(gitignorePath, entry + '\n')
+    updated = true
+  }
+  if (updated) {
+    // If logger is available, log info
+    try {
+      // Dynamically import logger if available
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { logger } = require('@nx/devkit')
+      logger.info(`✅ Added '${entry}' to .gitignore`)
+    } catch {
+      // Intentionally ignore errors if logger is not available
+    }
+  }
 }
