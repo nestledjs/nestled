@@ -26,7 +26,7 @@ export function TimePickerField({ form, field, hasError, formReadOnly = false, f
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value || '—'}</div>
+      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
     );
   }
 

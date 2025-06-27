@@ -1,6 +1,6 @@
 import 'react-phone-number-input/style.css'
 import './phone-field.css'
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { isPossiblePhoneNumber } from 'react-phone-number-input'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
@@ -12,12 +12,6 @@ export function PhoneField({
   formReadOnly = false,
   formReadOnlyStyle = 'value',
 }: FormFieldProps<Extract<FormField, { type: FormFieldType.Phone }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const [, setValue] = useState<string>(field.options.defaultValue?.toString() ?? '')
-
-  useEffect(() => {
-    setValue(field.options.defaultValue?.toString())
-  }, [field.options.defaultValue])
-
   function validatePhone(val: string) {
     return val === undefined || val === '' || isPossiblePhoneNumber((val ?? '')?.toString(), 'US')
   }
@@ -40,7 +34,7 @@ export function PhoneField({
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value || '—'}</div>
+      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
     );
   }
 

@@ -30,13 +30,13 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
   switch (field.type) {
     case FormFieldType.Input:
       return (
-        <TextField form={form} field={field as Extract<FormField, { type: FormFieldType.Input }>} hasError={hasError} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
+        <TextField form={form} field={field} hasError={hasError} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
       )
     case FormFieldType.TextArea:
       return (
         <TextAreaField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.TextArea }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -46,7 +46,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <EmailField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Email }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -56,7 +56,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <PasswordField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Password }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -64,13 +64,13 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       )
     case FormFieldType.Url:
       return (
-        <UrlField form={form} field={field as Extract<FormField, { type: FormFieldType.Url }>} hasError={hasError} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
+        <UrlField form={form} field={field} hasError={hasError} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
       )
     case FormFieldType.Phone:
       return (
         <PhoneField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Phone }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -80,7 +80,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <NumberField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Number }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -90,7 +90,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <MoneyField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Currency }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -101,7 +101,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <SelectField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Select } | { type: FormFieldType.EnumSelect }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -111,7 +111,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <MultiSelectField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.MultiSelect }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -121,7 +121,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <CheckboxField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Checkbox }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -131,7 +131,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <SwitchField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Switch }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -141,7 +141,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <DatePickerField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.DatePicker }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -151,7 +151,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <DateTimePickerField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.DateTimePicker }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -161,7 +161,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <TimePickerField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.TimePicker }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -171,7 +171,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <RadioField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Radio }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -181,7 +181,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <SearchSelectField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.SearchSelect }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -191,7 +191,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <SearchSelectMultiField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.SearchSelectMulti }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
@@ -203,7 +203,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       return (
         <CustomField
           form={form}
-          field={field as Extract<FormField, { type: FormFieldType.Custom }>}
+          field={field}
           hasError={hasError}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}

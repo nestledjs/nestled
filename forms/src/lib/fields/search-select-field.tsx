@@ -51,7 +51,7 @@ export function SearchSelectField<
   const isReadOnly = field.options.readOnly ?? formReadOnly;
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
   const value = form.getValues(field.key);
-  const selectedOption = options.find((o) => o.value === value) || null;
+  const selectedOption = options.find((o) => o.value === value) ?? null;
 
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
@@ -60,13 +60,13 @@ export function SearchSelectField<
           type="text"
           className={clsx('w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10', hasError && '!border-red-600 !focus:border-red-600')}
           disabled={true}
-          value={selectedOption?.label || ''}
+          value={selectedOption?.label ?? ''}
         />
       );
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{selectedOption?.label || '—'}</div>
+      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{selectedOption?.label ?? '—'}</div>
     );
   }
 

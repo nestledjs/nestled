@@ -26,13 +26,13 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
           type="text"
           className={clsx('w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10', hasError && '!border-red-600 !focus:border-red-600')}
           disabled={true}
-          value={selectedOption?.label || ''}
+          value={selectedOption?.label ?? ''}
         />
       );
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{selectedOption?.label || '—'}</div>
+      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{selectedOption?.label ?? '—'}</div>
     );
   }
 
