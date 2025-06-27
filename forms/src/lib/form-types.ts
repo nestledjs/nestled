@@ -51,6 +51,7 @@ export interface BaseFieldOptions {
 // Specific options interfaces that extend the base
 export interface InputFieldOptions extends BaseFieldOptions {
   placeholder?: string
+  validate?: (value: any) => string | boolean | Promise<string | boolean>
 }
 export type UrlFieldOptions = InputFieldOptions
 export type EmailFieldOptions = InputFieldOptions
