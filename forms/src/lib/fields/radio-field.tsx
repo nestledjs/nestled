@@ -5,6 +5,7 @@ import { FormFieldProps, FormField, FormFieldType, RadioOption, RadioFormFieldOp
 import { inputStyle } from '../styles/input-style'
 import './radio-field-style.css'
 import { Controller } from 'react-hook-form'
+import { stripHtml } from '../utils/sanitize'
 
 export function RadioField(
   props: FormFieldProps<Extract<FormField, { type: FormFieldType.Radio }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }
@@ -51,7 +52,7 @@ export function RadioField(
                 readOnly
               />
               <label htmlFor={option.key} className="text-sm ml-2 grow">
-                <span className="sr-only">{option.label.replace(/<[^>]+>/g, '')}</span>
+                <span className="sr-only">{stripHtml(option.label)}</span>
                 <div dangerouslySetInnerHTML={{ __html: option.label }} />
               </label>
             </div>
@@ -95,7 +96,7 @@ export function RadioField(
                 <div className={`flex flex-row items-center ${options.fancyStyle ? 'border rounded-md' : ''}`}>
                   {options?.fullWidthLabel ? (
                     <label htmlFor={option.key} className="text-sm ml-2 grow">
-                      <span className="sr-only">{option.label.replace(/<[^>]+>/g, '')}</span>
+                      <span className="sr-only">{stripHtml(option.label)}</span>
                       <div dangerouslySetInnerHTML={{ __html: option.label }} />
                     </label>
                   ) : null}
@@ -131,7 +132,7 @@ export function RadioField(
                       htmlFor={option.key}
                       className={`text-sm grow ${options.radioDirection !== 'row' ? 'p-4' : 'p-1 pl-2'}`}
                     >
-                      <span className="sr-only">{option.label.replace(/<[^>]+>/g, '')}</span>
+                      <span className="sr-only">{stripHtml(option.label)}</span>
                       <div dangerouslySetInnerHTML={{ __html: option.label }} />
                     </label>
                   ) : null}
