@@ -95,9 +95,8 @@ export function CheckboxField({
       key={`${field.key}_wrapper`}
       className={clsx('flex items-center', fullWidthLabel ? 'justify-between' : 'justify-start', wrapperClassNames)}
     >
-      {fullWidthLabel ? label : null}
       {input}
-      {!fullWidthLabel ? label : null}
+      {label}
     </div>
   )
 }

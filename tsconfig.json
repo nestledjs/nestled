@@ -6,5 +6,11 @@
     "types": ["node"]
   },
   "include": ["libs/**/*.ts", "generators/**/*.ts"],
-  "exclude": ["node_modules", "tmp"]
+  "exclude": ["node_modules", "tmp"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "moduleResolution": "node10"
+    }
+  }
 }
