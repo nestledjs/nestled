@@ -66,7 +66,7 @@ export function CheckboxField({
   const label = (
     <label
       htmlFor={field.key}
-      className={clsx(options.labelTextSize || 'ml-2 mt-0.5 block text-xs sm:text-sm text-gray-900')}
+      className={clsx(options?.labelTextSize ?? 'ml-2 mt-0.5 block text-xs sm:text-sm text-gray-900')}
     >
       {options.label}
     </label>
@@ -81,9 +81,12 @@ export function CheckboxField({
   const wrapperClassNames = options.wrapperClassNames
 
   if (options.customWrapper) {
-    const elements = fullWidthLabel
-      ? [React.cloneElement(label, { key: 'label' }), React.cloneElement(input, { key: 'input' })]
-      : [React.cloneElement(input, { key: 'input' }), React.cloneElement(label, { key: 'label' })];
+    let elements;
+    if (fullWidthLabel) {
+      elements = [React.cloneElement(label, { key: 'label' }), React.cloneElement(input, { key: 'input' })];
+    } else {
+      elements = [React.cloneElement(input, { key: 'input' }), React.cloneElement(label, { key: 'label' })];
+    }
     return options.customWrapper(elements);
   }
 
