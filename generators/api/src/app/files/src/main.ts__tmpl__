@@ -1,6 +1,6 @@
 import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
-import { ConfigService } from '@nestjs/config'
+import { ConfigService } from '@<%= npmScope %>/api/config'
 import cookieParser from 'cookie-parser'
 
 import { AppModule } from './app.module'
@@ -10,16 +10,28 @@ async function bootstrap() {
   const configService = app.get(ConfigService)
 
   // Get individual properties with fallbacks
-  const prefix = configService.get('app.prefix') || 'api';
-  const port = configService.get('app.port') || 3000;
-  const host = configService.get('app.host') || 'localhost';
+  const prefix = configService.prefix || 'api';
+  const port = configService.port || 3000;
+  const host = configService.host || 'localhost';
 
   app.setGlobalPrefix(prefix)
+
+  // Use the apiCorsOrigins getter and handle as array
+  const origins = configService.apiCorsOrigins.length
+    ? configService.apiCorsOrigins
+    : ['http://localhost:4200']; // fallback for dev
+
   app.enableCors({
     credentials: true,
-    origin: configService.get('app.api.cors.origin') || '*',
-  })
-  app.use(cookieParser(configService.get('app.api.cookie.secret') || 'secret'));
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (origins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+  });
+  app.use(cookieParser(configService.cookie.secret || 'secret'));
 
   await app.listen(port, host, () => {
     Logger.log(`Listening at http://${host}:${port}/${prefix}`)

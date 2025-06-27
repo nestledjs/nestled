@@ -1,8 +1,9 @@
-import { generateFiles, joinPathFragments, Tree, updateJson } from '@nx/devkit'
+import { generateFiles, joinPathFragments, Tree } from '@nx/devkit'
 import { applicationGenerator } from '@nx/react/src/generators/application/application'
 import * as path from 'path'
 import { WebAppGeneratorSchema } from './schema'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
+import { addToGitignore, addScriptToPackageJson } from '@nestledjs/utils'
 
 export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
   try {
@@ -24,13 +25,9 @@ export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
     })
 
     // Add dev:web script to package.json
-    updateJson(tree, 'package.json', (json) => {
-      if (!json.scripts) {
-        json.scripts = {}
-      }
-      json.scripts['dev:web'] = 'nx serve web'
-      return json
-    })
+    addScriptToPackageJson(tree, 'dev:web', 'nx serve web')
+    addScriptToPackageJson(tree, 'typecheck', 'cd apps/web && react-router typegen && tsc && cd ../../')
+    addScriptToPackageJson(tree, 'typecheck:watch', 'cd apps/web && react-router typegen --watch')
 
     // Generate custom files
     const targetPath = path.join('apps', 'web')
@@ -40,6 +37,9 @@ export default async function (tree: Tree, schema: WebAppGeneratorSchema) {
         tmpl: '',
         npmScope: getNpmScope(tree),
       })
+
+      // Ensure !/apps/web/.react-router/ is in .gitignore
+      addToGitignore(tree, '!/apps/web/.react-router/')
     } else {
       console.error(`Target path ${targetPath} does not exist after generation`)
     }

@@ -6,7 +6,7 @@ export default async function generateLibraries(tree: Tree, options: ApiConfigGe
   const templateRootPath = joinPathFragments(__dirname, './files')
   const overwrite = options.overwrite === true
 
-  await apiLibraryGenerator(tree, { name: 'config', overwrite }, templateRootPath)
+  await apiLibraryGenerator(tree, { name: 'config', overwrite, customName: true }, templateRootPath)
 
   await formatFiles(tree)
 

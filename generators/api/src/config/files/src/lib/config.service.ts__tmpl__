@@ -14,8 +14,22 @@ export class ConfigService {
     return this.config.get<string[]>('api.cors.origin') ?? []
   }
 
-  get cookie(): { name: string; options: CookieOptions } {
-    return this.config.getOrThrow<{ name: string; options: CookieOptions }>('api.cookie')
+  get cookie(): { name: string; secret: string; options: CookieOptions } {
+    return this.config.getOrThrow<{ name: string; secret: string; options: CookieOptions }>(
+      'api.cookie',
+    )
+  }
+
+  get prefix(): string {
+    return this.config.getOrThrow<string>('prefix')
+  }
+
+  get port(): number {
+    return this.config.getOrThrow<number>('port')
+  }
+
+  get host(): string {
+    return this.config.getOrThrow<string>('host')
   }
 
   get appEmail(): string {

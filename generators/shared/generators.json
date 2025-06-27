@@ -9,6 +9,11 @@
       "factory": "./src/sdk/generator.js",
       "schema": "./src/sdk/schema.json",
       "description": "Generate the graphql sdk."
+    },
+    "styles": {
+      "factory": "./src/styles/generator.js",
+      "schema": "./src/styles/schema.json",
+      "description": "Generate a shared styles library with Tailwind CSS import."
     }
   }
 }
