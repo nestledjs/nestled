@@ -1,10 +1,9 @@
-// /src/lib/web-ui-form-types.ts
 import { DocumentNode, TypedDocumentNode } from '@apollo/client'
-import { ReactNode } from 'react'
-import { Control, FieldErrors, UseFormReturn } from 'react-hook-form'
+import { JSX, ReactNode } from 'react'
+import { UseFormReturn } from 'react-hook-form'
 
 // The single enum for all field types, combining the best of both libraries
-export enum WebUiFormFieldType {
+export enum FormFieldType {
   Input = 'Input',
   TextArea = 'TextArea',
   Email = 'Email',
@@ -16,14 +15,19 @@ export enum WebUiFormFieldType {
   Checkbox = 'Checkbox',
   Switch = 'Switch',
   DatePicker = 'DatePicker',
+  DateTimePicker = 'DateTimePicker',
+  TimePicker = 'TimePicker',
   Select = 'Select',
   EnumSelect = 'EnumSelect',
+  MultiSelect = 'MultiSelect',
+  Radio = 'Radio',
   SearchSelect = 'SearchSelect',
   SearchSelectMulti = 'SearchSelectMulti',
   Content = 'Content',
+  Custom = 'Custom',
 }
 
-// 1. A Base interface for options common to ALL fields
+// A Base interface for options common to ALL fields
 export interface BaseFieldOptions {
   label?: string
   required?: boolean
@@ -32,18 +36,28 @@ export interface BaseFieldOptions {
   customWrapper?: (children: ReactNode) => JSX.Element
   layout?: 'horizontal' | 'vertical'
   defaultValue?: any
+  /**
+   * If true, this specific field will be in read-only mode, overriding the form-level prop.
+   */
+  readOnly?: boolean;
+  /**
+   * Determines how the field should appear when in read-only mode.
+   * 'value': Renders the data as plain text. (Default)
+   * 'disabled': Renders the UI component in a disabled state.
+   */
+  readOnlyStyle?: 'value' | 'disabled';
 }
 
-// 2. Specific options interfaces that extend the base
+// Specific options interfaces that extend the base
 export interface InputFieldOptions extends BaseFieldOptions {
   placeholder?: string
 }
-export interface UrlFieldOptions extends InputFieldOptions {}
-export interface EmailFieldOptions extends InputFieldOptions {}
-export interface PasswordFieldOptions extends InputFieldOptions {}
-export interface PhoneFieldOptions extends InputFieldOptions {}
-export interface NumberFieldOptions extends InputFieldOptions {}
-export interface CurrencyFieldOptions extends InputFieldOptions {}
+export type UrlFieldOptions = InputFieldOptions
+export type EmailFieldOptions = InputFieldOptions
+export type PasswordFieldOptions = InputFieldOptions
+export type PhoneFieldOptions = InputFieldOptions
+export type NumberFieldOptions = InputFieldOptions
+export type CurrencyFieldOptions = InputFieldOptions
 
 export interface TextAreaOptions extends BaseFieldOptions {
   placeholder?: string
@@ -53,6 +67,8 @@ export interface TextAreaOptions extends BaseFieldOptions {
 export interface CheckboxOptions extends BaseFieldOptions {
   defaultValue?: boolean
   labelTextSize?: string
+  fullWidthLabel?: boolean
+  wrapperClassNames?: string
 }
 
 export interface SwitchOptions extends BaseFieldOptions {
@@ -61,6 +77,7 @@ export interface SwitchOptions extends BaseFieldOptions {
 
 export interface DatePickerOptions extends BaseFieldOptions {
   defaultValue?: string // YYYY-MM-DD
+  useController?: boolean
 }
 
 export interface SelectOption {
@@ -81,101 +98,164 @@ export interface SearchSelectOption {
   value: string
 }
 
-export interface SearchSelectOptions extends BaseFieldOptions {
+export interface SearchSelectOptions<TDataItem = any> extends BaseFieldOptions {
   document: DocumentNode | TypedDocumentNode
   dataType: string
-  filter?: (items: any[]) => any[]
-  selectOptionsFunction?: (items: any[]) => SearchSelectOption[]
+  filter?: (items: TDataItem[]) => TDataItem[]
+  selectOptionsFunction?: (items: TDataItem[]) => SearchSelectOption[]
 }
 
 export interface ContentOptions extends BaseFieldOptions {
   content: ReactNode
 }
 
-// 3. Specific interfaces for each complete field definition (the discriminated union members)
+export interface CustomFieldRenderProps<T = unknown> {
+  value: T
+  onChange: (value: T) => void
+  field: CustomFieldType<T>
+}
+
+export interface CustomFieldOptions<T = unknown> extends BaseFieldOptions {
+  customField: (props: CustomFieldRenderProps<T>) => ReactNode
+}
+
+interface CustomFieldType<T = unknown> {
+  key: string
+  type: FormFieldType.Custom
+  options: CustomFieldOptions<T>
+}
+
+// Specific interfaces for each complete field definition (discriminated union members)
 interface InputField {
   key: string
-  type: WebUiFormFieldType.Input
+  type: FormFieldType.Input
   options: InputFieldOptions
 }
 interface TextAreaField {
   key: string
-  type: WebUiFormFieldType.TextArea
+  type: FormFieldType.TextArea
   options: TextAreaOptions
 }
 interface EmailField {
   key: string
-  type: WebUiFormFieldType.Email
+  type: FormFieldType.Email
   options: EmailFieldOptions
 }
 interface PasswordField {
   key: string
-  type: WebUiFormFieldType.Password
+  type: FormFieldType.Password
   options: PasswordFieldOptions
 }
 interface UrlField {
   key: string
-  type: WebUiFormFieldType.Url
+  type: FormFieldType.Url
   options: UrlFieldOptions
 }
 interface PhoneField {
   key: string
-  type: WebUiFormFieldType.Phone
+  type: FormFieldType.Phone
   options: PhoneFieldOptions
 }
 interface NumberField {
   key: string
-  type: WebUiFormFieldType.Number
+  type: FormFieldType.Number
   options: NumberFieldOptions
 }
 interface CurrencyField {
   key: string
-  type: WebUiFormFieldType.Currency
+  type: FormFieldType.Currency
   options: CurrencyFieldOptions
 }
 interface CheckboxField {
   key: string
-  type: WebUiFormFieldType.Checkbox
+  type: FormFieldType.Checkbox
   options: CheckboxOptions
 }
 interface SwitchField {
   key: string
-  type: WebUiFormFieldType.Switch
+  type: FormFieldType.Switch
   options: SwitchOptions
 }
 interface DatePickerField {
   key: string
-  type: WebUiFormFieldType.DatePicker
+  type: FormFieldType.DatePicker
   options: DatePickerOptions
 }
 interface SelectField {
   key: string
-  type: WebUiFormFieldType.Select
+  type: FormFieldType.Select
   options: SelectOptions
 }
 interface EnumSelectField {
   key: string
-  type: WebUiFormFieldType.EnumSelect
+  type: FormFieldType.EnumSelect
   options: EnumSelectOptions
 }
-interface SearchSelectField {
+interface SearchSelectField<TDataItem> {
   key: string
-  type: WebUiFormFieldType.SearchSelect
-  options: SearchSelectOptions
+  type: FormFieldType.SearchSelect
+  options: SearchSelectOptions<TDataItem>
 }
-interface SearchSelectMultiField {
+
+interface SearchSelectMultiField<TDataItem> {
   key: string
-  type: WebUiFormFieldType.SearchSelectMulti
-  options: SearchSelectOptions // Multi-select uses the same options
+  type: FormFieldType.SearchSelectMulti
+  options: SearchSelectOptions<TDataItem>
 }
+
 interface ContentField {
   key: string
-  type: WebUiFormFieldType.Content
+  type: FormFieldType.Content
   options: ContentOptions
 }
 
-// 4. The final WebUiFormField is a union of all possible field shapes
-export type WebUiFormField =
+// Add interfaces for new field types
+interface MultiSelectField {
+  key: string
+  type: FormFieldType.MultiSelect
+  options: SelectOptions
+}
+interface DateTimePickerField {
+  key: string
+  type: FormFieldType.DateTimePicker
+  options: DatePickerOptions
+}
+interface TimePickerField {
+  key: string
+  type: FormFieldType.TimePicker
+  options: BaseFieldOptions
+}
+interface RadioField {
+  key: string
+  type: FormFieldType.Radio
+  options: RadioFormFieldOptions
+}
+
+export interface RadioOption {
+  key: string;
+  value: string | number | boolean;
+  label: string;
+  checkedSubOption?: {
+    key: string;
+    label: string;
+  };
+  hidden?: boolean;
+}
+
+export interface RadioFormFieldOptions extends BaseFieldOptions {
+  radioOptions: RadioOption[];
+  defaultValue?: string | number | boolean;
+  defaultSubValue?: string;
+  fullWidthLabel?: boolean;
+  radioDirection?: 'row' | 'column';
+  customWrapper?: (children: React.ReactNode) => JSX.Element;
+  fancyStyle?: boolean;
+  hidden?: boolean;
+  disabled?: boolean;
+}
+
+// The final FormField is a union of all possible field shapes
+export type FormField =
   | InputField
   | TextAreaField
   | EmailField
@@ -187,14 +267,19 @@ export type WebUiFormField =
   | CheckboxField
   | SwitchField
   | DatePickerField
+  | DateTimePickerField
+  | TimePickerField
   | SelectField
   | EnumSelectField
-  | SearchSelectField
-  | SearchSelectMultiField
+  | MultiSelectField
+  | RadioField
+  | SearchSelectField<any>
+  | SearchSelectMultiField<any>
   | ContentField
+  | CustomFieldType<any>
 
-// 5. A generic prop type for all individual field components
-export interface WebUiFormFieldProps<T extends WebUiFormField> {
+// A generic prop type for all individual field components
+export interface FormFieldProps<T extends FormField> {
   field: T
   form: UseFormReturn
   hasError: boolean

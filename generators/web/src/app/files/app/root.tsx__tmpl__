@@ -7,7 +7,8 @@ import {
   Scripts,
   ScrollRestoration,
 } from 'react-router'
-import './app.css'
+import '@<%= npmScope %>/styles'
+import { App } from './app'
 
 import { AppNav } from './app-nav'
 import { ApolloHydrationHelper } from '@apollo/client-integration-react-router'
@@ -32,7 +33,7 @@ export const links: LinksFunction = () => [
   },
 ]
 
-export function Layout({ children }: { children: ReactNode }) {
+export function Layout({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <html lang="en">
       <head>
@@ -51,6 +52,4 @@ export function Layout({ children }: { children: ReactNode }) {
   )
 }
 
-export default function App() {
-  return <Outlet />
-}
+export default App

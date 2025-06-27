@@ -33,7 +33,7 @@ describe('config generator', () => {
     const callback = await generator(tree)
     callback()
 
-    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'config', overwrite: false }, expect.any(String))
+    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'config', overwrite: false, customName: true }, expect.any(String))
     expect(formatFiles).toHaveBeenCalledWith(tree)
     expect(installPackagesTask).toHaveBeenCalledWith(tree)
   })
@@ -42,6 +42,6 @@ describe('config generator', () => {
     const callback = await generator(tree, { overwrite: true })
     callback()
 
-    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'config', overwrite: true }, expect.any(String))
+    expect(apiLibraryGenerator).toHaveBeenCalledWith(tree, { name: 'config', overwrite: true, customName: true }, expect.any(String))
   })
 })

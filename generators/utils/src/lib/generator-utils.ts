@@ -546,7 +546,7 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
   tree.write(modulePath, fileContent)
 }
 
-export async function apiLibraryGenerator<T extends { name: string; overwrite?: boolean }>(
+export async function apiLibraryGenerator<T extends { name: string; overwrite?: boolean; customName?: boolean }>(
   tree: Tree,
   schema: T,
   templateRootPath: string,
@@ -558,7 +558,15 @@ export async function apiLibraryGenerator<T extends { name: string; overwrite?: 
   const libraryRoot = type
     ? joinPathFragments(API_LIBS_SCOPE, schema.name, type)
     : joinPathFragments(API_LIBS_SCOPE, schema.name)
-  const libraryName = type ? `api-${schema.name}-${type}` : `api-${schema.name}`
+  let libraryName: string
+
+  if (schema.customName) {
+    libraryName = schema.name
+  } else if (type) {
+    libraryName = `api-${schema.name}-${type}`
+  } else {
+    libraryName = `api-${schema.name}`
+  }
   const importPath = type ? `@${npmScope}/api/${schema.name}/${type}` : `@${npmScope}/api/${schema.name}`
   const tags = type ? `scope:api,type:${type}` : 'scope:api'
 
@@ -661,4 +669,36 @@ export function getPluralName(name: string): string {
   }
   const plural = pluralize(name)
   return plural === name ? name + 'List' : plural
+}
+
+/**
+ * Adds a line to .gitignore if it does not already exist.
+ * @param tree The Nx Tree (virtual filesystem)
+ * @param entry The line to add to .gitignore
+ */
+export function addToGitignore(tree: Tree, entry: string) {
+  const gitignorePath = '.gitignore'
+  let updated = false
+  if (tree.exists(gitignorePath)) {
+    let gitignoreContent = tree.read(gitignorePath, 'utf-8')
+    if (!gitignoreContent.split(/\r?\n/).includes(entry)) {
+      gitignoreContent += (gitignoreContent.endsWith('\n') ? '' : '\n') + entry + '\n'
+      tree.write(gitignorePath, gitignoreContent)
+      updated = true
+    }
+  } else {
+    tree.write(gitignorePath, entry + '\n')
+    updated = true
+  }
+  if (updated) {
+    // If logger is available, log info
+    try {
+      // Dynamically import logger if available
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { logger } = require('@nx/devkit')
+      logger.info(`✅ Added '${entry}' to .gitignore`)
+    } catch {
+      // Intentionally ignore errors if logger is not available
+    }
+  }
 }
