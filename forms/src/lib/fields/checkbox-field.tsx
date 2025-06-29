@@ -1,55 +1,8 @@
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import { CheckIcon } from '@heroicons/react/24/solid'
 import clsx from 'clsx'
-import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import React from 'react'
-
-function renderReadOnlyCheckbox({ value, readOnlyStyle }: { value: any, readOnlyStyle: 'value' | 'disabled' }) {
-  if (readOnlyStyle === 'disabled') {
-    return (
-      <input
-        type="checkbox"
-        className={clsx('h-4 w-4 text-green_web border-gray-300 rounded')}
-        disabled={true}
-        checked={!!value}
-        readOnly
-      />
-    );
-  }
-  return value ? (
-    <CheckIcon className="w-5 h-5 text-green_web" />
-  ) : (
-    <XMarkIcon className="w-5 h-5 text-red-600" />
-  );
-}
-
-function renderCheckboxInput({
-  field,
-  form,
-  options,
-  hasError,
-}: {
-  field: any,
-  form: any,
-  options: any,
-  hasError: boolean,
-}) {
-  return (
-    <input
-      id={field.key}
-      type="checkbox"
-      disabled={options.disabled}
-      defaultChecked={options.defaultValue}
-      {...form.register(field.key, {
-        required: options.required,
-      })}
-      className={clsx(
-        'h-4 w-4 text-green_web focus:text-green_400_web focus:outline-none focus:ring-2 focus:ring-green_web focus:ring-offset-2 border-gray-300 rounded',
-        hasError && '!border-red-600 !focus:border-red-600',
-      )}
-    />
-  );
-}
+import { useFormTheme } from '../theme-context'
+import { Controller } from 'react-hook-form'
+import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 
 export function CheckboxField({
   form,
@@ -57,47 +10,110 @@ export function CheckboxField({
   hasError,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.Checkbox }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.Checkbox }>> & {
+  hasError?: boolean
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const theme = useFormTheme().checkbox
   const options = field.options
-  const isReadOnly = options.readOnly ?? formReadOnly;
-  const readOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key);
+  const isReadOnly = options.readOnly ?? formReadOnly
+  const effectiveReadOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key)
 
-  const label = (
+  const inputRef = React.useRef<HTMLInputElement>(null)
+  React.useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = !!options.indeterminate
+    }
+  }, [options.indeterminate])
+
+  const labelNode = options.label ? (
     <label
       htmlFor={field.key}
-      className={clsx(options?.labelTextSize ?? 'ml-2 mt-0.5 block text-xs sm:text-sm text-gray-900')}
+      className={clsx(theme.label, options.fullWidthLabel && theme.fullWidthLabel)}
     >
       {options.label}
+      {options.required && <span style={{ color: 'red', marginLeft: 2 }}>*</span>}
     </label>
-  )
+  ) : null
+
+  const helpTextNode = options.helpText ? <div className={clsx(theme.helpText)}>{options.helpText}</div> : null
 
   if (isReadOnly) {
-    return renderReadOnlyCheckbox({ value, readOnlyStyle });
+    return (
+      <div className={clsx(theme.wrapper, options.wrapperClassNames)}>
+        <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
+          {effectiveReadOnlyStyle === 'disabled' ? (
+            <input
+              id={field.key}
+              type="checkbox"
+              className={clsx(theme.input, hasError && theme.error, theme.disabled)}
+              disabled={true}
+              checked={!!value}
+              readOnly
+            />
+          ) : value && theme.readonlyCheckedIcon ? (
+            theme.readonlyCheckedIcon
+          ) : !value && theme.readonlyUncheckedIcon ? (
+            theme.readonlyUncheckedIcon
+          ) : (
+            <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
+          )}
+          {labelNode}
+        </div>
+        {helpTextNode}
+      </div>
+    )
   }
 
-  const input = renderCheckboxInput({ field, form, options, hasError });
-  const fullWidthLabel = options.fullWidthLabel
-  const wrapperClassNames = options.wrapperClassNames
+  const input = (
+    <Controller
+      name={field.key}
+      control={form.control}
+      defaultValue={options.defaultValue}
+      rules={{ required: options.required }}
+      render={({ field: controllerField }) => (
+        <input
+          id={field.key}
+          type="checkbox"
+          ref={inputRef}
+          checked={!!controllerField.value}
+          onChange={e => controllerField.onChange(e.target.checked)}
+          disabled={options.disabled}
+          className={clsx(
+            theme.input,
+            theme.focus,
+            options.disabled && theme.disabled,
+            hasError && theme.error,
+            controllerField.value && theme.checked,
+            options.indeterminate && theme.indeterminate
+          )}
+          aria-invalid={hasError}
+          aria-checked={!!controllerField.value}
+          aria-disabled={options.disabled}
+        />
+      )}
+    />
+  )
 
   if (options.customWrapper) {
-    let elements;
-    if (fullWidthLabel) {
-      elements = [React.cloneElement(label, { key: 'label' }), React.cloneElement(input, { key: 'input' })];
+    let elements
+    if (options.fullWidthLabel) {
+      elements = [labelNode, input]
     } else {
-      elements = [React.cloneElement(input, { key: 'input' }), React.cloneElement(label, { key: 'label' })];
+      elements = [input, labelNode]
     }
-    return options.customWrapper(elements);
+    return options.customWrapper(elements)
   }
 
   return (
-    <div
-      key={`${field.key}_wrapper`}
-      className={clsx('flex items-center', fullWidthLabel ? 'justify-between' : 'justify-start', wrapperClassNames)}
-    >
-      {fullWidthLabel ? label : null}
-      {input}
-      {!fullWidthLabel ? label : null}
+    <div key={`${field.key}_wrapper`} className={clsx(theme.wrapper, options.wrapperClassNames)}>
+      <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
+        {input}
+        {labelNode}
+      </div>
+      {helpTextNode}
     </div>
   )
 }

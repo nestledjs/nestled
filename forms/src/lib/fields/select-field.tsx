@@ -2,10 +2,12 @@ import { Combobox, ComboboxInput, ComboboxButton, ComboboxOptions, ComboboxOptio
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType, SelectOption } from '../form-types'
 import { ClientOnly } from '../utils/client-only'
-import './select-field-style.css'
 import { Controller } from 'react-hook-form'
+import { useFormTheme } from '../theme-context'
 
 export function SelectField({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.Select } | { type: FormFieldType.EnumSelect }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+  const theme = useFormTheme()
+  
   // Support both Select and EnumSelect
   let options: SelectOption[] = []
   if (field.type === FormFieldType.Select) {
@@ -24,7 +26,10 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
       return (
         <input
           type="text"
-          className={clsx('w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10', hasError && '!border-red-600 !focus:border-red-600')}
+          className={clsx(
+            theme.selectField.readOnlyInput,
+            hasError && theme.selectField.error
+          )}
           disabled={true}
           value={selectedOption?.label ?? ''}
         />
@@ -32,7 +37,7 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{selectedOption?.label ?? '—'}</div>
+      <div className={theme.selectField.readOnlyValue}>{selectedOption?.label ?? '—'}</div>
     );
   }
 
@@ -48,19 +53,19 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
             onChange={(selected: SelectOption | null) => onChange(selected?.value ?? null)}
             disabled={field.options.disabled}
           >
-            <div className="relative">
+            <div className={theme.selectField.container}>
               <ComboboxInput
                 className={clsx(
-                  'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10',
-                  hasError && '!border-red-600 !focus:border-red-600',
-                  field.options.disabled && 'bg-gray-100 cursor-not-allowed',
+                  theme.selectField.input,
+                  hasError && theme.selectField.error,
+                  field.options.disabled && theme.selectField.disabled,
                 )}
                 displayValue={(option: SelectOption | null) => option?.label ?? ''}
                 placeholder={field.options.label}
                 disabled={field.options.disabled}
               />
-              <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
-                <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+              <ComboboxButton className={theme.selectField.button}>
+                <svg className={theme.selectField.buttonIcon} viewBox="0 0 20 20" fill="currentColor">
                   <path
                     fillRule="evenodd"
                     d="M10 3a.75.75 0 01.53.22l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 6.53 8.28a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.72 9.28a.75.75 0 011.06 0L10 15.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4a.75.75 0 01-1.06 0l-4-4a.75.75 0 010-1.06z"
@@ -69,25 +74,28 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
                 </svg>
               </ComboboxButton>
             </div>
-            <ComboboxOptions className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
+            <ComboboxOptions className={theme.selectField.dropdown}>
               {options.map((option) => (
                 <ComboboxOption
                   key={option.value}
                   value={option}
                   className={({ active }) =>
                     clsx(
-                      'cursor-pointer select-none relative py-2 pl-10 pr-4',
-                      active ? 'bg-orange-100 text-orange-900' : 'text-gray-900'
+                      theme.selectField.option,
+                      active ? theme.selectField.optionActive : 'text-gray-900'
                     )
                   }
                 >
                   {({ selected }) => (
                     <>
-                      <span className={clsx('block truncate', selected ? 'font-medium' : 'font-normal')}>
+                      <span className={clsx(
+                        theme.selectField.optionLabel,
+                        selected ? theme.selectField.optionSelected : 'font-normal'
+                      )}>
                         {option.label}
                       </span>
                       {selected ? (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-orange-600">
+                        <span className={theme.selectField.optionCheckIcon}>
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                           </svg>

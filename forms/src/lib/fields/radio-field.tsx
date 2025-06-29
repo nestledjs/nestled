@@ -1,14 +1,16 @@
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import { CheckIcon } from '@heroicons/react/24/solid'
 import { useEffect, useState } from 'react'
 import { FormFieldProps, FormField, FormFieldType, RadioOption, RadioFormFieldOptions } from '../form-types'
-import { inputStyle } from '../styles/input-style'
-import './radio-field-style.css'
 import { Controller } from 'react-hook-form'
+import { useFormTheme } from '../theme-context'
+import clsx from 'clsx'
 
 export function RadioField(
-  props: FormFieldProps<Extract<FormField, { type: FormFieldType.Radio }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }
+  props: FormFieldProps<Extract<FormField, { type: FormFieldType.Radio }>> & {
+    formReadOnly?: boolean
+    formReadOnlyStyle?: 'value' | 'disabled'
+  },
 ) {
+  const theme = useFormTheme()
   const [subOptionKey, setSubOptionKey] = useState<string>()
   const [subOptionValue, setSubOptionValue] = useState<string>('')
   const options: RadioFormFieldOptions = props.field?.options
@@ -27,54 +29,77 @@ export function RadioField(
         }
       }
     }
-  }, [options?.defaultValue, options?.defaultSubValue, props.form.setValue, props.field.key, options, options.radioOptions, props.form, props.field])
+  }, [
+    options?.defaultValue,
+    options?.defaultSubValue,
+    props.form.setValue,
+    props.field.key,
+    options,
+    options.radioOptions,
+    props.form,
+    props.field,
+  ])
 
-  const isReadOnly = options.readOnly ?? props.formReadOnly;
-  const readOnlyStyle = options.readOnlyStyle ?? props.formReadOnlyStyle;
-  const value = props.form.getValues(props.field.key);
-  const selectedOption = options.radioOptions?.find((o) => o.value === value);
+  const isReadOnly = options.readOnly ?? props.formReadOnly
+  const readOnlyStyle = options.readOnlyStyle ?? props.formReadOnlyStyle
+  const value = props.form.getValues(props.field.key)
+  const selectedOption = options.radioOptions?.find((o) => o.value === value)
 
-  function getInputClassName(option: RadioOption) {
-    return [
-      options?.fullWidthLabel ? 'check' : '',
-      options?.hidden || option?.hidden ? 'opacity-0' : '',
-      options.radioDirection !== 'row' ? 'ml-4' : '',
-    ].filter(Boolean).join(' ');
+  function getInputClassName(option: RadioOption, isChecked: boolean) {
+    return clsx(
+      theme.radioField.input,
+      options?.fullWidthLabel && theme.radioField.inputFullWidth,
+      isChecked && theme.radioField.inputChecked,
+      (options?.hidden || option?.hidden) && 'opacity-0',
+      options.radioDirection !== 'row' && 'ml-4',
+      options?.disabled && theme.radioField.inputDisabled
+    )
   }
 
   function renderReadOnly() {
     if (readOnlyStyle === 'disabled') {
       return (
-        <div className={`flex w-full ${options.radioDirection !== 'row' ? 'flex-col gap-y-1' : 'flex-row gap-x-4'}`}>
+        <div className={clsx(
+          theme.radioField.container,
+          options.radioDirection !== 'row' ? theme.radioField.containerColumn : theme.radioField.containerRow
+        )}>
           {options?.radioOptions?.map((option: RadioOption) => (
-            <div key={option.key + '_container'} className="flex flex-row items-center">
+            <div key={option.key + '_container'} className={clsx(theme.radioField.radioContainer)}>
               <input
                 type="radio"
                 id={option.key}
                 name={props.field.key}
                 checked={option.value === value}
                 disabled={true}
-                className={inputStyle}
+                className={clsx(
+                  theme.radioField.input, 
+                  theme.radioField.inputDisabled,
+                  option.value === value && theme.radioField.inputChecked
+                )}
                 readOnly
               />
-              <label htmlFor={option.key} className="text-sm ml-2 grow">
+              <label htmlFor={option.key} className={clsx(theme.radioField.label)}>
                 <span className="sr-only">{option.label}</span>
                 {option.label}
               </label>
             </div>
           ))}
         </div>
-      );
+      )
     }
     if (selectedOption) {
       return (
-        <div className="flex flex-row items-center">
-          <CheckIcon className="w-5 h-5 text-green_web" />
+        <div className={clsx(theme.radioField.readOnlySelected)}>
+          {theme.radioField.readOnlyIcon}
           <span className="pl-2">{selectedOption.label}</span>
         </div>
-      );
+      )
     }
-    return <XMarkIcon className="w-5 h-5 text-red-600" />;
+    return (
+      <div className={clsx(theme.radioField.readOnlyUnselected)}>
+        {theme.radioField.readOnlyUnselectedIcon}
+      </div>
+    )
   }
 
   function handleRadioChange(option: RadioOption, onChange: (value: any) => void) {
@@ -101,24 +126,32 @@ export function RadioField(
         control={props.form.control}
         defaultValue={options?.defaultValue}
         render={({ field: { value, onChange } }) => (
-          <div className={`flex w-full ${options.radioDirection !== 'row' ? 'flex-col gap-y-1' : 'flex-row gap-x-4'}`}>
+          <div className={clsx(
+            theme.radioField.container,
+            options.radioDirection !== 'row' ? theme.radioField.containerColumn : theme.radioField.containerRow
+          )}>
             {options?.radioOptions?.map((option: RadioOption) => (
               <div
                 key={option.key + '_container'}
-                className={`${options?.fullWidthLabel ? 'w-100  justify-between' : ''}
-                  ${option.checkedSubOption ? 'grow' : ''}
-                  ${options.radioDirection !== 'row' ? 'flex-col justify-center' : 'flex-row items-center'}
-                  flex
-                `}
+                className={clsx(
+                  theme.radioField.optionContainer,
+                  options?.fullWidthLabel && theme.radioField.optionContainerFullWidth,
+                  option.checkedSubOption && 'grow',
+                  options.radioDirection !== 'row' ? 'flex-col justify-center' : 'flex-row items-center'
+                )}
               >
                 <div
-                  className={`flex grow ${
+                  className={clsx(
+                    'flex grow',
                     options.radioDirection !== 'row' ? 'flex-col justify-center' : 'flex-row items-center'
-                  }`}
+                  )}
                 >
-                  <div className={`flex flex-row items-center ${options.fancyStyle ? 'border rounded-md' : ''}`}>
+                                      <div className={clsx(
+                      theme.radioField.radioContainer,
+                      options.fancyStyle && theme.radioField.optionContainerFancy
+                    )}>
                     {options?.fullWidthLabel ? (
-                      <label htmlFor={option.key} className="text-sm ml-2 grow">
+                                              <label htmlFor={option.key} className={clsx(theme.radioField.labelFullWidth)}>
                         <span className="sr-only">{option.label}</span>
                         {option.label}
                       </label>
@@ -126,7 +159,7 @@ export function RadioField(
                     <input
                       onChange={() => handleRadioChange(option, onChange)}
                       type="radio"
-                      className={getInputClassName(option)}
+                      className={getInputClassName(option, option?.value === value)}
                       id={option.key}
                       name={props.field.key}
                       value={String(option.value ?? '')}
@@ -136,7 +169,10 @@ export function RadioField(
                     {!options?.fullWidthLabel ? (
                       <label
                         htmlFor={option.key}
-                        className={`text-sm grow ${options.radioDirection !== 'row' ? 'p-4' : 'p-1 pl-2'}`}
+                        className={clsx(
+                          theme.radioField.label,
+                          options.radioDirection !== 'row' ? theme.radioField.labelColumn : theme.radioField.labelRow
+                        )}
                       >
                         <span className="sr-only">{option.label}</span>
                         {option.label}
@@ -147,7 +183,9 @@ export function RadioField(
                     <input
                       {...(option?.checkedSubOption?.key ? props.form.register(option.checkedSubOption.key) : {})}
                       name={option?.checkedSubOption?.key ?? ''}
-                      placeholder={options?.radioDirection === 'row' ? option?.checkedSubOption?.label ?? '' : undefined}
+                      placeholder={
+                        options?.radioDirection === 'row' ? option?.checkedSubOption?.label ?? '' : undefined
+                      }
                       disabled={options?.disabled}
                       onChange={(e) => {
                         setSubOptionKey(option?.checkedSubOption?.key ?? '')
@@ -157,7 +195,10 @@ export function RadioField(
                         }
                       }}
                       value={subOptionValue}
-                      className={`grow ${inputStyle} ${props.hasError ? 'border-red-600 focus:border-red-600' : ''}`}
+                      className={clsx(
+                        theme.radioField.subOptionInput,
+                        props.hasError && theme.radioField.subOptionError
+                      )}
                     />
                   ) : null}
                 </div>
@@ -170,7 +211,7 @@ export function RadioField(
   }
 
   if (isReadOnly) {
-    return renderReadOnly();
+    return renderReadOnly()
   }
-  return renderEditable();
+  return renderEditable()
 }

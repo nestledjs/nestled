@@ -1,4 +1,6 @@
+import clsx from 'clsx'
 import React from 'react'
+import { useFormTheme } from '../theme-context'
 import { FormField, FormFieldProps, FormFieldType, CustomFieldRenderProps } from '../form-types'
 
 export function CustomField<T = unknown>({
@@ -7,44 +9,83 @@ export function CustomField<T = unknown>({
   hasError,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.Custom }>> & { hasError?: boolean, formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const isReadOnly = field.options.readOnly ?? formReadOnly;
-  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key) ?? field.options.defaultValue;
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.Custom }>> & {
+  hasError?: boolean
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const theme = useFormTheme().customField
+  const options = field.options
+  const isReadOnly = options.readOnly ?? formReadOnly
+  const effectiveReadOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key) ?? options.defaultValue
 
   if (isReadOnly) {
-    if (readOnlyStyle === 'disabled') {
+    const displayValue = typeof value === 'string' ? value : JSON.stringify(value) || '—'
+    
+    if (effectiveReadOnlyStyle === 'disabled') {
       // Render as disabled input (fallback to string value)
       return (
-        <input
-          type="text"
-          disabled={true}
-          value={typeof value === 'string' ? value : JSON.stringify(value)}
-          className="min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded"
-        />
-      );
+        <div className={clsx(theme.wrapper)}>
+          <input
+            type="text"
+            disabled={true}
+            value={displayValue}
+            className={clsx(theme.readOnlyInput)}
+            readOnly
+          />
+        </div>
+      )
     }
+    
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{typeof value === 'string' ? value : JSON.stringify(value) || '—'}</div>
-    );
+      <div className={clsx(theme.wrapper)}>
+        <div className={clsx(theme.readOnlyValue)}>{displayValue}</div>
+      </div>
+    )
   }
 
   // Create render props for the custom field
   const renderProps: CustomFieldRenderProps<T> = {
     value: value as T,
-    onChange: (value: T) => {
-      form.setValue(field.key, value)
+    onChange: (newValue: T) => {
+      form.setValue(field.key, newValue)
+      // Trigger validation if the field has validation rules
+      form.trigger(field.key)
     },
     field: field,
   }
 
   try {
     // Render the custom field component with the render props
-    return field.options.customField(renderProps)
+    const customFieldContent = options.customField(renderProps)
+    
+    if (options.customWrapper) {
+      return options.customWrapper(customFieldContent)
+    }
+    
+    return (
+      <div className={clsx(theme.wrapper)}>
+        {customFieldContent}
+      </div>
+    )
   } catch (error) {
     console.error('Error rendering custom field:', error)
-    return <div className="text-red-600">Error rendering custom field: {field.key}</div>
+    return (
+      <div className={clsx(theme.wrapper)}>
+        <div className={clsx(theme.errorContainer)}>
+          <div className={clsx(theme.errorText)}>
+            Error rendering custom field: {field.key}
+          </div>
+          {process.env.NODE_ENV === 'development' && (
+            <div className={clsx(theme.errorText, 'mt-1 text-xs')}>
+              {error instanceof Error ? error.message : String(error)}
+            </div>
+          )}
+        </div>
+      </div>
+    )
   }
 }
 

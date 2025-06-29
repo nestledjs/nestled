@@ -3,6 +3,7 @@ import {
   CheckboxOptions,
   ContentOptions,
   CurrencyFieldOptions,
+  CustomFieldOptions,
   DatePickerOptions,
   EmailFieldOptions,
   EnumSelectOptions,
@@ -17,6 +18,7 @@ import {
   SwitchOptions,
   TextAreaOptions,
   UrlFieldOptions,
+  CustomCheckboxOptions,
 } from './form-types'
 
 export class FormFieldClass {
@@ -60,12 +62,20 @@ export class FormFieldClass {
     return this.field(FormFieldType.Checkbox, key, options)
   }
 
+  static customCheckbox(key: string, options: CustomCheckboxOptions = {}): FormField {
+    return this.field(FormFieldType.CustomCheckbox, key, options)
+  }
+
   static switch(key: string, options: SwitchOptions = {}): FormField {
     return this.field(FormFieldType.Switch, key, options)
   }
 
   static datePicker(key: string, options: DatePickerOptions = {}): FormField {
     return this.field(FormFieldType.DatePicker, key, options)
+  }
+
+  static dateTimePicker(key: string, options: DatePickerOptions = {}): FormField {
+    return this.field(FormFieldType.DateTimePicker, key, options)
   }
 
   static select(key: string, options: SelectOptions): FormField {
@@ -86,5 +96,9 @@ export class FormFieldClass {
 
   static content(key: string, options: ContentOptions): FormField {
     return this.field(FormFieldType.Content, key, options)
+  }
+
+  static custom<T = unknown>(key: string, options: CustomFieldOptions<T>): FormField {
+    return this.field(FormFieldType.Custom, key, options)
   }
 }
