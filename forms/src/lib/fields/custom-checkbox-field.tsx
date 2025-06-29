@@ -1,7 +1,8 @@
-import React from 'react';
-import clsx from 'clsx';
-import { FormFieldProps, FormField, FormFieldType, CustomCheckboxOptions } from '../form-types';
-import { useFormTheme } from '../theme-context';
+import clsx from 'clsx'
+import React from 'react'
+import { useFormTheme } from '../theme-context'
+import { Controller } from 'react-hook-form'
+import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 
 export function CustomCheckboxField({
   form,
@@ -9,111 +10,117 @@ export function CustomCheckboxField({
   hasError,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
-  theme: themeProp,
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.CustomCheckbox }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled', theme?: any }) {
-  const contextTheme = useFormTheme();
-  const theme = (themeProp ? themeProp.checkbox : contextTheme.checkbox);
-  const options = field.options as CustomCheckboxOptions;
-  const isReadOnly = options.readOnly ?? formReadOnly;
-  const readOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key);
-  const fullWidthLabel = options.fullWidthLabel;
-  const wrapperClassNames = options.wrapperClassNames;
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.CustomCheckbox }>> & {
+  hasError?: boolean
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const theme = useFormTheme().customCheckbox
+  const options = field.options
+  const isReadOnly = options.readOnly ?? formReadOnly
+  const effectiveReadOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key)
 
-  // Accessible label
-  const label = (
+  const labelNode = options.label ? (
     <label
       htmlFor={field.key}
-      className={clsx(theme.label, fullWidthLabel && theme.fullWidthLabel, 'cursor-pointer select-none')}
+      className={clsx(theme.label, options.fullWidthLabel && theme.fullWidthLabel)}
     >
       {options.label}
       {options.required && <span style={{ color: 'red', marginLeft: 2 }}>*</span>}
     </label>
-  );
+  ) : null
 
-  const helpText = options.helpText ? (
-    <div className={clsx(theme.helpText)}>{options.helpText}</div>
-  ) : null;
+  const helpTextNode = options.helpText ? <div className={clsx(theme.helpText)}>{options.helpText}</div> : null
 
-  const errorText = hasError && options.errorText ? (
-    <div className={clsx(theme.errorText)}>{options.errorText}</div>
-  ) : null;
+  // Determine which icons to use (options override theme defaults)
+  const checkedIcon = options.checkedIcon ?? theme.checkedIcon
+  const uncheckedIcon = options.uncheckedIcon ?? theme.uncheckedIcon
+  const readonlyCheckedIcon = options.readonlyCheckedIcon ?? theme.readonlyCheckedIcon
+  const readonlyUncheckedIcon = options.readonlyUncheckedIcon ?? theme.readonlyUncheckedIcon
 
   if (isReadOnly) {
     return (
-      <div className={clsx(theme.wrapper, wrapperClassNames)}>
-        <span
-          className={clsx(
-            'inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300',
-            value ? 'bg-green-500 border-green-500' : 'bg-white',
-            'mr-2',
-            'opacity-60',
+      <div className={clsx(theme.wrapper, options.wrapperClassNames)}>
+        <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
+          {effectiveReadOnlyStyle === 'disabled' ? (
+            <div className={clsx(theme.checkboxContainer)}>
+              <span
+                className={clsx(
+                  theme.customCheckbox,
+                  hasError && theme.error,
+                  theme.disabled,
+                  value && theme.checked
+                )}
+              >
+                {value ? checkedIcon : uncheckedIcon}
+              </span>
+            </div>
+          ) : value && readonlyCheckedIcon ? (
+            readonlyCheckedIcon
+          ) : !value && readonlyUncheckedIcon ? (
+            readonlyUncheckedIcon
+          ) : (
+            <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
           )}
-        >
-          {value && (
-            <svg
-              className="w-4 h-4 text-white"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={3}
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-            </svg>
-          )}
-        </span>
-        {label}
-        {helpText}
-        {errorText}
+          {labelNode}
+        </div>
+        {helpTextNode}
       </div>
-    );
+    )
   }
 
-  return (
-    <div className={clsx(theme.wrapper, wrapperClassNames)}>
-      <div className={clsx(fullWidthLabel ? 'flex justify-between items-center' : 'flex items-center')}>        
-        <label className="relative inline-flex items-center cursor-pointer select-none">
+  const input = (
+    <Controller
+      name={field.key}
+      control={form.control}
+      defaultValue={options.defaultValue}
+      rules={{ required: options.required }}
+      render={({ field: controllerField }) => (
+        <div className={clsx(theme.checkboxContainer)}>
           <input
             id={field.key}
             type="checkbox"
+            checked={!!controllerField.value}
+            onChange={e => controllerField.onChange(e.target.checked)}
             disabled={options.disabled}
-            defaultChecked={options.defaultValue}
-            {...form.register(field.key, {
-              required: options.required,
-            })}
-            className="peer absolute opacity-0 w-5 h-5 cursor-pointer"
+            className={clsx(theme.hiddenInput)}
             aria-invalid={hasError}
-            aria-checked={value}
+            aria-checked={!!controllerField.value}
             aria-disabled={options.disabled}
           />
           <span
             className={clsx(
-              'inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300 transition-colors',
-              'mr-2',
-              'bg-white',
-              options.disabled && 'opacity-50 cursor-not-allowed',
-              hasError && 'border-red-600',
-              value && 'bg-green-500 border-green-500',
-              'peer-focus:ring-2 peer-focus:ring-green-400 peer-focus:ring-offset-2',
+              theme.customCheckbox,
+              options.disabled && theme.disabled,
+              hasError && theme.error,
+              controllerField.value === true && theme.checked
             )}
           >
-            {value && (
-              <svg
-                className="w-4 h-4 text-white"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={3}
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-              </svg>
-            )}
+            {controllerField.value === true ? checkedIcon : uncheckedIcon}
           </span>
-        </label>
-        {label}
+        </div>
+      )}
+    />
+  )
+
+  if (options.customWrapper) {
+    let elements
+    if (options.fullWidthLabel) {
+      elements = [labelNode, input]
+    } else {
+      elements = [input, labelNode]
+    }
+    return options.customWrapper(elements)
+  }
+
+  return (
+    <div key={`${field.key}_wrapper`} className={clsx(theme.wrapper, options.wrapperClassNames)}>
+      <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
+        {input}
+        {labelNode}
       </div>
-      {helpText}
-      {errorText}
+      {helpTextNode}
     </div>
-  );
+  )
 } 

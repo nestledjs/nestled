@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { useFormTheme } from '../theme-context'
 
 export function PasswordField({
   form,
@@ -11,6 +12,7 @@ export function PasswordField({
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
+  const theme = useFormTheme()
   const isReadOnly = field.options.readOnly ?? formReadOnly
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
   const value = form.getValues(field.key) ?? ''
@@ -21,14 +23,22 @@ export function PasswordField({
         <input
           id={field.key}
           type="password"
-          className={clsx(hasError && '!border-red-600 !focus:border-red-600')}
+          className={clsx(
+            theme.passwordField.input,
+            theme.passwordField.readOnlyInput,
+            hasError && theme.passwordField.error
+          )}
           disabled={true}
           value={value}
         />
       )
     }
     // Render as masked value
-    return <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{'*'.repeat(value.length) || '—'}</div>
+    return (
+      <div className={clsx(theme.passwordField.readOnlyValue)}>
+        {'*'.repeat(value.length) || '—'}
+      </div>
+    )
   }
 
   return (
@@ -39,7 +49,11 @@ export function PasswordField({
       placeholder={field.options.placeholder}
       defaultValue={field.options.defaultValue}
       {...form.register(field.key, { required: field.options.required })}
-      className={clsx(hasError && '!border-red-600 !focus:border-red-600')}
+      className={clsx(
+        theme.passwordField.input,
+        field.options.disabled && theme.passwordField.disabled,
+        hasError && theme.passwordField.error
+      )}
     />
   )
 }

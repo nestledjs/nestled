@@ -1,353 +1,489 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm, Controller } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { MultiSelectField } from './multiselect-field';
-import { useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react'
+import { FormFieldType, SelectOptions } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
+import { expect, within, userEvent, fn } from 'storybook/test'
 
-// Define the shape of our multi-select field
-type MultiSelectFieldType = {
-  key: string;
-  type: FormFieldType.MultiSelect;
-  options: {
-    label?: string;
-    placeholder?: string;
-    required?: boolean;
-    disabled?: boolean;
-    readOnly?: boolean;
-    readOnlyStyle?: 'value' | 'disabled';
-    defaultValue?: Array<{ label: string; value: string | number }>;
-    options: Array<{ label: string; value: string | number }>;
-  };
-};
+// Helper function to generate realistic usage code with memoization
+const codeCache = new Map<string, string>()
 
-type MultiSelectFieldWrapperProps = {
-  field: MultiSelectFieldType;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-};
-
-// Sample options for the multi-select
-const sampleOptions = [
-  { label: 'Option 1', value: '1' },
-  { label: 'Option 2', value: '2' },
-  { label: 'Option 3', value: '3' },
-  { label: 'Option 4', value: '4' },
-  { label: 'Option 5', value: '5' },
-  { label: 'Option 6', value: '6' },
-  { label: 'Option 7', value: '7' },
-  { label: 'Option 8', value: '8' },
-];
-
-// Wrapper component to demonstrate form integration
-const MultiSelectFieldWrapper = ({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: MultiSelectFieldWrapperProps) => {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue || [],
+const generateMultiSelectCode = (args: MultiSelectStoryArgs) => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
+  }
+  
+  const options: string[] = []
+  
+  if (args.label !== 'Select Options') {
+    options.push(`label: '${args.label}'`)
+  }
+  if (args.required) options.push('required: true')
+  if (args.disabled) options.push('disabled: true')
+  if (args.defaultValue && args.defaultValue.length > 0) {
+    const defaultValueStr = JSON.stringify(args.defaultValue)
+    options.push(`defaultValue: ${defaultValueStr}`)
+  }
+  if (args.readOnly) options.push('readOnly: true')
+  if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
+  if (args.placeholder) options.push(`placeholder: '${args.placeholder}'`)
+  
+  // Add options array
+  const optionsArray = `[
+    { label: 'JavaScript', value: 'js' },
+    { label: 'TypeScript', value: 'ts' },
+    { label: 'Python', value: 'py' },
+    { label: 'Java', value: 'java' },
+    { label: 'C++', value: 'cpp' },
+    { label: 'Go', value: 'go' },
+    { label: 'Rust', value: 'rust' },
+    { label: 'Swift', value: 'swift' },
+  ]`
+  options.push(`options: ${optionsArray}`)
+  
+  const formProps: string[] = []
+  if (args.formReadOnly) formProps.push('readOnly={true}')
+  if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  
+  const optionsString = options.length > 0 ? `
+        ${options.join(',\n        ')},` : ''
+  
+  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  
+  const code = `<Form
+  id="example-form"${formPropsString}
+  fields={[
+    {
+      key: 'skills',
+      type: FormFieldType.MultiSelect,
+      options: {${optionsString}
+      },
     },
-  });
+  ]}
+  submit={(values) => console.log(values)}
+/>`
   
-  const value = form.watch(field.key) || [];
-  
-  return (
-    <div className="max-w-md p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="multi-select-field-wrapper">
-          <Controller
-            name={field.key}
-            control={form.control}
-            render={({ field: { onChange, value: fieldValue } }) => (
-              <MultiSelectField 
-                form={{
-                  ...form,
-                  register: form.register,
-                  getValues: (key) => fieldValue,
-                  setValue: (key, val) => {
-                    onChange(val);
-                    return true;
-                  },
-                  control: form.control,
-                } as any}
-                field={field}
-                hasError={hasError}
-                formReadOnly={formReadOnly}
-                formReadOnlyStyle={formReadOnlyStyle}
-              />
-            )}
-          />
-        </div>
-      </div>
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Selected values:</div>
-        <pre className="whitespace-pre-wrap break-words">
-          {JSON.stringify(value, null, 2) || 'No values selected'}
-        </pre>
-        <div className="mt-2 font-medium mb-1">Selected labels:</div>
-        <div className="font-mono">
-          {value && value.length > 0 
-            ? value.map((item: any) => item?.label).join(', ') 
-            : 'No values selected'}
-        </div>
-      </div>
-    </div>
-  );
-};
+  codeCache.set(cacheKey, code)
+  return code
+}
 
-const meta: Meta<typeof MultiSelectFieldWrapper> = {
-  component: MultiSelectFieldWrapper,
+interface MultiSelectStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue: { label: string; value: string }[]
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  placeholder: string
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+}
+
+// Sample options for all stories
+const sampleOptions = [
+  { label: 'JavaScript', value: 'js' },
+  { label: 'TypeScript', value: 'ts' },
+  { label: 'Python', value: 'py' },
+  { label: 'Java', value: 'java' },
+  { label: 'C++', value: 'cpp' },
+  { label: 'Go', value: 'go' },
+  { label: 'Rust', value: 'rust' },
+  { label: 'Swift', value: 'swift' },
+]
+
+/**
+ * The MultiSelectField component allows users to select multiple options from a dropdown list.
+ * It features a searchable interface with selected items displayed as removable tags.
+ * Built with Headless UI for accessibility and smooth interactions.
+ */
+const meta: Meta<MultiSelectStoryArgs> = {
   title: 'Forms/MultiSelectField',
   tags: ['autodocs'],
-  argTypes: {
-    hasError: { control: 'boolean' },
-    formReadOnly: { control: 'boolean' },
-    formReadOnlyStyle: {
-      control: 'select',
-      options: ['value', 'disabled'],
-    },
-  },
-  args: {
-    field: {
-      key: 'multiSelectField',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Select Options',
-        placeholder: 'Select options...',
-        required: false,
-        disabled: false,
-        options: sampleOptions,
+  parameters: {
+    docs: {
+      source: {
+        type: 'code',
+        transform: (code: string, storyContext: any) => {
+          return generateMultiSelectCode(storyContext.args)
+        },
+      },
+      story: {
+        inline: true,
+        autoplay: false,
       },
     },
+  },
+  argTypes: {
+    label: { control: 'text', description: 'Field label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'object', description: 'Default selected options' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
+    },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    placeholder: { control: 'text', description: 'Placeholder text' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
+    formReadOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
+    },
+    showState: { control: 'boolean', description: 'Show live form state?' },
+  },
+  args: {
+    label: 'Select Options',
+    required: false,
+    disabled: false,
+    defaultValue: [],
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'Please select at least one option.',
+    placeholder: 'Search options...',
     formReadOnly: false,
     formReadOnlyStyle: 'value',
+    showState: true,
   },
-};
+  render: (args) => {
+    const field: { key: string; type: FormFieldType.MultiSelect; options: SelectOptions } = {
+      key: 'storybookMultiSelectField',
+      type: FormFieldType.MultiSelect,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        placeholder: args.placeholder,
+        options: sampleOptions,
+      },
+    }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+}
+export default meta
 
-export default meta;
-type Story = StoryObj<typeof MultiSelectFieldWrapper>;
+type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  args: {},
-};
-
-export const WithDefaultValue: Story = {
-  args: {
-    field: {
-      key: 'withDefaultValue',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'With Default Value',
-        placeholder: 'Select options...',
-        required: true,
-        options: sampleOptions,
-        defaultValue: [sampleOptions[0], sampleOptions[2]],
-      },
-    },
+  name: 'Default State',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should have combobox input
+    const input = await canvas.findByRole('combobox')
+    await expect(input).toBeInTheDocument()
+    await expect(input).toBeEnabled()
+    
+    // Should have dropdown button
+    const button = await canvas.findByRole('button')
+    await expect(button).toBeInTheDocument()
   },
-};
+}
 
-export const RequiredField: Story = {
-  args: {
-    field: {
-      key: 'requiredField',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Required Field',
-        placeholder: 'Select at least one option...',
-        required: true,
-        options: sampleOptions,
-      },
-    },
+export const WithDefaultSelections: Story = {
+  name: 'With Default Selections',
+  args: { 
+    defaultValue: [
+      { label: 'JavaScript', value: 'js' },
+      { label: 'TypeScript', value: 'ts' }
+    ],
+    showState: false 
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should show selected items as tags
+    const jsTag = await canvas.findByText('JavaScript')
+    await expect(jsTag).toBeInTheDocument()
+    
+    const tsTag = await canvas.findByText('TypeScript')
+    await expect(tsTag).toBeInTheDocument()
+    
+    // Should have remove buttons for each tag
+    const removeButtons = await canvas.findAllByRole('button')
+    await expect(removeButtons).toHaveLength(3) // 2 remove buttons + 1 dropdown button
+  },
+}
 
-export const WithCustomPlaceholder: Story = {
-  args: {
-    field: {
-      key: 'withCustomPlaceholder',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Custom Placeholder',
-        placeholder: 'Choose your favorite options...',
-        options: sampleOptions,
-      },
-    },
+export const Required: Story = {
+  name: 'Required Field',
+  args: { 
+    required: true,
+    showState: false 
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('combobox')
+    await expect(input).toBeRequired()
+  },
+}
 
 export const Disabled: Story = {
-  args: {
-    field: {
-      key: 'disabledField',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Disabled Field',
-        options: sampleOptions,
-        disabled: true,
-        defaultValue: [sampleOptions[1]],
-      },
-    },
+  name: 'Disabled State',
+  args: { 
+    disabled: true,
+    defaultValue: [{ label: 'Python', value: 'py' }],
+    showState: false 
   },
-};
-
-export const ReadOnlyAsValue: Story = {
-  args: {
-    formReadOnly: true,
-    formReadOnlyStyle: 'value',
-    field: {
-      key: 'readOnlyAsValue',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Read-only (as value)',
-        readOnly: true,
-        options: sampleOptions,
-        defaultValue: [sampleOptions[1], sampleOptions[3]],
-      },
-    },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('combobox')
+    await expect(input).toBeDisabled()
+    
+    // Should show selected item but be disabled
+    const pythonTag = await canvas.findByText('Python')
+    await expect(pythonTag).toBeInTheDocument()
   },
-};
-
-export const ReadOnlyAsDisabled: Story = {
-  args: {
-    formReadOnly: true,
-    formReadOnlyStyle: 'disabled',
-    field: {
-      key: 'readOnlyAsDisabled',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Read-only (as disabled)',
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-        options: sampleOptions,
-        defaultValue: [sampleOptions[0], sampleOptions[2], sampleOptions[4]],
-      },
-    },
-  },
-};
+}
 
 export const WithError: Story = {
-  args: {
+  name: 'Error State',
+  args: { 
     hasError: true,
-    field: {
-      key: 'withError',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'Field with Error',
-        options: sampleOptions,
-        required: true,
-      },
-    },
+    required: true,
+    showState: false 
   },
-};
-
-export const WithManyOptions: Story = {
-  args: {
-    field: {
-      key: 'withManyOptions',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'With Many Options',
-        placeholder: 'Search options...',
-        options: Array.from({ length: 50 }, (_, i) => ({
-          label: `Option ${i + 1}`,
-          value: `${i + 1}`,
-        })),
-      },
-    },
-  },
-};
-
-export const WithValidation: Story = {
-  args: {
-    field: {
-      key: 'withValidation',
-      type: FormFieldType.MultiSelect,
-      options: {
-        label: 'With Validation (2-4 items)',
-        placeholder: 'Select 2-4 options...',
-        required: true,
-        options: sampleOptions,
-      },
-    },
-  },
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue || [],
-      },
-      mode: 'onChange',
-    });
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('combobox')
+    await expect(input).toBeInTheDocument()
     
-    const value = form.watch(args.field.key) || [];
-    const error = form.formState.errors[args.field.key];
-    
-    return (
-      <div className="max-w-md p-4 space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            {args.field.options.label}
-            {args.field.options.required && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          <div className="multi-select-field-wrapper">
-            <Controller
-              name={args.field.key}
-              control={form.control}
-              rules={{
-                validate: (value) => {
-                  if (!value || value.length === 0) return 'At least one option is required';
-                  if (value.length < 2) return 'Please select at least 2 options';
-                  if (value.length > 4) return 'Please select no more than 4 options';
-                  return true;
-                },
-              }}
-              render={({ field: { onChange, value: fieldValue } }) => (
-                <MultiSelectField 
-                  form={{
-                    ...form,
-                    register: form.register,
-                    getValues: (key) => fieldValue,
-                    setValue: (key, val) => {
-                      onChange(val);
-                      return true;
-                    },
-                    control: form.control,
-                  } as any}
-                  field={args.field}
-                  hasError={!!error}
-                  formReadOnly={args.formReadOnly}
-                  formReadOnlyStyle={args.formReadOnlyStyle}
-                />
-              )}
-            />
-          </div>
-          {error && (
-            <p className="mt-1 text-sm text-red-600">
-              {error.message as string}
-            </p>
-          )}
-        </div>
-        <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-          <div className="font-medium mb-1">Selected values ({value?.length || 0}):</div>
-          <pre className="whitespace-pre-wrap break-words">
-            {JSON.stringify(value, null, 2) || 'No values selected'}
-          </pre>
-          <div className="mt-2 font-medium mb-1">Selected labels:</div>
-          <div className="font-mono">
-            {value && value.length > 0 
-              ? value.map((item: any) => item?.label).join(', ') 
-              : 'No values selected'}
-          </div>
-        </div>
-      </div>
-    );
+    // Error styling should be applied (checked via CSS classes in component)
   },
-};
+}
+
+export const SearchAndSelect: Story = {
+  name: 'Search and Select Interaction',
+  args: { 
+    label: 'Programming Languages',
+    placeholder: 'Type to search...',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('combobox')
+    
+    // Click to open dropdown
+    await userEvent.click(input)
+    
+    // Type to search
+    await userEvent.type(input, 'Java')
+    
+    // Should filter options (JavaScript and Java should be visible)
+    const options = await canvas.findAllByRole('option')
+    await expect(options.length).toBeGreaterThan(0)
+    
+    // Click on JavaScript option
+    const jsOption = await canvas.findByText('JavaScript')
+    await userEvent.click(jsOption)
+    
+    // Should show selected item
+    const selectedTag = await canvas.findByText('JavaScript')
+    await expect(selectedTag).toBeInTheDocument()
+  },
+}
+
+export const RemoveSelectedItems: Story = {
+  name: 'Remove Selected Items',
+  args: { 
+    defaultValue: [
+      { label: 'JavaScript', value: 'js' },
+      { label: 'Python', value: 'py' },
+      { label: 'Go', value: 'go' }
+    ],
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should have 3 selected items
+    const jsTag = await canvas.findByText('JavaScript')
+    const pyTag = await canvas.findByText('Python')
+    const goTag = await canvas.findByText('Go')
+    
+    await expect(jsTag).toBeInTheDocument()
+    await expect(pyTag).toBeInTheDocument()
+    await expect(goTag).toBeInTheDocument()
+    
+    // Find and click the remove button for Python (second item)
+    const removeButtons = await canvas.findAllByRole('button')
+    // Filter out the dropdown button (last one)
+    const itemRemoveButtons = removeButtons.slice(0, -1)
+    
+    // Click remove button for Python (index 1)
+    await userEvent.click(itemRemoveButtons[1])
+    
+    // Python should be removed
+    await expect(canvas.queryByText('Python')).not.toBeInTheDocument()
+    
+    // JavaScript and Go should still be there
+    await expect(canvas.getByText('JavaScript')).toBeInTheDocument()
+    await expect(canvas.getByText('Go')).toBeInTheDocument()
+  },
+}
+
+export const ReadOnlyValue: Story = {
+  name: 'Read-Only (Value Style)',
+  args: { 
+    readOnly: true,
+    defaultValue: [
+      { label: 'TypeScript', value: 'ts' },
+      { label: 'Rust', value: 'rust' }
+    ],
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should render as text value
+    const valueDisplay = await canvas.findByText('TypeScript, Rust')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    // Should not have combobox input
+    const inputs = canvas.queryAllByRole('combobox')
+    await expect(inputs).toHaveLength(0)
+  },
+}
+
+export const ReadOnlyDisabled: Story = {
+  name: 'Read-Only (Disabled Style)',
+  args: { 
+    readOnly: true,
+    readOnlyStyle: 'disabled',
+    defaultValue: [
+      { label: 'Swift', value: 'swift' },
+      { label: 'C++', value: 'cpp' }
+    ],
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should render as disabled input
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('Swift, C++')
+  },
+}
+
+export const FormReadOnly: Story = {
+  name: 'Form Read-Only (Value Style)',
+  args: { 
+    formReadOnly: true,
+    defaultValue: [
+      { label: 'Java', value: 'java' },
+      { label: 'Python', value: 'py' }
+    ],
+    readOnly: false, // Explicitly false to test form-level precedence
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const valueDisplay = await canvas.findByText('Java, Python')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    const inputs = canvas.queryAllByRole('combobox')
+    await expect(inputs).toHaveLength(0)
+  },
+}
+
+export const FormReadOnlyDisabled: Story = {
+  name: 'Form Read-Only (Disabled Style)',
+  args: { 
+    formReadOnly: true,
+    formReadOnlyStyle: 'disabled',
+    defaultValue: [{ label: 'Go', value: 'go' }],
+    readOnly: false, // Explicitly false to test form-level precedence
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('Go')
+  },
+}
+
+export const FieldOverridesForm: Story = {
+  name: 'Field Read-Only Overrides Form',
+  args: { 
+    formReadOnly: true,
+    formReadOnlyStyle: 'disabled',
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: [
+      { label: 'Rust', value: 'rust' },
+      { label: 'TypeScript', value: 'ts' }
+    ],
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Field-level 'value' style should override form-level 'disabled' style
+    const valueDisplay = await canvas.findByText('Rust, TypeScript')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    const inputs = canvas.queryAllByRole('combobox')
+    await expect(inputs).toHaveLength(0)
+  },
+}
+
+export const InteractiveExample: Story = {
+  name: 'Interactive Example',
+  args: { 
+    label: 'Select Your Skills',
+    placeholder: 'Search programming languages...',
+    required: true,
+    showState: true 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('combobox')
+    
+    // Click to open dropdown
+    await userEvent.click(input)
+    
+    // Select TypeScript
+    const tsOption = await canvas.findByText('TypeScript')
+    await userEvent.click(tsOption)
+    
+    // Search for Python
+    await userEvent.type(input, 'Py')
+    const pyOption = await canvas.findByText('Python')
+    await userEvent.click(pyOption)
+    
+    // Clear search and select Go
+    await userEvent.clear(input)
+    await userEvent.type(input, 'Go')
+    const goOption = await canvas.findByText('Go')
+    await userEvent.click(goOption)
+    
+    // Should have 3 selected items
+    await expect(canvas.getByText('TypeScript')).toBeInTheDocument()
+    await expect(canvas.getByText('Python')).toBeInTheDocument()
+    await expect(canvas.getByText('Go')).toBeInTheDocument()
+  },
+} 

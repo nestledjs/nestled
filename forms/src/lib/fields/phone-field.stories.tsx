@@ -1,284 +1,313 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { PhoneField } from './phone-field';
-import { useEffect, useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react'
+import { expect, userEvent, within } from 'storybook/test'
+import { FormFieldType } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 
-// Wrapper component to demonstrate form integration
-function PhoneFieldWrapper({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: {
-  field: any;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-}) {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue ?? '',
-    },
-    mode: 'onChange',
-  });
-
-  const [currentValue, setCurrentValue] = useState(form.getValues(field.key));
-  const error = form.formState.errors[field.key];
-
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === field.key) {
-        setCurrentValue(value[name as keyof typeof value]);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form, field.key]);
-
-  return (
-    <div className="max-w-md p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="phone-field-wrapper">
-          <PhoneField 
-            form={{
-              ...form,
-              register: form.register,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              control: form.control,
-            } as any}
-            field={field}
-            hasError={hasError || !!error}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-600">
-            {error.message as string || 'Please enter a valid phone number'}
-          </p>
-        )}
-      </div>
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Current value:</div>
-        <div className="font-mono break-all">
-          {currentValue || 'No value entered'}
-        </div>
-      </div>
-    </div>
-  );
+interface PhoneFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue?: string
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  placeholder: string
+  helpText?: string
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
 }
 
-const meta: Meta<typeof PhoneFieldWrapper> = {
-  component: PhoneFieldWrapper,
+/**
+ * The PhoneField component provides a telephone number input with US phone number validation.
+ * It uses the react-phone-number-input library for validation and supports various display states.
+ */
+const meta: Meta<PhoneFieldStoryArgs> = {
   title: 'Forms/PhoneField',
   tags: ['autodocs'],
   argTypes: {
-    hasError: {
-      control: 'boolean',
-      description: 'Whether the field has an error',
+    label: { control: 'text', description: 'Field label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'text', description: 'Default phone number' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
     },
-    formReadOnly: {
-      control: 'boolean',
-      description: 'Whether the form is in read-only mode',
-    },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    placeholder: { control: 'text', description: 'Placeholder text' },
+    helpText: { control: 'text', description: 'Help text' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
     formReadOnlyStyle: {
-      control: {
-        type: 'select',
-        options: ['value', 'disabled'],
-      },
-      description: 'How to display the field in read-only mode',
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
     },
+    showState: { control: 'boolean', description: 'Show live form state?' },
   },
   args: {
+    label: 'Phone Number',
+    required: false,
+    disabled: false,
+    defaultValue: undefined,
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'Please enter a valid phone number.',
+    placeholder: 'Enter your phone number...',
+    helpText: undefined,
     formReadOnly: false,
     formReadOnlyStyle: 'value',
+    showState: true,
   },
-};
+  render: (args) => {
+    const field = {
+      key: 'storybookPhoneField',
+      type: FormFieldType.Phone as const,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        placeholder: args.placeholder,
+        helpText: args.helpText,
+      },
+    }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+}
 
-export default meta;
-type Story = StoryObj<typeof PhoneFieldWrapper>;
+export default meta
+type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        placeholder: '(555) 123-4567',
-      },
-    },
+  name: 'Default State',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number')
+    
+    // Verify it's a tel input
+    await expect(input).toHaveAttribute('type', 'tel')
+    await expect(input).toBeEnabled()
+    
+    // Test phone input functionality
+    await userEvent.type(input, '(555) 123-4567')
+    await expect(input).toHaveValue('(555) 123-4567')
   },
-};
+}
 
 export const WithDefaultValue: Story = {
   args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        placeholder: '(555) 123-4567',
-        defaultValue: '+14155552671',
-      },
-    },
+    defaultValue: '(555) 987-6543',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number')
+    
+    // Verify default value is set
+    await expect(input).toHaveValue('(555) 987-6543')
+    
+    // Test modifying the value
+    await userEvent.clear(input)
+    await userEvent.type(input, '(555) 111-2222')
+    await expect(input).toHaveValue('(555) 111-2222')
+  },
+}
 
 export const Required: Story = {
   args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        placeholder: '(555) 123-4567',
-        required: true,
-      },
-    },
+    required: true,
   },
-};
-
-export const WithError: Story = {
-  args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        placeholder: '(555) 123-4567',
-        required: true,
-      },
-    },
-    hasError: true,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number *')
+    
+    // Verify required attribute
+    await expect(input).toBeRequired()
+    await expect(input).toHaveAttribute('type', 'tel')
+    
+    // Test input functionality
+    await userEvent.type(input, '555-123-4567')
+    await expect(input).toHaveValue('555-123-4567')
   },
-};
+}
 
 export const Disabled: Story = {
   args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        placeholder: '(555) 123-4567',
-        disabled: true,
-        defaultValue: '+14155552671',
-      },
-    },
+    disabled: true,
+    defaultValue: '(555) 444-5555',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number')
+    
+    // Verify disabled state
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('(555) 444-5555')
+    
+    // Verify input cannot be modified
+    await userEvent.click(input)
+    await userEvent.type(input, '123')
+    await expect(input).toHaveValue('(555) 444-5555') // Value should remain unchanged
+  },
+}
+
+export const Error: Story = {
+  args: {
+    required: true,
+    hasError: true,
+    defaultValue: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number *')
+    
+    // Test error styling is applied
+    await expect(input).toBeRequired()
+    
+    // Type an invalid phone number to trigger validation error
+    await userEvent.type(input, '123')
+    
+    // Check for error message
+    const errorMessage = canvas.getByText('* Phone number is invalid')
+    await expect(errorMessage).toBeInTheDocument()
+  },
+}
 
 export const ReadOnlyValue: Story = {
   args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        readOnly: true,
-        readOnlyStyle: 'value',
-        defaultValue: '+14155552671',
-      },
-    },
-    formReadOnly: true,
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: '(555) 777-8888',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should display as plain text, not an input
+    const valueDisplay = canvas.getByText('(555) 777-8888')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    // Should not have a textbox input
+    const inputs = canvas.queryAllByRole('textbox')
+    await expect(inputs).toHaveLength(0)
+  },
+}
 
 export const ReadOnlyDisabled: Story = {
   args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number',
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-        defaultValue: '+14155552671',
-      },
-    },
-    formReadOnly: true,
+    readOnly: true,
+    readOnlyStyle: 'disabled',
+    defaultValue: '(555) 999-0000',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number')
+    
+    // Should display as disabled input
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('(555) 999-0000')
+  },
+}
 
-export const WithValidation: Story = {
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue ?? '',
-      },
-      mode: 'onChange',
-    });
-    
-    const value = form.watch(args.field.key);
-    const error = form.formState.errors[args.field.key];
-    
-    return (
-      <div className="max-w-md p-4 space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            {args.field.options.label}
-            {args.field.options.required && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          <div className="phone-field-wrapper">
-            <PhoneField 
-              form={{
-                ...form,
-                register: form.register,
-                getValues: form.getValues,
-                setValue: form.setValue,
-                control: form.control,
-              } as any}
-              field={{
-                ...args.field,
-                options: {
-                  ...args.field.options,
-                  // Custom validation message
-                  validate: (value: string) => {
-                    if (!value) return 'Phone number is required';
-                    if (value.length < 10) return 'Please enter a valid phone number';
-                    return true;
-                  },
-                },
-              }}
-              hasError={!!error}
-              formReadOnly={args.formReadOnly}
-              formReadOnlyStyle={args.formReadOnlyStyle}
-            />
-          </div>
-          {error && (
-            <p className="mt-1 text-sm text-red-600">
-              {error.message as string}
-            </p>
-          )}
-        </div>
-        <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-          <div className="font-medium mb-1">Current value:</div>
-          <div className="font-mono break-all">
-            {value || 'No value entered'}
-          </div>
-          <div className="mt-2 text-xs text-gray-500">
-            {value && `Length: ${value.length} characters`}
-          </div>
-        </div>
-      </div>
-    );
-  },
+export const WithHelpText: Story = {
   args: {
-    field: {
-      key: 'phone',
-      type: FormFieldType.Phone,
-      options: {
-        label: 'Phone Number with Validation',
-        placeholder: '(555) 123-4567',
-        required: true,
-      },
-    },
+    helpText: 'Enter your phone number including area code',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const helpText = canvas.getByText('Enter your phone number including area code')
+    await expect(helpText).toBeInTheDocument()
+    
+    const input = canvas.getByLabelText('Phone Number')
+    await userEvent.type(input, '(555) 123-4567')
+    await expect(input).toHaveValue('(555) 123-4567')
+  },
+}
+
+export const FormReadOnlyValue: Story = {
+  args: {
+    formReadOnly: true,
+    formReadOnlyStyle: 'value',
+    defaultValue: '(555) 111-0000',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should display as plain text due to form-level read-only
+    const valueDisplay = canvas.getByText('(555) 111-0000')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    const inputs = canvas.queryAllByRole('textbox')
+    await expect(inputs).toHaveLength(0)
+  },
+}
+
+export const FormReadOnlyDisabled: Story = {
+  args: {
+    formReadOnly: true,
+    formReadOnlyStyle: 'disabled',
+    defaultValue: '(555) 222-0000',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number')
+    
+    // Should display as disabled input due to form-level read-only
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('(555) 222-0000')
+  },
+}
+
+export const ValidationDemo: Story = {
+  args: {
+    helpText: 'Try entering valid and invalid phone numbers to see validation',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Phone Number')
+    
+    // Test valid phone number formats
+    await userEvent.clear(input)
+    await userEvent.type(input, '(555) 123-4567')
+    await expect(input).toHaveValue('(555) 123-4567')
+    
+    await userEvent.clear(input)
+    await userEvent.type(input, '555-123-4567')
+    await expect(input).toHaveValue('555-123-4567')
+    
+    await userEvent.clear(input)
+    await userEvent.type(input, '555.123.4567')
+    await expect(input).toHaveValue('555.123.4567')
+  },
+}
+
+export const EmptyState: Story = {
+  args: {
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should show the empty state indicator
+    const emptyIndicator = canvas.getByText('—')
+    await expect(emptyIndicator).toBeInTheDocument()
+  },
+} 

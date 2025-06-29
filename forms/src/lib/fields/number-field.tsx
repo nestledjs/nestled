@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { useFormTheme } from '../theme-context'
 
 export function NumberField({
   form,
@@ -11,6 +12,7 @@ export function NumberField({
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
+  const theme = useFormTheme()
   const isReadOnly = field.options.readOnly ?? formReadOnly
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
   const value = form.getValues(field.key) ?? ''
@@ -21,14 +23,25 @@ export function NumberField({
         <input
           id={field.key}
           type="number"
-          className={clsx(hasError && '!border-red-600 !focus:border-red-600')}
+          className={clsx(
+            theme.numberField.input,
+            theme.numberField.readOnlyInput,
+            hasError && theme.numberField.error
+          )}
           disabled={true}
           value={value}
+          min={field.options.min}
+          max={field.options.max}
+          step={field.options.step}
         />
       )
     }
     // Render as plain value
-    return <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
+    return (
+      <div className={clsx(theme.numberField.readOnlyValue)}>
+        {value ?? '—'}
+      </div>
+    )
   }
 
   return (
@@ -38,8 +51,15 @@ export function NumberField({
       disabled={field.options.disabled}
       placeholder={field.options.placeholder}
       defaultValue={field.options.defaultValue}
+      min={field.options.min}
+      max={field.options.max}
+      step={field.options.step}
       {...form.register(field.key, { required: field.options.required, valueAsNumber: true })}
-      className={clsx(hasError && '!border-red-600 !focus:border-red-600')}
+      className={clsx(
+        theme.numberField.input,
+        field.options.disabled && theme.numberField.disabled,
+        hasError && theme.numberField.error
+      )}
     />
   )
 }

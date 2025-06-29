@@ -4,7 +4,8 @@ import { FormContext } from '../src/lib/form-context'
 import { FormConfigContext } from '../src/lib/form-config-context'
 import { ThemeContext } from '../src/lib/theme-context'
 import { RenderFormField } from '../src/lib/render-form-field'
-import { FormField, FormTheme } from '@nestledjs/forms'
+import { FormField } from '../src/lib/form-types'
+import { FormTheme } from '../src/lib/form-theme'
 import { createFinalTheme } from '../src/lib/utils/resolve-theme'
 
 interface StorybookFieldWrapperProps {

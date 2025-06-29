@@ -1,355 +1,402 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { RadioField } from './radio-field';
-import { useEffect, useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react'
+import { expect, userEvent, within } from 'storybook/test'
+import { FormFieldType } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 
-// Wrapper component to demonstrate form integration
-function RadioFieldWrapper({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: {
-  field: any;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-}) {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue,
-      ...(field.options?.radioOptions?.reduce((acc: any, option: any) => {
-        if (option.checkedSubOption?.key && field.options?.defaultSubValue) {
-          acc[option.checkedSubOption.key] = field.options?.defaultSubValue;
-        }
-        return acc;
-      }, {}) || {}),
-    },
-    mode: 'onChange',
-  });
-
-  const [currentValue, setCurrentValue] = useState(form.getValues(field.key));
-  const error = form.formState.errors[field.key];
-
-  useEffect(() => {
-    const subscription = form.watch((value, { name }) => {
-      if (name === field.key) {
-        setCurrentValue(value[name as keyof typeof value]);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, [form, field.key]);
-
-  const selectedOption = field.options.radioOptions?.find((o: any) => o.value === currentValue);
-  const selectedSubOptionKey = selectedOption?.checkedSubOption?.key;
-  const subOptionValue = selectedSubOptionKey ? form.getValues(selectedSubOptionKey) : '';
-
-  return (
-    <div className="max-w-2xl p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="radio-field-wrapper">
-          <RadioField 
-            form={{
-              ...form,
-              register: form.register,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              control: form.control,
-            } as any}
-            field={field}
-            hasError={hasError || !!error}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-600">
-            {error.message as string || 'This field is required'}
-          </p>
-        )}
-      </div>
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Current selection:</div>
-        <div className="font-mono break-all">
-          {selectedOption ? selectedOption.label : 'No selection'}
-        </div>
-        {selectedSubOptionKey && subOptionValue && (
-          <>
-            <div className="font-medium mt-2 mb-1">Sub-option value:</div>
-            <div className="font-mono break-all">{subOptionValue}</div>
-          </>
-        )}
-      </div>
-    </div>
-  );
+interface RadioFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue?: string
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  helpText?: string
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+  radioDirection: 'row' | 'column'
+  fullWidthLabel: boolean
+  fancyStyle: boolean
 }
 
-const meta: Meta<typeof RadioFieldWrapper> = {
-  component: RadioFieldWrapper,
+/**
+ * The RadioField component provides radio button selection with multiple options.
+ * It supports various layouts, styling options, and sub-options for complex forms.
+ */
+const meta: Meta<RadioFieldStoryArgs> = {
   title: 'Forms/RadioField',
   tags: ['autodocs'],
   argTypes: {
-    hasError: {
-      control: 'boolean',
-      description: 'Whether the field has an error',
+    label: { control: 'text', description: 'Field label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'text', description: 'Default selected value' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
     },
-    formReadOnly: {
-      control: 'boolean',
-      description: 'Whether the form is in read-only mode',
-    },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    helpText: { control: 'text', description: 'Help text' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
     formReadOnlyStyle: {
-      control: {
-        type: 'select',
-        options: ['value', 'disabled'],
-      },
-      description: 'How to display the field in read-only mode',
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
     },
+    showState: { control: 'boolean', description: 'Show live form state?' },
+    radioDirection: {
+      control: 'radio',
+      options: ['row', 'column'],
+      description: 'Layout direction',
+    },
+    fullWidthLabel: { control: 'boolean', description: 'Full width labels?' },
+    fancyStyle: { control: 'boolean', description: 'Fancy border style?' },
   },
   args: {
+    label: 'Choose an option',
+    required: false,
+    disabled: false,
+    defaultValue: undefined,
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'Please select a valid option.',
+    helpText: undefined,
     formReadOnly: false,
     formReadOnlyStyle: 'value',
+    showState: true,
+    radioDirection: 'column',
+    fullWidthLabel: false,
+    fancyStyle: false,
   },
-};
-
-export default meta;
-type Story = StoryObj<typeof RadioFieldWrapper>;
-
-const genderOptions = [
-  { key: 'male', value: 'male', label: 'Male' },
-  { key: 'female', value: 'female', label: 'Female' },
-  { key: 'other', value: 'other', label: 'Other' },
-  { key: 'prefer-not-to-say', value: 'prefer-not-to-say', label: 'Prefer not to say' },
-];
-
-const notificationOptions = [
-  { 
-    key: 'email', 
-    value: 'email', 
-    label: 'Email',
-    checkedSubOption: {
-      key: 'emailAddress',
-      label: 'Email Address'
+  render: (args) => {
+    const field = {
+      key: 'storybookRadioField',
+      type: FormFieldType.Radio as const,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        helpText: args.helpText,
+        radioDirection: args.radioDirection,
+        fullWidthLabel: args.fullWidthLabel,
+        fancyStyle: args.fancyStyle,
+        radioOptions: [
+          { key: 'option1', label: 'Option 1', value: 'opt1' },
+          { key: 'option2', label: 'Option 2', value: 'opt2' },
+          { key: 'option3', label: 'Option 3', value: 'opt3' },
+          { key: 'option4', label: 'Other', value: 'other', checkedSubOption: { key: 'otherText', label: 'Please specify' } },
+        ],
+      },
     }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
   },
-  { 
-    key: 'sms', 
-    value: 'sms', 
-    label: 'SMS',
-    checkedSubOption: {
-      key: 'phoneNumber',
-      label: 'Phone Number'
-    }
-  },
-  { 
-    key: 'none', 
-    value: 'none', 
-    label: 'No notifications'
-  },
-];
+}
+
+export default meta
+type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'row',
-      },
-    },
+  name: 'Default State (Column)',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Verify radio inputs are present
+    const option1 = canvas.getByLabelText('Option 1')
+    const option2 = canvas.getByLabelText('Option 2')
+    const option3 = canvas.getByLabelText('Option 3')
+    
+    await expect(option1).toHaveAttribute('type', 'radio')
+    await expect(option1).toBeEnabled()
+    await expect(option2).toBeEnabled()
+    await expect(option3).toBeEnabled()
+    
+    // Test radio selection
+    await userEvent.click(option2)
+    await expect(option2).toBeChecked()
+    await expect(option1).not.toBeChecked()
+    await expect(option3).not.toBeChecked()
   },
-};
+}
 
-export const VerticalLayout: Story = {
+export const RowLayout: Story = {
   args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'column',
-      },
-    },
+    radioDirection: 'row',
+    label: 'Choose an option (Row Layout)',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    const option2 = canvas.getByLabelText('Option 2')
+    
+    // Test selection in row layout
+    await userEvent.click(option1)
+    await expect(option1).toBeChecked()
+    
+    await userEvent.click(option2)
+    await expect(option2).toBeChecked()
+    await expect(option1).not.toBeChecked()
+  },
+}
 
 export const WithDefaultValue: Story = {
   args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'row',
-        defaultValue: 'female',
-      },
-    },
+    defaultValue: 'opt2',
+    label: 'Pre-selected Option',
   },
-};
-
-export const RequiredField: Story = {
-  args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'row',
-        required: true,
-      },
-    },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Verify default selection
+    const option2 = canvas.getByLabelText('Option 2')
+    await expect(option2).toBeChecked()
   },
-};
+}
 
-export const WithErrorState: Story = {
+export const Required: Story = {
   args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'row',
-        required: true,
-      },
-    },
+    required: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    await expect(option1).toBeRequired()
+    
+    // Test selection
+    await userEvent.click(option1)
+    await expect(option1).toBeChecked()
+  },
+}
+
+export const Disabled: Story = {
+  args: {
+    disabled: true,
+    defaultValue: 'opt1',
+    label: 'Disabled Radio Group',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    const option2 = canvas.getByLabelText('Option 2')
+    
+    // Verify disabled state
+    await expect(option1).toBeDisabled()
+    await expect(option2).toBeDisabled()
+    await expect(option1).toBeChecked() // Should maintain default value
+    
+    // Verify clicking doesn't change selection
+    await userEvent.click(option2)
+    await expect(option1).toBeChecked() // Should remain selected
+    await expect(option2).not.toBeChecked()
+  },
+}
+
+export const WithSubOption: Story = {
+  args: {
+    defaultValue: 'other',
+    label: 'Radio with Sub-option',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Select the "Other" option which has a sub-option
+    const otherOption = canvas.getByLabelText('Other')
+    await userEvent.click(otherOption)
+    await expect(otherOption).toBeChecked()
+    
+    // Verify sub-option input appears
+    const subInput = canvas.getByPlaceholderText('Please specify')
+    await expect(subInput).toBeInTheDocument()
+    
+    // Test typing in sub-option
+    await userEvent.type(subInput, 'Custom option')
+    await expect(subInput).toHaveValue('Custom option')
+  },
+}
+
+export const FullWidthLabels: Story = {
+  args: {
+    fullWidthLabel: true,
+    label: 'Full Width Labels',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    await userEvent.click(option1)
+    await expect(option1).toBeChecked()
+  },
+}
+
+export const FancyStyle: Story = {
+  args: {
+    fancyStyle: true,
+    label: 'Fancy Bordered Style',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    await userEvent.click(option1)
+    await expect(option1).toBeChecked()
+  },
+}
+
+export const Error: Story = {
+  args: {
+    required: true,
     hasError: true,
+    label: 'Radio Group (Error State)',
   },
-};
-
-export const WithSubOptions: Story = {
-  args: {
-    field: {
-      key: 'notificationPreference',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'How would you like to be notified?',
-        radioOptions: notificationOptions,
-        radioDirection: 'column',
-        defaultValue: 'email',
-        defaultSubValue: 'user@example.com',
-      },
-    },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    await expect(option1).toBeRequired()
+    
+    // Test that selection still works in error state
+    await userEvent.click(option1)
+    await expect(option1).toBeChecked()
   },
-};
+}
 
 export const ReadOnlyValue: Story = {
   args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'row',
-        defaultValue: 'other',
-        readOnly: true,
-        readOnlyStyle: 'value',
-      },
-    },
-    formReadOnly: true,
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: 'opt2',
+    label: 'Read-only (Value Style)',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should display selected value with checkmark icon
+    const selectedDisplay = canvas.getByText('Option 2')
+    await expect(selectedDisplay).toBeInTheDocument()
+    
+    // Should not have radio inputs
+    const radioInputs = canvas.queryAllByRole('radio')
+    await expect(radioInputs).toHaveLength(0)
+  },
+}
 
 export const ReadOnlyDisabled: Story = {
   args: {
-    field: {
-      key: 'gender',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Gender',
-        radioOptions: genderOptions,
-        radioDirection: 'row',
-        defaultValue: 'female',
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-      },
-    },
-    formReadOnly: true,
+    readOnly: true,
+    readOnlyStyle: 'disabled',
+    defaultValue: 'opt3',
+    label: 'Read-only (Disabled Style)',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should display disabled radio inputs
+    const radioInputs = canvas.getAllByRole('radio')
+    await expect(radioInputs.length).toBeGreaterThan(0)
+    
+    // All should be disabled
+    for (const radio of radioInputs) {
+      await expect(radio).toBeDisabled()
+    }
+    
+    // Option 3 should be checked
+    const option3 = canvas.getByLabelText('Option 3')
+    await expect(option3).toBeChecked()
+  },
+}
 
-export const WithValidation: Story = {
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue,
-      },
-      mode: 'onChange',
-    });
-    
-    const value = form.watch(args.field.key);
-    const error = form.formState.errors[args.field.key];
-    
-    return (
-      <div className="max-w-2xl p-4 space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            {args.field.options.label}
-            {args.field.options.required && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          <div className="radio-field-wrapper">
-            <RadioField 
-              form={{
-                ...form,
-                register: form.register,
-                getValues: form.getValues,
-                setValue: form.setValue,
-                control: form.control,
-              } as any}
-              field={{
-                ...args.field,
-                options: {
-                  ...args.field.options,
-                  validate: (value: any) => {
-                    if (!value) return 'Please select an option';
-                    return true;
-                  },
-                },
-              }}
-              hasError={!!error}
-              formReadOnly={args.formReadOnly}
-              formReadOnlyStyle={args.formReadOnlyStyle}
-            />
-          </div>
-          {error && (
-            <p className="mt-1 text-sm text-red-600">
-              {error.message as string}
-            </p>
-          )}
-        </div>
-        <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-          <div className="font-medium mb-1">Current selection:</div>
-          <div className="font-mono break-all">
-            {value || 'No selection'}
-          </div>
-        </div>
-      </div>
-    );
-  },
+export const WithHelpText: Story = {
   args: {
-    field: {
-      key: 'terms',
-      type: FormFieldType.Radio,
-      options: {
-        label: 'Do you accept the terms and conditions?',
-        radioOptions: [
-          { key: 'accept', value: 'accept', label: 'Yes, I accept' },
-          { key: 'decline', value: 'decline', label: 'No, I decline' },
-        ],
-        radioDirection: 'column',
-        required: true,
-      },
-    },
+    helpText: 'Select the option that best describes your situation',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const helpText = canvas.getByText('Select the option that best describes your situation')
+    await expect(helpText).toBeInTheDocument()
+    
+    const option1 = canvas.getByLabelText('Option 1')
+    await userEvent.click(option1)
+    await expect(option1).toBeChecked()
+  },
+}
+
+export const FormReadOnlyValue: Story = {
+  args: {
+    formReadOnly: true,
+    formReadOnlyStyle: 'value',
+    defaultValue: 'opt1',
+    label: 'Form Read-only (Value)',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should display selected value due to form-level read-only
+    const selectedDisplay = canvas.getByText('Option 1')
+    await expect(selectedDisplay).toBeInTheDocument()
+    
+    const radioInputs = canvas.queryAllByRole('radio')
+    await expect(radioInputs).toHaveLength(0)
+  },
+}
+
+export const FormReadOnlyDisabled: Story = {
+  args: {
+    formReadOnly: true,
+    formReadOnlyStyle: 'disabled',
+    defaultValue: 'opt2',
+    label: 'Form Read-only (Disabled)',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should display disabled radio inputs due to form-level read-only
+    const radioInputs = canvas.getAllByRole('radio')
+    await expect(radioInputs.length).toBeGreaterThan(0)
+    
+    for (const radio of radioInputs) {
+      await expect(radio).toBeDisabled()
+    }
+    
+    const option2 = canvas.getByLabelText('Option 2')
+    await expect(option2).toBeChecked()
+  },
+}
+
+export const EmptyState: Story = {
+  args: {
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: undefined,
+    label: 'No Selection Made',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should show the unselected state icon (X mark)
+    // The component should render the readOnlyUnselectedIcon
+    const container = canvas.getByText('No Selection Made').closest('div')
+    await expect(container).toBeInTheDocument()
+  },
+} 

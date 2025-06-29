@@ -6,6 +6,7 @@ import clsx from 'clsx'
 import { SearchSelectOption, FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useDebounce } from '../utils/debounce'
 import { ClientOnly } from '../utils/client-only'
+import { useFormTheme } from '../theme-context'
 
 function defaultOptionsMap<TDataItem extends { id: string; name?: string; firstName?: string; lastName?: string }>(
   items: TDataItem[],
@@ -19,6 +20,7 @@ function defaultOptionsMap<TDataItem extends { id: string; name?: string; firstN
 export function SearchSelectField<
   TDataItem extends { id: string; name?: string; firstName?: string; lastName?: string }
 >({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelect }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+  const theme = useFormTheme()
   const { data, loading: apolloLoading, refetch } = useQuery(field.options.document)
   const [searchTerm, setSearchTerm] = useState('')
   const [options, setOptions] = useState<SearchSelectOption[]>([])
@@ -58,7 +60,10 @@ export function SearchSelectField<
       return (
         <input
           type="text"
-          className={clsx('w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10', hasError && '!border-red-600 !focus:border-red-600')}
+          className={clsx(
+            theme.searchSelectField.readOnlyInput,
+            hasError && theme.searchSelectField.error
+          )}
           disabled={true}
           value={selectedOption?.label ?? ''}
         />
@@ -66,7 +71,9 @@ export function SearchSelectField<
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{selectedOption?.label ?? '—'}</div>
+      <div className={theme.searchSelectField.readOnlyValue}>
+        {selectedOption?.label ?? '—'}
+      </div>
     );
   }
 
@@ -79,17 +86,20 @@ export function SearchSelectField<
         rules={{ required: field.options.required }}
         render={({ field: { onChange, value, onBlur } }) => (
           <Combobox<SearchSelectOption | null> value={value} onChange={onChange} nullable>
-            <div className="relative">
+            <div className={theme.searchSelectField.container}>
               <ComboboxInput
-                className={clsx('w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10', hasError && '!border-red-600 !focus:border-red-600')}
+                className={clsx(
+                  theme.searchSelectField.input,
+                  hasError && theme.searchSelectField.error
+                )}
                 onChange={(event) => setSearchTerm(event.target.value)}
                 onBlur={onBlur}
                 displayValue={(option: SearchSelectOption | null) => option?.label ?? ''}
                 placeholder={field.options.label}
               />
-              <ComboboxButton className="absolute inset-y-0 right-0 flex items-center pr-2">
+              <ComboboxButton className={theme.searchSelectField.button}>
                 <svg
-                  className="h-5 w-5 text-gray-400"
+                  className={theme.searchSelectField.buttonIcon}
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
@@ -102,25 +112,29 @@ export function SearchSelectField<
                 </svg>
               </ComboboxButton>
             </div>
-            <ComboboxOptions className="absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none sm:text-sm">
-              {apolloLoading && <div className="p-2 text-sm text-gray-500">Loading...</div>}
+            <ComboboxOptions className={theme.searchSelectField.dropdown}>
+              {apolloLoading && <div className={theme.searchSelectField.loadingText}>Loading...</div>}
               {options.map((option) => (
                 <ComboboxOption
                   key={option.value}
                   value={option}
                   className={({ active }) =>
-                    `cursor-default select-none relative py-2 pl-10 pr-4 ${
-                      active ? 'text-white bg-orange-600' : 'text-gray-900'
-                    }`
+                    clsx(
+                      theme.searchSelectField.option,
+                      active ? theme.searchSelectField.optionActive : 'text-gray-900'
+                    )
                   }
                 >
                   {({ selected }) => (
                     <>
-                      <span className={`block truncate ${selected ? 'font-medium' : 'font-normal'}`}>
+                      <span className={clsx(
+                        theme.searchSelectField.optionLabel,
+                        selected ? theme.searchSelectField.optionSelected : 'font-normal'
+                      )}>
                         {option.label}
                       </span>
                       {selected && (
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-orange-600">
+                        <span className={theme.searchSelectField.optionCheckIcon}>
                           <svg
                             className="h-5 w-5"
                             xmlns="http://www.w3.org/2000/svg"

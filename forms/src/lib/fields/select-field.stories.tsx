@@ -1,350 +1,413 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm } from 'react-hook-form';
-import { useState } from 'react';
-import { FormFieldType, FormField } from '../form-types';
-import { SelectField } from './select-field';
+import type { Meta, StoryObj } from '@storybook/react'
+import { expect, userEvent, within } from 'storybook/test'
+import { FormFieldType } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 
-// Simple button component for the form
-const Button = ({ 
-  type = 'button', 
-  variant = 'primary', 
-  onClick, 
-  children, 
-  disabled = false 
-}: { 
-  type?: 'button' | 'submit' | 'reset';
-  variant?: 'primary' | 'secondary';
-  onClick?: () => void;
-  children: React.ReactNode;
-  disabled?: boolean;
-}) => (
-  <button
-    type={type}
-    onClick={onClick}
-    disabled={disabled}
-    className={`px-4 py-2 rounded-md text-sm font-medium ${
-      variant === 'primary' 
-        ? 'bg-orange-600 text-white hover:bg-orange-700 disabled:bg-orange-300' 
-        : 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 disabled:text-gray-400'
-    }`}
-  >
-    {children}
-  </button>
-);
-
-// Define the type for our field options
-interface SelectFieldOptions {
-  label: string;
-  placeholder?: string;
-  options: Array<{ value: string; label: string }>;
-  required?: boolean;
-  disabled?: boolean;
-  readOnly?: boolean;
-  readOnlyStyle?: 'value' | 'disabled';
-  defaultValue?: string | null;
+interface SelectFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue?: string
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  helpText?: string
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+  // Select-specific options
+  fieldType: 'select' | 'enum'
+  customOptions: string
 }
 
-// Define the type for our field
-interface SelectFieldConfig extends Omit<FormField, 'options' | 'type'> {
-  type: FormFieldType.Select | FormFieldType.EnumSelect;
-  options: SelectFieldOptions;
-}
-
-// Wrapper component to demonstrate form integration
-function SelectFieldWrapper({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: {
-  field: SelectFieldConfig;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-}) {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue || null,
-    },
-    mode: 'onChange',
-  });
-
-  const value = form.watch(field.key);
-  const selectedOption = field.options.options?.find((opt) => opt.value === value);
-  const error = form.formState.errors[field.key];
-
-  return (
-    <div className="max-w-md space-y-6 p-4">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="select-field-wrapper">
-          <SelectField 
-            form={{
-              ...form,
-              control: form.control,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              register: form.register,
-              formState: form.formState,
-            } as any}
-            field={field}
-            hasError={hasError || !!error}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-600">
-            {error.message as string || 'This field is required'}
-          </p>
-        )}
-      </div>
-      
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Current Selection:</div>
-        <div className="font-mono bg-white p-2 rounded border border-gray-200">
-          {JSON.stringify({
-            value: value,
-            label: selectedOption?.label || 'None selected'
-          }, null, 2)}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const meta: Meta<typeof SelectFieldWrapper> = {
-  component: SelectFieldWrapper,
+/**
+ * The SelectField component provides a dropdown selection interface using Headless UI Combobox.
+ * It supports both regular Select fields with custom options and EnumSelect fields that auto-generate options from an enum.
+ */
+const meta: Meta<SelectFieldStoryArgs> = {
   title: 'Forms/SelectField',
   tags: ['autodocs'],
   argTypes: {
-    hasError: {
-      control: 'boolean',
-      description: 'Whether the field has an error',
+    label: { control: 'text', description: 'Field label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'text', description: 'Default selected value' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
     },
-    formReadOnly: {
-      control: 'boolean',
-      description: 'Whether the form is in read-only mode',
-    },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    helpText: { control: 'text', description: 'Help text' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
     formReadOnlyStyle: {
-      control: {
-        type: 'select',
-        options: ['value', 'disabled'],
-      },
-      description: 'How to display the field in read-only mode',
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
+    },
+    showState: { control: 'boolean', description: 'Show live form state?' },
+    fieldType: {
+      control: 'radio',
+      options: ['select', 'enum'],
+      description: 'Type of select field',
+    },
+    customOptions: {
+      control: 'text',
+      description: 'Custom options (JSON format)',
     },
   },
   args: {
+    label: 'Select Option',
+    required: false,
+    disabled: false,
+    defaultValue: undefined,
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'Please select a valid option.',
+    helpText: undefined,
     formReadOnly: false,
     formReadOnlyStyle: 'value',
+    showState: true,
+    fieldType: 'select',
+    customOptions: '["Option 1", "Option 2", "Option 3", "Option 4"]',
   },
-};
+  render: (args) => {
+    // Parse custom options
+    let options: { label: string; value: string }[] = []
+    try {
+      const parsedOptions = JSON.parse(args.customOptions)
+      options = parsedOptions.map((opt: string, index: number) => ({
+        label: opt,
+        value: `option-${index + 1}`,
+      }))
+    } catch {
+      options = [
+        { label: 'Option 1', value: 'option-1' },
+        { label: 'Option 2', value: 'option-2' },
+        { label: 'Option 3', value: 'option-3' },
+      ]
+    }
 
-export default meta;
-type Story = StoryObj<typeof SelectFieldWrapper>;
+    const field = args.fieldType === 'enum' 
+      ? {
+          key: 'storybookSelectField' as const,
+          type: FormFieldType.EnumSelect as const,
+          options: {
+            label: args.label,
+            required: args.required,
+            disabled: args.disabled,
+            defaultValue: args.defaultValue,
+            ...(args.readOnly && { readOnly: args.readOnly }),
+            ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+            helpText: args.helpText,
+            enum: {
+              'Option A': 'option-a',
+              'Option B': 'option-b',
+              'Option C': 'option-c',
+            },
+          },
+        }
+      : {
+          key: 'storybookSelectField' as const,
+          type: FormFieldType.Select as const,
+          options: {
+            label: args.label,
+            required: args.required,
+            disabled: args.disabled,
+            defaultValue: args.defaultValue,
+            ...(args.readOnly && { readOnly: args.readOnly }),
+            ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+            helpText: args.helpText,
+            options,
+          },
+        }
 
-// Common options for all stories
-const statusOptions = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'pending', label: 'Pending Review' },
-  { value: 'published', label: 'Published' },
-  { value: 'archived', label: 'Archived' },
-];
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+}
 
-const categoryOptions = [
-  { value: 'feature', label: 'Feature' },
-  { value: 'bug', label: 'Bug' },
-  { value: 'enhancement', label: 'Enhancement' },
-  { value: 'documentation', label: 'Documentation' },
-];
+export default meta
+type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  args: {
-    field: {
-      key: 'status',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Status',
-        placeholder: 'Select a status...',
-        options: statusOptions,
-        required: true,
-      },
-    },
+  name: 'Default State',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Select Option' })
+    await expect(input).toBeInTheDocument()
+    await expect(input).toBeEnabled()
+    
+    // Test opening the dropdown
+    await userEvent.click(input)
+    
+    // Check if options appear
+    const option1 = canvas.getByText('Option 1')
+    await expect(option1).toBeInTheDocument()
+    
+    // Select an option
+    await userEvent.click(option1)
+    await expect(input).toHaveValue('Option 1')
   },
-};
+}
 
 export const WithDefaultValue: Story = {
   args: {
-    field: {
-      key: 'status',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Status',
-        placeholder: 'Select a status...',
-        options: statusOptions,
-        defaultValue: 'published',
-      },
-    },
+    defaultValue: 'option-2',
+    label: 'Pre-selected Option',
   },
-};
-
-export const WithDisabledState: Story = {
-  args: {
-    field: {
-      key: 'status',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Status',
-        placeholder: 'Select a status...',
-        options: statusOptions,
-        disabled: true,
-        defaultValue: 'draft',
-      },
-    },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Pre-selected Option' })
+    await expect(input).toHaveValue('Option 2')
   },
-};
+}
 
-export const WithErrorState: Story = {
+export const Required: Story = {
   args: {
-    field: {
-      key: 'status',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Status',
-        placeholder: 'Select a status...',
-        options: statusOptions,
-        required: true,
-      },
-    },
+    required: true,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Select Option *' })
+    await expect(input).toBeRequired()
+    
+    // Test selection
+    await userEvent.click(input)
+    const option3 = canvas.getByText('Option 3')
+    await userEvent.click(option3)
+    await expect(input).toHaveValue('Option 3')
+  },
+}
+
+export const Disabled: Story = {
+  args: {
+    disabled: true,
+    defaultValue: 'option-1',
+    label: 'Disabled Select',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Disabled Select' })
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('Option 1')
+    
+    // Verify dropdown doesn't open when disabled
+    await userEvent.click(input)
+    const option2 = canvas.queryByText('Option 2')
+    await expect(option2).not.toBeInTheDocument()
+  },
+}
+
+export const Error: Story = {
+  args: {
+    required: true,
     hasError: true,
+    label: 'Select with Error',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Select with Error *' })
+    await expect(input).toBeRequired()
+    
+    // Test that user can still interact with field in error state
+    await userEvent.click(input)
+    const option4 = canvas.getByText('Option 4')
+    await userEvent.click(option4)
+    await expect(input).toHaveValue('Option 4')
+  },
+}
+
+export const WithHelpText: Story = {
+  args: {
+    helpText: 'Choose the best option for your needs',
+    label: 'Select with Help',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Select with Help' })
+    const helpText = canvas.getByText('Choose the best option for your needs')
+    
+    await expect(input).toBeInTheDocument()
+    await expect(helpText).toBeInTheDocument()
+    
+    // Test functionality
+    await userEvent.click(input)
+    const option2 = canvas.getByText('Option 2')
+    await userEvent.click(option2)
+    await expect(input).toHaveValue('Option 2')
+  },
+}
 
 export const ReadOnlyValue: Story = {
   args: {
-    field: {
-      key: 'status',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Status',
-        options: statusOptions,
-        defaultValue: 'published',
-        readOnly: true,
-        readOnlyStyle: 'value',
-      },
-    },
-    formReadOnly: true,
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: 'option-3',
+    label: 'Read-only Select',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // In read-only value mode, it should render as a div, not an input
+    const valueDisplay = canvas.getByText('Option 3')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    // Should not have an interactive combobox
+    const input = canvas.queryByRole('combobox')
+    await expect(input).not.toBeInTheDocument()
+  },
+}
 
 export const ReadOnlyDisabled: Story = {
   args: {
-    field: {
-      key: 'status',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Status',
-        options: statusOptions,
-        defaultValue: 'published',
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-      },
-    },
-    formReadOnly: true,
+    readOnly: true,
+    readOnlyStyle: 'disabled',
+    defaultValue: 'option-4',
+    label: 'Read-only Disabled Select',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByDisplayValue('Option 4')
+    
+    // Should render as disabled input
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('Option 4')
+  },
+}
 
-export const WithFormSubmission: Story = {
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue || null,
-      },
-      mode: 'onSubmit',
-    });
-    
-    const [submittedData, setSubmittedData] = useState<any>(null);
-    
-    const onSubmit = (data: any) => {
-      setSubmittedData(data);
-    };
-    
-    return (
-      <div className="space-y-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {args.field.options.label}
-              {args.field.options.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <div className="select-field-wrapper">
-              <SelectField 
-                form={{
-                  ...form,
-                  control: form.control,
-                  getValues: form.getValues,
-                  setValue: form.setValue,
-                  register: form.register,
-                  formState: form.formState,
-                } as any}
-                field={args.field}
-                hasError={args.hasError || !!form.formState.errors[args.field.key]}
-                formReadOnly={args.formReadOnly}
-                formReadOnlyStyle={args.formReadOnlyStyle}
-              />
-            </div>
-            {form.formState.errors[args.field.key] && (
-              <p className="mt-1 text-sm text-red-600">
-                {form.formState.errors[args.field.key]?.message as string || 'This field is required'}
-              </p>
-            )}
-          </div>
-          
-          <div className="flex space-x-2">
-            <Button 
-              type="submit" 
-              variant="primary"
-              disabled={!form.formState.isDirty || form.formState.isSubmitting}
-            >
-              Save
-            </Button>
-            <Button 
-              type="button" 
-              variant="secondary"
-              onClick={() => form.reset()}
-            >
-              Reset
-            </Button>
-          </div>
-        </form>
-        
-        {submittedData && (
-          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-            <h3 className="text-sm font-medium text-green-800">Form Submitted</h3>
-            <div className="mt-2 text-sm text-green-700">
-              <pre className="whitespace-pre-wrap">
-                {JSON.stringify(submittedData, null, 2)}
-              </pre>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  },
+export const FormReadOnly: Story = {
   args: {
-    field: {
-      key: 'category',
-      type: FormFieldType.Select,
-      options: {
-        label: 'Category',
-        placeholder: 'Select a category...',
-        options: categoryOptions,
-        required: true,
-      },
-    },
+    formReadOnly: true,
+    formReadOnlyStyle: 'value',
+    defaultValue: 'option-1',
+    label: 'Form-wide Read-only',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // When form is read-only, the field should also be read-only
+    const valueDisplay = canvas.getByText('Option 1')
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    // Should not have an interactive combobox
+    const input = canvas.queryByRole('combobox')
+    await expect(input).not.toBeInTheDocument()
+  },
+}
+
+export const FormReadOnlyDisabled: Story = {
+  args: {
+    formReadOnly: true,
+    formReadOnlyStyle: 'disabled',
+    defaultValue: 'option-2',
+    label: 'Form-wide Read-only (Disabled Style)',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByDisplayValue('Option 2')
+    
+    // Should render as disabled input due to form read-only
+    await expect(input).toBeDisabled()
+  },
+}
+
+export const EnumSelect: Story = {
+  args: {
+    fieldType: 'enum',
+    label: 'Enum Select Field',
+    helpText: 'This uses an enum to generate options automatically',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Enum Select Field' })
+    await expect(input).toBeInTheDocument()
+    
+    // Test opening dropdown to see enum options
+    await userEvent.click(input)
+    
+    // Check for enum-generated options
+    const optionA = canvas.getByText('Option A')
+    const optionB = canvas.getByText('Option B')
+    await expect(optionA).toBeInTheDocument()
+    await expect(optionB).toBeInTheDocument()
+    
+    // Select an enum option
+    await userEvent.click(optionA)
+    await expect(input).toHaveValue('Option A')
+  },
+}
+
+export const CustomOptions: Story = {
+  args: {
+    customOptions: '["Apple", "Banana", "Cherry", "Date", "Elderberry"]',
+    label: 'Custom Fruit Options',
+    helpText: 'Select your favorite fruit',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Custom Fruit Options' })
+    await expect(input).toBeInTheDocument()
+    
+    // Test opening dropdown
+    await userEvent.click(input)
+    
+    // Check for custom options
+    const apple = canvas.getByText('Apple')
+    const banana = canvas.getByText('Banana')
+    await expect(apple).toBeInTheDocument()
+    await expect(banana).toBeInTheDocument()
+    
+    // Select a custom option
+    await userEvent.click(banana)
+    await expect(input).toHaveValue('Banana')
+  },
+}
+
+export const LongOptions: Story = {
+  args: {
+    customOptions: '["Very Long Option Name That Might Get Truncated", "Another Extremely Long Option Name", "Short", "Medium Length Option"]',
+    label: 'Long Option Names',
+    helpText: 'Testing how long option names are handled',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    const input = canvas.getByRole('combobox', { name: 'Long Option Names' })
+    await expect(input).toBeInTheDocument()
+    
+    // Test opening dropdown
+    await userEvent.click(input)
+    
+    // Check for long options
+    const longOption = canvas.getByText('Very Long Option Name That Might Get Truncated')
+    await expect(longOption).toBeInTheDocument()
+    
+    // Select a long option
+    await userEvent.click(longOption)
+    await expect(input).toHaveValue('Very Long Option Name That Might Get Truncated')
+  },
+} 

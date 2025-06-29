@@ -1,9 +1,7 @@
-import 'react-phone-number-input/style.css'
-import './phone-field.css'
-import { useEffect } from 'react'
 import { isPossiblePhoneNumber } from 'react-phone-number-input'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { useFormTheme } from '../theme-context'
 
 export function PhoneField({
   form,
@@ -11,14 +9,19 @@ export function PhoneField({
   hasError,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.Phone }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.Phone }>> & {
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const theme = useFormTheme()
+  
   function validatePhone(val: string) {
     return val === undefined || val === '' || isPossiblePhoneNumber((val ?? '')?.toString(), 'US')
   }
 
-  const isReadOnly = field.options.readOnly ?? formReadOnly;
-  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key) ?? '';
+  const isReadOnly = field.options.readOnly ?? formReadOnly
+  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key) ?? ''
 
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
@@ -26,20 +29,26 @@ export function PhoneField({
         <input
           id={field.key}
           type="tel"
-          className={clsx('w-full', hasError && '!border-red-600 !focus:border-red-600')}
+          className={clsx(
+            theme.phoneField.input,
+            theme.phoneField.readOnlyInput,
+            hasError && theme.phoneField.error
+          )}
           disabled={true}
           value={value}
         />
-      );
+      )
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
-    );
+      <div className={clsx(theme.phoneField.readOnlyValue)}>
+        {value ?? '—'}
+      </div>
+    )
   }
 
   return (
-    <>
+    <div className={clsx(theme.phoneField.wrapper)}>
       <input
         id={field.key}
         type="tel"
@@ -49,9 +58,17 @@ export function PhoneField({
         {...form.register(field.key, {
           validate: (v) => validatePhone(v),
         })}
-        className={clsx('w-full', hasError && '!border-red-600 !focus:border-red-600')}
+        className={clsx(
+          theme.phoneField.input,
+          field.options.disabled && theme.phoneField.disabled,
+          hasError && theme.phoneField.error
+        )}
       />
-      {hasError && <div className="text-2xs sm:text-sm mt-2 mx-1 text-red-700">* Phone number is invalid</div>}
-    </>
+      {hasError && (
+        <div className={clsx(theme.phoneField.errorMessage)}>
+          * Phone number is invalid
+        </div>
+      )}
+    </div>
   )
 }
