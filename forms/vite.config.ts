@@ -5,8 +5,9 @@ import dts from 'vite-plugin-dts'
 import * as path from 'path'
 import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin'
 import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin'
+import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig(() => ({
+export default defineConfig({
   root: __dirname,
   cacheDir: '../node_modules/.vite/forms',
   plugins: [
@@ -14,6 +15,7 @@ export default defineConfig(() => ({
     nxViteTsPaths(),
     nxCopyAssetsPlugin(['*.md']),
     dts({ entryRoot: 'src', tsconfigPath: path.join(__dirname, 'tsconfig.lib.json') }),
+    tailwindcss(),
   ],
   // Uncomment this if you are using workers.
   // worker: {
@@ -46,6 +48,7 @@ export default defineConfig(() => ({
     watch: false,
     globals: true,
     environment: 'jsdom',
+    setupFiles: ['./setupTests.ts'],
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     reporters: ['default'],
     coverage: {
@@ -53,4 +56,4 @@ export default defineConfig(() => ({
       provider: 'v8' as const,
     },
   },
-}))
+})

@@ -1,31 +1,40 @@
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
-import { inputStyle } from '../styles/input-style'
+import { useFormTheme } from '../theme-context'
+import React from 'react'
 
-export function TextField({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.Input }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const isReadOnly = field.options.readOnly ?? formReadOnly;
-  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key) ?? '';
+export function TextField({
+  form,
+  field,
+  hasError,
+  formReadOnly = false,
+  formReadOnlyStyle = 'value',
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.Input }>> & {
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const theme = useFormTheme()
 
-  if (isReadOnly) {
-    if (readOnlyStyle === 'disabled') {
-      return (
-        <input
-          id={field.key}
-          type="text"
-          className={clsx(inputStyle, hasError && '!border-red-600 !focus:border-red-600')}
-          disabled={true}
-          value={value}
-        />
-      );
-    }
-    // Render as plain value
-    return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
-    );
-  }
+  const fieldTheme = theme.textField
+  console.log(fieldTheme)
 
-  return (
+  const isReadOnly = field.options.readOnly ?? formReadOnly
+  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key) ?? ''
+
+  return isReadOnly ? (
+    readOnlyStyle === 'disabled' ? (
+      <input
+        id={field.key}
+        type="text"
+        className={clsx(fieldTheme.input || '', hasError && (fieldTheme.error || ''), fieldTheme.disabled || '')}
+        disabled={true}
+        value={value}
+      />
+    ) : (
+      <div className={fieldTheme.readOnly || ''}>{value ?? '—'}</div>
+    )
+  ) : (
     <input
       id={field.key}
       type="text"
@@ -34,7 +43,11 @@ export function TextField({ form, field, hasError, formReadOnly = false, formRea
       placeholder={field.options.placeholder}
       defaultValue={field.options.defaultValue}
       {...form.register(field.key, { required: field.options.required })}
-      className={clsx(inputStyle, hasError && '!border-red-600 !focus:border-red-600')}
+      className={clsx(
+        fieldTheme.input || '',
+        hasError && (fieldTheme.error || ''),
+        field.options.disabled && (fieldTheme.disabled || ''),
+      )}
     />
   )
 }

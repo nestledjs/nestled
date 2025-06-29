@@ -25,6 +25,7 @@ export enum FormFieldType {
   SearchSelectMulti = 'SearchSelectMulti',
   Content = 'Content',
   Custom = 'Custom',
+  CustomCheckbox = 'CustomCheckbox',
 }
 
 // A Base interface for options common to ALL fields
@@ -51,13 +52,37 @@ export interface BaseFieldOptions {
 // Specific options interfaces that extend the base
 export interface InputFieldOptions extends BaseFieldOptions {
   placeholder?: string
+  validate?: (value: any) => string | boolean | Promise<string | boolean>
 }
 export type UrlFieldOptions = InputFieldOptions
 export type EmailFieldOptions = InputFieldOptions
 export type PasswordFieldOptions = InputFieldOptions
 export type PhoneFieldOptions = InputFieldOptions
-export type NumberFieldOptions = InputFieldOptions
-export type CurrencyFieldOptions = InputFieldOptions
+export interface NumberFieldOptions extends InputFieldOptions {
+  min?: number
+  max?: number
+  step?: number
+}
+
+// Enhanced currency support
+export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'CAD' | 'AUD' | 'CHF' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK' | 'HUF' | 'RON' | 'BGN' | 'HRK' | 'RUB' | 'TRY' | 'BRL' | 'MXN' | 'INR' | 'KRW' | 'SGD' | 'HKD' | 'NZD' | 'ZAR' | 'THB' | 'MYR' | 'IDR' | 'PHP' | 'VND'
+
+export interface CurrencyConfig {
+  code: CurrencyCode
+  symbol: string
+  name: string
+  symbolPosition: 'before' | 'after'
+  decimalPlaces: number
+  thousandsSeparator: string
+  decimalSeparator: string
+}
+
+export interface CurrencyFieldOptions extends InputFieldOptions {
+  currency?: CurrencyCode | 'custom'
+  customCurrency?: Partial<CurrencyConfig>
+  showCurrencyCode?: boolean // Show "USD" alongside symbol
+  hideSymbolWhenEmpty?: boolean // Default: true
+}
 
 export interface TextAreaOptions extends BaseFieldOptions {
   placeholder?: string
@@ -69,6 +94,9 @@ export interface CheckboxOptions extends BaseFieldOptions {
   labelTextSize?: string
   fullWidthLabel?: boolean
   wrapperClassNames?: string
+  helpText?: string
+  errorText?: string
+  indeterminate?: boolean
 }
 
 export interface SwitchOptions extends BaseFieldOptions {
@@ -76,8 +104,12 @@ export interface SwitchOptions extends BaseFieldOptions {
 }
 
 export interface DatePickerOptions extends BaseFieldOptions {
-  defaultValue?: string // YYYY-MM-DD
+  defaultValue?: string // YYYY-MM-DD or YYYY-MM-DDTHH:mm for datetime
   useController?: boolean
+  min?: string // YYYY-MM-DD or YYYY-MM-DDTHH:mm for datetime
+  max?: string // YYYY-MM-DD or YYYY-MM-DDTHH:mm for datetime
+  placeholder?: string
+  step?: number // For datetime inputs, step in seconds
 }
 
 export interface SelectOption {
@@ -87,6 +119,7 @@ export interface SelectOption {
 
 export interface SelectOptions extends BaseFieldOptions {
   options: SelectOption[]
+  placeholder?: string
 }
 
 export interface EnumSelectOptions extends BaseFieldOptions {
@@ -277,10 +310,29 @@ export type FormField =
   | SearchSelectMultiField<any>
   | ContentField
   | CustomFieldType<any>
+  | CustomCheckboxField
 
 // A generic prop type for all individual field components
 export interface FormFieldProps<T extends FormField> {
   field: T
   form: UseFormReturn
   hasError: boolean
+}
+
+export interface CustomCheckboxOptions extends BaseFieldOptions {
+  defaultValue?: boolean;
+  fullWidthLabel?: boolean;
+  wrapperClassNames?: string;
+  helpText?: string;
+  errorText?: string;
+  checkedIcon?: ReactNode;
+  uncheckedIcon?: ReactNode;
+  readonlyCheckedIcon?: ReactNode;
+  readonlyUncheckedIcon?: ReactNode;
+}
+
+interface CustomCheckboxField {
+  key: string;
+  type: FormFieldType.CustomCheckbox;
+  options: CustomCheckboxOptions;
 }

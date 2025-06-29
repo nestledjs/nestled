@@ -1,40 +1,101 @@
 import clsx from 'clsx'
+import React from 'react'
+import { Controller } from 'react-hook-form'
+import { useFormTheme } from '../theme-context'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { formatDateTimeFromValue, getDateTimeFromValue } from '../utils/date-time'
 
-export function DateTimePickerField({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.DateTimePicker }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const isReadOnly = field.options.readOnly ?? formReadOnly;
-  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key) ?? '';
+export function DateTimePickerField({
+  form,
+  field,
+  hasError,
+  formReadOnly = false,
+  formReadOnlyStyle = 'value',
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.DateTimePicker }>> & {
+  hasError?: boolean
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const theme = useFormTheme().dateTimePicker
+  const options = field.options
+  const isReadOnly = options.readOnly ?? formReadOnly
+  const effectiveReadOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key) ?? ''
 
   if (isReadOnly) {
-    if (readOnlyStyle === 'disabled') {
+    if (effectiveReadOnlyStyle === 'disabled') {
       return (
-        <input
-          id={field.key}
-          type="datetime-local"
-          className={clsx('text-green_web focus:ring-green_web border-gray-300 rounded w-full', hasError && '!border-red-600 !focus:border-red-600')}
-          disabled={true}
-          value={value}
-        />
-      );
+        <div className={clsx(theme.wrapper)}>
+          <input
+            id={field.key}
+            type="datetime-local"
+            disabled={true}
+            value={value}
+            className={clsx(theme.readOnlyInput, hasError && theme.error)}
+            readOnly
+          />
+        </div>
+      )
     }
-    // Render as plain value
+    
+    // Render as plain value (formatted)
+    const formattedDateTime = formatDateTimeFromValue(value) ?? '—'
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
-    );
+      <div className={clsx(theme.wrapper)}>
+        <div className={clsx(theme.readOnlyValue)}>{formattedDateTime}</div>
+      </div>
+    )
+  }
+
+  const inputProps = {
+    id: field.key,
+    type: 'datetime-local' as const,
+    disabled: options.disabled,
+    placeholder: options.placeholder,
+    min: options.min,
+    max: options.max,
+    step: options.step,
+    className: clsx(
+      theme.input,
+      options.disabled && theme.disabled,
+      hasError && theme.error
+    ),
+  }
+
+  const input = options.useController ? (
+    <Controller
+      name={field.key}
+      control={form.control}
+      defaultValue={getDateTimeFromValue(options.defaultValue ?? '')}
+      rules={{ required: options.required }}
+      render={({ field: controllerField }) => (
+        <input
+          {...inputProps}
+          value={controllerField.value || ''}
+          onChange={(e) => controllerField.onChange(e.target.value)}
+          onBlur={controllerField.onBlur}
+          ref={controllerField.ref}
+        />
+      )}
+    />
+  ) : (
+    <input
+      {...inputProps}
+      defaultValue={getDateTimeFromValue(options.defaultValue ?? '') ?? ''}
+      {...form.register(field.key, {
+        required: options.required,
+        setValueAs: (v) => (v ? v : ''),
+      })}
+    />
+  )
+
+  if (options.customWrapper) {
+    return options.customWrapper(input)
   }
 
   return (
-    <input
-      id={field.key}
-      type="datetime-local"
-      disabled={field.options.disabled}
-      defaultValue={field.options.defaultValue}
-      {...form.register(field.key, {
-        required: field.options.required,
-        valueAsDate: true,
-      })}
-      className={clsx('text-green_web focus:ring-green_web border-gray-300 rounded w-full', hasError && '!border-red-600 !focus:border-red-600')}
-    />
+    <div className={clsx(theme.wrapper)}>
+      {input}
+    </div>
   )
 }
