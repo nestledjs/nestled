@@ -14,6 +14,7 @@ import { NumberField } from './fields/number-field'
 import { MoneyField } from './fields/money-field'
 import { CheckboxField } from './fields/checkbox-field'
 import { SwitchField } from './fields/switch-field'
+import { ButtonField } from './fields/button-field'
 import { DatePickerField } from './fields/datepicker-field'
 import { DateTimePickerField } from './fields/datetimepicker-field'
 import { TimePickerField } from './fields/timepicker-field'
@@ -133,6 +134,16 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
     case FormFieldType.Switch:
       return (
         <SwitchField
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
+    case FormFieldType.Button:
+      return (
+        <ButtonField
           form={form}
           field={field}
           hasError={hasError}

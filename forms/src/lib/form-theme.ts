@@ -291,6 +291,33 @@ export const FormThemeSchema = z.object({
       readOnlyValue: z.string().default(''),
     })
     .default({}),
+  switchField: z
+    .object({
+      wrapper: z.string().default(''),
+      container: z.string().default(''),
+      label: z.string().default(''),
+      switchTrack: z.string().default(''),
+      switchTrackOn: z.string().default(''),
+      switchTrackOff: z.string().default(''),
+      switchThumb: z.string().default(''),
+      switchThumbOn: z.string().default(''),
+      switchThumbOff: z.string().default(''),
+      error: z.string().default(''),
+      disabled: z.string().default(''),
+      readOnly: z.string().default(''),
+      readOnlyValue: z.string().default(''),
+    })
+    .default({}),
+  textAreaField: z
+    .object({
+      wrapper: z.string().default(''),
+      textarea: z.string().default(''),
+      error: z.string().default(''),
+      disabled: z.string().default(''),
+      readOnly: z.string().default(''),
+      readOnlyValue: z.string().default(''),
+    })
+    .default({}),
   // Add more fields as needed
 })
 

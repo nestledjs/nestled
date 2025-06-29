@@ -14,6 +14,7 @@ export enum FormFieldType {
   Currency = 'Currency',
   Checkbox = 'Checkbox',
   Switch = 'Switch',
+  Button = 'Button',
   DatePicker = 'DatePicker',
   DateTimePicker = 'DateTimePicker',
   TimePicker = 'TimePicker',
@@ -101,6 +102,14 @@ export interface CheckboxOptions extends BaseFieldOptions {
 
 export interface SwitchOptions extends BaseFieldOptions {
   defaultValue?: boolean
+}
+
+export interface ButtonOptions extends BaseFieldOptions {
+  text?: string
+  variant?: 'primary' | 'secondary' | 'danger'
+  loading?: boolean
+  onClick?: () => void | Promise<void>
+  type?: 'button' | 'submit' | 'reset'
 }
 
 export interface DatePickerOptions extends BaseFieldOptions {
@@ -209,6 +218,11 @@ interface SwitchField {
   type: FormFieldType.Switch
   options: SwitchOptions
 }
+interface ButtonField {
+  key: string
+  type: FormFieldType.Button
+  options: ButtonOptions
+}
 interface DatePickerField {
   key: string
   type: FormFieldType.DatePicker
@@ -299,6 +313,7 @@ export type FormField =
   | CurrencyField
   | CheckboxField
   | SwitchField
+  | ButtonField
   | DatePickerField
   | DateTimePickerField
   | TimePickerField
