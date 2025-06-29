@@ -318,6 +318,26 @@ export const FormThemeSchema = z.object({
       readOnlyValue: z.string().default(''),
     })
     .default({}),
+  timePickerField: z
+    .object({
+      wrapper: z.string().default(''),
+      input: z.string().default(''),
+      error: z.string().default(''),
+      disabled: z.string().default(''),
+      readOnly: z.string().default(''),
+      readOnlyValue: z.string().default(''),
+    })
+    .default({}),
+  urlField: z
+    .object({
+      wrapper: z.string().default(''),
+      input: z.string().default(''),
+      error: z.string().default(''),
+      disabled: z.string().default(''),
+      readOnly: z.string().default(''),
+      readOnlyValue: z.string().default(''),
+    })
+    .default({}),
   // Add more fields as needed
 })
 
