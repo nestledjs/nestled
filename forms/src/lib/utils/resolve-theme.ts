@@ -48,11 +48,11 @@ export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme 
 
   // Define which keys to apply inheritance to
   const inheritableKeys: (keyof FormTheme)[] = [
-    'textField', 
-    'checkbox', 
-    'customCheckbox', 
-    'customField', 
-    'datePicker', 
+    'textField',
+    'checkbox',
+    'customCheckbox',
+    'customField',
+    'datePicker',
     'dateTimePicker',
     'emailField',
     'moneyField',
@@ -105,6 +105,8 @@ export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme 
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['switchField'])
     } else if (key === 'textAreaField') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['textAreaField'])
+    } else if (key === 'button') {
+      finalTheme[key] = mergeSection(globalStyles, section as FormTheme['button'])
     }
     // Add more as needed for other inheritable keys
   }
