@@ -1,5 +1,6 @@
 import clsx from 'clsx'
 import { FormFieldProps, FormFieldType, BaseFieldOptions } from '../form-types'
+import { useFormTheme } from '../theme-context'
 
 interface TimePickerFieldType {
   key: string
@@ -8,6 +9,7 @@ interface TimePickerFieldType {
 }
 
 export function TimePickerField({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<TimePickerFieldType> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+  const theme = useFormTheme()
   const isReadOnly = field.options.readOnly ?? formReadOnly;
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
   const value = form.getValues(field.key) ?? '';
@@ -18,7 +20,11 @@ export function TimePickerField({ form, field, hasError, formReadOnly = false, f
         <input
           id={field.key}
           type="time"
-          className={clsx('text-green_web focus:ring-green_web border-gray-300 rounded', hasError && '!border-red-600 !focus:border-red-600')}
+          className={clsx(
+            theme.timePickerField.input,
+            theme.timePickerField.disabled,
+            hasError && theme.timePickerField.error
+          )}
           disabled={true}
           value={value}
         />
@@ -26,7 +32,7 @@ export function TimePickerField({ form, field, hasError, formReadOnly = false, f
     }
     // Render as plain value
     return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">{value ?? '—'}</div>
+      <div className={theme.timePickerField.readOnlyValue}>{value ?? '—'}</div>
     );
   }
 
@@ -40,7 +46,11 @@ export function TimePickerField({ form, field, hasError, formReadOnly = false, f
         required: field.options.required,
         //   setValueAs: (v) => v?.split?.('T')[1],
       })}
-      className={clsx('text-green_web focus:ring-green_web border-gray-300 rounded', hasError && '!border-red-600 !focus:border-red-600')}
+      className={clsx(
+        theme.timePickerField.input,
+        field.options.disabled && theme.timePickerField.disabled,
+        hasError && theme.timePickerField.error
+      )}
     />
   )
 }

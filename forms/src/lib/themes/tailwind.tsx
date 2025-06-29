@@ -305,6 +305,22 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnly: 'text-gray-700 font-medium',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 whitespace-pre-line',
   },
+  timePickerField: {
+    wrapper: '',
+    input: 'block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 text-green-600 focus:ring-2 focus:ring-green-300 focus:border-green-300',
+    error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
+    disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
+  },
+  urlField: {
+    wrapper: '',
+    input: 'block w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 text-blue-600 focus:ring-2 focus:ring-blue-300 focus:border-blue-300 placeholder-gray-400',
+    error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
+    disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 break-all',
+  },
 
   // Add more fields as needed
 })
