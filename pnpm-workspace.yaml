@@ -1,19 +1,21 @@
 packages:
-  - 'generators/**'
-
+  - generators/**
 onlyBuiltDependencies:
   - '@apollo/protobufjs'
   - '@nestjs/core'
   - '@parcel/watcher'
   - '@prisma/client'
-  - '@prisma/extension-optimize'
   - '@prisma/engines'
-  - 'esbuild'
-  - 'nx'
-  - 'prisma'
-  - 'type-graphql'
-  - 'graphql-redis-subscriptions'
-  - 'ioredis'
-  - 'graphql-query-complexity'
-  - 'prisma-graphql-type-decimal'
-  - 'pluralize'
+  - '@prisma/extension-optimize'
+  - '@swc/core'
+  - '@tailwindcss/oxide'
+  - core-js
+  - esbuild
+  - graphql-query-complexity
+  - graphql-redis-subscriptions
+  - ioredis
+  - nx
+  - pluralize
+  - prisma
+  - prisma-graphql-type-decimal
+  - type-graphql
