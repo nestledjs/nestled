@@ -64,7 +64,10 @@ export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme 
     'searchSelectMultiField',
     'selectField',
     'switchField',
-    'textAreaField'
+    'textAreaField',
+    'timePickerField',
+    'urlField',
+    'button'
   ]
 
   for (const key of inheritableKeys) {
@@ -105,6 +108,10 @@ export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme 
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['switchField'])
     } else if (key === 'textAreaField') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['textAreaField'])
+    } else if (key === 'timePickerField') {
+      finalTheme[key] = mergeSection(globalStyles, section as FormTheme['timePickerField'])
+    } else if (key === 'urlField') {
+      finalTheme[key] = mergeSection(globalStyles, section as FormTheme['urlField'])
     } else if (key === 'button') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['button'])
     }
