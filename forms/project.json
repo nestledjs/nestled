@@ -9,7 +9,9 @@
   "targets": {
     "build": {
       "executor": "@nx/vite:build",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "defaultConfiguration": "production",
       "options": {
         "outputPath": "dist/forms"
@@ -21,6 +23,61 @@
         "production": {
           "mode": "production"
         }
+      }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "config": "forms/vitest.config.ts",
+        "reporters": [
+          "default",
+          "verbose"
+        ],
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/forms"
+      },
+      "configurations": {
+        "ci": {
+          "watch": false,
+          "codeCoverage": true
+        }
+      }
+    },
+    "test:unit": {
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{workspaceRoot}/coverage/{projectRoot}"
+      ],
+      "options": {
+        "config": "forms/vitest.config.ts",
+        "project": "unit",
+        "reporters": [
+          "default",
+          "verbose"
+        ],
+        "passWithNoTests": true,
+        "reportsDirectory": "../../coverage/forms"
+      },
+      "configurations": {
+        "ci": {
+          "watch": false,
+          "codeCoverage": true
+        }
+      }
+    },
+    "test:storybook": {
+      "executor": "@nx/vite:test",
+      "options": {
+        "config": "forms/vitest.config.ts",
+        "project": "storybook",
+        "reporters": [
+          "default",
+          "verbose"
+        ],
+        "passWithNoTests": true
       }
     }
   }

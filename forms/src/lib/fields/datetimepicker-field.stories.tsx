@@ -1,208 +1,410 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { DateTimePickerField } from './datetimepicker-field';
-import { format } from 'date-fns';
+import type { Meta, StoryObj } from '@storybook/react'
+import { FormFieldType, DatePickerOptions } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
+import { expect, within, userEvent, fn } from 'storybook/test'
 
-// Define the shape of our datetime field
-type DateTimeFieldType = {
-  key: string;
-  type: FormFieldType.DateTimePicker;
-  options: {
-    label?: string;
-    required?: boolean;
-    disabled?: boolean;
-    readOnly?: boolean;
-    readOnlyStyle?: 'value' | 'disabled';
-    defaultValue?: string;
-  };
-};
+// Helper function to generate realistic usage code with memoization
+const codeCache = new Map<string, string>()
 
-type DateTimeFieldWrapperProps = {
-  field: DateTimeFieldType;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-};
-
-// Helper function to format date for display
-const formatDateTime = (dateTimeStr: string) => {
-  if (!dateTimeStr) return 'No date/time selected';
-  try {
-    const date = new Date(dateTimeStr);
-    return format(date, 'yyyy-MM-dd HH:mm');
-  } catch (e) {
-    return 'Invalid date/time';
+const generateDateTimePickerCode = (args: DateTimePickerFieldStoryArgs) => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
   }
-};
-
-// Wrapper component to demonstrate form integration
-const DateTimeFieldWrapper = ({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: DateTimeFieldWrapperProps) => {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue || '',
+  
+  const options: string[] = []
+  
+  if (args.label !== 'Select Date & Time') {
+    options.push(`label: '${args.label}'`)
+  }
+  if (args.required) options.push('required: true')
+  if (args.disabled) options.push('disabled: true')
+  if (args.defaultValue) options.push(`defaultValue: '${args.defaultValue}'`)
+  if (args.readOnly) options.push('readOnly: true')
+  if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
+  if (args.min) options.push(`min: '${args.min}'`)
+  if (args.max) options.push(`max: '${args.max}'`)
+  if (args.step) options.push(`step: ${args.step}`)
+  if (args.placeholder) options.push(`placeholder: '${args.placeholder}'`)
+  if (args.useController) options.push('useController: true')
+  
+  const formProps: string[] = []
+  if (args.formReadOnly) formProps.push('readOnly={true}')
+  if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  
+  const optionsString = options.length > 0 ? `
+        ${options.join(',\n        ')},` : ''
+  
+  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  
+  const code = `<Form
+  id="example-form"${formPropsString}
+  fields={[
+    {
+      key: 'appointmentDateTime',
+      type: FormFieldType.DateTimePicker,
+      options: {${optionsString}
+      },
     },
-  });
+  ]}
+  submit={(values) => console.log(values)}
+/>`
   
-  const value = form.watch(field.key);
-  
-  return (
-    <div className="max-w-md p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="datetime-picker-wrapper">
-          <DateTimePickerField 
-            form={{
-              ...form,
-              register: form.register,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              control: form.control,
-            } as any}
-            field={field}
-            hasError={hasError}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-      </div>
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Form value:</div>
-        <pre className="whitespace-pre-wrap break-words">
-          {value ? formatDateTime(value) : 'No date/time selected'}
-        </pre>
-      </div>
-    </div>
-  );
-};
+  codeCache.set(cacheKey, code)
+  return code
+}
 
-const meta: Meta<typeof DateTimeFieldWrapper> = {
-  component: DateTimeFieldWrapper,
+interface DateTimePickerFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue: string
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  min: string
+  max: string
+  step: number
+  placeholder: string
+  useController: boolean
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+}
+
+const meta: Meta<DateTimePickerFieldStoryArgs> = {
   title: 'Forms/DateTimePickerField',
   tags: ['autodocs'],
-  argTypes: {
-    hasError: { control: 'boolean' },
-    formReadOnly: { control: 'boolean' },
-    formReadOnlyStyle: {
-      control: 'select',
-      options: ['value', 'disabled'],
-    },
-  },
-  args: {
-    field: {
-      key: 'dateTimeField',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Select date and time',
-        required: false,
-        disabled: false,
+  parameters: {
+    docs: {
+      source: {
+        type: 'code',
+        transform: (code: string, storyContext: any) => {
+          // Only transform for stories that don't have custom source code
+          if (storyContext.parameters?.docs?.source?.code) {
+            return storyContext.parameters.docs.source.code
+          }
+          return generateDateTimePickerCode(storyContext.args)
+        },
+      },
+      story: {
+        inline: true,
+        autoplay: false, // Disable auto-playing interactions in docs
       },
     },
+  },
+  argTypes: {
+    label: { control: 'text', description: 'Date-time picker label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'text', description: 'Default datetime (YYYY-MM-DDTHH:MM)' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
+    },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    min: { control: 'text', description: 'Minimum datetime (YYYY-MM-DDTHH:MM)' },
+    max: { control: 'text', description: 'Maximum datetime (YYYY-MM-DDTHH:MM)' },
+    step: { control: 'number', description: 'Step in seconds' },
+    placeholder: { control: 'text', description: 'Placeholder text' },
+    useController: { control: 'boolean', description: 'Use react-hook-form Controller?' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
+    formReadOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
+    },
+    showState: { control: 'boolean', description: 'Show live form state?' },
+  },
+  args: {
+    label: 'Select Date & Time',
+    required: false,
+    disabled: false,
+    defaultValue: '',
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'Please select a valid date and time.',
+    min: '',
+    max: '',
+    step: 60, // 1 minute steps by default
+    placeholder: '',
+    useController: false,
     formReadOnly: false,
     formReadOnlyStyle: 'value',
+    showState: true,
   },
-};
+  render: (args) => {
+    const field: { key: string; type: FormFieldType.DateTimePicker; options: DatePickerOptions } = {
+      key: 'storybookDateTimePicker',
+      type: FormFieldType.DateTimePicker,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue || undefined,
+        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && { readOnlyStyle: args.readOnlyStyle }),
+        min: args.min || undefined,
+        max: args.max || undefined,
+        step: args.step || undefined,
+        placeholder: args.placeholder || undefined,
+        useController: args.useController,
+      },
+    }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+}
+export default meta
 
-export default meta;
-type Story = StoryObj<typeof DateTimeFieldWrapper>;
+type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  args: {},
-};
+  name: 'Default State',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeInTheDocument()
+    await expect(input).toHaveAttribute('type', 'datetime-local')
+  },
+}
 
 export const WithDefaultValue: Story = {
-  args: {
-    field: {
-      key: 'dateTimeWithDefault',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Appointment Date & Time',
-        defaultValue: new Date().toISOString().slice(0, 16), // Current date/time as default
-        required: true,
-      },
-    },
+  name: 'With Default Value',
+  args: { 
+    defaultValue: '2024-12-25T18:00', 
+    label: 'Christmas Dinner',
+    showState: false 
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toHaveValue('2024-12-25T18:00')
+  },
+}
 
-export const RequiredField: Story = {
-  args: {
-    field: {
-      key: 'requiredDateTime',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Required Date & Time',
-        required: true,
-      },
-    },
+export const Required: Story = {
+  name: 'Required',
+  args: { required: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeRequired()
   },
-};
+}
 
 export const Disabled: Story = {
-  args: {
-    field: {
-      key: 'disabledDateTime',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Disabled Date/Time Picker',
-        disabled: true,
-        defaultValue: '2025-01-01T12:00',
-      },
-    },
+  name: 'Disabled',
+  args: { 
+    disabled: true, 
+    defaultValue: '2024-01-01T12:00',
+    label: 'New Year Lunch',
+    showState: false 
   },
-};
-
-export const ReadOnlyAsValue: Story = {
-  args: {
-    formReadOnly: true,
-    formReadOnlyStyle: 'value',
-    field: {
-      key: 'readOnlyDateTime',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Read-only (as value)',
-        readOnly: true,
-        defaultValue: '2025-12-25T18:30',
-      },
-    },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('2024-01-01T12:00')
   },
-};
+}
 
-export const ReadOnlyAsDisabled: Story = {
-  args: {
-    formReadOnly: true,
+export const WithMinMax: Story = {
+  name: 'With Min/Max DateTime',
+  args: { 
+    min: '2024-06-01T09:00', 
+    max: '2024-06-30T17:00', 
+    label: 'June Business Hours',
+    defaultValue: '2024-06-15T14:00',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toHaveAttribute('min', '2024-06-01T09:00')
+    await expect(input).toHaveAttribute('max', '2024-06-30T17:00')
+    await expect(input).toHaveValue('2024-06-15T14:00')
+  },
+}
+
+export const WithStep: Story = {
+  name: 'With 15-Minute Steps',
+  args: { 
+    step: 900, // 15 minutes in seconds
+    label: 'Appointment Time',
+    defaultValue: '2024-07-01T10:15',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toHaveAttribute('step', '900')
+    await expect(input).toHaveValue('2024-07-01T10:15')
+  },
+}
+
+export const Error: Story = {
+  name: 'Error State',
+  args: { 
+    hasError: true, 
+    errorMessage: 'Please select a valid date and time.',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeInTheDocument()
+    // Check for error message
+    await expect(canvas.getByText(/please select a valid date and time/i)).toBeInTheDocument()
+  },
+}
+
+export const WithController: Story = {
+  name: 'Using Controller',
+  args: { 
+    useController: true, 
+    defaultValue: '2024-03-15T16:30',
+    label: 'Meeting Time (with Controller)',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toHaveValue('2024-03-15T16:30')
+    
+    // Test changing the value
+    await userEvent.clear(input)
+    await userEvent.type(input, '2024-07-04T12:00')
+    await expect(input).toHaveValue('2024-07-04T12:00')
+  },
+}
+
+export const ReadOnly: Story = {
+  name: 'Read-Only (Value Style)',
+  args: { 
+    readOnly: true, 
+    defaultValue: '2024-04-01T09:00',
+    label: 'April Fools Morning',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'value' style, should show formatted text instead of input
+    await expect(canvas.getByText('April 01, 2024 9:00 AM')).toBeInTheDocument()
+    // Should not have an editable input
+    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument()
+  },
+}
+
+export const ReadOnlyDisabledStyle: Story = {
+  name: 'Read-Only (Disabled Style)',
+  args: { 
+    readOnly: true, 
+    readOnlyStyle: 'disabled',
+    defaultValue: '2024-07-04T20:00',
+    label: 'Independence Day Evening',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'disabled' style, should show disabled input
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('2024-07-04T20:00')
+  },
+}
+
+export const FormReadOnly: Story = {
+  name: 'Form Read-Only',
+  args: { 
+    formReadOnly: true, 
+    defaultValue: '2024-10-31T18:00',
+    readOnly: false, // Field level is false, form level is true
+    label: 'Halloween Party',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Should show formatted text since form is read-only
+    await expect(canvas.getByText('October 31, 2024 6:00 PM')).toBeInTheDocument()
+    // Should not have an editable input
+    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument()
+  },
+}
+
+export const FormReadOnlyStyle: Story = {
+  name: 'Form Read-Only (Disabled Style)',
+  args: { 
+    formReadOnly: true, 
     formReadOnlyStyle: 'disabled',
-    field: {
-      key: 'readOnlyDisabledDateTime',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Read-only (as disabled)', 
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-        defaultValue: '2025-06-15T09:15',
-      },
-    },
+    defaultValue: '2024-11-28T15:00',
+    readOnly: false,
+    label: 'Thanksgiving Dinner',
+    showState: false 
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'disabled' style, should show disabled input
+    const input = await canvas.findByRole('textbox')
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('2024-11-28T15:00')
+  },
+}
 
-export const WithError: Story = {
-  args: {
-    hasError: true,
-    field: {
-      key: 'errorDateTime',
-      type: FormFieldType.DateTimePicker,
-      options: {
-        label: 'Date/Time with Error',
-        required: true,
-      },
-    },
+export const FieldOverridesForm: Story = {
+  name: 'Field Read-Only Overrides Form',
+  args: { 
+    formReadOnly: true, 
+    formReadOnlyStyle: 'disabled', 
+    readOnly: true, 
+    readOnlyStyle: 'value', 
+    defaultValue: '2024-02-14T19:30',
+    label: 'Valentine\'s Dinner',
+    showState: false 
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Field-level 'value' style should override form-level 'disabled' style
+    await expect(canvas.getByText('February 14, 2024 7:30 PM')).toBeInTheDocument()
+    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument()
+  },
+}
+
+export const Interactive: Story = {
+  name: 'Interactive Example',
+  args: { 
+    label: 'Appointment DateTime',
+    required: true,
+    min: '2024-01-01T08:00',
+    max: '2025-12-31T18:00',
+    step: 900, // 15-minute intervals
+    showState: true 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('textbox')
+    
+    // Test setting a datetime
+    await userEvent.type(input, '2024-08-15T14:30')
+    await expect(input).toHaveValue('2024-08-15T14:30')
+    
+    // Test clearing the datetime
+    await userEvent.clear(input)
+    await expect(input).toHaveValue('')
+  },
+} 

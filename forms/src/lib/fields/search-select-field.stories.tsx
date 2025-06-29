@@ -1,354 +1,237 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm, Controller } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { SearchSelectField } from './search-select-field';
-import { useState, useEffect } from 'react';
-import { Button } from './button';
+import type { Meta, StoryObj } from '@storybook/react'
 
-// Mock data for the search select
-const mockUsers = [
-  { id: '1', firstName: 'John', lastName: 'Doe', email: 'john.doe@example.com' },
-  { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane.smith@example.com' },
-  { id: '3', firstName: 'Michael', lastName: 'Johnson', email: 'michael.j@example.com' },
-  { id: '4', firstName: 'Sarah', lastName: 'Williams', email: 'sarah.w@example.com' },
-  { id: '5', firstName: 'David', lastName: 'Brown', email: 'david.b@example.com' },
-  { id: '6', firstName: 'Emily', lastName: 'Davis', email: 'emily.d@example.com' },
-  { id: '7', firstName: 'Robert', lastName: 'Miller', email: 'robert.m@example.com' },
-  { id: '8', firstName: 'Lisa', lastName: 'Wilson', email: 'lisa.w@example.com' },
-];
-
-// Mock GraphQL query function
-const mockQuery = (searchTerm = '') => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const filtered = mockUsers.filter(user => 
-        `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      resolve({ 
-        data: { 
-          users: filtered 
-        } 
-      });
-    }, 300); // Simulate network delay
-  });
-};
-
-// Wrapper component to demonstrate form integration
-function SearchSelectFieldWrapper({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: {
-  field: any;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-}) {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue,
-    },
-    mode: 'onChange',
-  });
-
-  const [selectedOption, setSelectedOption] = useState<any>(null);
-  const value = form.watch(field.key);
-  const error = form.formState.errors[field.key];
-
-  // Find the selected option when value changes
-  useEffect(() => {
-    if (value) {
-      const option = mockUsers.find(user => user.id === value);
-      setSelectedOption(option);
-    } else {
-      setSelectedOption(null);
-    }
-  }, [value]);
-
-  // Mock the document prop with our mock query
-  const mockDocument = {
-    query: mockQuery,
-  } as any;
-
-  return (
-    <div className="max-w-2xl p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="search-select-wrapper">
-          <SearchSelectField 
-            form={{
-              ...form,
-              control: form.control,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              register: form.register,
-              formState: form.formState,
-            } as any}
-            field={{
-              ...field,
-              options: {
-                ...field.options,
-                document: mockDocument,
-                dataType: 'users',
-                selectOptionsFunction: (items: any[]) => 
-                  items.map(item => ({
-                    value: item.id,
-                    label: `${item.firstName} ${item.lastName}`,
-                    subLabel: item.email,
-                  })),
-              },
-            }}
-            hasError={hasError || !!error}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-        {error && (
-          <p className="mt-1 text-sm text-red-600">
-            {error.message as string || 'This field is required'}
-          </p>
-        )}
-      </div>
-      
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Current selection:</div>
-        {selectedOption ? (
-          <div className="space-y-1">
-            <div className="font-semibold">{selectedOption.firstName} {selectedOption.lastName}</div>
-            <div className="text-gray-600">{selectedOption.email}</div>
-            <div className="text-gray-500">ID: {selectedOption.id}</div>
-          </div>
-        ) : (
-          <div className="text-gray-500">No selection</div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-const meta: Meta<typeof SearchSelectFieldWrapper> = {
-  component: SearchSelectFieldWrapper,
+/**
+ * The SearchSelectField component provides a searchable dropdown with Apollo GraphQL integration.
+ * It supports debounced search, custom data mapping, and filtering.
+ * 
+ * **Note:** This component requires Apollo Client to be set up in your application.
+ * The stories below are for documentation purposes and show the component's API,
+ * but cannot be fully interactive in Storybook without proper Apollo Client mocking.
+ * 
+ * ## Usage Example:
+ * 
+ * ```tsx
+ * import { gql } from '@apollo/client'
+ * 
+ * const SEARCH_USERS_QUERY = gql`
+ *   query SearchUsers($input: SearchInput) {
+ *     users(input: $input) {
+ *       id
+ *       name
+ *       firstName
+ *       lastName
+ *     }
+ *   }
+ * `
+ * 
+ * const field = {
+ *   key: 'selectedUser',
+ *   type: FormFieldType.SearchSelect,
+ *   options: {
+ *     label: 'Select User',
+ *     required: true,
+ *     document: SEARCH_USERS_QUERY,
+ *     dataType: 'users',
+ *     selectOptionsFunction: (users) => 
+ *       users.map(user => ({
+ *         value: user.id,
+ *         label: user.name || `${user.firstName} ${user.lastName}`
+ *       })),
+ *     filter: (users) => users.slice(0, 10),
+ *   },
+ * }
+ * ```
+ * 
+ * ## Features:
+ * - **Debounced Search**: 500ms delay to prevent excessive API calls
+ * - **Custom Data Mapping**: Transform GraphQL results into options
+ * - **Filtering**: Client-side filtering of results
+ * - **Read-only Modes**: Support for both value and disabled read-only styles
+ * - **Error Handling**: Proper error state styling
+ * - **Accessibility**: Full keyboard navigation and screen reader support
+ */
+const meta: Meta = {
   title: 'Forms/SearchSelectField',
   tags: ['autodocs'],
-  argTypes: {
-    hasError: {
-      control: 'boolean',
-      description: 'Whether the field has an error',
-    },
-    formReadOnly: {
-      control: 'boolean',
-      description: 'Whether the form is in read-only mode',
-    },
-    formReadOnlyStyle: {
-      control: {
-        type: 'select',
-        options: ['value', 'disabled'],
-      },
-      description: 'How to display the field in read-only mode',
-    },
-  },
-  args: {
-    hasError: false,
-    formReadOnly: false,
-    formReadOnlyStyle: 'value',
-  },
-};
+  parameters: {
+    docs: {
+      description: {
+        component: `
+The SearchSelectField component integrates with Apollo GraphQL to provide a searchable dropdown interface.
 
-export default meta;
-type Story = StoryObj<typeof SearchSelectFieldWrapper>;
+**Apollo Client Setup Required**: This component uses \`useQuery\` from Apollo Client and requires your application to be wrapped with an \`ApolloProvider\`.
 
-export const Default: Story = {
-  args: {
-    field: {
-      key: 'user',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Search for a user',
-        placeholder: 'Type to search users...',
-        required: true,
+**Key Props:**
+- \`document\`: GraphQL query document
+- \`dataType\`: Key in the query result containing the array of items
+- \`selectOptionsFunction\`: Function to transform data items into \`{ value, label }\` options
+- \`filter\`: Optional function to filter results client-side
+
+**Theming**: Fully integrated with the centralized theme system, supporting all standard form field states including error, disabled, and read-only modes.
+        `,
       },
     },
   },
-};
+}
 
-export const WithDefaultValue: Story = {
-  args: {
-    field: {
-      key: 'user',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Search for a user',
-        placeholder: 'Type to search users...',
-        defaultValue: '2', // Jane Smith
-      },
-    },
-  },
-};
+export default meta
+type Story = StoryObj<typeof meta>
 
-export const WithErrorState: Story = {
-  args: {
-    field: {
-      key: 'user',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Search for a user',
-        placeholder: 'Type to search users...',
-        required: true,
-      },
-    },
-    hasError: true,
-  },
-};
-
-export const WithCustomNoResults: Story = {
-  args: {
-    field: {
-      key: 'user',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Search for a user',
-        placeholder: 'Type to search users...',
-        noOptionsMessage: () => 'No users found. Try a different search term.',
-      },
-    },
-  },
-};
-
-export const ReadOnlyValue: Story = {
-  args: {
-    field: {
-      key: 'user',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Assigned User',
-        defaultValue: '3', // Michael Johnson
-        readOnly: true,
-        readOnlyStyle: 'value',
-      },
-    },
-    formReadOnly: true,
-  },
-};
-
-export const ReadOnlyDisabled: Story = {
-  args: {
-    field: {
-      key: 'user',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Assigned User',
-        defaultValue: '4', // Sarah Williams
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-      },
-    },
-    formReadOnly: true,
-  },
-};
-
-export const WithFormSubmission: Story = {
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue,
-      },
-      mode: 'onSubmit',
-    });
-    
-    const [submittedData, setSubmittedData] = useState<any>(null);
-    
-    const onSubmit = (data: any) => {
-      setSubmittedData(data);
-    };
-    
-    // Mock the document prop with our mock query
-    const mockDocument = {
-      query: mockQuery,
-    } as any;
-    
-    return (
-      <div className="space-y-6">
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-gray-700">
-              {args.field.options.label}
-              {args.field.options.required && <span className="text-red-500 ml-1">*</span>}
-            </label>
-            <div className="search-select-wrapper">
-              <SearchSelectField 
-                form={{
-                  ...form,
-                  control: form.control,
-                  getValues: form.getValues,
-                  setValue: form.setValue,
-                  register: form.register,
-                  formState: form.formState,
-                } as any}
-                field={{
-                  ...args.field,
-                  options: {
-                    ...args.field.options,
-                    document: mockDocument,
-                    dataType: 'users',
-                    selectOptionsFunction: (items: any[]) => 
-                      items.map(item => ({
-                        value: item.id,
-                        label: `${item.firstName} ${item.lastName}`,
-                        subLabel: item.email,
-                      })),
-                  },
-                }}
-                hasError={args.hasError}
-                formReadOnly={args.formReadOnly}
-                formReadOnlyStyle={args.formReadOnlyStyle}
-              />
-            </div>
-            {form.formState.errors[args.field.key] && (
-              <p className="mt-1 text-sm text-red-600">
-                {form.formState.errors[args.field.key]?.message as string || 'This field is required'}
-              </p>
-            )}
-          </div>
-          
-          <div className="flex space-x-2">
-            <Button type="submit" variant="primary">
-              Submit
-            </Button>
-            <Button 
-              type="button" 
-              variant="secondary"
-              onClick={() => form.reset()}
-            >
-              Reset
-            </Button>
-          </div>
-        </form>
+export const Documentation: Story = {
+  name: '📚 Documentation & Usage',
+  render: () => (
+    <div className="max-w-2xl p-6 bg-gray-50 rounded-lg">
+      <h3 className="text-lg font-semibold mb-4">SearchSelectField Component</h3>
+      <div className="space-y-4 text-sm">
+        <div>
+          <h4 className="font-medium mb-2">Apollo Client Integration</h4>
+          <p className="text-gray-700">
+            This component requires Apollo Client to be properly configured in your application.
+            It uses the <code className="bg-gray-200 px-1 rounded">useQuery</code> hook to fetch searchable data.
+          </p>
+        </div>
         
-        {submittedData && (
-          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-md">
-            <h3 className="text-sm font-medium text-green-800">Form Submitted</h3>
-            <pre className="mt-2 text-xs text-green-700 overflow-auto max-h-40">
-              {JSON.stringify(submittedData, null, 2)}
-            </pre>
-          </div>
-        )}
+        <div>
+          <h4 className="font-medium mb-2">Key Features</h4>
+          <ul className="list-disc list-inside text-gray-700 space-y-1">
+            <li>Debounced search (500ms delay)</li>
+            <li>Custom data transformation via <code className="bg-gray-200 px-1 rounded">selectOptionsFunction</code></li>
+            <li>Client-side filtering with <code className="bg-gray-200 px-1 rounded">filter</code> function</li>
+            <li>Read-only modes (value display or disabled input)</li>
+            <li>Full theme integration with error states</li>
+            <li>Accessibility support with keyboard navigation</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="font-medium mb-2">Required Props</h4>
+          <ul className="list-disc list-inside text-gray-700 space-y-1">
+            <li><code className="bg-gray-200 px-1 rounded">document</code>: GraphQL query document</li>
+            <li><code className="bg-gray-200 px-1 rounded">dataType</code>: Key in query result containing the array</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4 className="font-medium mb-2">Theme Properties</h4>
+          <p className="text-gray-700">
+            The component uses <code className="bg-gray-200 px-1 rounded">theme.searchSelectField</code> with properties for:
+            input, dropdown, options, loading states, error states, and read-only modes.
+          </p>
+        </div>
       </div>
-    );
+    </div>
+  ),
+}
+
+export const ThemeStructure: Story = {
+  name: '🎨 Theme Structure',
+  render: () => (
+    <div className="max-w-4xl p-6 bg-gray-50 rounded-lg">
+      <h3 className="text-lg font-semibold mb-4">SearchSelectField Theme Properties</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+        <div>
+          <h4 className="font-medium mb-2">Input & Container</h4>
+          <ul className="space-y-1 text-gray-700">
+            <li><code className="bg-gray-200 px-1 rounded">wrapper</code> - Outer wrapper</li>
+            <li><code className="bg-gray-200 px-1 rounded">container</code> - Relative container</li>
+            <li><code className="bg-gray-200 px-1 rounded">input</code> - ComboboxInput styling</li>
+            <li><code className="bg-gray-200 px-1 rounded">button</code> - Dropdown button</li>
+            <li><code className="bg-gray-200 px-1 rounded">buttonIcon</code> - Dropdown arrow icon</li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-2">Dropdown & Options</h4>
+          <ul className="space-y-1 text-gray-700">
+            <li><code className="bg-gray-200 px-1 rounded">dropdown</code> - ComboboxOptions container</li>
+            <li><code className="bg-gray-200 px-1 rounded">option</code> - Individual option</li>
+            <li><code className="bg-gray-200 px-1 rounded">optionActive</code> - Hovered/focused option</li>
+            <li><code className="bg-gray-200 px-1 rounded">optionSelected</code> - Selected option</li>
+            <li><code className="bg-gray-200 px-1 rounded">optionLabel</code> - Option text</li>
+            <li><code className="bg-gray-200 px-1 rounded">optionCheckIcon</code> - Selected check icon</li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-2">States</h4>
+          <ul className="space-y-1 text-gray-700">
+            <li><code className="bg-gray-200 px-1 rounded">loadingText</code> - Loading state text</li>
+            <li><code className="bg-gray-200 px-1 rounded">error</code> - Error state styling</li>
+            <li><code className="bg-gray-200 px-1 rounded">disabled</code> - Disabled state</li>
+          </ul>
+        </div>
+        
+        <div>
+          <h4 className="font-medium mb-2">Read-only Modes</h4>
+          <ul className="space-y-1 text-gray-700">
+            <li><code className="bg-gray-200 px-1 rounded">readOnly</code> - Read-only base</li>
+            <li><code className="bg-gray-200 px-1 rounded">readOnlyInput</code> - Disabled input style</li>
+            <li><code className="bg-gray-200 px-1 rounded">readOnlyValue</code> - Value display style</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  ),
+}
+
+export const IntegrationExample: Story = {
+  name: '⚙️ Integration Example',
+  render: () => (
+    <div className="max-w-4xl p-6 bg-gray-50 rounded-lg">
+      <h3 className="text-lg font-semibold mb-4">Complete Integration Example</h3>
+      <pre className="bg-gray-800 text-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
+{`import { gql } from '@apollo/client'
+import { Form } from '@nestledjs/forms'
+import { FormFieldType } from '@nestledjs/forms'
+
+// 1. Define your GraphQL query
+const SEARCH_USERS_QUERY = gql\`
+  query SearchUsers($input: SearchInput) {
+    users(input: $input) {
+      id
+      name
+      firstName
+      lastName
+      email
+    }
+  }
+\`
+
+// 2. Create your form field configuration
+const searchSelectField = {
+  key: 'selectedUser',
+  type: FormFieldType.SearchSelect,
+  options: {
+    label: 'Select User',
+    required: true,
+    helpText: 'Start typing to search for users',
+    
+    // Apollo integration
+    document: SEARCH_USERS_QUERY,
+    dataType: 'users', // Key in the query result
+    
+    // Transform data into options
+    selectOptionsFunction: (users) => 
+      users.map(user => ({
+        value: user.id,
+        label: user.name || \`\${user.firstName} \${user.lastName}\`,
+      })),
+    
+    // Optional: Filter results client-side
+    filter: (users) => users.slice(0, 10),
   },
-  args: {
-    field: {
-      key: 'selectedUser',
-      type: FormFieldType.SearchSelect,
-      options: {
-        label: 'Assign to user',
-        placeholder: 'Search users...',
-        required: true,
-      },
-    },
-  },
-};
+}
+
+// 3. Use in your form
+export function MyForm() {
+  return (
+    <Form
+      fields={[searchSelectField]}
+      onSubmit={(data) => console.log(data)}
+    />
+  )
+}`}
+      </pre>
+    </div>
+  ),
+} 

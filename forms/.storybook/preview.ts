@@ -4,7 +4,10 @@ import type { Decorator, Preview } from '@storybook/react'
 // --- Theme Injection Setup (Your existing code) ---
 import { tailwindTheme } from '@nestledjs/forms'
 
-import TAILWIND_CSS_PATH from './styles.css?url'
+// Import as string rather than URL to avoid dependency scanning issues
+import './styles.css'
+// Using a fixed path since we know where it will be in runtime
+const TAILWIND_CSS_PATH = '/forms/.storybook/styles.css'
 
 const themeMap = {
   tailwind: tailwindTheme,

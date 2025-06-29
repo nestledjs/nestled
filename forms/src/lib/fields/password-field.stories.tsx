@@ -1,296 +1,313 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { PasswordField } from './password-field';
+import type { Meta, StoryObj } from '@storybook/react'
+import { expect, userEvent, within } from 'storybook/test'
+import { FormFieldType } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 
-type PasswordFieldType = {
-  key: string;
-  type: FormFieldType.Password;
-  options: {
-    label?: string;
-    placeholder?: string;
-    required?: boolean;
-    disabled?: boolean;
-    readOnly?: boolean;
-    readOnlyStyle?: 'value' | 'disabled';
-    defaultValue?: string;
-  };
-};
+interface PasswordFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue?: string
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  placeholder: string
+  helpText?: string
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+}
 
-type PasswordFieldWrapperProps = {
-  field: PasswordFieldType;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-};
-
-const PasswordFieldWrapper = ({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: PasswordFieldWrapperProps) => {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue ?? '',
-    },
-  });
-  
-  const value = form.watch(field.key);
-  
-  return (
-    <div className="max-w-md p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="password-field-wrapper">
-          <PasswordField 
-            form={{
-              ...form,
-              register: form.register,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              control: form.control,
-            } as any}
-            field={field}
-            hasError={hasError}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-      </div>
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Current value:</div>
-        <div className="font-mono break-all">
-          {value || 'No value entered'}
-        </div>
-        <div className="mt-2 text-xs text-gray-500">
-          {value && `Length: ${value.length} characters`}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const meta: Meta<typeof PasswordFieldWrapper> = {
-  component: PasswordFieldWrapper,
+/**
+ * The PasswordField component provides a secure password input with masked characters.
+ * In read-only mode, it displays asterisks representing the password length for security.
+ */
+const meta: Meta<PasswordFieldStoryArgs> = {
   title: 'Forms/PasswordField',
   tags: ['autodocs'],
   argTypes: {
-    hasError: { control: 'boolean' },
-    formReadOnly: { control: 'boolean' },
-    formReadOnlyStyle: {
-      control: 'select',
+    label: { control: 'text', description: 'Field label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'text', description: 'Default value' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
       options: ['value', 'disabled'],
+      description: 'Read-only display style',
     },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    placeholder: { control: 'text', description: 'Placeholder text' },
+    helpText: { control: 'text', description: 'Help text' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
+    formReadOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
+    },
+    showState: { control: 'boolean', description: 'Show live form state?' },
   },
   args: {
-    field: {
-      key: 'passwordField',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Password',
-        placeholder: 'Enter your password',
-        required: false,
-        disabled: false,
-      },
-    },
+    label: 'Password',
+    required: false,
+    disabled: false,
+    defaultValue: undefined,
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'Please enter a valid password.',
+    placeholder: 'Enter your password...',
+    helpText: undefined,
     formReadOnly: false,
     formReadOnlyStyle: 'value',
+    showState: true,
   },
-};
+  render: (args) => {
+    const field = {
+      key: 'storybookPasswordField',
+      type: FormFieldType.Password as const,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        placeholder: args.placeholder,
+        helpText: args.helpText,
+      },
+    }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+}
 
-export default meta;
-type Story = StoryObj<typeof PasswordFieldWrapper>;
+export default meta
+type Story = StoryObj<typeof meta>
 
 export const Default: Story = {
-  args: {},
-};
+  name: 'Default State',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password')
+    
+    // Verify it's a password input
+    await expect(input).toHaveAttribute('type', 'password')
+    await expect(input).toBeEnabled()
+    
+    // Test password input functionality
+    await userEvent.type(input, 'secretpassword')
+    await expect(input).toHaveValue('secretpassword')
+  },
+}
 
 export const WithDefaultValue: Story = {
   args: {
-    field: {
-      key: 'withDefaultValue',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Password with Default',
-        placeholder: 'Enter your password',
-        defaultValue: 's3cr3tP@ss',
-      },
-    },
+    defaultValue: 'defaultpass123',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password')
+    
+    // Verify default value is set (though it will be masked)
+    await expect(input).toHaveValue('defaultpass123')
+    
+    // Test modifying the value
+    await userEvent.clear(input)
+    await userEvent.type(input, 'newpassword')
+    await expect(input).toHaveValue('newpassword')
+  },
+}
 
 export const Required: Story = {
   args: {
-    field: {
-      key: 'requiredPassword',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Required Password',
-        placeholder: 'This field is required',
-        required: true,
-      },
-    },
+    required: true,
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password *')
+    
+    // Verify required attribute
+    await expect(input).toBeRequired()
+    await expect(input).toHaveAttribute('type', 'password')
+    
+    // Test input functionality
+    await userEvent.type(input, 'mypassword')
+    await expect(input).toHaveValue('mypassword')
+  },
+}
 
 export const Disabled: Story = {
   args: {
-    field: {
-      key: 'disabledPassword',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Disabled Password',
-        placeholder: 'This field is disabled',
-        disabled: true,
-        defaultValue: 'cantChangeMe',
-      },
-    },
+    disabled: true,
+    defaultValue: 'disabledpass',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password')
+    
+    // Verify disabled state
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('disabledpass')
+    
+    // Verify input cannot be modified
+    await userEvent.click(input)
+    await userEvent.type(input, 'newtext')
+    await expect(input).toHaveValue('disabledpass') // Value should remain unchanged
+  },
+}
 
-export const ReadOnlyAsValue: Story = {
+export const Error: Story = {
+  args: {
+    required: true,
+    hasError: true,
+    defaultValue: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password *')
+    
+    // Test error styling is applied (component should have error classes)
+    await expect(input).toBeRequired()
+    
+    // Test that user can still type in error state
+    await userEvent.type(input, 'validpassword')
+    await expect(input).toHaveValue('validpassword')
+  },
+}
+
+export const ReadOnlyValue: Story = {
+  args: {
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: 'secretpassword123',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // In read-only value mode, it should render as a div with asterisks
+    const valueDisplay = canvas.getByText('*****************') // 17 asterisks for 'secretpassword123'
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    // Should not have a password input element
+    const inputs = canvas.queryAllByDisplayValue('secretpassword123')
+    await expect(inputs).toHaveLength(0)
+  },
+}
+
+export const ReadOnlyDisabled: Story = {
+  args: {
+    readOnly: true,
+    readOnlyStyle: 'disabled',
+    defaultValue: 'mypassword',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password')
+    
+    // Should render as disabled password input
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveAttribute('type', 'password')
+    await expect(input).toHaveValue('mypassword')
+    
+    // Verify cannot be modified
+    await userEvent.click(input)
+    await userEvent.type(input, 'newtext')
+    await expect(input).toHaveValue('mypassword')
+  },
+}
+
+export const FormReadOnly: Story = {
   args: {
     formReadOnly: true,
-    formReadOnlyStyle: 'value',
-    field: {
-      key: 'readOnlyPassword',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Read-only Password (as value)',
-        readOnly: true,
-        defaultValue: 'hiddenPassword123',
-      },
-    },
+    defaultValue: 'formreadonly',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    
+    // Should render as read-only value (default formReadOnlyStyle is 'value')
+    const valueDisplay = canvas.getByText('************') // 12 asterisks for 'formreadonly'
+    await expect(valueDisplay).toBeInTheDocument()
+  },
+}
 
-export const ReadOnlyAsDisabled: Story = {
+export const FormReadOnlyDisabled: Story = {
   args: {
     formReadOnly: true,
     formReadOnlyStyle: 'disabled',
-    field: {
-      key: 'readOnlyDisabledPassword',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Read-only Password (as disabled)',
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-        defaultValue: 'anotherPassword',
-      },
-    },
+    defaultValue: 'formpass',
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password')
+    
+    // Should render as disabled input when formReadOnlyStyle is 'disabled'
+    await expect(input).toBeDisabled()
+    await expect(input).toHaveValue('formpass')
+  },
+}
 
-export const WithError: Story = {
+export const WithHelpText: Story = {
   args: {
-    hasError: true,
-    field: {
-      key: 'errorPassword',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Password with Error',
-        placeholder: 'This field has an error',
-        required: true,
-      },
-    },
+    helpText: 'Password must be at least 8 characters long',
+    defaultValue: undefined,
   },
-};
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Password')
+    const helpText = canvas.getByText('Password must be at least 8 characters long')
+    
+    // Verify help text is displayed
+    await expect(helpText).toBeInTheDocument()
+    
+    // Test input functionality with help text present
+    await userEvent.type(input, 'strongpassword123')
+    await expect(input).toHaveValue('strongpassword123')
+  },
+}
 
-export const WithValidation: Story = {
+export const EmptyReadOnlyValue: Story = {
   args: {
-    field: {
-      key: 'validatedPassword',
-      type: FormFieldType.Password,
-      options: {
-        label: 'Password with Validation',
-        placeholder: 'Enter a strong password',
-        required: true,
-      },
-    },
+    readOnly: true,
+    readOnlyStyle: 'value',
+    defaultValue: undefined,
   },
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue ?? '',
-      },
-      mode: 'onChange',
-    });
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
     
-    const value = form.watch(args.field.key);
-    const error = form.formState.errors[args.field.key];
-    
-    // Create a new field with validation
-    const fieldWithValidation = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        validate: (val: string) => {
-          if (!val) return 'Password is required';
-          if (val.length < 8) return 'Password must be at least 8 characters';
-          if (!/[A-Z]/.test(val)) return 'Password must contain at least one uppercase letter';
-          if (!/[0-9]/.test(val)) return 'Password must contain at least one number';
-          return true;
-        },
-      },
-    };
-    
-    return (
-      <div className="max-w-md p-4 space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            {fieldWithValidation.options.label}
-            {fieldWithValidation.options.required && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          <div className="password-field-wrapper">
-            <PasswordField 
-              form={{
-                ...form,
-                register: form.register,
-                getValues: form.getValues,
-                setValue: form.setValue,
-                control: form.control,
-              } as any}
-              field={fieldWithValidation}
-              hasError={!!error}
-              formReadOnly={args.formReadOnly}
-              formReadOnlyStyle={args.formReadOnlyStyle}
-            />
-          </div>
-          {error && (
-            <p className="mt-1 text-sm text-red-600">
-              {error.message as string}
-            </p>
-          )}
-          {value && !error && (
-            <div className="mt-2">
-              <div className="text-xs text-gray-500">
-                Password strength: 
-                <span className="font-medium text-green-600">Strong</span>
-              </div>
-              <div className="mt-1 h-1 bg-gray-200 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-green-500" 
-                  style={{ width: '100%' }}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-          <div className="font-medium mb-1">Current value:</div>
-          <div className="font-mono break-all">
-            {value || 'No value entered'}
-          </div>
-          <div className="mt-2 text-xs text-gray-500">
-            {value && `Length: ${value.length} characters`}
-          </div>
-        </div>
-      </div>
-    );
+    // Should show placeholder dash for empty value
+    const valueDisplay = canvas.getByText('—')
+    await expect(valueDisplay).toBeInTheDocument()
   },
-};
+}
+
+export const PasswordSecurity: Story = {
+  name: 'Password Security Demo',
+  args: {
+    label: 'Secure Password',
+    placeholder: 'Enter a strong password...',
+    helpText: 'Your password is automatically masked for security',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = canvas.getByLabelText('Secure Password')
+    
+    // Demonstrate that password is masked while typing
+    await userEvent.type(input, 'supersecretpassword')
+    await expect(input).toHaveValue('supersecretpassword')
+    
+    // Verify the input type is password (characters are masked in UI)
+    await expect(input).toHaveAttribute('type', 'password')
+  },
+} 

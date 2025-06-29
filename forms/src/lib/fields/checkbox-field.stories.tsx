@@ -1,411 +1,303 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import { useForm } from 'react-hook-form'
-import { FormFieldType } from '../form-types'
-import { CheckboxField } from './checkbox-field'
+import { FormFieldType, CheckboxOptions } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
+import { expect, within, userEvent, fn } from 'storybook/test'
 
-// Mock form context for the story
-const CheckboxFieldWrapper = (args: any) => {
-  const form = useForm({
-    defaultValues: {
-      [args.field.key]: args.field.options?.defaultValue || false,
+// Helper function to generate realistic usage code with memoization
+const codeCache = new Map<string, string>()
+
+const generateCheckboxCode = (args: CheckboxFieldStoryArgs) => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
+  }
+  
+  const options: string[] = []
+  
+  if (args.label !== 'I agree to the terms and conditions') {
+    options.push(`label: '${args.label}'`)
+  }
+  if (args.required) options.push('required: true')
+  if (args.disabled) options.push('disabled: true')
+  if (args.defaultValue) options.push('defaultValue: true')
+  if (args.readOnly) options.push('readOnly: true')
+  if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
+  if (args.helpText) options.push(`helpText: '${args.helpText}'`)
+  if (args.fullWidthLabel) options.push('fullWidthLabel: true')
+  if (args.indeterminate) options.push('indeterminate: true')
+  
+  const formProps: string[] = []
+  if (args.formReadOnly) formProps.push('readOnly={true}')
+  if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  
+  const optionsString = options.length > 0 ? `
+        ${options.join(',\n        ')},` : ''
+  
+  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  
+  const code = `<Form
+  id="example-form"${formPropsString}
+  fields={[
+    {
+      key: 'agreement',
+      type: FormFieldType.Checkbox,
+      options: {${optionsString}
+      },
     },
-  })
-
-  return (
-    <div className="max-w-md p-4">
-      <CheckboxField
-        form={form}
-        field={args.field}
-        hasError={args.hasError}
-        formReadOnly={args.formReadOnly}
-        formReadOnlyStyle={args.formReadOnlyStyle}
-        theme={args.theme}
-      />
-      {args.showFormState && (
-        <div className="mt-4 p-2 bg-gray-100 rounded text-xs">
-          <pre>Form value: {JSON.stringify(form.watch(args.field.key), null, 2)}</pre>
-        </div>
-      )}
-    </div>
-  )
+  ]}
+  submit={(values) => console.log(values)}
+/>`
+  
+  codeCache.set(cacheKey, code)
+  return code
 }
 
-const meta: Meta<typeof CheckboxFieldWrapper> = {
-  component: CheckboxFieldWrapper,
+interface CheckboxFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue: boolean
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  helpText: string
+  fullWidthLabel: boolean
+  indeterminate: boolean
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+}
+
+const meta: Meta<CheckboxFieldStoryArgs> = {
   title: 'Forms/CheckboxField',
   tags: ['autodocs'],
-  argTypes: {
-    hasError: { control: 'boolean' },
-    formReadOnly: { control: 'boolean' },
-    formReadOnlyStyle: {
-      control: 'select',
-      options: ['value', 'disabled'],
-    },
-    errorText: { control: 'text', name: 'Error Text' },
-    showFormState: { control: 'boolean' },
-  },
-  args: {
-    field: {
-      key: 'sampleCheckbox',
-      type: FormFieldType.Checkbox,
-      options: {
-        label: 'I agree to the terms and conditions',
-        required: false,
-        disabled: false,
-        readOnly: false,
-        fullWidthLabel: false,
+  parameters: {
+    docs: {
+      source: {
+        type: 'code',
+      },
+      story: {
+        inline: true,
+        autoplay: false, // Disable auto-playing interactions in docs
+        height: '100px', // Set a fixed height to prevent layout shifts
       },
     },
+  },
+  argTypes: {
+    label: { control: 'text', description: 'Checkbox label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'boolean', description: 'Checked by default?' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
+    },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    helpText: { control: 'text', description: 'Help text' },
+    fullWidthLabel: { control: 'boolean', description: 'Label takes full width?' },
+    indeterminate: { control: 'boolean', description: 'Indeterminate state?' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
+    formReadOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
+    },
+    showState: { control: 'boolean', description: 'Show live form state?' },
+  },
+  args: {
+    label: 'I agree to the terms and conditions',
+    required: false,
+    disabled: false,
+    defaultValue: false,
+    readOnly: false,
+    readOnlyStyle: 'value',
     hasError: false,
+    errorMessage: 'This field is required.',
+    helpText: '',
+    fullWidthLabel: false,
+    indeterminate: false,
     formReadOnly: false,
     formReadOnlyStyle: 'value',
-    showFormState: true,
-  },
-}
-
-export default meta
-type Story = StoryObj<typeof CheckboxFieldWrapper>
-
-export const Default: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
-  },
-  args: {
-    hasError: false,
-    errorText: 'This field has an error',
+    showState: true,
   },
   render: (args) => {
-    const field = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        errorText: args.errorText,
-      },
-    }
-    return <CheckboxFieldWrapper {...args} field={field} />
-  },
-}
-
-export const CheckedByDefault: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
-  },
-  args: {
-    field: {
-      key: 'checkedByDefault',
+    const field: { key: string; type: FormFieldType.Checkbox; options: CheckboxOptions } = {
+      key: 'storybookCheckbox',
       type: FormFieldType.Checkbox,
       options: {
-        label: 'Subscribe to newsletter',
-        defaultValue: true,
-      },
-    },
-    hasError: false,
-    errorText: 'This field has an error',
-  },
-  render: (args) => {
-    const field = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        errorText: args.errorText,
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        helpText: args.helpText,
+        fullWidthLabel: args.fullWidthLabel,
+        indeterminate: args.indeterminate,
       },
     }
-    return <CheckboxFieldWrapper {...args} field={field} />
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+}
+export default meta
+
+type Story = StoryObj<typeof meta>
+
+export const Default: Story = {
+  name: 'Default State',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeInTheDocument()
+    await expect(checkbox).not.toBeChecked()
+    await userEvent.click(checkbox)
+    await expect(checkbox).toBeChecked()
+  },
+}
+
+export const Checked: Story = {
+  name: 'Checked by Default',
+  args: { defaultValue: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeChecked()
+    await userEvent.click(checkbox)
+    await expect(checkbox).not.toBeChecked()
   },
 }
 
 export const Required: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
-  },
-  args: {
-    field: {
-      key: 'requiredCheckbox',
-      type: FormFieldType.Checkbox,
-      options: {
-        label: 'I accept the terms and conditions',
-        required: true,
-      },
-    },
-    hasError: false,
-    errorText: 'This field has an error',
-  },
-  render: (args) => {
-    const field = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        errorText: args.errorText,
-      },
-    }
-    return <CheckboxFieldWrapper {...args} field={field} />
+  name: 'Required',
+  args: { required: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeRequired()
   },
 }
 
 export const Disabled: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
+  name: 'Disabled',
+  args: { disabled: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeDisabled()
+    await userEvent.click(checkbox)
+    await expect(checkbox).not.toBeChecked()
   },
-  args: {
-    field: {
-      key: 'disabledCheckbox',
-      type: FormFieldType.Checkbox,
-      options: {
-        label: 'This option is disabled',
-        disabled: true,
-      },
-    },
-    hasError: false,
-    errorText: 'This field has an error',
-  },
-  render: (args) => {
-    const field = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        errorText: args.errorText,
-      },
-    }
-    return <CheckboxFieldWrapper {...args} field={field} />
+}
+
+export const Error: Story = {
+  name: 'Error State',
+  args: { hasError: true, errorMessage: 'You must accept the terms.', showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeInTheDocument()
+    // Optionally check for error message
+    await expect(canvas.getByText(/you must accept the terms/i)).toBeInTheDocument()
   },
 }
 
 export const ReadOnly: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
-  },
-  render: (args) => {
-    const fieldWithErrorText = (baseField: any) => ({
-      ...baseField,
-      options: {
-        ...baseField.options,
-        errorText: args.errorText,
-      },
-    })
-
-    return (
-      <div className="space-y-4">
-        <CheckboxFieldWrapper
-          {...args}
-          field={fieldWithErrorText({
-            ...args.field,
-            key: 'readOnlyChecked',
-            options: {
-              ...args.field.options,
-              label: 'Read-only checked',
-              readOnly: true,
-              defaultValue: true,
-            },
-          })}
-        />
-        <CheckboxFieldWrapper
-          {...args}
-          field={fieldWithErrorText({
-            ...args.field,
-            key: 'readOnlyUnchecked',
-            options: {
-              ...args.field.options,
-              label: 'Read-only unchecked',
-              readOnly: true,
-              defaultValue: false,
-            },
-          })}
-        />
-      </div>
-    )
-  },
-  args: {
-    field: {
-      key: 'readOnlyCheckbox',
-      type: FormFieldType.Checkbox,
-      options: {
-        label: 'Read-only checkbox',
-        readOnly: true,
-        defaultValue: false,
-      },
-    },
-    hasError: false,
-    errorText: 'This field has an error',
+  name: 'Read-Only',
+  args: { readOnly: true, defaultValue: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'value' style (default), should show text instead of checkbox
+    await expect(canvas.getByText('Yes')).toBeInTheDocument()
+    // Should not have an interactive checkbox
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }
 
-export const WithError: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
-  },
-  args: {
-    hasError: true,
-    errorText: 'This is an error message.',
-    field: {
-      key: 'errorCheckbox',
-      type: FormFieldType.Checkbox,
-      options: {
-        label: 'This field has an error',
-        errorText: 'This is an error message.',
-      },
-    },
-  },
-  render: (args) => {
-    const field = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        errorText: args.errorText,
-      },
-    }
-    return <CheckboxFieldWrapper {...args} field={field} />
+export const ReadOnlyDisabledStyle: Story = {
+  name: 'Read-Only Style: Disabled',
+  args: { readOnly: true, readOnlyStyle: 'disabled', defaultValue: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'disabled' style, should show disabled checkbox
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeDisabled()
+    await expect(checkbox).toBeChecked()
   },
 }
 
 export const FullWidthLabel: Story = {
-  argTypes: {
-    hasError: { control: 'boolean' },
-    errorText: { control: 'text', name: 'Error Text' },
-  },
-  args: {
-    field: {
-      key: 'fullWidthLabel',
-      type: FormFieldType.Checkbox,
-      options: {
-        label:
-          'This checkbox has a full width label that wraps to multiple lines if needed. The text will flow naturally and the checkbox will stay aligned to the left.',
-        fullWidthLabel: true,
-      },
-    },
-    hasError: false,
-    errorText: 'This field has an error',
-  },
-  render: (args) => {
-    const field = {
-      ...args.field,
-      options: {
-        ...args.field.options,
-        errorText: args.errorText,
-      },
-    }
-    return <CheckboxFieldWrapper {...args} field={field} />
+  name: 'Full Width Label',
+  args: { fullWidthLabel: true, label: 'This is a long label that should wrap to multiple lines and take full width.', showState: false },
+}
+
+export const Indeterminate: Story = {
+  name: 'Indeterminate State',
+  args: { indeterminate: true, showState: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const checkbox = (await canvas.findByRole('checkbox')) as HTMLInputElement
+    await expect(checkbox.indeterminate).toBe(true)
   },
 }
 
-/**
- * This story demonstrates the formReadOnly prop which makes all fields in a form read-only.
- * This is useful when you want to display a form in read-only mode without setting each field's
- * readOnly option individually.
- */
+export const WithHelpText: Story = {
+  name: 'With Help Text',
+  args: { helpText: 'This explains what the checkbox does.', showState: false },
+}
+
 export const FormReadOnly: Story = {
-  argTypes: {
-    formReadOnly: { control: 'boolean' },
-    formReadOnlyStyle: {
-      control: 'select',
-      options: ['value', 'disabled'],
-    },
-  },
-  args: {
-    formReadOnly: true,
-    formReadOnlyStyle: 'value',
-  },
-  render: (args) => {
-    return (
-      <div className="space-y-4">
-        <div className="text-sm text-gray-500 mb-2">
-          <p>Toggle the "formReadOnly" control to see how it affects the checkboxes.</p>
-          <p className="mt-1">
-            When formReadOnly is true, all checkboxes become read-only regardless of their individual readOnly setting.
-          </p>
-        </div>
-
-        <CheckboxFieldWrapper
-          {...args}
-          field={{
-            key: 'formReadOnlyChecked',
-            type: FormFieldType.Checkbox,
-            options: {
-              label: 'Checked checkbox (formReadOnly controls this)',
-              defaultValue: true,
-            },
-          }}
-        />
-
-        <CheckboxFieldWrapper
-          {...args}
-          field={{
-            key: 'formReadOnlyUnchecked',
-            type: FormFieldType.Checkbox,
-            options: {
-              label: 'Unchecked checkbox (formReadOnly controls this)',
-              defaultValue: false,
-            },
-          }}
-        />
-      </div>
-    )
+  name: 'Form Read-Only',
+  args: { formReadOnly: true, defaultValue: true, showState: false, readOnly: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'value' style (default), should show text instead of checkbox
+    await expect(canvas.getByText('Yes')).toBeInTheDocument()
+    // Should not have an interactive checkbox
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }
 
-/**
- * This story demonstrates the formReadOnlyStyle prop which controls how read-only fields are displayed.
- * - 'value': Shows the field value as text (true/false) or using theme icons if available
- * - 'disabled': Shows the field as a disabled input
- */
-export const FormReadOnlyStyles: Story = {
-  argTypes: {
-    formReadOnlyStyle: {
-      control: 'radio',
-      options: ['value', 'disabled'],
-    },
+export const FormReadOnlyStyle: Story = {
+  name: 'Form Read-Only Style: Disabled',
+  args: { formReadOnly: true, formReadOnlyStyle: 'disabled', defaultValue: false, showState: false, readOnly: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // In 'disabled' style, should show disabled checkbox
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeDisabled()
+    await expect(checkbox).not.toBeChecked()
   },
-  args: {
-    formReadOnly: true,
-    formReadOnlyStyle: 'value',
+}
+
+export const FieldOverridesForm: Story = {
+  name: 'Field Read-Only Overrides Form',
+  args: { 
+    formReadOnly: true, 
+    formReadOnlyStyle: 'disabled', 
+    readOnly: true, 
+    readOnlyStyle: 'value', 
+    defaultValue: true, 
+    showState: false 
   },
-  render: (args) => {
-    return (
-      <div className="space-y-4">
-        <div className="text-sm text-gray-500 mb-2">
-          <p>Switch between 'value' and 'disabled' to see different read-only styles:</p>
-          <ul className="list-disc ml-5 mt-1">
-            <li>'value': Shows the value as text or using theme icons</li>
-            <li>'disabled': Shows as a disabled checkbox input</li>
-          </ul>
-          <p className="mt-1">The formReadOnlyStyle prop only has an effect when a field is in read-only mode.</p>
-        </div>
-
-        <div className="p-3 border border-gray-200 rounded mb-4">
-          <h3 className="font-medium mb-2">Checked checkbox:</h3>
-          <CheckboxFieldWrapper
-            {...args}
-            field={{
-              key: 'formReadOnlyStyleChecked',
-              type: FormFieldType.Checkbox,
-              options: {
-                label: 'Checked checkbox with different read-only styles',
-                defaultValue: true,
-              },
-            }}
-          />
-        </div>
-
-        <div className="p-3 border border-gray-200 rounded">
-          <h3 className="font-medium mb-2">Unchecked checkbox:</h3>
-          <CheckboxFieldWrapper
-            {...args}
-            field={{
-              key: 'formReadOnlyStyleUnchecked',
-              type: FormFieldType.Checkbox,
-              options: {
-                label: 'Unchecked checkbox with different read-only styles',
-                defaultValue: false,
-              },
-            }}
-          />
-        </div>
-      </div>
-    )
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Field-level 'value' style should override form-level 'disabled' style
+    await expect(canvas.getByText('Yes')).toBeInTheDocument()
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }

@@ -1,331 +1,440 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { useForm } from 'react-hook-form';
-import { FormFieldType } from '../form-types';
-import { MoneyField } from './money-field';
-import { useState } from 'react';
+import type { Meta, StoryObj } from '@storybook/react'
+import { FormFieldType, CurrencyFieldOptions, CurrencyCode } from '../form-types'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
+import { expect, within, userEvent, fn } from 'storybook/test'
+import { getCurrencyOptions } from '../utils/currency'
 
-// Define the shape of our money field
-type MoneyFieldType = {
-  key: string;
-  type: FormFieldType.Currency;
-  options: {
-    label?: string;
-    placeholder?: string;
-    required?: boolean;
-    disabled?: boolean;
-    readOnly?: boolean;
-    readOnlyStyle?: 'value' | 'disabled';
-    defaultValue?: number | string;
-    min?: number;
-    max?: number;
-    step?: number | string;
-  };
-};
+// Helper function to generate realistic usage code with memoization
+const codeCache = new Map<string, string>()
 
-type MoneyFieldWrapperProps = {
-  field: MoneyFieldType;
-  hasError?: boolean;
-  formReadOnly?: boolean;
-  formReadOnlyStyle?: 'value' | 'disabled';
-};
-
-// Wrapper component to demonstrate form integration
-const MoneyFieldWrapper = ({
-  field,
-  hasError = false,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: MoneyFieldWrapperProps) => {
-  const form = useForm({
-    defaultValues: {
-      [field.key]: field.options?.defaultValue || '',
-    },
-  });
+const generateMoneyFieldCode = (args: MoneyFieldStoryArgs) => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
+  }
   
-  const value = form.watch(field.key);
+  const options: string[] = []
   
-  return (
-    <div className="max-w-md p-4 space-y-6">
-      <div className="space-y-2">
-        <label className="block text-sm font-medium text-gray-700">
-          {field.options.label}
-          {field.options.required && <span className="text-red-500 ml-1">*</span>}
-        </label>
-        <div className="money-field-wrapper">
-          <MoneyField 
-            form={{
-              ...form,
-              register: form.register,
-              getValues: form.getValues,
-              setValue: form.setValue,
-              control: form.control,
-            } as any}
-            field={field}
-            hasError={hasError}
-            formReadOnly={formReadOnly}
-            formReadOnlyStyle={formReadOnlyStyle}
-          />
-        </div>
-      </div>
-      <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-        <div className="font-medium mb-1">Form value (raw):</div>
-        <pre className="whitespace-pre-wrap break-words">
-          {JSON.stringify(value) || 'No value entered'}
-        </pre>
-        <div className="mt-2 font-medium mb-1">Formatted value:</div>
-        <div className="font-mono">
-          {value !== undefined && value !== '' ? 
-            new Intl.NumberFormat('en-US', { 
-              style: 'currency', 
-              currency: 'USD' 
-            }).format(Number(value)) : 
-            'No value entered'}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const meta: Meta<typeof MoneyFieldWrapper> = {
-  component: MoneyFieldWrapper,
-  title: 'Forms/MoneyField',
-  tags: ['autodocs'],
-  argTypes: {
-    hasError: { control: 'boolean' },
-    formReadOnly: { control: 'boolean' },
-    formReadOnlyStyle: {
-      control: 'select',
-      options: ['value', 'disabled'],
-    },
-  },
-  args: {
-    field: {
-      key: 'amount',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Amount',
-        placeholder: '0.00',
-        required: false,
-        disabled: false,
-        step: '0.01',
-      },
-    },
-    hasError: false,
-    formReadOnly: false,
-    formReadOnlyStyle: 'value',
-  },
-};
-
-export default meta;
-type Story = StoryObj<typeof MoneyFieldWrapper>;
-
-export const Default: Story = {
-  args: {},
-};
-
-export const WithDefaultValue: Story = {
-  args: {
-    field: {
+  if (args.label !== 'Amount') {
+    options.push(`label: '${args.label}'`)
+  }
+  if (args.required) options.push('required: true')
+  if (args.disabled) options.push('disabled: true')
+  if (args.defaultValue) options.push(`defaultValue: ${args.defaultValue}`)
+  if (args.readOnly) options.push('readOnly: true')
+  if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
+  if (args.placeholder && args.placeholder !== 'Enter amount') options.push(`placeholder: '${args.placeholder}'`)
+  if (args.currency && args.currency !== 'USD') options.push(`currency: '${args.currency}'`)
+  if (args.showCurrencyCode) options.push('showCurrencyCode: true')
+  if (args.hideSymbolWhenEmpty === false) options.push('hideSymbolWhenEmpty: false')
+  
+  const formProps: string[] = []
+  if (args.formReadOnly) formProps.push('readOnly={true}')
+  if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  
+  const optionsString = options.length > 0 ? `
+        ${options.join(',\n        ')},` : ''
+  
+  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  
+  const code = `<Form
+  id="example-form"${formPropsString}
+  fields={[
+    {
       key: 'price',
       type: FormFieldType.Currency,
-      options: {
-        label: 'Product Price',
-        placeholder: '0.00',
-        defaultValue: '29.99',
-        required: true,
+      options: {${optionsString}
+      },
+    },
+  ]}
+  submit={(values) => console.log(values)}
+/>`
+  
+  codeCache.set(cacheKey, code)
+  return code
+}
+
+interface MoneyFieldStoryArgs {
+  label: string
+  required: boolean
+  disabled: boolean
+  defaultValue: number | undefined
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  placeholder: string
+  currency: CurrencyCode
+  showCurrencyCode: boolean
+  hideSymbolWhenEmpty: boolean
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  showState: boolean
+}
+
+/**
+ * The MoneyField component is specifically designed for capturing currency amounts.
+ * It supports multiple international currencies with proper symbols, positioning,
+ * and formatting. Features a dynamic currency symbol that appears when the field 
+ * has content and automatically adjusts input padding for optimal user experience.
+ */
+const meta: Meta<MoneyFieldStoryArgs> = {
+  title: 'Forms/MoneyField',
+  tags: ['autodocs'],
+  parameters: {
+    docs: {
+      source: {
+        type: 'code',
+        transform: (code: string, storyContext: any) => {
+          return generateMoneyFieldCode(storyContext.args)
+        },
+      },
+      story: {
+        inline: true,
+        autoplay: false,
       },
     },
   },
-};
-
-export const WithMinMax: Story = {
-  args: {
-    field: {
-      key: 'donation',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Donation Amount',
-        placeholder: '0.00',
-        min: 5,
-        max: 1000,
-        defaultValue: '25.00',
-        required: true,
-      },
+  argTypes: {
+    label: { control: 'text', description: 'Field label' },
+    required: { control: 'boolean', description: 'Is required?' },
+    disabled: { control: 'boolean', description: 'Is disabled?' },
+    defaultValue: { control: 'number', description: 'Default monetary value' },
+    readOnly: { control: 'boolean', description: 'Is read-only?' },
+    readOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Read-only display style',
     },
-  },
-};
-
-export const WithCustomStep: Story = {
-  args: {
-    field: {
-      key: 'customStep',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Custom Increment ($5)',
-        placeholder: '0.00',
-        step: '5',
-        defaultValue: '25.00',
-      },
+    hasError: { control: 'boolean', description: 'Show error state?' },
+    errorMessage: { control: 'text', description: 'Error message' },
+    placeholder: { control: 'text', description: 'Placeholder text' },
+    currency: {
+      control: 'select',
+      options: ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'SEK', 'NOK', 'DKK', 'PLN', 'CZK', 'INR', 'KRW', 'CNY', 'BRL', 'MXN', 'RUB', 'TRY'],
+      description: 'Currency to use',
     },
-  },
-};
-
-export const RequiredField: Story = {
-  args: {
-    field: {
-      key: 'requiredAmount',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Required Amount',
-        placeholder: '0.00',
-        required: true,
-      },
+    showCurrencyCode: { control: 'boolean', description: 'Show currency code alongside symbol' },
+    hideSymbolWhenEmpty: { control: 'boolean', description: 'Hide symbol when field is empty' },
+    formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
+    formReadOnlyStyle: {
+      control: 'radio',
+      options: ['value', 'disabled'],
+      description: 'Form-wide read-only style',
     },
+    showState: { control: 'boolean', description: 'Show live form state?' },
   },
-};
-
-export const Disabled: Story = {
   args: {
-    field: {
-      key: 'disabledAmount',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Disabled Field',
-        defaultValue: '100.00',
-        disabled: true,
-      },
-    },
-  },
-};
-
-export const ReadOnlyAsValue: Story = {
-  args: {
-    formReadOnly: true,
+    label: 'Amount',
+    required: false,
+    disabled: false,
+    defaultValue: undefined,
+    readOnly: false,
+    readOnlyStyle: 'value',
+    hasError: false,
+    errorMessage: 'Please enter a valid amount.',
+    placeholder: 'Enter amount',
+    currency: 'USD',
+    showCurrencyCode: false,
+    hideSymbolWhenEmpty: true,
+    formReadOnly: false,
     formReadOnlyStyle: 'value',
-    field: {
-      key: 'readOnlyAmount',
+    showState: true,
+  },
+  render: (args) => {
+    const field: { key: string; type: FormFieldType.Currency; options: CurrencyFieldOptions } = {
+      key: 'storybookMoneyField',
       type: FormFieldType.Currency,
       options: {
-        label: 'Read-only (as value)', 
-        readOnly: true,
-        defaultValue: '75.50',
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        placeholder: args.placeholder,
+        currency: args.currency,
+        showCurrencyCode: args.showCurrencyCode,
+        hideSymbolWhenEmpty: args.hideSymbolWhenEmpty,
       },
-    },
-  },
-};
-
-export const ReadOnlyAsDisabled: Story = {
-  args: {
-    formReadOnly: true,
-    formReadOnlyStyle: 'disabled',
-    field: {
-      key: 'readOnlyDisabledAmount',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Read-only (as disabled)', 
-        readOnly: true,
-        readOnlyStyle: 'disabled',
-        defaultValue: '150.75',
-      },
-    },
-  },
-};
-
-export const WithError: Story = {
-  args: {
-    hasError: true,
-    field: {
-      key: 'errorAmount',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Amount with Error',
-        required: true,
-      },
-    },
-  },
-};
-
-export const WithValidation: Story = {
-  args: {
-    field: {
-      key: 'validatedAmount',
-      type: FormFieldType.Currency,
-      options: {
-        label: 'Amount with Validation',
-        placeholder: 'Enter amount between $10 and $1000',
-        required: true,
-      },
-    },
-  },
-  render: function Render(args) {
-    const form = useForm({
-      defaultValues: {
-        [args.field.key]: args.field.options?.defaultValue || '',
-      },
-      mode: 'onChange',
-    });
-    
-    const value = form.watch(args.field.key);
-    const error = form.formState.errors[args.field.key];
-    
+    }
     return (
-      <div className="max-w-md p-4 space-y-6">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            {args.field.options.label}
-            {args.field.options.required && <span className="text-red-500 ml-1">*</span>}
-          </label>
-          <div className="money-field-wrapper">
-            <MoneyField 
-              form={{
-                ...form,
-                register: form.register,
-                getValues: form.getValues,
-                setValue: form.setValue,
-                control: form.control,
-              } as any}
-              field={{
-                ...args.field,
-                options: {
-                  ...args.field.options,
-                  // Add custom validation
-                  validate: (value: string) => {
-                    if (!value) return 'Amount is required';
-                    const numValue = parseFloat(value);
-                    if (isNaN(numValue)) return 'Please enter a valid number';
-                    if (numValue < 10) return 'Minimum amount is $10';
-                    if (numValue > 1000) return 'Maximum amount is $1000';
-                    return true;
-                  },
-                },
-              }}
-              hasError={!!error}
-              formReadOnly={args.formReadOnly}
-              formReadOnlyStyle={args.formReadOnlyStyle}
-            />
-          </div>
-          {error && (
-            <p className="mt-1 text-sm text-red-600">
-              {error.message as string}
-            </p>
-          )}
-        </div>
-        <div className="mt-4 p-3 bg-gray-50 rounded text-xs">
-          <div className="font-medium mb-1">Form value (raw):</div>
-          <pre className="whitespace-pre-wrap break-words">
-            {JSON.stringify(value) || 'No value entered'}
-          </pre>
-          <div className="mt-2 font-medium mb-1">Formatted value:</div>
-          <div className="font-mono">
-            {value !== undefined && value !== '' ? 
-              new Intl.NumberFormat('en-US', { 
-                style: 'currency', 
-                currency: 'USD' 
-              }).format(Number(value)) : 
-              'No value entered'}
-          </div>
-        </div>
-      </div>
-    );
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
   },
-};
+}
+export default meta
+
+type Story = StoryObj<typeof meta>
+
+export const Default: Story = {
+  name: 'Default State (USD)',
+  args: { showState: true },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('spinbutton')
+    await expect(input).toBeInTheDocument()
+    await expect(input).toHaveAttribute('type', 'number')
+    await expect(input).toHaveAttribute('step', '0.01')
+    await expect(input).toBeEnabled()
+  },
+}
+
+export const Euro: Story = {
+  name: 'Euro Currency',
+  args: { 
+    currency: 'EUR',
+    defaultValue: 99.99,
+    label: 'Price (EUR)',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByDisplayValue('99.99')
+    await expect(input).toBeInTheDocument()
+    
+    // Euro symbol should be visible
+    const euroSymbol = await canvas.findByText('€')
+    await expect(euroSymbol).toBeInTheDocument()
+  },
+}
+
+export const BritishPound: Story = {
+  name: 'British Pound',
+  args: { 
+    currency: 'GBP',
+    defaultValue: 75.50,
+    label: 'Price (GBP)',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByDisplayValue('75.5')
+    await expect(input).toBeInTheDocument()
+    
+    // Pound symbol should be visible
+    const poundSymbol = await canvas.findByText('£')
+    await expect(poundSymbol).toBeInTheDocument()
+  },
+}
+
+export const JapaneseYen: Story = {
+  name: 'Japanese Yen (No Decimals)',
+  args: { 
+    currency: 'JPY',
+    defaultValue: 1500,
+    label: 'Price (JPY)',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByDisplayValue('1500')
+    await expect(input).toBeInTheDocument()
+    await expect(input).toHaveAttribute('step', '1') // No decimals for JPY
+    
+    // Yen symbol should be visible
+    const yenSymbol = await canvas.findByText('¥')
+    await expect(yenSymbol).toBeInTheDocument()
+  },
+}
+
+export const SwedishKrona: Story = {
+  name: 'Swedish Krona (Symbol After)',
+  args: { 
+    currency: 'SEK',
+    defaultValue: 250.00,
+    label: 'Price (SEK)',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByDisplayValue('250')
+    await expect(input).toBeInTheDocument()
+    
+    // Krona symbol should be visible and positioned after
+    const kronaSymbol = await canvas.findByText('kr')
+    await expect(kronaSymbol).toBeInTheDocument()
+  },
+}
+
+export const WithCurrencyCode: Story = {
+  name: 'With Currency Code Display',
+  args: { 
+    currency: 'CAD',
+    defaultValue: 125.99,
+    showCurrencyCode: true,
+    label: 'Price with Code',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByDisplayValue('125.99')
+    await expect(input).toBeInTheDocument()
+    
+    // Both symbol and code should be visible
+    const cadSymbol = await canvas.findByText('C$')
+    await expect(cadSymbol).toBeInTheDocument()
+    const cadCode = await canvas.findByText('CAD')
+    await expect(cadCode).toBeInTheDocument()
+  },
+}
+
+export const AlwaysShowSymbol: Story = {
+  name: 'Always Show Symbol',
+  args: { 
+    currency: 'USD',
+    hideSymbolWhenEmpty: false,
+    label: 'Always Show $',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('spinbutton')
+    
+    // Dollar sign should be visible even when empty
+    const dollarSign = await canvas.findByText('$')
+    await expect(dollarSign).toBeInTheDocument()
+    
+    // Test typing
+    await userEvent.type(input, '42.50')
+    await expect(input).toHaveValue(42.5)
+  },
+}
+
+export const CurrencySymbolInteraction: Story = {
+  name: 'Currency Symbol Interaction',
+  args: { 
+    currency: 'EUR',
+    label: 'Price',
+    placeholder: '0.00',
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('spinbutton')
+    
+    // Start typing - euro symbol should appear
+    await userEvent.type(input, '1')
+    await expect(input).toHaveValue(1)
+    
+    // Continue typing
+    await userEvent.type(input, '23.45')
+    await expect(input).toHaveValue(123.45)
+    
+    // Clear the field - euro symbol should hide
+    await userEvent.clear(input)
+    await expect(input).toHaveValue(null)
+  },
+}
+
+export const ReadOnlyValue: Story = {
+  name: 'Read-Only (Value Style)',
+  args: { 
+    readOnly: true,
+    currency: 'EUR',
+    defaultValue: 299.99,
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Should render as formatted currency value
+    const valueDisplay = await canvas.findByText('€299,99') // Euro formatting
+    await expect(valueDisplay).toBeInTheDocument()
+    
+    // Should not have an input field
+    const inputs = canvas.queryAllByRole('spinbutton')
+    await expect(inputs).toHaveLength(0)
+  },
+}
+
+export const ReadOnlyWithCode: Story = {
+  name: 'Read-Only with Currency Code',
+  args: { 
+    readOnly: true,
+    currency: 'GBP',
+    defaultValue: 150.75,
+    showCurrencyCode: true,
+    showState: false 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Should render as formatted currency value with code
+    const valueDisplay = await canvas.findByText('£150.75 GBP')
+    await expect(valueDisplay).toBeInTheDocument()
+  },
+}
+
+export const MultiCurrencyComparison: Story = {
+  name: 'Multi-Currency Showcase',
+  args: { 
+    currency: 'USD',
+    defaultValue: 100,
+    label: 'Select Currency Above',
+    showState: false 
+  },
+  parameters: {
+    docs: {
+      source: {
+        code: `// Showcase of different currencies
+const currencies = [
+  { currency: 'USD', symbol: '$', position: 'before' },
+  { currency: 'EUR', symbol: '€', position: 'before' },
+  { currency: 'GBP', symbol: '£', position: 'before' },
+  { currency: 'JPY', symbol: '¥', position: 'before', decimals: 0 },
+  { currency: 'SEK', symbol: 'kr', position: 'after' },
+  { currency: 'PLN', symbol: 'zł', position: 'after' },
+]
+
+<Form
+  fields={currencies.map(curr => ({
+    key: curr.currency.toLowerCase(),
+    type: FormFieldType.Currency,
+    options: {
+      label: \`Price (\${curr.currency})\`,
+      currency: curr.currency,
+      defaultValue: 100,
+    },
+  }))}
+  submit={(values) => console.log(values)}
+/>`,
+      },
+    },
+  },
+}
+
+export const InteractiveExample: Story = {
+  name: 'Interactive Example',
+  args: { 
+    label: 'Product Price',
+    placeholder: '0.00',
+    currency: 'USD',
+    required: true,
+    showState: true 
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const input = await canvas.findByRole('spinbutton')
+    
+    // Test typing decimal values
+    await userEvent.type(input, '19.99')
+    await expect(input).toHaveValue(19.99)
+    
+    // Clear and test whole numbers
+    await userEvent.clear(input)
+    await userEvent.type(input, '50')
+    await expect(input).toHaveValue(50)
+    
+    // Test large amounts
+    await userEvent.clear(input)
+    await userEvent.type(input, '1234.56')
+    await expect(input).toHaveValue(1234.56)
+  },
+} 
