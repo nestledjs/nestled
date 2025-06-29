@@ -17,6 +17,7 @@ import {
   SwitchOptions,
   TextAreaOptions,
   UrlFieldOptions,
+  CustomCheckboxOptions,
 } from './form-types'
 
 export class FormFieldClass {
@@ -58,6 +59,10 @@ export class FormFieldClass {
 
   static checkbox(key: string, options: CheckboxOptions = {}): FormField {
     return this.field(FormFieldType.Checkbox, key, options)
+  }
+
+  static customCheckbox(key: string, options: CustomCheckboxOptions = {}): FormField {
+    return this.field(FormFieldType.CustomCheckbox, key, options)
   }
 
   static switch(key: string, options: SwitchOptions = {}): FormField {

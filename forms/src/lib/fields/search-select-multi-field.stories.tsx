@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { FormFieldType } from '../form-types';
 import { SearchSelectMultiField } from './search-select-multi-field';
 import { useState, useEffect } from 'react';
-import { Button } from '../../button';
+import { Button } from './button';
 
 // Mock data for the multi-select
 const mockUsers = [

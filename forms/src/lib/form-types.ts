@@ -25,6 +25,7 @@ export enum FormFieldType {
   SearchSelectMulti = 'SearchSelectMulti',
   Content = 'Content',
   Custom = 'Custom',
+  CustomCheckbox = 'CustomCheckbox',
 }
 
 // A Base interface for options common to ALL fields
@@ -70,6 +71,8 @@ export interface CheckboxOptions extends BaseFieldOptions {
   labelTextSize?: string
   fullWidthLabel?: boolean
   wrapperClassNames?: string
+  helpText?: string
+  errorText?: string
 }
 
 export interface SwitchOptions extends BaseFieldOptions {
@@ -278,10 +281,25 @@ export type FormField =
   | SearchSelectMultiField<any>
   | ContentField
   | CustomFieldType<any>
+  | CustomCheckboxField
 
 // A generic prop type for all individual field components
 export interface FormFieldProps<T extends FormField> {
   field: T
   form: UseFormReturn
   hasError: boolean
+}
+
+export interface CustomCheckboxOptions extends BaseFieldOptions {
+  defaultValue?: boolean;
+  fullWidthLabel?: boolean;
+  wrapperClassNames?: string;
+  helpText?: string;
+  errorText?: string;
+}
+
+interface CustomCheckboxField {
+  key: string;
+  type: FormFieldType.CustomCheckbox;
+  options: CustomCheckboxOptions;
 }
