@@ -1,7 +1,7 @@
 import clsx from 'clsx'
 import React from 'react'
 import { FormField, FormFieldType, FormFieldProps } from '../form-types'
-import { inputStyle } from '../styles/input-style' // New location for shared styles
+// New location for shared styles
 import './money-field-style.css'
 
 // The component now accepts the new props structure and is strongly typed.
@@ -12,10 +12,13 @@ export function MoneyField({
   hasError,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.Currency }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const isReadOnly = field.options.readOnly ?? formReadOnly;
-  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key) ?? '';
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.Currency }>> & {
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
+  const isReadOnly = field.options.readOnly ?? formReadOnly
+  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key) ?? ''
 
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
@@ -28,15 +31,13 @@ export function MoneyField({
             step="0.01"
             disabled={true}
             value={value}
-            className={clsx(inputStyle, { '!border-red-600 !focus:border-red-600': hasError })}
+            className={clsx({ '!border-red-600 !focus:border-red-600': hasError })}
           />
         </div>
-      );
+      )
     }
     // Render as plain value
-    return (
-      <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">${value ?? '—'}</div>
-    );
+    return <div className="min-h-[2.5rem] flex items-center px-3 text-gray-700">${value ?? '—'}</div>
   }
 
   return (
@@ -55,7 +56,7 @@ export function MoneyField({
         disabled={field.options.disabled}
         defaultValue={field.options.defaultValue}
         placeholder={field.options.placeholder}
-        className={clsx(inputStyle, {
+        className={clsx({
           '!border-red-600 !focus:border-red-600': hasError,
         })}
       />

@@ -2,12 +2,15 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import { CheckIcon } from '@heroicons/react/24/solid'
 import { useEffect, useState } from 'react'
 import { FormFieldProps, FormField, FormFieldType, RadioOption, RadioFormFieldOptions } from '../form-types'
-import { inputStyle } from '../styles/input-style'
+
 import './radio-field-style.css'
 import { Controller } from 'react-hook-form'
 
 export function RadioField(
-  props: FormFieldProps<Extract<FormField, { type: FormFieldType.Radio }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }
+  props: FormFieldProps<Extract<FormField, { type: FormFieldType.Radio }>> & {
+    formReadOnly?: boolean
+    formReadOnlyStyle?: 'value' | 'disabled'
+  },
 ) {
   const [subOptionKey, setSubOptionKey] = useState<string>()
   const [subOptionValue, setSubOptionValue] = useState<string>('')
@@ -27,19 +30,30 @@ export function RadioField(
         }
       }
     }
-  }, [options?.defaultValue, options?.defaultSubValue, props.form.setValue, props.field.key, options, options.radioOptions, props.form, props.field])
+  }, [
+    options?.defaultValue,
+    options?.defaultSubValue,
+    props.form.setValue,
+    props.field.key,
+    options,
+    options.radioOptions,
+    props.form,
+    props.field,
+  ])
 
-  const isReadOnly = options.readOnly ?? props.formReadOnly;
-  const readOnlyStyle = options.readOnlyStyle ?? props.formReadOnlyStyle;
-  const value = props.form.getValues(props.field.key);
-  const selectedOption = options.radioOptions?.find((o) => o.value === value);
+  const isReadOnly = options.readOnly ?? props.formReadOnly
+  const readOnlyStyle = options.readOnlyStyle ?? props.formReadOnlyStyle
+  const value = props.form.getValues(props.field.key)
+  const selectedOption = options.radioOptions?.find((o) => o.value === value)
 
   function getInputClassName(option: RadioOption) {
     return [
       options?.fullWidthLabel ? 'check' : '',
       options?.hidden || option?.hidden ? 'opacity-0' : '',
       options.radioDirection !== 'row' ? 'ml-4' : '',
-    ].filter(Boolean).join(' ');
+    ]
+      .filter(Boolean)
+      .join(' ')
   }
 
   function renderReadOnly() {
@@ -64,7 +78,7 @@ export function RadioField(
             </div>
           ))}
         </div>
-      );
+      )
     }
     if (selectedOption) {
       return (
@@ -72,9 +86,9 @@ export function RadioField(
           <CheckIcon className="w-5 h-5 text-green_web" />
           <span className="pl-2">{selectedOption.label}</span>
         </div>
-      );
+      )
     }
-    return <XMarkIcon className="w-5 h-5 text-red-600" />;
+    return <XMarkIcon className="w-5 h-5 text-red-600" />
   }
 
   function handleRadioChange(option: RadioOption, onChange: (value: any) => void) {
@@ -147,7 +161,9 @@ export function RadioField(
                     <input
                       {...(option?.checkedSubOption?.key ? props.form.register(option.checkedSubOption.key) : {})}
                       name={option?.checkedSubOption?.key ?? ''}
-                      placeholder={options?.radioDirection === 'row' ? option?.checkedSubOption?.label ?? '' : undefined}
+                      placeholder={
+                        options?.radioDirection === 'row' ? option?.checkedSubOption?.label ?? '' : undefined
+                      }
                       disabled={options?.disabled}
                       onChange={(e) => {
                         setSubOptionKey(option?.checkedSubOption?.key ?? '')
@@ -170,7 +186,7 @@ export function RadioField(
   }
 
   if (isReadOnly) {
-    return renderReadOnly();
+    return renderReadOnly()
   }
-  return renderEditable();
+  return renderEditable()
 }

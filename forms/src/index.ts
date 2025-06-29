@@ -1,3 +1,6 @@
 export * from './lib/form'
 export * from './lib/form-fields'
 export * from './lib/form-types'
+export { tailwindTheme } from './lib/themes/tailwind'
+export type { FormTheme } from './lib/form-theme'
+export type { FormProps } from './lib/form'

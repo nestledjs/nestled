@@ -2,6 +2,7 @@ import React from 'react'
 import clsx from 'clsx'
 import { FormField, FormFieldType } from './form-types'
 import { useFormContext } from './form-context'
+import { useFormConfig } from './form-config-context'
 
 import { TextField } from './fields/text-field'
 import { TextAreaField } from './fields/textarea-field'
@@ -22,6 +23,8 @@ import { RadioField } from './fields/radio-field'
 import { SearchSelectField } from './fields/search-select-field'
 import { SearchSelectMultiField } from './fields/search-select-multi-field'
 import { CustomField } from './fields/custom-field'
+import { CustomCheckboxField } from './fields/custom-checkbox-field'
+import { FormLabel } from './fields/label'
 
 // This function remains internal to the renderer
 function renderComponent(form: ReturnType<typeof useFormContext>, field: FormField, formReadOnly: boolean, formReadOnlyStyle: 'value' | 'disabled') {
@@ -209,6 +212,16 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
           formReadOnlyStyle={formReadOnlyStyle}
         />
       )
+    case FormFieldType.CustomCheckbox:
+      return (
+        <CustomCheckboxField
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
     default:
       return null
   }
@@ -216,24 +229,44 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
 
 // This is the exported component you will use
 export function RenderFormField({ field, formReadOnly = false, formReadOnlyStyle = 'value' }: { field: FormField, formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const form = useFormContext() // Get the form context here
+  const form = useFormContext()
+  const { labelDisplay } = useFormConfig()
 
   const error = form.formState.errors[field.key]
   const errorMessage = (error?.message as string) ?? (error ? 'This field is required' : null)
 
-  // Only render the generic label for non-checkbox fields
-  const isCheckbox = field.type === FormFieldType.Checkbox;
-  const label = !isCheckbox && field.options.label && (
-    <label htmlFor={field.key} className={clsx()}>
-      {field.options.label}
-    </label>
+  // --- NEW, CONFIGURABLE LABEL LOGIC ---
+  const hasLabelProp = !!field.options.label
+  let showLabel = false
+
+  if (hasLabelProp) {
+    switch (labelDisplay) {
+      case 'all':
+        showLabel = true
+        break
+      case 'none':
+        showLabel = false
+        break
+      case 'default':
+      default:
+        showLabel = field.type !== FormFieldType.Checkbox
+        break
+    }
+  }
+
+  const labelComponent = showLabel && (
+    <FormLabel
+      htmlFor={field.key}
+      label={field.options.label ?? ''}
+      required={field.options.required}
+    />
   )
 
   const component = renderComponent(form, field, formReadOnly, formReadOnlyStyle)
 
   return (
     <div key={field.key} className={clsx()}>
-      {label}
+      {labelComponent}
       <div className={clsx()}>
         {component}
         {error && <span className="text-red-700 text-sm">{errorMessage}</span>}

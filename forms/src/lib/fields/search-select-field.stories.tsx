@@ -3,7 +3,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { FormFieldType } from '../form-types';
 import { SearchSelectField } from './search-select-field';
 import { useState, useEffect } from 'react';
-import { Button } from '../../button';
+import { Button } from './button';
 
 // Mock data for the search select
 const mockUsers = [
