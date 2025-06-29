@@ -282,6 +282,29 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnlyInput: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
+  switchField: {
+    wrapper: '',
+    container: 'flex items-center justify-between',
+    label: 'ml-3 text-md text-gray-700',
+    switchTrack: 'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
+    switchTrackOn: 'bg-green-600 focus:ring-green-600',
+    switchTrackOff: 'bg-gray-200 focus:ring-green-600',
+    switchThumb: 'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200',
+    switchThumbOn: 'translate-x-5',
+    switchThumbOff: 'translate-x-0',
+    error: '!border-red-600 !focus:ring-red-600',
+    disabled: 'cursor-not-allowed opacity-50',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
+  },
+  textAreaField: {
+    wrapper: '',
+    textarea: 'block w-full resize-none bg-white border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:ring-2 focus:ring-sky-300 focus:border-sky-300',
+    error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
+    disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 whitespace-pre-line',
+  },
 
   // Add more fields as needed
 })

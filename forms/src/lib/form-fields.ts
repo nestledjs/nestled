@@ -1,5 +1,6 @@
 import {
   BaseFieldOptions,
+  ButtonOptions,
   CheckboxOptions,
   ContentOptions,
   CurrencyFieldOptions,
@@ -68,6 +69,10 @@ export class FormFieldClass {
 
   static switch(key: string, options: SwitchOptions = {}): FormField {
     return this.field(FormFieldType.Switch, key, options)
+  }
+
+  static button(key: string, options: ButtonOptions = {}): FormField {
+    return this.field(FormFieldType.Button, key, options)
   }
 
   static datePicker(key: string, options: DatePickerOptions = {}): FormField {
