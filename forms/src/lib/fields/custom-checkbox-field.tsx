@@ -46,6 +46,7 @@ export function CustomCheckboxField({
           {effectiveReadOnlyStyle === 'disabled' ? (
             <div className={clsx(theme.checkboxContainer)}>
               <span
+                data-testid="custom-checkbox-icon"
                 className={clsx(
                   theme.customCheckbox,
                   hasError && theme.error,
@@ -56,10 +57,18 @@ export function CustomCheckboxField({
                 {value ? checkedIcon : uncheckedIcon}
               </span>
             </div>
+          ) : effectiveReadOnlyStyle === 'value' ? (
+            <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
           ) : value && readonlyCheckedIcon ? (
-            readonlyCheckedIcon
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {readonlyCheckedIcon}
+              <span className="sr-only">{value ? 'Yes' : 'No'}</span>
+            </span>
           ) : !value && readonlyUncheckedIcon ? (
-            readonlyUncheckedIcon
+            <span style={{ display: 'inline-flex', alignItems: 'center' }}>
+              {readonlyUncheckedIcon}
+              <span className="sr-only">{value ? 'Yes' : 'No'}</span>
+            </span>
           ) : (
             <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
           )}
@@ -88,6 +97,7 @@ export function CustomCheckboxField({
             aria-invalid={hasError}
             aria-checked={!!controllerField.value}
             aria-disabled={options.disabled}
+            required={options.required}
           />
           <span
             className={clsx(

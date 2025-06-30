@@ -71,6 +71,7 @@ export function DateTimePickerField({
       render={({ field: controllerField }) => (
         <input
           {...inputProps}
+          required={options.required}
           value={controllerField.value || ''}
           onChange={(e) => controllerField.onChange(e.target.value)}
           onBlur={controllerField.onBlur}
@@ -81,6 +82,7 @@ export function DateTimePickerField({
   ) : (
     <input
       {...inputProps}
+      required={options.required}
       defaultValue={getDateTimeFromValue(options.defaultValue ?? '') ?? ''}
       {...form.register(field.key, {
         required: options.required,

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo } from 'react'
-import { useForm, UseFormProps } from 'react-hook-form'
+import { useForm, UseFormProps, FieldValues } from 'react-hook-form'
 import { FormField } from './form-types'
 import clsx from 'clsx'
 import { FormContext } from './form-context'
@@ -9,11 +9,11 @@ import { FormTheme } from './form-theme'
 import { FormConfigContext, FormConfig } from './form-config-context'
 import { createFinalTheme } from './utils/resolve-theme'
 
-export interface FormProps extends UseFormProps {
+export interface FormProps<T extends FieldValues = Record<string, unknown>> extends UseFormProps<T> {
   id: string
   fields?: (FormField | null)[]
   children?: React.ReactNode
-  submit: (values: Record<string, unknown>) => void | Promise<unknown>
+  submit: (values: T) => void | Promise<unknown>
   className?: string
   /**
    * If true, the entire form is in read-only mode.
@@ -35,7 +35,7 @@ export interface FormProps extends UseFormProps {
   labelDisplay?: 'all' | 'default' | 'none'
 }
 
-export function Form({
+export function Form<T extends FieldValues = Record<string, unknown>>({
   id,
   fields,
   children,
@@ -46,11 +46,13 @@ export function Form({
   readOnlyStyle = 'value',
   theme: userTheme = {},
   labelDisplay = 'default',
-}: Readonly<FormProps>) {
-  const form = useForm({ defaultValues })
+}: Readonly<FormProps<T>>) {
+  const form = useForm<T>({ defaultValues })
 
   useEffect(() => {
-    form.reset(defaultValues)
+    if (defaultValues && typeof defaultValues !== 'function') {
+      form.reset(defaultValues)
+    }
   }, [defaultValues, form])
 
   const finalTheme = useMemo(() => createFinalTheme(userTheme), [userTheme])
@@ -60,7 +62,7 @@ export function Form({
   return (
     <FormConfigContext.Provider value={formConfig}>
       <ThemeContext.Provider value={finalTheme}>
-        <FormContext.Provider value={form}>
+        <FormContext.Provider value={form as unknown as import('react-hook-form').UseFormReturn<import('react-hook-form').FieldValues>}>
           <form id={id} className={clsx('space-y-6', className)} onSubmit={form.handleSubmit(submit)}>
             {/* Render fields from the declarative array */}
             {fields?.map((field) =>

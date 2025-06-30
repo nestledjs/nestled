@@ -143,13 +143,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       )
     case FormFieldType.Button:
       return (
-        <ButtonField
-          form={form}
-          field={field}
-          hasError={hasError}
-          formReadOnly={formReadOnly}
-          formReadOnlyStyle={formReadOnlyStyle}
-        />
+        <ButtonField field={field} form={form} hasError={hasError} />
       )
     case FormFieldType.DatePicker:
       return (

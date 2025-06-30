@@ -42,6 +42,7 @@ export function TextField({
       autoComplete="true"
       placeholder={field.options.placeholder}
       defaultValue={field.options.defaultValue}
+      required={field.options.required}
       {...form.register(field.key, { required: field.options.required })}
       className={clsx(
         fieldTheme.input || '',

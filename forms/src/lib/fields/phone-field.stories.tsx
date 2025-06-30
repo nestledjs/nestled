@@ -185,8 +185,8 @@ export const Error: Story = {
     await userEvent.type(input, '123')
     
     // Check for error message
-    const errorMessage = canvas.getByText('* Phone number is invalid')
-    await expect(errorMessage).toBeInTheDocument()
+    const errorMessages = await canvas.findAllByText('Please enter a valid phone number.')
+    await expect(errorMessages.length).toBeGreaterThanOrEqual(1)
   },
 }
 

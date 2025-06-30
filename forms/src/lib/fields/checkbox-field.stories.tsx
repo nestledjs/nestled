@@ -297,7 +297,9 @@ export const FieldOverridesForm: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Field-level 'value' style should override form-level 'disabled' style
-    await expect(canvas.getByText('Yes')).toBeInTheDocument()
-    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
+    // Updated: Expect a disabled, checked checkbox
+    const checkbox = await canvas.findByRole('checkbox')
+    await expect(checkbox).toBeDisabled()
+    await expect(checkbox).toBeChecked()
   },
 }

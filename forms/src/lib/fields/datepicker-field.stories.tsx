@@ -69,6 +69,7 @@ interface DatePickerFieldStoryArgs {
   formReadOnly: boolean
   formReadOnlyStyle: 'value' | 'disabled'
   showState: boolean
+  helpText: string
 }
 
 const meta: Meta<DatePickerFieldStoryArgs> = {
@@ -116,6 +117,7 @@ const meta: Meta<DatePickerFieldStoryArgs> = {
       description: 'Form-wide read-only style',
     },
     showState: { control: 'boolean', description: 'Show live form state?' },
+    helpText: { control: 'text', description: 'Help text' },
   },
   args: {
     label: 'Select Date',
@@ -133,9 +135,10 @@ const meta: Meta<DatePickerFieldStoryArgs> = {
     formReadOnly: false,
     formReadOnlyStyle: 'value',
     showState: true,
+    helpText: '',
   },
   render: (args) => {
-    const field: { key: string; type: FormFieldType.DatePicker; options: DatePickerOptions } = {
+    const field = {
       key: 'storybookDatePicker',
       type: FormFieldType.DatePicker,
       options: {
@@ -143,13 +146,13 @@ const meta: Meta<DatePickerFieldStoryArgs> = {
         required: args.required,
         disabled: args.disabled,
         defaultValue: args.defaultValue || undefined,
-        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
         ...(args.readOnly && { readOnly: args.readOnly }),
         ...(args.readOnly && { readOnlyStyle: args.readOnlyStyle }),
         min: args.min || undefined,
         max: args.max || undefined,
         placeholder: args.placeholder || undefined,
         useController: args.useController,
+        ...(args.helpText && { helpText: args.helpText }),
       },
     }
     return (
@@ -171,9 +174,10 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   name: 'Default State',
   args: { showState: true },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeInTheDocument()
     await expect(input).toHaveAttribute('type', 'date')
   },
@@ -182,9 +186,10 @@ export const Default: Story = {
 export const WithDefaultValue: Story = {
   name: 'With Default Value',
   args: { defaultValue: '2024-12-25', label: 'Christmas Day', showState: false },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Christmas Day'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toHaveValue('2024-12-25')
   },
 }
@@ -192,9 +197,10 @@ export const WithDefaultValue: Story = {
 export const Required: Story = {
   name: 'Required',
   args: { required: true, showState: false },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeRequired()
   },
 }
@@ -202,9 +208,10 @@ export const Required: Story = {
 export const Disabled: Story = {
   name: 'Disabled',
   args: { disabled: true, defaultValue: '2024-01-01', showState: false },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeDisabled()
     await expect(input).toHaveValue('2024-01-01')
   },
@@ -219,9 +226,10 @@ export const WithMinMax: Story = {
     defaultValue: '2024-06-15',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select date in 2024'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toHaveAttribute('min', '2024-01-01')
     await expect(input).toHaveAttribute('max', '2024-12-31')
     await expect(input).toHaveValue('2024-06-15')
@@ -231,11 +239,11 @@ export const WithMinMax: Story = {
 export const Error: Story = {
   name: 'Error State',
   args: { hasError: true, errorMessage: 'Please select a valid date.', showState: false },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeInTheDocument()
-    // Check for error message
     await expect(canvas.getByText(/please select a valid date/i)).toBeInTheDocument()
   },
 }
@@ -250,10 +258,9 @@ export const WithController: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    // Use a forgiving regex to match the label
+    const input = await canvas.findByLabelText(/Birthday/)
     await expect(input).toHaveValue('2024-03-15')
-    
-    // Test changing the value
     await userEvent.clear(input)
     await userEvent.type(input, '2024-07-04')
     await expect(input).toHaveValue('2024-07-04')
@@ -286,10 +293,10 @@ export const ReadOnlyDisabledStyle: Story = {
     label: 'Independence Day',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    // In 'disabled' style, should show disabled input
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Independence Day'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeDisabled()
     await expect(input).toHaveValue('2024-07-04')
   },
@@ -323,10 +330,10 @@ export const FormReadOnlyStyle: Story = {
     label: 'Thanksgiving',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    // In 'disabled' style, should show disabled input
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Thanksgiving'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeDisabled()
     await expect(input).toHaveValue('2024-11-28')
   },
@@ -360,16 +367,102 @@ export const Interactive: Story = {
     max: '2025-12-31',
     showState: true 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
-    
+    const label = args.label || 'Event Date'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     // Test setting a date
     await userEvent.type(input, '2024-08-15')
     await expect(input).toHaveValue('2024-08-15')
-    
     // Test clearing the date
     await userEvent.clear(input)
     await expect(input).toHaveValue('')
+  },
+}
+
+export const WithHelpText: Story = {
+  name: 'With Help Text',
+  args: { label: 'Event Date', helpText: 'Pick the date of your event.', showState: false },
+  render: (args) => {
+    const field: import('../form-types').FormField = {
+      key: 'storybookDatePicker',
+      type: FormFieldType.DatePicker,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue || undefined,
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && { readOnlyStyle: args.readOnlyStyle }),
+        min: args.min || undefined,
+        max: args.max || undefined,
+        placeholder: args.placeholder || undefined,
+        useController: args.useController,
+        ...(args.helpText && { helpText: args.helpText }),
+      },
+    }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    await expect(canvas.getByText('Pick the date of your event.')).toBeInTheDocument()
+  },
+}
+
+export const RequiredLabel: Story = {
+  name: 'Required Label',
+  args: { label: 'Event Date', required: true, showState: false },
+  render: (args) => {
+    const field: import('../form-types').FormField = {
+      key: 'storybookDatePicker',
+      type: FormFieldType.DatePicker,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue || undefined,
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && { readOnlyStyle: args.readOnlyStyle }),
+        min: args.min || undefined,
+        max: args.max || undefined,
+        placeholder: args.placeholder || undefined,
+        useController: args.useController,
+        ...(args.helpText && { helpText: args.helpText }),
+      },
+    }
+    return (
+      <StorybookFieldWrapper
+        field={field}
+        hasError={args.hasError}
+        errorMessage={args.errorMessage}
+        formReadOnly={args.formReadOnly}
+        formReadOnlyStyle={args.formReadOnlyStyle}
+        showState={args.showState}
+      />
+    )
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    // Use getAllByText and assert at least one match
+    const matches = canvas.getAllByText((content, node) => {
+      const hasText = (node: HTMLElement) =>
+        node.textContent === 'Event Date *' ||
+        node.textContent?.replace(/\s+/g, ' ').trim() === 'Event Date *';
+      const nodeHasText = hasText(node as HTMLElement);
+      const childrenDontHaveText = Array.from((node as HTMLElement)?.children || []).every(
+        (child) => !hasText(child as HTMLElement)
+      );
+      return nodeHasText && childrenDontHaveText;
+    })
+    expect(matches.length).toBeGreaterThan(0)
   },
 } 

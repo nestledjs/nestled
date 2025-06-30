@@ -48,6 +48,7 @@ export interface BaseFieldOptions {
    * 'disabled': Renders the UI component in a disabled state.
    */
   readOnlyStyle?: 'value' | 'disabled';
+  helpText?: string;
 }
 
 // Specific options interfaces that extend the base
@@ -110,6 +111,8 @@ export interface ButtonOptions extends BaseFieldOptions {
   loading?: boolean
   onClick?: () => void | Promise<void>
   type?: 'button' | 'submit' | 'reset'
+  fullWidth?: boolean
+  className?: string
 }
 
 export interface DatePickerOptions extends BaseFieldOptions {

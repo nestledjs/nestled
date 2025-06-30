@@ -120,9 +120,9 @@ export const Default: Story = {
     const canvas = within(canvasElement)
     
     // Verify radio inputs are present
-    const option1 = canvas.getByLabelText('Option 1')
-    const option2 = canvas.getByLabelText('Option 2')
-    const option3 = canvas.getByLabelText('Option 3')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
+    const option2 = canvas.getByRole('radio', { name: 'Option 2' })
+    const option3 = canvas.getByRole('radio', { name: 'Option 3' })
     
     await expect(option1).toHaveAttribute('type', 'radio')
     await expect(option1).toBeEnabled()
@@ -145,8 +145,8 @@ export const RowLayout: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const option1 = canvas.getByLabelText('Option 1')
-    const option2 = canvas.getByLabelText('Option 2')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
+    const option2 = canvas.getByRole('radio', { name: 'Option 2' })
     
     // Test selection in row layout
     await userEvent.click(option1)
@@ -167,7 +167,7 @@ export const WithDefaultValue: Story = {
     const canvas = within(canvasElement)
     
     // Verify default selection
-    const option2 = canvas.getByLabelText('Option 2')
+    const option2 = canvas.getByRole('radio', { name: 'Option 2' })
     await expect(option2).toBeChecked()
   },
 }
@@ -179,7 +179,7 @@ export const Required: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const option1 = canvas.getByLabelText('Option 1')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
     await expect(option1).toBeRequired()
     
     // Test selection
@@ -197,8 +197,8 @@ export const Disabled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const option1 = canvas.getByLabelText('Option 1')
-    const option2 = canvas.getByLabelText('Option 2')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
+    const option2 = canvas.getByRole('radio', { name: 'Option 2' })
     
     // Verify disabled state
     await expect(option1).toBeDisabled()
@@ -221,14 +221,13 @@ export const WithSubOption: Story = {
     const canvas = within(canvasElement)
     
     // Select the "Other" option which has a sub-option
-    const otherOption = canvas.getByLabelText('Other')
+    const otherOption = canvas.getByRole('radio', { name: 'Other' })
     await userEvent.click(otherOption)
     await expect(otherOption).toBeChecked()
     
     // Verify sub-option input appears
-    const subInput = canvas.getByPlaceholderText('Please specify')
+    const subInput = await canvas.findByPlaceholderText('Please specify')
     await expect(subInput).toBeInTheDocument()
-    
     // Test typing in sub-option
     await userEvent.type(subInput, 'Custom option')
     await expect(subInput).toHaveValue('Custom option')
@@ -243,7 +242,7 @@ export const FullWidthLabels: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const option1 = canvas.getByLabelText('Option 1')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
     await userEvent.click(option1)
     await expect(option1).toBeChecked()
   },
@@ -257,7 +256,7 @@ export const FancyStyle: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const option1 = canvas.getByLabelText('Option 1')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
     await userEvent.click(option1)
     await expect(option1).toBeChecked()
   },
@@ -272,7 +271,7 @@ export const Error: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const option1 = canvas.getByLabelText('Option 1')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
     await expect(option1).toBeRequired()
     
     // Test that selection still works in error state
@@ -321,7 +320,7 @@ export const ReadOnlyDisabled: Story = {
     }
     
     // Option 3 should be checked
-    const option3 = canvas.getByLabelText('Option 3')
+    const option3 = canvas.getByRole('radio', { name: 'Option 3' })
     await expect(option3).toBeChecked()
   },
 }
@@ -336,7 +335,7 @@ export const WithHelpText: Story = {
     const helpText = canvas.getByText('Select the option that best describes your situation')
     await expect(helpText).toBeInTheDocument()
     
-    const option1 = canvas.getByLabelText('Option 1')
+    const option1 = canvas.getByRole('radio', { name: 'Option 1' })
     await userEvent.click(option1)
     await expect(option1).toBeChecked()
   },
@@ -379,7 +378,7 @@ export const FormReadOnlyDisabled: Story = {
       await expect(radio).toBeDisabled()
     }
     
-    const option2 = canvas.getByLabelText('Option 2')
+    const option2 = canvas.getByRole('radio', { name: 'Option 2' })
     await expect(option2).toBeChecked()
   },
 }

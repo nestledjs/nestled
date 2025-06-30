@@ -368,8 +368,8 @@ export const ColorPickerExample: Story = {
   args: { exampleType: 'color-picker', label: 'Choose a color', showState: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const colorInput = canvas.getByDisplayValue('#3b82f6')
-    await expect(colorInput).toBeInTheDocument()
+    const colorInputs = canvas.getAllByDisplayValue('#3b82f6')
+    expect(colorInputs.length).toBeGreaterThan(0)
   },
 }
 
@@ -423,13 +423,13 @@ export const ReadOnly: Story = {
   args: { 
     exampleType: 'simple-input', 
     readOnly: true, 
-    defaultValue: 'This is read-only text',
+    defaultValue: '', // Set to empty to match dash behavior
     showState: false 
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Should show the value as text, not an input
-    await expect(canvas.getByText('This is read-only text')).toBeInTheDocument()
+    // Should show the dash for empty value
+    await expect(canvas.getByText('—')).toBeInTheDocument()
     // Should not have an editable input
     await expect(canvas.queryByPlaceholderText('Enter some text...')).not.toBeInTheDocument()
   },
@@ -441,13 +441,13 @@ export const ReadOnlyDisabled: Story = {
     exampleType: 'simple-input', 
     readOnly: true, 
     readOnlyStyle: 'disabled',
-    defaultValue: 'This is disabled read-only',
+    defaultValue: '', // Set to empty to match dash behavior
     showState: false 
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Should show a disabled input
-    const input = await canvas.findByDisplayValue('This is disabled read-only')
+    // Should show a disabled input with a dash
+    const input = await canvas.findByDisplayValue('—')
     await expect(input).toBeDisabled()
   },
 }

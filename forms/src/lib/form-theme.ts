@@ -107,6 +107,7 @@ export const FormThemeSchema = z.object({
       danger: z.string().default(''),
       disabled: z.string().default(''),
       loading: z.string().default(''),
+      fullWidth: z.string().default(''),
     })
     .default({}),
   emailField: z
@@ -316,6 +317,7 @@ export const FormThemeSchema = z.object({
       disabled: z.string().default(''),
       readOnly: z.string().default(''),
       readOnlyValue: z.string().default(''),
+      helpText: z.string().default(''),
     })
     .default({}),
   timePickerField: z
@@ -326,6 +328,7 @@ export const FormThemeSchema = z.object({
       disabled: z.string().default(''),
       readOnly: z.string().default(''),
       readOnlyValue: z.string().default(''),
+      helpText: z.string().default(''),
     })
     .default({}),
   urlField: z
@@ -336,6 +339,7 @@ export const FormThemeSchema = z.object({
       disabled: z.string().default(''),
       readOnly: z.string().default(''),
       readOnlyValue: z.string().default(''),
+      helpText: z.string().default(''),
     })
     .default({}),
   // Add more fields as needed

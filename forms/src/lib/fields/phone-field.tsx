@@ -42,32 +42,29 @@ export function PhoneField({
     // Render as plain value
     return (
       <div className={clsx(theme.phoneField.readOnlyValue)}>
-        {value ?? '—'}
+        {value === undefined || value === null || value === '' ? '—' : value}
       </div>
     )
   }
 
   return (
-    <div className={clsx(theme.phoneField.wrapper)}>
+    <div>
       <input
         id={field.key}
         type="tel"
-        disabled={field.options.disabled}
         placeholder={field.options.placeholder}
-        defaultValue={field.options.defaultValue}
-        {...form.register(field.key, {
-          validate: (v) => validatePhone(v),
-        })}
         className={clsx(
           theme.phoneField.input,
           field.options.disabled && theme.phoneField.disabled,
           hasError && theme.phoneField.error
         )}
+        disabled={field.options.disabled}
+        required={field.options.required}
+        defaultValue={field.options.defaultValue}
+        {...form.register(field.key, { required: field.options.required, validate: (v) => validatePhone(v) })}
       />
-      {hasError && (
-        <div className={clsx(theme.phoneField.errorMessage)}>
-          * Phone number is invalid
-        </div>
+      {(field.options as any).helpText && (
+        <div className="text-xs text-gray-500">{(field.options as any).helpText}</div>
       )}
     </div>
   )

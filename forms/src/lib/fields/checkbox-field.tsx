@@ -4,31 +4,27 @@ import { useFormTheme } from '../theme-context'
 import { Controller } from 'react-hook-form'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 
-export function CheckboxField({
-  form,
-  field,
-  hasError,
-  formReadOnly = false,
-  formReadOnlyStyle = 'value',
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.Checkbox }>> & {
+type CheckboxFieldType = Extract<FormField, { type: FormFieldType.Checkbox }>
+
+interface CheckboxFieldProps extends Omit<FormFieldProps<CheckboxFieldType>, 'hasError'> {
   hasError?: boolean
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
-}) {
-  const theme = useFormTheme().checkbox
-  const options = field.options
-  const isReadOnly = options.readOnly ?? formReadOnly
-  const effectiveReadOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle
-  const value = form.getValues(field.key)
+}
 
-  const inputRef = React.useRef<HTMLInputElement>(null)
+function useIndeterminateEffect(inputRef: React.RefObject<HTMLInputElement | null>, indeterminate: boolean) {
   React.useEffect(() => {
     if (inputRef.current) {
-      inputRef.current.indeterminate = !!options.indeterminate
+      inputRef.current.indeterminate = indeterminate
     }
-  }, [options.indeterminate])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [indeterminate])
+}
 
-  const labelNode = options.label ? (
+function renderLabel(field: CheckboxFieldType, options: any, theme: any) {
+  if (!options.label) return null
+
+  return (
     <label
       htmlFor={field.key}
       className={clsx(theme.label, options.fullWidthLabel && theme.fullWidthLabel)}
@@ -36,38 +32,63 @@ export function CheckboxField({
       {options.label}
       {options.required && <span style={{ color: 'red', marginLeft: 2 }}>*</span>}
     </label>
-  ) : null
+  )
+}
 
-  const helpTextNode = options.helpText ? <div className={clsx(theme.helpText)}>{options.helpText}</div> : null
+function renderHelpText(options: any, theme: any) {
+  if (!options.helpText) return null
 
-  if (isReadOnly) {
+  return <div className={clsx(theme.helpText)}>{options.helpText}</div>
+}
+
+function renderReadOnlyInput(field: CheckboxFieldType, options: any, theme: any, value: any, effectiveReadOnlyStyle = 'value') {
+  if (effectiveReadOnlyStyle === 'disabled') {
     return (
-      <div className={clsx(theme.wrapper, options.wrapperClassNames)}>
-        <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
-          {effectiveReadOnlyStyle === 'disabled' ? (
-            <input
-              id={field.key}
-              type="checkbox"
-              className={clsx(theme.input, hasError && theme.error, theme.disabled)}
-              disabled={true}
-              checked={!!value}
-              readOnly
-            />
-          ) : value && theme.readonlyCheckedIcon ? (
-            theme.readonlyCheckedIcon
-          ) : !value && theme.readonlyUncheckedIcon ? (
-            theme.readonlyUncheckedIcon
-          ) : (
-            <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
-          )}
-          {labelNode}
-        </div>
-        {helpTextNode}
-      </div>
+      <input
+        id={field.key}
+        type="checkbox"
+        className={clsx(theme.input, theme.disabled)}
+        disabled={true}
+        checked={!!value}
+        readOnly
+        required={options.required}
+      />
     )
   }
 
-  const input = (
+  // For 'value' style, always render visible text 'Yes' or 'No' (no icon)
+  if (effectiveReadOnlyStyle === 'value') {
+    return <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
+  }
+
+  // fallback: if you ever add more styles, handle them here
+  return <div className={theme.readOnly}>{value ? 'Yes' : 'No'}</div>
+}
+
+function renderReadOnlyState(props: CheckboxFieldProps, theme: any, value: any) {
+  const { field, formReadOnlyStyle } = props
+  const options = field.options
+  const effectiveReadOnlyStyle = options.readOnlyStyle ?? formReadOnlyStyle ?? 'value'
+  const labelNode = renderLabel(field, options, theme)
+  const helpTextNode = renderHelpText(options, theme)
+  const inputNode = renderReadOnlyInput(field, options, theme, value, effectiveReadOnlyStyle)
+
+  return (
+    <div className={clsx(theme.wrapper, options.wrapperClassNames)}>
+      <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
+        {inputNode}
+        {labelNode}
+      </div>
+      {helpTextNode}
+    </div>
+  )
+}
+
+function renderControlledInput(props: CheckboxFieldProps, theme: any, inputRef: React.RefObject<HTMLInputElement | null>) {
+  const { field, form, hasError } = props
+  const options = field.options
+
+  return (
     <Controller
       name={field.key}
       control={form.control}
@@ -81,6 +102,7 @@ export function CheckboxField({
           checked={!!controllerField.value}
           onChange={e => controllerField.onChange(e.target.checked)}
           disabled={options.disabled}
+          required={options.required}
           className={clsx(
             theme.input,
             theme.focus,
@@ -96,24 +118,66 @@ export function CheckboxField({
       )}
     />
   )
+}
 
-  if (options.customWrapper) {
-    let elements
-    if (options.fullWidthLabel) {
-      elements = [labelNode, input]
-    } else {
-      elements = [input, labelNode]
-    }
-    return options.customWrapper(elements)
-  }
+function renderCustomWrapper(props: CheckboxFieldProps, inputNode: React.ReactNode, theme: any) {
+  const { field } = props
+  const options = field.options
+  const labelNode = renderLabel(field, options, theme)
+
+  if (!options.customWrapper) return null
+
+  const inputWithKey = inputNode && React.isValidElement(inputNode)
+    ? React.cloneElement(inputNode, { key: 'input' })
+    : inputNode
+  const labelWithKey = labelNode && React.isValidElement(labelNode)
+    ? React.cloneElement(labelNode, { key: 'label' })
+    : labelNode
+
+  const elements = options.fullWidthLabel
+    ? [labelWithKey, inputWithKey]
+    : [inputWithKey, labelWithKey]
+
+  return options.customWrapper(elements)
+}
+
+function renderStandardLayout(props: CheckboxFieldProps, inputNode: React.ReactNode, theme: any) {
+  const { field } = props
+  const options = field.options
+  const labelNode = renderLabel(field, options, theme)
+  const helpTextNode = renderHelpText(options, theme)
 
   return (
     <div key={`${field.key}_wrapper`} className={clsx(theme.wrapper, options.wrapperClassNames)}>
       <div className={clsx(options.fullWidthLabel ? theme.rowFullWidth : theme.row)}>
-        {input}
+        {inputNode}
         {labelNode}
       </div>
       {helpTextNode}
     </div>
   )
+}
+
+export function CheckboxField(props: CheckboxFieldProps) {
+  const { field, form, formReadOnly = false } = props
+  const options = field.options
+  const theme = useFormTheme().checkbox
+  const isReadOnly = options.readOnly ?? formReadOnly
+  const value = form.getValues(field.key)
+  const inputRef = React.useRef<HTMLInputElement>(null)
+
+  useIndeterminateEffect(inputRef, options.indeterminate ?? false)
+
+  if (isReadOnly) {
+    return renderReadOnlyState(props, theme, value)
+  }
+
+  const inputNode = renderControlledInput(props, theme, inputRef)
+
+  const customWrapperResult = renderCustomWrapper(props, inputNode, theme)
+  if (customWrapperResult) {
+    return customWrapperResult
+  }
+
+  return renderStandardLayout(props, inputNode, theme)
 }

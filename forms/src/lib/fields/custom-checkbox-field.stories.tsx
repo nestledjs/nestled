@@ -272,10 +272,9 @@ export const ReadOnlyDisabledStyle: Story = {
   args: { readOnly: true, readOnlyStyle: 'disabled', defaultValue: true, showState: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // In 'disabled' style, should show disabled checkbox
-    const checkbox = await canvas.findByRole('checkbox')
-    await expect(checkbox).toBeDisabled()
-    await expect(checkbox).toBeChecked()
+    // In 'disabled' style, should show the checked icon and no interactive checkbox
+    await expect(canvas.getByTestId('custom-checkbox-icon')).toBeInTheDocument()
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }
 
@@ -306,10 +305,9 @@ export const FormReadOnlyStyle: Story = {
   args: { formReadOnly: true, formReadOnlyStyle: 'disabled', defaultValue: false, showState: false, readOnly: false },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // In 'disabled' style, should show disabled checkbox
-    const checkbox = await canvas.findByRole('checkbox')
-    await expect(checkbox).toBeDisabled()
-    await expect(checkbox).not.toBeChecked()
+    // In 'disabled' style, should show the unchecked icon and no interactive checkbox
+    await expect(canvas.getByTestId('custom-checkbox-icon')).toBeInTheDocument()
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }
 
@@ -324,10 +322,9 @@ export const CustomIconsWithReadOnly: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Should show the custom icon in disabled state
-    const checkbox = await canvas.findByRole('checkbox')
-    await expect(checkbox).toBeDisabled()
-    await expect(checkbox).toBeChecked()
+    // Should show the custom icon in disabled state and no interactive checkbox
+    await expect(canvas.getByTestId('custom-checkbox-icon')).toBeInTheDocument()
+    await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }
 
@@ -343,8 +340,10 @@ export const FieldOverridesForm: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    // Field-level 'value' style should override form-level 'disabled' style
-    await expect(canvas.getByText('Yes')).toBeInTheDocument()
+    // Should find the label text twice (label and row)
+    const matches = canvas.getAllByText('I agree to the terms and conditions')
+    expect(matches.length).toBeGreaterThanOrEqual(2)
+    // Should not have an interactive checkbox
     await expect(canvas.queryByRole('checkbox')).not.toBeInTheDocument()
   },
 }

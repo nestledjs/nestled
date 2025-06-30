@@ -176,9 +176,10 @@ type Story = StoryObj<typeof meta>
 export const Default: Story = {
   name: 'Default State',
   args: { showState: true },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toBeInTheDocument()
     await expect(input).toHaveAttribute('type', 'datetime-local')
   },
@@ -191,9 +192,10 @@ export const WithDefaultValue: Story = {
     label: 'Christmas Dinner',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toHaveValue('2024-12-25T18:00')
   },
 }
@@ -201,9 +203,10 @@ export const WithDefaultValue: Story = {
 export const Required: Story = {
   name: 'Required',
   args: { required: true, showState: false },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     await expect(input).toBeRequired()
   },
 }
@@ -216,9 +219,10 @@ export const Disabled: Story = {
     label: 'New Year Lunch',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toBeDisabled()
     await expect(input).toHaveValue('2024-01-01T12:00')
   },
@@ -233,9 +237,10 @@ export const WithMinMax: Story = {
     defaultValue: '2024-06-15T14:00',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toHaveAttribute('min', '2024-06-01T09:00')
     await expect(input).toHaveAttribute('max', '2024-06-30T17:00')
     await expect(input).toHaveValue('2024-06-15T14:00')
@@ -250,9 +255,10 @@ export const WithStep: Story = {
     defaultValue: '2024-07-01T10:15',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toHaveAttribute('step', '900')
     await expect(input).toHaveValue('2024-07-01T10:15')
   },
@@ -265,9 +271,10 @@ export const Error: Story = {
     errorMessage: 'Please select a valid date and time.',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toBeInTheDocument()
     // Check for error message
     await expect(canvas.getByText(/please select a valid date and time/i)).toBeInTheDocument()
@@ -282,9 +289,10 @@ export const WithController: Story = {
     label: 'Meeting Time (with Controller)',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toHaveValue('2024-03-15T16:30')
     
     // Test changing the value
@@ -302,12 +310,13 @@ export const ReadOnly: Story = {
     label: 'April Fools Morning',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     // In 'value' style, should show formatted text instead of input
+    const label = args.label || 'Select Date & Time'
     await expect(canvas.getByText('April 01, 2024 9:00 AM')).toBeInTheDocument()
     // Should not have an editable input
-    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument()
+    await expect(canvas.queryByLabelText(label)).not.toBeInTheDocument()
   },
 }
 
@@ -320,10 +329,11 @@ export const ReadOnlyDisabledStyle: Story = {
     label: 'Independence Day Evening',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     // In 'disabled' style, should show disabled input
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toBeDisabled()
     await expect(input).toHaveValue('2024-07-04T20:00')
   },
@@ -338,12 +348,13 @@ export const FormReadOnly: Story = {
     label: 'Halloween Party',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     // Should show formatted text since form is read-only
+    const label = args.label || 'Select Date & Time'
     await expect(canvas.getByText('October 31, 2024 6:00 PM')).toBeInTheDocument()
     // Should not have an editable input
-    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument()
+    await expect(canvas.queryByLabelText(label)).not.toBeInTheDocument()
   },
 }
 
@@ -357,10 +368,11 @@ export const FormReadOnlyStyle: Story = {
     label: 'Thanksgiving Dinner',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     // In 'disabled' style, should show disabled input
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(label)
     await expect(input).toBeDisabled()
     await expect(input).toHaveValue('2024-11-28T15:00')
   },
@@ -377,11 +389,12 @@ export const FieldOverridesForm: Story = {
     label: 'Valentine\'s Dinner',
     showState: false 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
     // Field-level 'value' style should override form-level 'disabled' style
+    const label = args.label || 'Select Date & Time'
     await expect(canvas.getByText('February 14, 2024 7:30 PM')).toBeInTheDocument()
-    await expect(canvas.queryByRole('textbox')).not.toBeInTheDocument()
+    await expect(canvas.queryByLabelText(label)).not.toBeInTheDocument()
   },
 }
 
@@ -395,9 +408,10 @@ export const Interactive: Story = {
     step: 900, // 15-minute intervals
     showState: true 
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, args }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('textbox')
+    const label = args.label || 'Select Date & Time'
+    const input = await canvas.findByLabelText(new RegExp(`^${label}\\s*\\*?$`))
     
     // Test setting a datetime
     await userEvent.type(input, '2024-08-15T14:30')

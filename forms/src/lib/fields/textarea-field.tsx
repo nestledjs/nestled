@@ -20,36 +20,54 @@ export function TextAreaField({
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
       return (
-        <textarea
-          rows={field.options.rows ?? 4}
-          id={field.key}
-          className={clsx(
-            theme.textAreaField.textarea,
-            theme.textAreaField.disabled,
-            hasError && theme.textAreaField.error
+        <>
+          <textarea
+            rows={field.options.rows ?? 4}
+            id={field.key}
+            className={clsx(
+              theme.textAreaField.textarea,
+              theme.textAreaField.disabled,
+              hasError && theme.textAreaField.error
+            )}
+            disabled={true}
+            value={value}
+          />
+          {field.options.helpText && (
+            <div className={clsx(theme.textAreaField.helpText)}>{field.options.helpText}</div>
           )}
-          disabled={true}
-          value={value}
-        />
+        </>
       )
     }
     // Render as plain value
-    return <div className={theme.textAreaField.readOnlyValue}>{value ?? '—'}</div>
+    return (
+      <>
+        <div className={theme.textAreaField.readOnlyValue}>{value ? value : '—'}</div>
+        {field.options.helpText && (
+          <div className={clsx(theme.textAreaField.helpText)}>{field.options.helpText}</div>
+        )}
+      </>
+    )
   }
 
   return (
-    <textarea
-      rows={field.options.rows ?? 4}
-      id={field.key}
-      disabled={field.options.disabled}
-      placeholder={field.options.placeholder}
-      defaultValue={field.options.defaultValue}
-      className={clsx(
-        theme.textAreaField.textarea,
-        field.options.disabled && theme.textAreaField.disabled,
-        hasError && theme.textAreaField.error
+    <>
+      <textarea
+        rows={field.options.rows ?? 4}
+        id={field.key}
+        disabled={field.options.disabled}
+        placeholder={field.options.placeholder}
+        defaultValue={field.options.defaultValue}
+        required={field.options.required}
+        className={clsx(
+          theme.textAreaField.textarea,
+          field.options.disabled && theme.textAreaField.disabled,
+          hasError && theme.textAreaField.error
+        )}
+        {...form.register(field.key, { required: field.options.required })}
+      />
+      {field.options.helpText && (
+        <div className={clsx(theme.textAreaField.helpText)}>{field.options.helpText}</div>
       )}
-      {...form.register(field.key, { required: field.options.required })}
-    />
+    </>
   )
 }

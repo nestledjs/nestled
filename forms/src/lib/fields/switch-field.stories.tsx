@@ -144,7 +144,7 @@ export const Required: Story = {
     const canvas = within(canvasElement)
     
     const switchElement = canvas.getByRole('switch', { name: 'Accept Terms *' })
-    await expect(switchElement).toBeRequired()
+    await expect(switchElement).toHaveAttribute('aria-required', 'true')
     await expect(switchElement).not.toBeChecked()
     
     // Test toggling
@@ -201,7 +201,7 @@ export const Error: Story = {
     const canvas = within(canvasElement)
     
     const switchElement = canvas.getByRole('switch', { name: 'Terms Agreement *' })
-    await expect(switchElement).toBeRequired()
+    await expect(switchElement).toHaveAttribute('aria-required', 'true')
     
     // Test that switch still functions in error state
     await userEvent.click(switchElement)

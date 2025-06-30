@@ -21,9 +21,9 @@ const ButtonStoryWrapper = (props: ButtonProps) => {
  * The Button component is the standard interactive element for form submission
  * and other actions. Its appearance is controlled by the `button` section of the form theme.
  */
-const meta: Meta<ButtonProps> = {
+const meta: Meta<ButtonProps & { fullWidth?: boolean }> = {
   title: 'Forms/Button',
-  component: ButtonStoryWrapper, // We point to the wrapper for rendering
+  component: ButtonStoryWrapper,
   tags: ['autodocs'],
   argTypes: {
     variant: {
@@ -44,6 +44,10 @@ const meta: Meta<ButtonProps> = {
       description: 'The content of the button.',
     },
     onClick: { action: 'clicked' },
+    fullWidth: {
+      control: 'boolean',
+      description: 'Make the button full width?',
+    },
   },
   args: {
     children: 'Click Me',
@@ -51,6 +55,7 @@ const meta: Meta<ButtonProps> = {
     loading: false,
     disabled: false,
     onClick: fn(),
+    fullWidth: false,
   },
 }
 export default meta
@@ -135,5 +140,19 @@ export const Loading: Story = {
     await expect(button).toBeDisabled()
     await userEvent.click(button)
     await expect(args.onClick).not.toHaveBeenCalled()
+  },
+}
+
+export const FullWidth: Story = {
+  args: {
+    fullWidth: true,
+    children: 'Full Width Button',
+    onClick: fn(),
+  },
+  play: async ({ canvasElement, args }) => {
+    const canvas = within(canvasElement)
+    const button = await canvas.findByRole('button', { name: /full width button/i })
+    await expect(button).toBeInTheDocument()
+    // You may want to add a visual regression test here if you use one
   },
 }
