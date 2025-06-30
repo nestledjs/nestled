@@ -21,7 +21,18 @@ export function CustomField<T = unknown>({
   const value = form.getValues(field.key) ?? options.defaultValue
 
   if (isReadOnly) {
-    const displayValue = typeof value === 'string' ? value : JSON.stringify(value) || '—'
+    let displayValue: string
+    if (value === undefined || value === null || value === '') {
+      displayValue = '—'
+    } else if (typeof value === 'string') {
+      displayValue = value
+    } else {
+      try {
+        displayValue = JSON.stringify(value)
+      } catch {
+        displayValue = String(value)
+      }
+    }
     
     if (effectiveReadOnlyStyle === 'disabled') {
       // Render as disabled input (fallback to string value)

@@ -4,6 +4,11 @@ import { Controller } from 'react-hook-form'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useFormTheme } from '../theme-context'
 
+type SwitchOptions = {
+  defaultValue?: boolean;
+  helpText?: string;
+} & Partial<import('../form-types').BaseFieldOptions>;
+
 export function SwitchField({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.Switch }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
   const theme = useFormTheme()
   const isReadOnly = field.options.readOnly ?? formReadOnly;
@@ -14,8 +19,13 @@ export function SwitchField({ form, field, hasError, formReadOnly = false, formR
     if (readOnlyStyle === 'disabled') {
       return (
         <SwitchGroup as="div" key={field.key} className={theme.switchField.container}>
-          <Label as="span" className={theme.switchField.label}>
+          <Label
+            as="span"
+            className={theme.switchField.label}
+            aria-label={`${field.options.label}${field.options.required ? ' *' : ''}`}
+          >
             <span>{field.options.label}</span>
+            {field.options.required && <span style={{ color: 'red', marginLeft: 2 }}>*</span>}
           </Label>
           <Switch
             checked={value}
@@ -35,6 +45,9 @@ export function SwitchField({ form, field, hasError, formReadOnly = false, formR
               )}
             />
           </Switch>
+          {((field.options as any).helpText) && (
+            <div className={theme.checkbox.helpText}>{(field.options as any).helpText}</div>
+          )}
         </SwitchGroup>
       );
     }
@@ -46,8 +59,13 @@ export function SwitchField({ form, field, hasError, formReadOnly = false, formR
 
   return (
     <SwitchGroup as="div" key={field.key} className={theme.switchField.container}>
-      <Label as="span" className={theme.switchField.label}>
+      <Label
+        as="span"
+        className={theme.switchField.label}
+        aria-label={`${field.options.label}${field.options.required ? ' *' : ''}`}
+      >
         <span>{field.options.label}</span>
+        {field.options.required && <span style={{ color: 'red', marginLeft: 2 }}>*</span>}
       </Label>
       <Controller
         key={field.key}
@@ -57,9 +75,10 @@ export function SwitchField({ form, field, hasError, formReadOnly = false, formR
         defaultValue={field.options.defaultValue}
         render={({ field: { onChange, value } }) => (
           <Switch
-            {...form.register(field.key, { required: field.options.required })}
             checked={value}
             onChange={onChange}
+            disabled={field.options.disabled}
+            aria-required={field.options.required}
             className={clsx(
               theme.switchField.switchTrack,
               value ? theme.switchField.switchTrackOn : theme.switchField.switchTrackOff,
@@ -77,6 +96,9 @@ export function SwitchField({ form, field, hasError, formReadOnly = false, formR
           </Switch>
         )}
       />
+      {((field.options as any).helpText) && (
+        <div className={theme.checkbox.helpText}>{(field.options as any).helpText}</div>
+      )}
     </SwitchGroup>
   )
 }

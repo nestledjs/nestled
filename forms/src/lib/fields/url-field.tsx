@@ -20,36 +20,54 @@ export function UrlField({
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
       return (
-        <input
-          id={field.key}
-          type="url"
-          className={clsx(
-            theme.urlField.input,
-            theme.urlField.disabled,
-            hasError && theme.urlField.error
+        <>
+          <input
+            id={field.key}
+            type="url"
+            className={clsx(
+              theme.urlField.input,
+              theme.urlField.disabled,
+              hasError && theme.urlField.error
+            )}
+            disabled={true}
+            value={value}
+          />
+          {field.options.helpText && (
+            <div className={clsx(theme.urlField.helpText)}>{field.options.helpText}</div>
           )}
-          disabled={true}
-          value={value}
-        />
+        </>
       )
     }
     // Render as plain value
-    return <div className={theme.urlField.readOnlyValue}>{value ?? '—'}</div>
+    return (
+      <>
+        <div className={theme.urlField.readOnlyValue}>{value ? value : '—'}</div>
+        {field.options.helpText && (
+          <div className={clsx(theme.urlField.helpText)}>{field.options.helpText}</div>
+        )}
+      </>
+    )
   }
 
   return (
-    <input
-      id={field.key}
-      type="url"
-      disabled={field.options.disabled}
-      placeholder={field.options.placeholder}
-      defaultValue={field.options.defaultValue}
-      {...form.register(field.key, { required: field.options.required })}
-      className={clsx(
-        theme.urlField.input,
-        field.options.disabled && theme.urlField.disabled,
-        hasError && theme.urlField.error
+    <>
+      <input
+        id={field.key}
+        type="url"
+        disabled={field.options.disabled}
+        placeholder={field.options.placeholder}
+        defaultValue={field.options.defaultValue}
+        required={field.options.required}
+        {...form.register(field.key, { required: field.options.required })}
+        className={clsx(
+          theme.urlField.input,
+          field.options.disabled && theme.urlField.disabled,
+          hasError && theme.urlField.error
+        )}
+      />
+      {field.options.helpText && (
+        <div className={clsx(theme.urlField.helpText)}>{field.options.helpText}</div>
       )}
-    />
+    </>
   )
 }

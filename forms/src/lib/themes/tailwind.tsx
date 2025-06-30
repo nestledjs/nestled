@@ -15,6 +15,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     danger: 'bg-red-600 text-white hover:bg-red-500 focus-visible:outline-red-600',
     disabled: 'opacity-50 cursor-not-allowed',
     loading: 'opacity-100 animate-pulse',
+    fullWidth: 'w-full',
   },
   label: {
     base: 'block text-sm font-medium text-gray-700 mb-1',

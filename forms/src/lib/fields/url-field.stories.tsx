@@ -459,7 +459,7 @@ export const KeyboardNavigation: Story = {
     await expect(urlInput).toHaveValue('https://keyboard-test.com')
     
     // Test selecting all and replacing
-    await userEvent.keyboard('{Control>}a{/Control}')
+    await userEvent.clear(urlInput)
     await userEvent.type(urlInput, 'https://replaced.com')
     await expect(urlInput).toHaveValue('https://replaced.com')
   },

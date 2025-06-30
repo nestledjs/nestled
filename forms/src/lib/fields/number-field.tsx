@@ -39,27 +39,33 @@ export function NumberField({
     // Render as plain value
     return (
       <div className={clsx(theme.numberField.readOnlyValue)}>
-        {value ?? '—'}
+        {value === undefined || value === null || value === '' ? '—' : value}
       </div>
     )
   }
 
   return (
-    <input
-      id={field.key}
-      type="number"
-      disabled={field.options.disabled}
-      placeholder={field.options.placeholder}
-      defaultValue={field.options.defaultValue}
-      min={field.options.min}
-      max={field.options.max}
-      step={field.options.step}
-      {...form.register(field.key, { required: field.options.required, valueAsNumber: true })}
-      className={clsx(
-        theme.numberField.input,
-        field.options.disabled && theme.numberField.disabled,
-        hasError && theme.numberField.error
+    <div>
+      <input
+        id={field.key}
+        type="number"
+        placeholder={field.options.placeholder}
+        className={clsx(
+          theme.numberField.input,
+          field.options.disabled && theme.numberField.disabled,
+          hasError && theme.numberField.error
+        )}
+        disabled={field.options.disabled}
+        required={field.options.required}
+        min={field.options.min}
+        max={field.options.max}
+        step={field.options.step}
+        defaultValue={field.options.defaultValue}
+        {...form.register(field.key, { required: field.options.required, valueAsNumber: true })}
+      />
+      {(field.options as any).helpText && (
+        <div className="text-xs text-gray-500">{(field.options as any).helpText}</div>
       )}
-    />
+    </div>
   )
 }

@@ -42,18 +42,24 @@ export function PasswordField({
   }
 
   return (
-    <input
-      id={field.key}
-      type="password"
-      disabled={field.options.disabled}
-      placeholder={field.options.placeholder}
-      defaultValue={field.options.defaultValue}
-      {...form.register(field.key, { required: field.options.required })}
-      className={clsx(
-        theme.passwordField.input,
-        field.options.disabled && theme.passwordField.disabled,
-        hasError && theme.passwordField.error
+    <div>
+      <input
+        id={field.key}
+        type="password"
+        placeholder={field.options.placeholder}
+        className={clsx(
+          theme.passwordField.input,
+          field.options.disabled && theme.passwordField.disabled,
+          hasError && theme.passwordField.error
+        )}
+        disabled={field.options.disabled}
+        required={field.options.required}
+        defaultValue={field.options.defaultValue}
+        {...form.register(field.key, { required: field.options.required })}
+      />
+      {(field.options as any).helpText && (
+        <div className="text-xs text-gray-500">{(field.options as any).helpText}</div>
       )}
-    />
+    </div>
   )
 }

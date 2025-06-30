@@ -412,7 +412,7 @@ export const KeyboardNavigation: Story = {
     await expect(timeInput).toHaveValue('18:45')
     
     // Test selecting all and replacing
-    await userEvent.keyboard('{Control>}a{/Control}')
+    await userEvent.clear(timeInput)
     await userEvent.type(timeInput, '21:15')
     await expect(timeInput).toHaveValue('21:15')
   },

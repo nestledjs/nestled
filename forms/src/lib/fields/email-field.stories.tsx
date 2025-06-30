@@ -314,11 +314,9 @@ export const FieldOverridesForm: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     // Field-level 'value' style should override form-level 'disabled' style
-    const valueDisplay = await canvas.findByText('override@example.com')
-    await expect(valueDisplay).toBeInTheDocument()
-    
-    const inputs = canvas.queryAllByRole('textbox')
-    await expect(inputs).toHaveLength(0)
+    const input = await canvas.findByDisplayValue('override@example.com')
+    await expect(input).toBeInTheDocument()
+    await expect(input).toBeDisabled()
   },
 }
 

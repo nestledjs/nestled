@@ -55,14 +55,15 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
           >
             <div className={theme.selectField.container}>
               <ComboboxInput
+                id={field.key}
                 className={clsx(
                   theme.selectField.input,
                   hasError && theme.selectField.error,
                   field.options.disabled && theme.selectField.disabled,
                 )}
                 displayValue={(option: SelectOption | null) => option?.label ?? ''}
-                placeholder={field.options.label}
                 disabled={field.options.disabled}
+                required={field.options.required}
               />
               <ComboboxButton className={theme.selectField.button}>
                 <svg className={theme.selectField.buttonIcon} viewBox="0 0 20 20" fill="currentColor">
@@ -73,6 +74,9 @@ export function SelectField({ form, field, hasError, formReadOnly = false, formR
                   />
                 </svg>
               </ComboboxButton>
+              {(field.options as any).helpText && (
+                <div className={theme.checkbox.helpText}>{(field.options as any).helpText}</div>
+              )}
             </div>
             <ComboboxOptions className={theme.selectField.dropdown}>
               {options.map((option) => (
