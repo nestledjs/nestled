@@ -21,7 +21,6 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@nestjs/jwt': '^11.0.0',
       '@nestjs/passport': '^11.0.5',
       '@nestjs/platform-express': '^11.1.3',
-      '@paljs/plugins': '^8.2.0',
       axios: '^1.9.0',
       bcryptjs: '^3.0.2',
       express: '^5.1.0',
