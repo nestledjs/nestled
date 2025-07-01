@@ -29,7 +29,7 @@
     "@nestjs/graphql": "latest",
     "@nestjs/platform-express": "^10.0.2",
     "@nx/devkit": "21.2.1",
-    "@prisma/internals": "^6.9.0",
+    "@prisma/internals": "^6.11.0",
     "@storybook/addon-a11y": "^9.0.14",
     "@storybook/addon-docs": "^9.0.14",
     "@storybook/addon-vitest": "^9.0.14",
