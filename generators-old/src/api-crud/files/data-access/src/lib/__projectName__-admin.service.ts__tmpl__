@@ -1,5 +1,5 @@
 import { Injectable, UseGuards } from '@nestjs/common'
-import { PrismaSelect } from '@paljs/plugins'
+import { createSelect } from '@<%= npmScope %>/api/core/helpers'
 import { Prisma } from '@prisma/client'
 import type { GraphQLResolveInfo } from 'graphql'
 import { <%= apiClassName %>CoreDataAccessService, CorePaging } from '<%= npmScope %>/<%= directory %>/core/data-access'
@@ -25,12 +25,11 @@ export class <%= apiClassName %><%= modelClassName %>DataAccessAdminService {
     }
 
   admin<%= pluralClassName %>(info: GraphQLResolveInfo, input?: AdminList<%= modelClassName %>Input) {
-    const select = new PrismaSelect(info).value
     return this.data.<%= modelPropertyName %>.findMany({
       take: input?.take,
       skip: input?.skip,
       where: this.where(input),
-      ...select,
+      select: createSelect(info),
     })
   }
 
@@ -50,15 +49,13 @@ export class <%= apiClassName %><%= modelClassName %>DataAccessAdminService {
   }
 
   admin<%= modelClassName %>(info: GraphQLResolveInfo, <%= modelPropertyName %>Id: string) {
-    const select = new PrismaSelect(info).value
-    return this.data.<%= modelPropertyName %>.findUnique({ where: { id: <%= modelPropertyName %>Id }, ...select, })
+    return this.data.<%= modelPropertyName %>.findUnique({ where: { id: <%= modelPropertyName %>Id }, select: createSelect(info) })
   }
 
   adminCreate<%= modelClassName %>(info: GraphQLResolveInfo, input: AdminCreate<%= modelClassName %>Input) {
-    const select = new PrismaSelect(info).value
     return this.data.<%= modelPropertyName %>.create({
       data: { ...input },
-      ...select,
+      select: createSelect(info),
     })
   }
 

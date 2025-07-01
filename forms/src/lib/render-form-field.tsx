@@ -28,13 +28,24 @@ import { CustomCheckboxField } from './fields/custom-checkbox-field'
 import { FormLabel } from './fields/label'
 
 // This function remains internal to the renderer
-function renderComponent(form: ReturnType<typeof useFormContext>, field: FormField, formReadOnly: boolean, formReadOnlyStyle: 'value' | 'disabled') {
+function renderComponent(
+  form: ReturnType<typeof useFormContext>,
+  field: FormField,
+  formReadOnly: boolean,
+  formReadOnlyStyle: 'value' | 'disabled',
+) {
   const hasError = !!form.formState.errors[field.key]
 
   switch (field.type) {
-    case FormFieldType.Input:
+    case FormFieldType.Text:
       return (
-        <TextField form={form} field={field} hasError={hasError} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
+        <TextField
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
       )
     case FormFieldType.TextArea:
       return (
@@ -68,7 +79,13 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
       )
     case FormFieldType.Url:
       return (
-        <UrlField form={form} field={field} hasError={hasError} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
+        <UrlField
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
       )
     case FormFieldType.Phone:
       return (
@@ -142,9 +159,7 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
         />
       )
     case FormFieldType.Button:
-      return (
-        <ButtonField field={field} form={form} hasError={hasError} />
-      )
+      return <ButtonField field={field} form={form} hasError={hasError} />
     case FormFieldType.DatePicker:
       return (
         <DatePickerField
@@ -233,7 +248,15 @@ function renderComponent(form: ReturnType<typeof useFormContext>, field: FormFie
 }
 
 // This is the exported component you will use
-export function RenderFormField({ field, formReadOnly = false, formReadOnlyStyle = 'value' }: { field: FormField, formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+export function RenderFormField({
+  field,
+  formReadOnly = false,
+  formReadOnlyStyle = 'value',
+}: {
+  field: FormField
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
   const form = useFormContext()
   const { labelDisplay } = useFormConfig()
 
@@ -260,11 +283,7 @@ export function RenderFormField({ field, formReadOnly = false, formReadOnlyStyle
   }
 
   const labelComponent = showLabel && (
-    <FormLabel
-      htmlFor={field.key}
-      label={field.options.label ?? ''}
-      required={field.options.required}
-    />
+    <FormLabel htmlFor={field.key} label={field.options.label ?? ''} required={field.options.required} />
   )
 
   const component = renderComponent(form, field, formReadOnly, formReadOnlyStyle)

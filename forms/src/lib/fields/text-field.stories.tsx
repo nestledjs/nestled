@@ -119,7 +119,7 @@ const meta: Meta<TextFieldStoryArgs> = {
   render: (args) => {
     const field: FormField = {
       key: 'storybookTextField',
-      type: FormFieldType.Input,
+      type: FormFieldType.Text,
       options: {
         label: args.label,
         placeholder: args.placeholder,
