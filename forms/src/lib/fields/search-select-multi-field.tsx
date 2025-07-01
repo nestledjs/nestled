@@ -1,5 +1,5 @@
 import { useQuery } from '@apollo/client'
-import { Combobox } from '@headlessui/react'
+import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions } from '@headlessui/react'
 import { Controller } from 'react-hook-form'
 import { useEffect, useState, useCallback } from 'react'
 import clsx from 'clsx'
@@ -19,77 +19,76 @@ function defaultOptionsMap<TDataItem extends { id: string; name?: string; firstN
   }))
 }
 
-function SelectedItems({ 
-  value, 
-  onChange, 
-  theme 
-}: { 
-  value: SearchSelectOption[]; 
-  onChange: (items: SearchSelectOption[]) => void;
-  theme: any;
+function SelectedItems({
+  value,
+  onChange,
+  theme,
+}: {
+  value: SearchSelectOption[]
+  onChange: (items: SearchSelectOption[]) => void
+  theme: any
 }) {
   return (
     <>
       {value.map((item: SearchSelectOption) => (
-        <span
-          key={item.value}
-          className={theme.searchSelectMultiField.selectedItem}
-        >
+        <span key={item.value} className={theme.searchSelectMultiField.selectedItem}>
           <span className={theme.searchSelectMultiField.selectedItemLabel}>{item.label}</span>
           <button
             type="button"
             className={theme.searchSelectMultiField.selectedItemRemoveButton}
             onClick={() => onChange(value.filter((v: SearchSelectOption) => v.value !== item.value))}
           >
-            <svg className={theme.searchSelectMultiField.selectedItemRemoveIcon} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              className={theme.searchSelectMultiField.selectedItemRemoveIcon}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </span>
       ))}
     </>
-  );
+  )
 }
 
-function ComboboxOptionsList({ 
-  options, 
-  apolloLoading, 
-  theme 
-}: { 
-  options: SearchSelectOption[]; 
-  apolloLoading: boolean;
-  theme: any;
+function ComboboxOptionsList({
+  options,
+  apolloLoading,
+  theme,
+}: {
+  options: SearchSelectOption[]
+  apolloLoading: boolean
+  theme: any
 }) {
   return (
-    <Combobox.Options className={theme.searchSelectMultiField.dropdown}>
+    <ComboboxOptions className={theme.searchSelectMultiField.dropdown}>
       {apolloLoading && <div className={theme.searchSelectMultiField.loadingText}>Loading...</div>}
       {options.map((option) => (
-        <Combobox.Option
+        <ComboboxOption
           key={option.value}
           value={option}
           className={({ active }) =>
             clsx(
               theme.searchSelectMultiField.option,
-              active ? theme.searchSelectMultiField.optionActive : 'text-gray-900'
+              active ? theme.searchSelectMultiField.optionActive : 'text-gray-900',
             )
           }
         >
           {({ selected }) => (
             <>
-              <span className={clsx(
-                theme.searchSelectMultiField.optionLabel,
-                selected ? theme.searchSelectMultiField.optionSelected : 'font-normal'
-              )}>
+              <span
+                className={clsx(
+                  theme.searchSelectMultiField.optionLabel,
+                  selected ? theme.searchSelectMultiField.optionSelected : 'font-normal',
+                )}
+              >
                 {option.label}
               </span>
               {selected && (
                 <span className={theme.searchSelectMultiField.optionCheckIcon}>
-                  <svg
-                    className="h-5 w-5"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
+                  <svg className="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
                     <path
                       fillRule="evenodd"
                       d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.052-.143z"
@@ -100,26 +99,38 @@ function ComboboxOptionsList({
               )}
             </>
           )}
-        </Combobox.Option>
+        </ComboboxOption>
       ))}
-    </Combobox.Options>
-  );
+    </ComboboxOptions>
+  )
 }
 
-export function SearchSelectMultiField<TDataItem extends RequiredItemShape>({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelectMulti }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
+export function SearchSelectMultiField<TDataItem extends RequiredItemShape>({
+  form,
+  field,
+  hasError,
+  formReadOnly = false,
+  formReadOnlyStyle = 'value',
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelectMulti }>> & {
+  formReadOnly?: boolean
+  formReadOnlyStyle?: 'value' | 'disabled'
+}) {
   const theme = useFormTheme()
   const { data, loading: apolloLoading, refetch } = useQuery(field.options.document)
   const [searchTerm, setSearchTerm] = useState('')
   const [options, setOptions] = useState<SearchSelectOption[]>([])
   const debouncedSearchTerm = useDebounce(searchTerm, 500)
 
-  const processData = useCallback((dataList: TDataItem[]) => {
-    let processedList = dataList
-    if (field.options.filter) processedList = field.options.filter(processedList)
-    return field.options.selectOptionsFunction
-      ? field.options.selectOptionsFunction(processedList)
-      : defaultOptionsMap(processedList)
-  }, [field.options])
+  const processData = useCallback(
+    (dataList: TDataItem[]) => {
+      let processedList = dataList
+      if (field.options.filter) processedList = field.options.filter(processedList)
+      return field.options.selectOptionsFunction
+        ? field.options.selectOptionsFunction(processedList)
+        : defaultOptionsMap(processedList)
+    },
+    [field.options],
+  )
 
   useEffect(() => {
     if (!apolloLoading && data) setOptions(processData(data[field.options.dataType] ?? []))
@@ -133,29 +144,24 @@ export function SearchSelectMultiField<TDataItem extends RequiredItemShape>({ fo
     }
   }, [debouncedSearchTerm, refetch, field.options, processData])
 
-  const isReadOnly = field.options.readOnly ?? formReadOnly;
-  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle;
-  const value = form.getValues(field.key) ?? [];
-  const selectedLabels = Array.isArray(value) ? value.map((v: any) => v.label ?? v).join(', ') : '';
+  const isReadOnly = field.options.readOnly ?? formReadOnly
+  const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
+  const value = form.getValues(field.key) ?? []
+  const selectedLabels = Array.isArray(value) ? value.map((v: any) => v.label ?? v).join(', ') : ''
 
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
       return (
         <input
           type="text"
-          className={clsx(
-            theme.searchSelectMultiField.readOnlyInput,
-            hasError && theme.searchSelectMultiField.error
-          )}
+          className={clsx(theme.searchSelectMultiField.readOnlyInput, hasError && theme.searchSelectMultiField.error)}
           disabled={true}
           value={selectedLabels}
         />
-      );
+      )
     }
     // Render as plain value
-    return (
-      <div className={theme.searchSelectMultiField.readOnlyValue}>{selectedLabels || '—'}</div>
-    );
+    return <div className={theme.searchSelectMultiField.readOnlyValue}>{selectedLabels || '—'}</div>
   }
 
   return (
@@ -175,18 +181,20 @@ export function SearchSelectMultiField<TDataItem extends RequiredItemShape>({ fo
             }}
           >
             <div className={theme.searchSelectMultiField.container}>
-              <div className={clsx(
-                theme.searchSelectMultiField.inputContainer,
-                hasError && theme.searchSelectMultiField.error
-              )}>
+              <div
+                className={clsx(
+                  theme.searchSelectMultiField.inputContainer,
+                  hasError && theme.searchSelectMultiField.error,
+                )}
+              >
                 <SelectedItems value={value} onChange={onChange} theme={theme} />
-                <Combobox.Input
+                <ComboboxInput
                   className={theme.searchSelectMultiField.input}
                   onChange={(event) => setSearchTerm(event.target.value)}
                   placeholder={value.length === 0 ? field.options.label : ''}
                 />
               </div>
-              <Combobox.Button className={theme.searchSelectMultiField.button}>
+              <ComboboxButton className={theme.searchSelectMultiField.button}>
                 <svg className={theme.searchSelectMultiField.buttonIcon} viewBox="0 0 20 20" fill="currentColor">
                   <path
                     fillRule="evenodd"
@@ -194,7 +202,7 @@ export function SearchSelectMultiField<TDataItem extends RequiredItemShape>({ fo
                     clipRule="evenodd"
                   />
                 </svg>
-              </Combobox.Button>
+              </ComboboxButton>
             </div>
             <ComboboxOptionsList options={options} apolloLoading={apolloLoading} theme={theme} />
           </Combobox>

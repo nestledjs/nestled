@@ -17,15 +17,19 @@ export default async function generateLibraries(
     '@nestjs/axios': '^3.0.0',
     '@prisma/client': '^6.11.0',
     '@apollo/server': '^4.9.0',
+    'graphql-fields': '^2.0.3',
   }
 
-  const devDependencies = {}
+  const devDependencies = {
+    '@types/graphql-fields': '^1.3.9',
+  }
 
   await installPlugins(tree, dependencies, devDependencies)
 
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'data-access')
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'feature', true)
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'models')
+  await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'helpers')
 
   await formatFiles(tree)
 
