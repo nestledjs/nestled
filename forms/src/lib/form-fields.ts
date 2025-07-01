@@ -4,6 +4,7 @@ import {
   CheckboxOptions,
   ContentOptions,
   CurrencyFieldOptions,
+  CustomCheckboxOptions,
   CustomFieldOptions,
   DatePickerOptions,
   EmailFieldOptions,
@@ -19,7 +20,6 @@ import {
   SwitchOptions,
   TextAreaOptions,
   UrlFieldOptions,
-  CustomCheckboxOptions,
 } from './form-types'
 
 export class FormFieldClass {
@@ -27,8 +27,8 @@ export class FormFieldClass {
     return { type, key, options } as FormField
   }
 
-  static input(key: string, options: InputFieldOptions = {}): FormField {
-    return this.field(FormFieldType.Input, key, options)
+  static text(key: string, options: InputFieldOptions = {}): FormField {
+    return this.field(FormFieldText, key, options)
   }
 
   static textArea(key: string, options: TextAreaOptions = {}): FormField {

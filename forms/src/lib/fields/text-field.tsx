@@ -9,7 +9,7 @@ export function TextField({
   hasError,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
-}: FormFieldProps<Extract<FormField, { type: FormFieldType.Input }>> & {
+}: FormFieldProps<Extract<FormField, { type: FormFieldType.Text }>> & {
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
