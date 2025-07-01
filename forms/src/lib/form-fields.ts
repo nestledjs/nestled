@@ -28,7 +28,7 @@ export class FormFieldClass {
   }
 
   static text(key: string, options: InputFieldOptions = {}): FormField {
-    return this.field(FormFieldText, key, options)
+    return this.field(FormFieldType.Text, key, options)
   }
 
   static textArea(key: string, options: TextAreaOptions = {}): FormField {
