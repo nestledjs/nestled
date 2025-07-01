@@ -4,7 +4,7 @@ import { UseFormReturn } from 'react-hook-form'
 
 // The single enum for all field types, combining the best of both libraries
 export enum FormFieldType {
-  Input = 'Input',
+  Text = 'Text',
   TextArea = 'TextArea',
   Email = 'Email',
   Password = 'Password',
@@ -41,14 +41,14 @@ export interface BaseFieldOptions {
   /**
    * If true, this specific field will be in read-only mode, overriding the form-level prop.
    */
-  readOnly?: boolean;
+  readOnly?: boolean
   /**
    * Determines how the field should appear when in read-only mode.
    * 'value': Renders the data as plain text. (Default)
    * 'disabled': Renders the UI component in a disabled state.
    */
-  readOnlyStyle?: 'value' | 'disabled';
-  helpText?: string;
+  readOnlyStyle?: 'value' | 'disabled'
+  helpText?: string
 }
 
 // Specific options interfaces that extend the base
@@ -67,7 +67,39 @@ export interface NumberFieldOptions extends InputFieldOptions {
 }
 
 // Enhanced currency support
-export type CurrencyCode = 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'CAD' | 'AUD' | 'CHF' | 'SEK' | 'NOK' | 'DKK' | 'PLN' | 'CZK' | 'HUF' | 'RON' | 'BGN' | 'HRK' | 'RUB' | 'TRY' | 'BRL' | 'MXN' | 'INR' | 'KRW' | 'SGD' | 'HKD' | 'NZD' | 'ZAR' | 'THB' | 'MYR' | 'IDR' | 'PHP' | 'VND'
+export type CurrencyCode =
+  | 'USD'
+  | 'EUR'
+  | 'GBP'
+  | 'JPY'
+  | 'CNY'
+  | 'CAD'
+  | 'AUD'
+  | 'CHF'
+  | 'SEK'
+  | 'NOK'
+  | 'DKK'
+  | 'PLN'
+  | 'CZK'
+  | 'HUF'
+  | 'RON'
+  | 'BGN'
+  | 'HRK'
+  | 'RUB'
+  | 'TRY'
+  | 'BRL'
+  | 'MXN'
+  | 'INR'
+  | 'KRW'
+  | 'SGD'
+  | 'HKD'
+  | 'NZD'
+  | 'ZAR'
+  | 'THB'
+  | 'MYR'
+  | 'IDR'
+  | 'PHP'
+  | 'VND'
 
 export interface CurrencyConfig {
   code: CurrencyCode
@@ -173,7 +205,7 @@ interface CustomFieldType<T = unknown> {
 // Specific interfaces for each complete field definition (discriminated union members)
 interface InputField {
   key: string
-  type: FormFieldType.Input
+  type: FormFieldType.Text
   options: InputFieldOptions
 }
 interface TextAreaField {
@@ -282,26 +314,26 @@ interface RadioField {
 }
 
 export interface RadioOption {
-  key: string;
-  value: string | number | boolean;
-  label: string;
+  key: string
+  value: string | number | boolean
+  label: string
   checkedSubOption?: {
-    key: string;
-    label: string;
-  };
-  hidden?: boolean;
+    key: string
+    label: string
+  }
+  hidden?: boolean
 }
 
 export interface RadioFormFieldOptions extends BaseFieldOptions {
-  radioOptions: RadioOption[];
-  defaultValue?: string | number | boolean;
-  defaultSubValue?: string;
-  fullWidthLabel?: boolean;
-  radioDirection?: 'row' | 'column';
-  customWrapper?: (children: React.ReactNode) => JSX.Element;
-  fancyStyle?: boolean;
-  hidden?: boolean;
-  disabled?: boolean;
+  radioOptions: RadioOption[]
+  defaultValue?: string | number | boolean
+  defaultSubValue?: string
+  fullWidthLabel?: boolean
+  radioDirection?: 'row' | 'column'
+  customWrapper?: (children: React.ReactNode) => JSX.Element
+  fancyStyle?: boolean
+  hidden?: boolean
+  disabled?: boolean
 }
 
 // The final FormField is a union of all possible field shapes
@@ -338,19 +370,19 @@ export interface FormFieldProps<T extends FormField> {
 }
 
 export interface CustomCheckboxOptions extends BaseFieldOptions {
-  defaultValue?: boolean;
-  fullWidthLabel?: boolean;
-  wrapperClassNames?: string;
-  helpText?: string;
-  errorText?: string;
-  checkedIcon?: ReactNode;
-  uncheckedIcon?: ReactNode;
-  readonlyCheckedIcon?: ReactNode;
-  readonlyUncheckedIcon?: ReactNode;
+  defaultValue?: boolean
+  fullWidthLabel?: boolean
+  wrapperClassNames?: string
+  helpText?: string
+  errorText?: string
+  checkedIcon?: ReactNode
+  uncheckedIcon?: ReactNode
+  readonlyCheckedIcon?: ReactNode
+  readonlyUncheckedIcon?: ReactNode
 }
 
 interface CustomCheckboxField {
-  key: string;
-  type: FormFieldType.CustomCheckbox;
-  options: CustomCheckboxOptions;
+  key: string
+  type: FormFieldType.CustomCheckbox
+  options: CustomCheckboxOptions
 }
