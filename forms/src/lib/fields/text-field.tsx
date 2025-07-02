@@ -15,40 +15,62 @@ export function TextField({
 }) {
   const theme = useFormTheme()
 
-  const fieldTheme = theme.textField
-  console.log(fieldTheme)
-
   const isReadOnly = field.options.readOnly ?? formReadOnly
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
   const value = form.getValues(field.key) ?? ''
 
-  return isReadOnly ? (
-    readOnlyStyle === 'disabled' ? (
+  if (isReadOnly) {
+    if (readOnlyStyle === 'disabled') {
+      return (
+        <>
+          <input
+            id={field.key}
+            type="text"
+            className={clsx(
+              theme.textField.input,
+              hasError && theme.textField.error,
+              theme.textField.disabled
+            )}
+            disabled={true}
+            value={value}
+          />
+          {field.options.helpText && (
+            <div className={clsx(theme.textField.helpText)}>{field.options.helpText}</div>
+          )}
+        </>
+      )
+    }
+    // Render as plain value
+    return (
+      <>
+        <div className={theme.textField.readOnly}>{value ? value : '—'}</div>
+        {field.options.helpText && (
+          <div className={clsx(theme.textField.helpText)}>{field.options.helpText}</div>
+        )}
+      </>
+    )
+  }
+
+  return (
+    <>
       <input
         id={field.key}
         type="text"
-        className={clsx(fieldTheme.input || '', hasError && (fieldTheme.error || ''), fieldTheme.disabled || '')}
-        disabled={true}
-        value={value}
+        disabled={field.options.disabled}
+        autoComplete="true"
+        placeholder={field.options.placeholder}
+        defaultValue={field.options.defaultValue}
+        required={field.options.required}
+        {...form.register(field.key, { required: field.options.required })}
+        className={clsx(
+          theme.textField.input,
+          field.options.disabled && theme.textField.disabled,
+          hasError && theme.textField.error
+        )}
       />
-    ) : (
-      <div className={fieldTheme.readOnly || ''}>{value ?? '—'}</div>
-    )
-  ) : (
-    <input
-      id={field.key}
-      type="text"
-      disabled={field.options.disabled}
-      autoComplete="true"
-      placeholder={field.options.placeholder}
-      defaultValue={field.options.defaultValue}
-      required={field.options.required}
-      {...form.register(field.key, { required: field.options.required })}
-      className={clsx(
-        fieldTheme.input || '',
-        hasError && (fieldTheme.error || ''),
-        field.options.disabled && (fieldTheme.disabled || ''),
+      {field.options.helpText && (
+        <div className={clsx(theme.textField.helpText)}>{field.options.helpText}</div>
       )}
-    />
+    </>
   )
 }
