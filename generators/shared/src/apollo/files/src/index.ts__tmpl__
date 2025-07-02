@@ -1,2 +1,2 @@
-export * from './apollo'
-export * from './apollo-loader'
+export * from './lib/apollo'
+export * from './lib/apollo-loader'

@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "cli": "nx",
+  "id": "plugins",
+  "type": "object",
+  "properties": {},
+  "required": []
+}

@@ -1,0 +1,19 @@
+// Helper to parse cookies from the request
+export function getCookie(request: Request, name: string): string | undefined {
+  const cookie = request.headers.get('cookie')
+  if (!cookie) return undefined
+  const match = RegExp(new RegExp('(^| )' + name + '=([^;]+)')).exec(cookie)
+  return match ? decodeURIComponent(match[2]) : undefined
+}
+
+// Helper to decode JWT and check expiration
+export function isJwtExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]))
+    if (!payload.exp) return false
+    const now = Math.floor(Date.now() / 1000)
+    return payload.exp < now
+  } catch {
+    return true // treat malformed tokens as expired
+  }
+}

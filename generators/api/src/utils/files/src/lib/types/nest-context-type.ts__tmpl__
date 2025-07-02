@@ -1,0 +1,4 @@
+export interface NestContextType {
+  req: Request
+  res: Response
+}
