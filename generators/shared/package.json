@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/shared",
-  "version": "0.0.5",
+  "version": "0.0.12",
   "generators": "./generators.json",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -20,6 +20,6 @@
     "@nx/js": "21.2.1"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.0.5"
+    "@nestledjs/utils": "0.0.12"
   }
 }
