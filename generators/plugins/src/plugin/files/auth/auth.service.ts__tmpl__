@@ -7,22 +7,17 @@ import {
   hashPassword,
   validatePassword,
 } from './auth.helper'
-import { LoginInput } from './dto/login.input'
 import { UserToken } from './models/user-token'
-import { UserCreateInput } from './dto/user-create.input'
 import { Prisma } from '@<%= npmScope %>/api/prisma'
 import { UserRole } from '@<%= npmScope %>/api/core/models'
-import { SmtpMailerService } from '@<%= npmScope %>/api/smtp-mailer/data-access'
+import { SmtpMailerService } from '@<%= npmScope %>/api/integrations'
 import { passwordResetEmail } from './templates/password-reset-email.template'
 import { Response } from 'express'
 import { ApiCoreFeatureService } from '@<%= npmScope %>/api/core/feature';
 import { emailVerificationEmail } from './templates/email-verification-email.template'
 import { organizationInviteEmail } from './templates/organization-invite-email.template'
 import { InviteToken } from './models/invite-token'
-import { RegisterInput } from './dto/register.input'
-import { VerifyEmailInput } from './dto/verify-email.input'
-import { InviteUserInput } from './dto/invite-user.input'
-import { AcceptInviteInput } from './dto/accept-invite.input'
+import { UserCreateInput, LoginInput, RegisterInput,VerifyEmailInput,InviteUserInput,AcceptInviteInput  } from './dto'
 
 @Injectable()
 export class AuthService {
@@ -167,7 +162,7 @@ export class AuthService {
         expiresAt,
       },
     })
-      const inviter = await this.data.user.findUnique({ 
+      const inviter = await this.data.user.findUnique({
       where: { id: inviterId },
       include: {
         emails: {
