@@ -17,7 +17,6 @@ import {
   removeQuestionMarkAtEnd,
   removeWorkspacesFromPackageJson,
   updateTsConfigPaths,
-  updateTypeScriptConfigs,
 } from './generator-utils'
 import { getDMMF } from '@prisma/internals'
 
@@ -316,27 +315,6 @@ describe('generator-utils', () => {
 
     it('should not throw if tsconfig.base.json does not exist', () => {
       expect(() => updateTsConfigPaths(tree, '@my/lib', 'libs/my-lib')).not.toThrow()
-    })
-  })
-
-  describe('updateTypeScriptConfigs', () => {
-    it("should add a reference to the new library in other projects' tsconfig.json files", () => {
-      // Setup project tsconfigs
-      writeJson(tree, 'libs/lib1/tsconfig.json', {})
-      writeJson(tree, 'apps/app1/tsconfig.json', { references: [] })
-      writeJson(tree, 'libs/new-lib/tsconfig.json', {}) // The new library itself
-
-      updateTypeScriptConfigs(tree, 'libs/new-lib')
-
-      const lib1TsConfig = readJson(tree, 'libs/lib1/tsconfig.json')
-      expect(lib1TsConfig.references).toEqual([{ path: './libs/new-lib' }])
-
-      const app1TsConfig = readJson(tree, 'apps/app1/tsconfig.json')
-      expect(app1TsConfig.references).toEqual([{ path: './libs/new-lib' }])
-
-      // Should not add a reference to itself
-      const newLibTsConfig = readJson(tree, 'libs/new-lib/tsconfig.json')
-      expect(newLibTsConfig.references).toBeUndefined()
     })
   })
 

@@ -60,6 +60,7 @@
   },
   "release": {
     "projectsRelationship": "independent",
+    "releaseTagPattern": "{projectName}@{version}",
     "changelog": {
       "projectChangelogs": {
         "createRelease": "github"
@@ -67,10 +68,12 @@
       "workspaceChangelog": false
     },
     "version": {
+      "fallbackCurrentVersionResolver": "disk",
+      "conventionalCommits": true,
       "versionActionsOptions": {
+        "skipLockFileUpdate": true,
         "installIgnoreScripts": true
       },
-      "conventionalCommits": true,
       "preVersionCommand": "nx affected --target=test --base=develop",
       "git": {
         "commit": true,

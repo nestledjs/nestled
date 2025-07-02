@@ -40,6 +40,7 @@ describe('webSetupGenerator', () => {
         isbot: '5.1.28',
         '@apollo/client': '^3.13.8',
         '@apollo/client-integration-react-router': '0.12.0-alpha.4',
+        'graphql-tag': '^2.12.6',
       },
       {
         '@nx/react': '21.2.1',

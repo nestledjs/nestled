@@ -37,13 +37,13 @@ describe('auth generator', () => {
   })
 
   it('should generate files, add to modules, and update index', async () => {
-    await generator(tree)
+    await generator(tree, { name: 'auth' })
 
     expect(generateFiles).toHaveBeenCalledWith(
       tree,
       expect.any(String),
       joinPathFragments('libs', 'api/custom/src/lib/plugins', 'auth'),
-      expect.objectContaining({ npmScope: 'myscope', overwrite: false }),
+      { name: 'auth', npmScope: 'myscope', tmpl: '' },
     )
     expect(addToModules).toHaveBeenCalledWith(
       expect.objectContaining({
