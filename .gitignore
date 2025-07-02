@@ -49,3 +49,4 @@ vitest.config.*.timestamp*
 
 storybook-static
 .ai-cli
+.env
