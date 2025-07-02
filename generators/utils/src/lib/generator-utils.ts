@@ -301,39 +301,6 @@ export function updateTsConfigPaths(tree: Tree, importPath: string, libraryRoot:
   }
 }
 
-export function updateTypeScriptConfigs(tree: Tree, libraryRoot: string): void {
-  const updateTsConfigForProject = (projectRoot: string) => {
-    const tsconfigPath = joinPathFragments(projectRoot, 'tsconfig.json')
-    if (tree.exists(tsconfigPath)) {
-      updateJson(tree, tsconfigPath, (json) => {
-        if (!json.references) {
-          json.references = []
-        }
-        const newReference = { path: `./${libraryRoot}` }
-        // Avoid adding duplicate references
-        if (!json.references.some((ref: { path: string }) => ref.path === newReference.path)) {
-          json.references.push(newReference)
-        }
-        return json
-      })
-    }
-  }
-
-  // This assumes a standard Nx workspace layout (apps, libs)
-  const projectDirs = ['apps', 'libs']
-  for (const dir of projectDirs) {
-    if (tree.exists(dir)) {
-      for (const project of tree.children(dir)) {
-        const projectPath = joinPathFragments(dir, project)
-        if (projectPath === libraryRoot) {
-          continue
-        }
-        updateTsConfigForProject(projectPath)
-      }
-    }
-  }
-}
-
 export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
   const { getDMMF } = await import('@prisma/internals')
   const { getPrismaSchemaPath, readPrismaSchema } = await import('./generator-utils.js')
@@ -632,7 +599,6 @@ function generateTemplatesIfAvailable<T extends { name: string }>(
 }
 
 function updateLibraryTypeScriptConfigs(tree: Tree, libraryRoot: string, importPath: string) {
-  updateTypeScriptConfigs(tree, libraryRoot)
   updateTsConfigPaths(tree, importPath, libraryRoot)
   const tsconfigLibPath = path.join(libraryRoot, 'tsconfig.lib.json')
   if (tree.exists(tsconfigLibPath)) {

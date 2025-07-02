@@ -61,7 +61,7 @@ export async function configSetupGenerator(tree: Tree): Promise<GeneratorCallbac
     tree,
     {},
     {
-      '@prisma/internals': '^6.9.0',
+      '@prisma/internals': '^6.11.0',
       yaml: '^2.8.0',
       'eslint-plugin-jsx-a11y': '6.10.2',
       prettier: '^3.5.3',
