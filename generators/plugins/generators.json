@@ -1,9 +1,14 @@
 {
   "generators": {
     "auth": {
-      "factory": "./src/auth/generator.js",
-      "schema": "./src/auth/schema.json",
-      "description": "Generate an auth plugin by copying files and replacing MuseBook with the provided namespace."
+      "factory": "./src/plugin/generator.js",
+      "schema": "./src/plugin/schema.json",
+      "description": "Generate a plugin by copying files and replacing with provided namespace."
+    },
+    "integration": {
+      "factory": "./src/integration/generator.js",
+      "schema": "./src/integration/schema.json",
+      "description": "Generate an integration (e.g., smtp-mailer) in libs/api/integrations/src/lib."
     }
   }
 }

@@ -7,7 +7,7 @@ import {
   Scripts,
   ScrollRestoration,
 } from 'react-router'
-import '@<%= npmScope %>/styles'
+import '@<%= npmScope %>/shared/styles'
 import { App } from './app'
 
 import { AppNav } from './app-nav'

@@ -13,6 +13,7 @@ nx g @nestledjs/api:generate-crud &&
 nx g @nestledjs/api:utils &&
 nx g @nestledjs/api:custom &&
 nx g @nestledjs/shared:sdk &&
+nx g @nestledjs/shared:styles &&
 nx g @nestledjs/plugins:auth && 
 nx g @nestledjs/api:workspace-setup &&
 nx g @nestledjs/web:setup &&

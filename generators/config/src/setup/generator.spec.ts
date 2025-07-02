@@ -35,7 +35,7 @@ describe('configSetupGenerator', () => {
     const call = (addDependenciesToPackageJson as any).mock.calls[0]
     const devDeps = call[2]
     expect(Object.keys(devDeps)).toContain('@prisma/internals')
-    expect(['^6.9.0', '^']).toContain(devDeps['@prisma/internals'])
+    expect(['^6.11.0', '^']).toContain(devDeps['@prisma/internals'])
     expect(removeWorkspacesFromPackageJson).toHaveBeenCalledWith(tree)
     expect(pnpmInstallCallback).toHaveBeenCalled()
   })
