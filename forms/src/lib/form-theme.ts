@@ -21,6 +21,7 @@ export const FormThemeSchema = z.object({
       error: z.string().default(''),
       disabled: z.string().default(''),
       readOnly: z.string().default(''),
+      helpText: z.string().default(''),
     })
     .default({}),
   checkbox: z
