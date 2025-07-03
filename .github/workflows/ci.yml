@@ -34,6 +34,14 @@ jobs:
       - name: Install Playwright Browsers
         run: pnpm exec playwright install --with-deps
 
+      - name: Verify browser installation
+        run: |
+          test -f ~/.cache/ms-playwright/chromium-*/*/chrome-linux/headless_shell || {
+            echo "Browser install appears incomplete, re-running...";
+            pnpm exec playwright install --with-deps;
+          }
+
+
       # Enable Nx Cloud task distribution (optional)
       - run: pnpm dlx nx-cloud start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build"
 
