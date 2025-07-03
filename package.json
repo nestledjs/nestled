@@ -16,7 +16,9 @@
     "lint:fix": "nx affected -t lint --fix --base=develop",
     "lint-all": "nx run-many -t lint --all",
     "lint-all:fix": "nx run-many -t lint --all --fix",
-    "test-suite": "nx run-many -t lint test build --all"
+    "test-suite": "nx run-many -t lint test build --all",
+    "postinstall": "if [ \"$CI\" = \"true\" ]; then pnpm exec playwright install --with-deps; fi"
+
   },
   "private": true,
   "dependencies": {

@@ -13,6 +13,7 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,31 +23,33 @@ jobs:
         with:
           version: 9
 
-      # Setup Node and enable PNPM cache
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
-      - run: pnpm install --frozen-lockfile
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-browsers
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
-      # Install Playwright browsers for both Vitest and Storybook test runner
-      - name: Install Playwright Browsers
-        run: pnpm exec playwright install --with-deps
+      - name: Install dependencies (triggers postinstall + playwright install)
+        run: pnpm install --frozen-lockfile
 
       - name: Verify browser installation
         run: |
-          test -f ~/.cache/ms-playwright/chromium-*/*/chrome-linux/headless_shell || {
-            echo "Browser install appears incomplete, re-running...";
-            pnpm exec playwright install --with-deps;
-          }
+          if [ ! -f ~/.cache/ms-playwright/chromium-*/*/chrome-linux/headless_shell ]; then
+            echo "Browser install incomplete. Reinstalling..."
+            pnpm exec playwright install --with-deps
+          fi
 
-
-      # Enable Nx Cloud task distribution (optional)
+      # Enable Nx Cloud Distributed CI (keep this)
       - run: pnpm dlx nx-cloud start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build"
 
-      # Set up SHAs for Nx affected commands
       - uses: nrwl/nx-set-shas@v4
 
-      # Run affected tasks (this runs lint, test, build — including Playwright-based tests)
-      - run: pnpm exec nx affected -t lint test build
+      - name: Run affected commands
+        run: pnpm exec nx affected -t lint test build
