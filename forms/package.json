@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/forms",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "exports": {
     ".": {
       "import": "./index.js",
@@ -10,7 +10,21 @@
   "main": "./index.js",
   "types": "./index.d.ts",
   "type": "module",
-  "description": "Form Library for Nestled projects",
+  "description": "A flexible React form library supporting both declarative and imperative usage patterns with TypeScript support",
+  "keywords": [
+    "react",
+    "forms",
+    "typescript",
+    "declarative",
+    "imperative",
+    "form-builder",
+    "react-hook-form",
+    "form-fields",
+    "validation",
+    "ui-components",
+    "form-library",
+    "react-components"
+  ],
   "author": "Nestled Contributors",
   "license": "MIT",
   "repository": {
