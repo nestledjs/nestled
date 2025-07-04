@@ -247,15 +247,85 @@ function renderComponent(
   }
 }
 
-// This is the exported component you will use
+/**
+ * Renders a form field component based on the field definition.
+ * This is the core function that enables declarative form field usage.
+ * 
+ * Must be used within a Form component to access form context.
+ * Automatically handles field rendering, validation display, and theming.
+ * 
+ * @param field - The field definition object created using FormFieldClass methods
+ * @param formReadOnly - Whether the field should be in read-only mode (overrides form-level setting)
+ * @param formReadOnlyStyle - How to display read-only fields: 'value' shows plain text, 'disabled' shows disabled input
+ * @param className - Additional CSS classes to apply to the field wrapper
+ * @returns A React component that renders the appropriate field type with label, validation, and styling
+ * 
+ * @example
+ * ```tsx
+ * // Basic usage
+ * <RenderFormField 
+ *   field={FormFieldClass.text('username', { label: 'Username', required: true })} 
+ * />
+ * 
+ * // Multi-column layout with CSS Grid
+ * <div className="grid grid-cols-2 gap-4">
+ *   <RenderFormField 
+ *     field={FormFieldClass.text('firstName', { label: 'First Name' })}
+ *     className="col-span-1"
+ *   />
+ *   <RenderFormField 
+ *     field={FormFieldClass.text('lastName', { label: 'Last Name' })}
+ *     className="col-span-1"
+ *   />
+ * </div>
+ * 
+ * // Using wrapperClassName in field options
+ * <div className="grid grid-cols-2 gap-4">
+ *   <RenderFormField 
+ *     field={FormFieldClass.text('firstName', { 
+ *       label: 'First Name',
+ *       wrapperClassName: 'col-span-1'
+ *     })}
+ *   />
+ *   <RenderFormField 
+ *     field={FormFieldClass.text('lastName', { 
+ *       label: 'Last Name',
+ *       wrapperClassName: 'col-span-1'
+ *     })}
+ *   />
+ * </div>
+ * 
+ * // Horizontal layout within field
+ * <RenderFormField 
+ *   field={FormFieldClass.checkbox('agree', { 
+ *     label: 'I agree to the terms',
+ *     layout: 'horizontal'
+ *   })}
+ * />
+ * 
+ * // Custom wrapper function
+ * <RenderFormField 
+ *   field={FormFieldClass.text('email', { 
+ *     label: 'Email',
+ *     customWrapper: (children) => (
+ *       <div className="flex items-center space-x-4">
+ *         {children}
+ *       </div>
+ *     )
+ *   })}
+ * />
+ * ```
+ */
 export function RenderFormField({
   field,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
+  className,
 }: {
   field: FormField
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
+  className?: string
 }) {
   const form = useFormContext()
   const { labelDisplay } = useFormConfig()
@@ -263,7 +333,7 @@ export function RenderFormField({
   const error = form.formState.errors[field.key]
   const errorMessage = (error?.message as string) ?? (error ? 'This field is required' : null)
 
-  // --- NEW, CONFIGURABLE LABEL LOGIC ---
+  // --- CONFIGURABLE LABEL LOGIC ---
   const hasLabelProp = !!field.options.label
   let showLabel = false
 
@@ -288,13 +358,34 @@ export function RenderFormField({
 
   const component = renderComponent(form, field, formReadOnly, formReadOnlyStyle)
 
-  return (
-    <div key={field.key} className={clsx()}>
-      {labelComponent}
-      <div className={clsx()}>
-        {component}
-        {error && <span className="text-red-700 text-sm">{errorMessage}</span>}
+  // --- RESPECT FIELD OPTIONS FOR LAYOUT ---
+  const layout = field.options.layout || 'vertical'
+  const customWrapper = field.options.customWrapper
+  const wrapperClassName = field.options.wrapperClassName
+
+  // Build the field content
+  const fieldContent = (
+    <>
+      {layout === 'vertical' && labelComponent}
+      <div className={clsx(layout === 'horizontal' && 'flex items-center space-x-3')}>
+        {layout === 'horizontal' && labelComponent}
+        <div className={clsx(layout === 'horizontal' && 'flex-1')}>
+          {component}
+          {error && <span className="text-red-700 text-sm">{errorMessage}</span>}
+        </div>
       </div>
+    </>
+  )
+
+  // If field has customWrapper, use it
+  if (customWrapper) {
+    return customWrapper(fieldContent)
+  }
+
+  // Standard wrapper with customizable classes
+  return (
+    <div key={field.key} className={clsx('space-y-1', wrapperClassName, className)}>
+      {fieldContent}
     </div>
   )
 }

@@ -49,6 +49,11 @@ export interface BaseFieldOptions {
    */
   readOnlyStyle?: 'value' | 'disabled'
   helpText?: string
+  /**
+   * Additional CSS classes to apply to the field wrapper.
+   * Useful for layout customization (e.g., grid positioning, flexbox, spacing).
+   */
+  wrapperClassName?: string
 }
 
 // Specific options interfaces that extend the base

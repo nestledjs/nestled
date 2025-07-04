@@ -35,6 +35,54 @@ export interface FormProps<T extends FieldValues = Record<string, unknown>> exte
   labelDisplay?: 'all' | 'default' | 'none'
 }
 
+/**
+ * Main form component that provides both declarative and imperative form usage patterns.
+ * 
+ * Supports declarative usage via the `fields` prop and imperative usage via children.
+ * Provides form context for field components and handles form submission.
+ * 
+ * @template T - The type of the form values object
+ * @param id - Unique identifier for the form element
+ * @param fields - Array of field definitions for declarative usage (optional)
+ * @param children - React children for imperative usage (optional)
+ * @param submit - Function called when form is submitted with validated values
+ * @param defaultValues - Initial values for form fields
+ * @param className - CSS classes to apply to the form element
+ * @param readOnly - Whether the entire form should be in read-only mode
+ * @param readOnlyStyle - How read-only fields should be displayed ('value' | 'disabled')
+ * @param theme - Partial theme object to customize form appearance
+ * @param labelDisplay - Global label visibility setting ('all' | 'default' | 'none')
+ * @returns A form element with context providers for field components
+ * 
+ * @example
+ * ```tsx
+ * // Declarative usage
+ * <Form
+ *   id="user-form"
+ *   fields={[
+ *     FormFieldClass.text('username', { label: 'Username', required: true }),
+ *     FormFieldClass.email('email', { label: 'Email', required: true }),
+ *   ]}
+ *   submit={(values) => console.log(values)}
+ * />
+ * 
+ * // Imperative usage
+ * <Form id="custom-form" submit={(values) => handleSubmit(values)}>
+ *   <RenderFormField field={FormFieldClass.text('name', { label: 'Name' })} />
+ *   <button type="submit">Submit</button>
+ * </Form>
+ * 
+ * // Mixed usage
+ * <Form
+ *   id="mixed-form"
+ *   fields={[FormFieldClass.text('username', { label: 'Username' })]}
+ *   submit={(values) => handleSubmit(values)}
+ * >
+ *   <RenderFormField field={FormFieldClass.password('password', { label: 'Password' })} />
+ *   <button type="submit">Submit</button>
+ * </Form>
+ * ```
+ */
 export function Form<T extends FieldValues = Record<string, unknown>>({
   id,
   fields,

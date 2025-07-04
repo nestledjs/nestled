@@ -5,3 +5,11 @@ export { tailwindTheme } from './lib/themes/tailwind'
 export { FormThemeSchema } from './lib/form-theme'
 export type { FormTheme } from './lib/form-theme'
 export type { FormProps } from './lib/form'
+export { RenderFormField } from './lib/render-form-field'
+export { useFormContext } from './lib/form-context'
+export { useFormConfig } from './lib/form-config-context'
+export { useFormTheme } from './lib/theme-context'
+
+// Export key types for library consumers
+export type { FormField, FormFieldType, BaseFieldOptions } from './lib/form-types'
+export type { FormConfig } from './lib/form-config-context'
