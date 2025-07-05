@@ -13,3 +13,7 @@ export { useFormTheme } from './lib/theme-context'
 // Export key types for library consumers
 export type { FormField, FormFieldType, BaseFieldOptions } from './lib/form-types'
 export type { FormConfig } from './lib/form-config-context'
+
+// Re-export utilities from helpers for convenience
+export type { DeepPartial } from '@nestledjs/helpers'
+export { getPluralName } from '@nestledjs/helpers'

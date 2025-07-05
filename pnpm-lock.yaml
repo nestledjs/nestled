@@ -315,6 +315,9 @@ importers:
       typescript-eslint:
         specifier: 8.24.0
         version: 8.24.0(eslint@9.12.0(jiti@2.4.2))(typescript@5.7.3)
+      verdaccio:
+        specifier: ^6.0.5
+        version: 6.0.5(encoding@0.1.13)(typanion@3.14.0)
       vite:
         specifier: ^6.3.5
         version: 6.3.5(@types/node@20.19.1)(jiti@2.4.2)(less@4.1.3)(lightningcss@1.30.1)(sass-embedded@1.87.0)(sass@1.87.0)(stylus@0.64.0)(terser@5.34.1)(yaml@2.8.0)
@@ -331,8 +334,8 @@ importers:
   generators/api:
     dependencies:
       '@nestledjs/utils':
-        specifier: 0.0.12
-        version: 0.0.12(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
+        specifier: 0.0.13
+        version: 0.0.13(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
       '@nx/devkit':
         specifier: 21.2.1
         version: 21.2.1(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
@@ -358,8 +361,8 @@ importers:
   generators/config:
     dependencies:
       '@nestledjs/utils':
-        specifier: 0.0.12
-        version: 0.0.12(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
+        specifier: 0.0.13
+        version: 0.0.13(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
       '@nx/devkit':
         specifier: 21.2.1
         version: 21.2.1(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
@@ -374,8 +377,8 @@ importers:
   generators/plugins:
     dependencies:
       '@nestledjs/utils':
-        specifier: 0.0.12
-        version: 0.0.12(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
+        specifier: 0.0.13
+        version: 0.0.13(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
       '@nx/devkit':
         specifier: 21.2.1
         version: 21.2.1(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
@@ -389,8 +392,8 @@ importers:
   generators/shared:
     dependencies:
       '@nestledjs/utils':
-        specifier: 0.0.12
-        version: 0.0.12(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
+        specifier: 0.0.13
+        version: 0.0.13(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
       '@nx/devkit':
         specifier: 21.2.1
         version: 21.2.1(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
@@ -425,8 +428,8 @@ importers:
   generators/web:
     dependencies:
       '@nestledjs/utils':
-        specifier: 0.0.12
-        version: 0.0.12(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
+        specifier: 0.0.13
+        version: 0.0.13(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
       '@nx/devkit':
         specifier: 21.2.1
         version: 21.2.1(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
@@ -2357,8 +2360,8 @@ packages:
       '@nestjs/platform-express':
         optional: true
 
-  '@nestledjs/utils@0.0.12':
-    resolution: {integrity: sha512-YjiAX4aKVHuS9JKZdZ8NhV3+4FWq80daSx6Rqw/ZhDUTP04B9DKKu8MwV/xegn7p6icfUnpNeilj1ChAOUVXBg==}
+  '@nestledjs/utils@0.0.13':
+    resolution: {integrity: sha512-KSHTSyB8Ed1H0DtB2XHBeiHYkHvYYGbvNTjyRT0aRWk6ifs2aF+CNYHZmOyZltyhj/gHn9Ujh0mV7qNrP/3pHA==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -11475,7 +11478,6 @@ snapshots:
       tough-cookie: 5.1.2
       tunnel-agent: 0.6.0
       uuid: 8.3.2
-    optional: true
 
   '@emnapi/core@1.3.0':
     dependencies:
@@ -12851,7 +12853,7 @@ snapshots:
     optionalDependencies:
       '@nestjs/platform-express': 10.4.15(@nestjs/common@10.4.15(class-validator@0.14.1)(reflect-metadata@0.1.14)(rxjs@7.8.1))(@nestjs/core@10.4.15)
 
-  '@nestledjs/utils@0.0.12(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))':
+  '@nestledjs/utils@0.0.13(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))':
     dependencies:
       '@nx/devkit': 21.2.1(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))
       '@nx/nest': 21.2.1(@babel/traverse@7.27.4)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(eslint@9.12.0(jiti@2.4.2))(nx@21.2.1(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.13))(@swc/types@0.1.12)(typescript@5.8.3))(@swc/core@1.5.29(@swc/helpers@0.5.13)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.13))(@types/node@20.19.1)(typescript@5.7.3))(typescript@5.8.3)(verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0))
@@ -15169,13 +15171,11 @@ snapshots:
       verdaccio-htpasswd: 13.0.0-next-8.7
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/commons-api@10.2.0':
     dependencies:
       http-errors: 2.0.0
       http-status-codes: 2.2.0
-    optional: true
 
   '@verdaccio/config@8.0.0-next-8.7':
     dependencies:
@@ -15187,7 +15187,6 @@ snapshots:
       minimatch: 7.4.6
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/core@8.0.0-next-8.1':
     dependencies:
@@ -15197,7 +15196,6 @@ snapshots:
       http-status-codes: 2.3.0
       process-warning: 1.0.0
       semver: 7.6.3
-    optional: true
 
   '@verdaccio/core@8.0.0-next-8.7':
     dependencies:
@@ -15207,17 +15205,14 @@ snapshots:
       http-status-codes: 2.3.0
       process-warning: 1.0.0
       semver: 7.6.3
-    optional: true
 
   '@verdaccio/file-locking@10.3.1':
     dependencies:
       lockfile: 1.0.4
-    optional: true
 
   '@verdaccio/file-locking@13.0.0-next-8.2':
     dependencies:
       lockfile: 1.0.4
-    optional: true
 
   '@verdaccio/loaders@8.0.0-next-8.4':
     dependencies:
@@ -15225,7 +15220,6 @@ snapshots:
       lodash: 4.17.21
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/local-storage-legacy@11.0.2':
     dependencies:
@@ -15239,7 +15233,6 @@ snapshots:
       mkdirp: 1.0.4
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/logger-commons@8.0.0-next-8.7':
     dependencies:
@@ -15249,7 +15242,6 @@ snapshots:
       debug: 4.4.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/logger-prettify@8.0.0-next-8.1':
     dependencies:
@@ -15258,7 +15250,6 @@ snapshots:
       lodash: 4.17.21
       pino-abstract-transport: 1.2.0
       sonic-boom: 3.8.1
-    optional: true
 
   '@verdaccio/logger@8.0.0-next-8.7':
     dependencies:
@@ -15266,7 +15257,6 @@ snapshots:
       pino: 9.5.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/middleware@8.0.0-next-8.7':
     dependencies:
@@ -15282,10 +15272,8 @@ snapshots:
       mime: 2.6.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
-  '@verdaccio/search-indexer@8.0.0-next-8.2':
-    optional: true
+  '@verdaccio/search-indexer@8.0.0-next-8.2': {}
 
   '@verdaccio/signature@8.0.0-next-8.1':
     dependencies:
@@ -15293,10 +15281,8 @@ snapshots:
       jsonwebtoken: 9.0.2
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
-  '@verdaccio/streams@10.2.1':
-    optional: true
+  '@verdaccio/streams@10.2.1': {}
 
   '@verdaccio/tarball@13.0.0-next-8.7':
     dependencies:
@@ -15309,10 +15295,8 @@ snapshots:
       tar-stream: 3.1.7
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
-  '@verdaccio/ui-theme@8.0.0-next-8.7':
-    optional: true
+  '@verdaccio/ui-theme@8.0.0-next-8.7': {}
 
   '@verdaccio/url@13.0.0-next-8.7':
     dependencies:
@@ -15322,7 +15306,6 @@ snapshots:
       validator: 13.12.0
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   '@verdaccio/utils@7.0.1-next-8.1':
     dependencies:
@@ -15330,7 +15313,6 @@ snapshots:
       lodash: 4.17.21
       minimatch: 7.4.6
       semver: 7.6.3
-    optional: true
 
   '@verdaccio/utils@8.1.0-next-8.7':
     dependencies:
@@ -15338,7 +15320,6 @@ snapshots:
       lodash: 4.17.21
       minimatch: 7.4.6
       semver: 7.6.3
-    optional: true
 
   '@vitejs/plugin-react@4.6.0(vite@6.3.5(@types/node@20.19.1)(jiti@2.4.2)(less@4.1.3)(lightningcss@1.30.1)(sass-embedded@1.87.0)(sass@1.87.0)(stylus@0.64.0)(terser@5.34.1)(yaml@2.8.0))':
     dependencies:
@@ -15709,7 +15690,6 @@ snapshots:
     dependencies:
       jsonparse: 1.3.1
       through: 2.3.8
-    optional: true
 
   abab@2.0.6: {}
 
@@ -15860,8 +15840,7 @@ snapshots:
       normalize-path: 3.0.0
       picomatch: 2.3.1
 
-  apache-md5@1.1.8:
-    optional: true
+  apache-md5@1.1.8: {}
 
   append-field@1.0.0: {}
 
@@ -15959,10 +15938,8 @@ snapshots:
   asn1@0.2.6:
     dependencies:
       safer-buffer: 2.1.2
-    optional: true
 
-  assert-plus@1.0.0:
-    optional: true
+  assert-plus@1.0.0: {}
 
   assertion-error@2.0.1: {}
 
@@ -15986,8 +15963,7 @@ snapshots:
     dependencies:
       lodash: 4.17.21
 
-  async@3.2.4:
-    optional: true
+  async@3.2.4: {}
 
   async@3.2.6: {}
 
@@ -15995,8 +15971,7 @@ snapshots:
 
   at-least-node@1.0.0: {}
 
-  atomic-sleep@1.0.0:
-    optional: true
+  atomic-sleep@1.0.0: {}
 
   autoprefixer@10.4.21(postcss@8.5.4):
     dependencies:
@@ -16012,11 +15987,9 @@ snapshots:
     dependencies:
       possible-typed-array-names: 1.1.0
 
-  aws-sign2@0.7.0:
-    optional: true
+  aws-sign2@0.7.0: {}
 
-  aws4@1.13.2:
-    optional: true
+  aws4@1.13.2: {}
 
   axe-core@4.10.3: {}
 
@@ -16160,10 +16133,8 @@ snapshots:
   bcrypt-pbkdf@1.0.2:
     dependencies:
       tweetnacl: 0.14.5
-    optional: true
 
-  bcryptjs@2.4.3:
-    optional: true
+  bcryptjs@2.4.3: {}
 
   better-opn@3.0.2:
     dependencies:
@@ -16252,8 +16223,7 @@ snapshots:
 
   buffer-crc32@0.2.13: {}
 
-  buffer-equal-constant-time@1.0.1:
-    optional: true
+  buffer-equal-constant-time@1.0.1: {}
 
   buffer-from@1.1.2: {}
 
@@ -16266,7 +16236,6 @@ snapshots:
     dependencies:
       base64-js: 1.5.1
       ieee754: 1.2.1
-    optional: true
 
   bundle-name@4.1.0:
     dependencies:
@@ -16357,8 +16326,7 @@ snapshots:
 
   caniuse-lite@1.0.30001721: {}
 
-  caseless@0.12.0:
-    optional: true
+  caseless@0.12.0: {}
 
   ccount@2.0.1: {}
 
@@ -16450,7 +16418,6 @@ snapshots:
   clipanion@4.0.0-rc.4(typanion@3.14.0):
     dependencies:
       typanion: 3.14.0
-    optional: true
 
   cliui@8.0.1:
     dependencies:
@@ -16589,11 +16556,9 @@ snapshots:
     dependencies:
       browserslist: 4.25.0
 
-  core-js@3.37.1:
-    optional: true
+  core-js@3.37.1: {}
 
-  core-util-is@1.0.2:
-    optional: true
+  core-util-is@1.0.2: {}
 
   core-util-is@1.0.3: {}
 
@@ -16786,7 +16751,6 @@ snapshots:
   dashdash@1.14.1:
     dependencies:
       assert-plus: 1.0.0
-    optional: true
 
   data-uri-to-buffer@3.0.1: {}
 
@@ -16842,7 +16806,6 @@ snapshots:
   debug@4.3.4:
     dependencies:
       ms: 2.1.2
-    optional: true
 
   debug@4.3.7:
     dependencies:
@@ -16851,7 +16814,6 @@ snapshots:
   debug@4.4.0:
     dependencies:
       ms: 2.1.3
-    optional: true
 
   debug@4.4.1:
     dependencies:
@@ -17026,12 +16988,10 @@ snapshots:
     dependencies:
       jsbn: 0.1.1
       safer-buffer: 2.1.2
-    optional: true
 
   ecdsa-sig-formatter@1.0.11:
     dependencies:
       safe-buffer: 5.2.1
-    optional: true
 
   ee-first@1.1.1: {}
 
@@ -17084,8 +17044,7 @@ snapshots:
 
   entities@6.0.1: {}
 
-  envinfo@7.14.0:
-    optional: true
+  envinfo@7.14.0: {}
 
   err-code@2.0.3: {}
 
@@ -17579,8 +17538,7 @@ snapshots:
       jest-message-util: 29.7.0
       jest-util: 29.7.0
 
-  express-rate-limit@5.5.1:
-    optional: true
+  express-rate-limit@5.5.1: {}
 
   express@4.21.2:
     dependencies:
@@ -17631,8 +17589,7 @@ snapshots:
 
   extend@3.0.2: {}
 
-  extsprintf@1.3.0:
-    optional: true
+  extsprintf@1.3.0: {}
 
   fast-deep-equal@2.0.1: {}
 
@@ -17664,8 +17621,7 @@ snapshots:
 
   fast-levenshtein@2.0.6: {}
 
-  fast-redact@3.5.0:
-    optional: true
+  fast-redact@3.5.0: {}
 
   fast-safe-stringify@2.1.1: {}
 
@@ -17802,8 +17758,7 @@ snapshots:
       cross-spawn: 7.0.3
       signal-exit: 4.1.0
 
-  forever-agent@0.6.1:
-    optional: true
+  forever-agent@0.6.1: {}
 
   fork-ts-checker-webpack-plugin@7.2.13(typescript@5.7.3)(webpack@5.99.9(@swc/core@1.5.29(@swc/helpers@0.5.13))(esbuild@0.25.5)):
     dependencies:
@@ -17975,7 +17930,6 @@ snapshots:
   getpass@0.1.7:
     dependencies:
       assert-plus: 1.0.0
-    optional: true
 
   glob-parent@5.1.2:
     dependencies:
@@ -18103,7 +18057,6 @@ snapshots:
       wordwrap: 1.0.0
     optionalDependencies:
       uglify-js: 3.19.3
-    optional: true
 
   harmony-reflect@1.6.2: {}
 
@@ -18298,13 +18251,10 @@ snapshots:
       assert-plus: 1.0.0
       jsprim: 2.0.2
       sshpk: 1.18.0
-    optional: true
 
-  http-status-codes@2.2.0:
-    optional: true
+  http-status-codes@2.2.0: {}
 
-  http-status-codes@2.3.0:
-    optional: true
+  http-status-codes@2.3.0: {}
 
   http2-wrapper@2.2.1:
     dependencies:
@@ -18525,8 +18475,7 @@ snapshots:
 
   is-potential-custom-element-name@1.0.1: {}
 
-  is-promise@2.2.2:
-    optional: true
+  is-promise@2.2.2: {}
 
   is-reference@3.0.3:
     dependencies:
@@ -18564,8 +18513,7 @@ snapshots:
     dependencies:
       which-typed-array: 1.1.19
 
-  is-typedarray@1.0.0:
-    optional: true
+  is-typedarray@1.0.0: {}
 
   is-unicode-supported@0.1.0: {}
 
@@ -18610,8 +18558,7 @@ snapshots:
     dependencies:
       ws: 8.18.0
 
-  isstream@0.1.2:
-    optional: true
+  isstream@0.1.2: {}
 
   istanbul-lib-coverage@3.2.2: {}
 
@@ -19037,8 +18984,7 @@ snapshots:
     dependencies:
       argparse: 2.0.1
 
-  jsbn@0.1.1:
-    optional: true
+  jsbn@0.1.1: {}
 
   jsdom@20.0.3:
     dependencies:
@@ -19116,13 +19062,11 @@ snapshots:
 
   json-schema-traverse@1.0.0: {}
 
-  json-schema@0.4.0:
-    optional: true
+  json-schema@0.4.0: {}
 
   json-stable-stringify-without-jsonify@1.0.1: {}
 
-  json-stringify-safe@5.0.1:
-    optional: true
+  json-stringify-safe@5.0.1: {}
 
   json5@1.0.2:
     dependencies:
@@ -19153,8 +19097,7 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  jsonparse@1.3.1:
-    optional: true
+  jsonparse@1.3.1: {}
 
   jsonwebtoken@9.0.2:
     dependencies:
@@ -19168,7 +19111,6 @@ snapshots:
       lodash.once: 4.1.1
       ms: 2.1.3
       semver: 7.6.3
-    optional: true
 
   jsprim@2.0.2:
     dependencies:
@@ -19176,7 +19118,6 @@ snapshots:
       extsprintf: 1.3.0
       json-schema: 0.4.0
       verror: 1.10.0
-    optional: true
 
   jsx-ast-utils@3.3.5:
     dependencies:
@@ -19190,13 +19131,11 @@ snapshots:
       buffer-equal-constant-time: 1.0.1
       ecdsa-sig-formatter: 1.0.11
       safe-buffer: 5.2.1
-    optional: true
 
   jws@3.2.2:
     dependencies:
       jwa: 1.4.1
       safe-buffer: 5.2.1
-    optional: true
 
   keygrip@1.1.0:
     dependencies:
@@ -19389,7 +19328,6 @@ snapshots:
   lockfile@1.0.4:
     dependencies:
       signal-exit: 3.0.7
-    optional: true
 
   lodash-es@4.17.21: {}
 
@@ -19399,30 +19337,23 @@ snapshots:
 
   lodash.debounce@4.0.8: {}
 
-  lodash.includes@4.3.0:
-    optional: true
+  lodash.includes@4.3.0: {}
 
-  lodash.isboolean@3.0.3:
-    optional: true
+  lodash.isboolean@3.0.3: {}
 
-  lodash.isinteger@4.0.4:
-    optional: true
+  lodash.isinteger@4.0.4: {}
 
-  lodash.isnumber@3.0.3:
-    optional: true
+  lodash.isnumber@3.0.3: {}
 
-  lodash.isplainobject@4.0.6:
-    optional: true
+  lodash.isplainobject@4.0.6: {}
 
-  lodash.isstring@4.0.1:
-    optional: true
+  lodash.isstring@4.0.1: {}
 
   lodash.memoize@4.1.2: {}
 
   lodash.merge@4.6.2: {}
 
-  lodash.once@4.1.1:
-    optional: true
+  lodash.once@4.1.1: {}
 
   lodash.uniq@4.5.0: {}
 
@@ -19462,7 +19393,6 @@ snapshots:
       lodash: 4.17.21
       pify: 3.0.0
       steno: 0.4.4
-    optional: true
 
   lower-case@2.0.2:
     dependencies:
@@ -19886,11 +19816,9 @@ snapshots:
 
   mime@1.6.0: {}
 
-  mime@2.6.0:
-    optional: true
+  mime@2.6.0: {}
 
-  mime@3.0.0:
-    optional: true
+  mime@3.0.0: {}
 
   mimic-fn@2.1.0: {}
 
@@ -19922,7 +19850,6 @@ snapshots:
   minimatch@7.4.6:
     dependencies:
       brace-expansion: 2.0.1
-    optional: true
 
   minimatch@9.0.3:
     dependencies:
@@ -20053,7 +19980,6 @@ snapshots:
       whatwg-url: 5.0.0
     optionalDependencies:
       encoding: 0.1.13
-    optional: true
 
   node-fetch@2.7.0(encoding@0.1.13):
     dependencies:
@@ -20279,8 +20205,7 @@ snapshots:
 
   obuf@1.1.2: {}
 
-  on-exit-leak-free@2.1.2:
-    optional: true
+  on-exit-leak-free@2.1.2: {}
 
   on-finished@2.3.0:
     dependencies:
@@ -20485,8 +20410,7 @@ snapshots:
 
   pend@1.2.0: {}
 
-  performance-now@2.1.0:
-    optional: true
+  performance-now@2.1.0: {}
 
   periscopic@3.1.0:
     dependencies:
@@ -20543,8 +20467,7 @@ snapshots:
 
   pify@2.3.0: {}
 
-  pify@3.0.0:
-    optional: true
+  pify@3.0.0: {}
 
   pify@4.0.1:
     optional: true
@@ -20553,15 +20476,12 @@ snapshots:
     dependencies:
       readable-stream: 4.5.2
       split2: 4.2.0
-    optional: true
 
   pino-abstract-transport@2.0.0:
     dependencies:
       split2: 4.2.0
-    optional: true
 
-  pino-std-serializers@7.0.0:
-    optional: true
+  pino-std-serializers@7.0.0: {}
 
   pino@9.5.0:
     dependencies:
@@ -20576,7 +20496,6 @@ snapshots:
       safe-stable-stringify: 2.5.0
       sonic-boom: 4.2.0
       thread-stream: 3.1.0
-    optional: true
 
   pirates@4.0.6: {}
 
@@ -20604,8 +20523,7 @@ snapshots:
       exsolve: 1.0.7
       pathe: 2.0.3
 
-  pkginfo@0.4.1:
-    optional: true
+  pkginfo@0.4.1: {}
 
   playwright-core@1.53.1: {}
 
@@ -20915,14 +20833,11 @@ snapshots:
 
   process-nextick-args@2.0.1: {}
 
-  process-warning@1.0.0:
-    optional: true
+  process-warning@1.0.0: {}
 
-  process-warning@4.0.1:
-    optional: true
+  process-warning@4.0.1: {}
 
-  process@0.11.10:
-    optional: true
+  process@0.11.10: {}
 
   promise-inflight@1.0.1: {}
 
@@ -20992,8 +20907,7 @@ snapshots:
 
   queue-tick@1.0.1: {}
 
-  quick-format-unescaped@4.0.4:
-    optional: true
+  quick-format-unescaped@4.0.4: {}
 
   quick-lru@5.1.1: {}
 
@@ -21101,7 +21015,6 @@ snapshots:
       events: 3.3.0
       process: 0.11.10
       string_decoder: 1.3.0
-    optional: true
 
   readdirp@3.6.0:
     dependencies:
@@ -21109,8 +21022,7 @@ snapshots:
 
   readdirp@4.1.2: {}
 
-  real-require@0.2.0:
-    optional: true
+  real-require@0.2.0: {}
 
   recast@0.23.11:
     dependencies:
@@ -21338,8 +21250,7 @@ snapshots:
       es-errors: 1.3.0
       is-regex: 1.2.1
 
-  safe-stable-stringify@2.5.0:
-    optional: true
+  safe-stable-stringify@2.5.0: {}
 
   safer-buffer@2.1.2: {}
 
@@ -21651,12 +21562,10 @@ snapshots:
   sonic-boom@3.8.1:
     dependencies:
       atomic-sleep: 1.0.0
-    optional: true
 
   sonic-boom@4.2.0:
     dependencies:
       atomic-sleep: 1.0.0
-    optional: true
 
   sort-keys-length@1.0.1:
     dependencies:
@@ -21747,7 +21656,6 @@ snapshots:
       jsbn: 0.1.1
       safer-buffer: 2.1.2
       tweetnacl: 0.14.5
-    optional: true
 
   ssri@10.0.6:
     dependencies:
@@ -21768,7 +21676,6 @@ snapshots:
   steno@0.4.4:
     dependencies:
       graceful-fs: 4.2.11
-    optional: true
 
   stop-iteration-iterator@1.1.0:
     dependencies:
@@ -22117,7 +22024,6 @@ snapshots:
   thread-stream@3.1.0:
     dependencies:
       real-require: 0.2.0
-    optional: true
 
   through2@2.0.5:
     dependencies:
@@ -22300,15 +22206,12 @@ snapshots:
   tunnel-agent@0.6.0:
     dependencies:
       safe-buffer: 5.2.1
-    optional: true
 
   turbo-stream@2.4.0: {}
 
-  tweetnacl@0.14.5:
-    optional: true
+  tweetnacl@0.14.5: {}
 
-  typanion@3.14.0:
-    optional: true
+  typanion@3.14.0: {}
 
   type-check@0.4.0:
     dependencies:
@@ -22478,8 +22381,7 @@ snapshots:
 
   universalify@2.0.1: {}
 
-  unix-crypt-td-js@1.1.4:
-    optional: true
+  unix-crypt-td-js@1.1.4: {}
 
   unpipe@1.0.0: {}
 
@@ -22551,8 +22453,7 @@ snapshots:
 
   validate-npm-package-name@5.0.1: {}
 
-  validator@13.12.0:
-    optional: true
+  validator@13.12.0: {}
 
   varint@6.0.0: {}
 
@@ -22568,7 +22469,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
-    optional: true
 
   verdaccio-htpasswd@13.0.0-next-8.7:
     dependencies:
@@ -22582,7 +22482,6 @@ snapshots:
       unix-crypt-td-js: 1.1.4
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   verdaccio@6.0.5(encoding@0.1.13)(typanion@3.14.0):
     dependencies:
@@ -22627,14 +22526,12 @@ snapshots:
       - encoding
       - supports-color
       - typanion
-    optional: true
 
   verror@1.10.0:
     dependencies:
       assert-plus: 1.0.0
       core-util-is: 1.0.2
       extsprintf: 1.3.0
-    optional: true
 
   vfile-message@3.1.4:
     dependencies:
@@ -23022,8 +22919,7 @@ snapshots:
 
   word-wrap@1.2.5: {}
 
-  wordwrap@1.0.0:
-    optional: true
+  wordwrap@1.0.0: {}
 
   wrap-ansi@7.0.0:
     dependencies:

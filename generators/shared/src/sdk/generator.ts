@@ -9,7 +9,7 @@ import {
 } from '@nx/devkit'
 import * as path from 'path'
 import * as fs from 'fs'
-import { addScriptToPackageJson, getPluralName } from '@nestledjs/utils'
+import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles } from '@nestledjs/utils'
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
@@ -83,6 +83,12 @@ async function ensureSdkLibrary(tree: Tree, dependencies: SdkGeneratorDependenci
       linter: 'eslint',
       tags: 'type:shared,scope:shared',
     })
+    
+    // Clean up default generated files that we don't need
+    deleteFiles(tree, [
+      'libs/shared/sdk/src/lib/sdk.ts',
+      'libs/shared/sdk/src/lib/sdk.spec.ts'
+    ])
   }
 }
 
@@ -139,7 +145,12 @@ export async function sdkGeneratorLogic(
   // 3. Ensure sdk library exists
   await ensureSdkLibrary(tree, dependencies)
 
-  // 4. For each model, generate files
+  // 4. Generate database models file
+  const allModels = await getAllPrismaModels(tree)
+  const databaseModelContent = generateDatabaseModelContent(allModels)
+  tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
+
+  // 5. For each model, generate files
   for (const [modelName, { fields }] of Object.entries(models)) {
     const kebabName = kebabCase(modelName)
     const modelDir = `libs/shared/sdk/src/graphql/${kebabName}`
@@ -170,15 +181,15 @@ export async function sdkGeneratorLogic(
     })
   }
 
-  // 5. Always write codegen.yml and index.ts
+  // 6. Always write codegen.yml and index.ts
   const sdkSrcDir = 'libs/shared/sdk/src'
   dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files'), sdkSrcDir, { tmpl: '' })
 
-  // 6. Add scripts to package.json
+  // 7. Add scripts to package.json
   dependencies.addScriptToPackageJson(tree, 'sdk', 'graphql-codegen --config libs/shared/sdk/src/codegen.yml')
   dependencies.addScriptToPackageJson(tree, 'sdk:watch', 'pnpm sdk --watch')
 
-  // 7. Add GraphQL Codegen packages as devDependencies
+  // 8. Add GraphQL Codegen packages as devDependencies
   dependencies.addDependenciesToPackageJson(
     tree,
     {},

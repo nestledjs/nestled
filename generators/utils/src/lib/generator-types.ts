@@ -9,10 +9,31 @@ export interface CrudAuthConfig {
   delete?: string
 }
 
+export interface ModelField {
+  name: string
+  type: string
+  isOptional?: boolean
+  isId?: boolean
+  isUnique?: boolean
+  isList?: boolean
+  isReadOnly?: boolean
+  hasDefaultValue?: boolean
+  default?: unknown
+  relationName?: string
+  relationFromFields?: string[]
+  relationToFields?: string[]
+  relationOnDelete?: string
+  relationOnUpdate?: string
+  isGenerated?: boolean
+  isUpdatedAt?: boolean
+  documentation?: string
+  [key: string]: unknown
+}
+
 export interface ModelType {
   name: string
   pluralName: string
-  fields: Array<{ name: string; type: string }>
+  fields: ModelField[]
   primaryField: string
   modelName: string
   modelPropertyName: string

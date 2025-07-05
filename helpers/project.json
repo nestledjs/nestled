@@ -1,0 +1,31 @@
+{
+  "name": "helpers",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "helpers/src",
+  "projectType": "library",
+  "release": {
+    "version": {
+      "manifestRootsToUpdate": ["dist/{projectRoot}"],
+      "currentVersionResolver": "git-tag",
+      "fallbackCurrentVersionResolver": "disk"
+    }
+  },
+  "tags": [],
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/helpers",
+        "main": "helpers/src/index.ts",
+        "tsConfig": "helpers/tsconfig.lib.json",
+        "assets": ["helpers/*.md"]
+      }
+    },
+    "nx-release-publish": {
+      "options": {
+        "packageRoot": "dist/{projectRoot}"
+      }
+    }
+  }
+}

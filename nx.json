@@ -68,13 +68,13 @@
       "workspaceChangelog": false
     },
     "version": {
+      "preVersionCommand": "nx affected --target=test --base=develop",
       "fallbackCurrentVersionResolver": "disk",
       "conventionalCommits": true,
       "versionActionsOptions": {
         "skipLockFileUpdate": true,
         "installIgnoreScripts": true
       },
-      "preVersionCommand": "nx affected --target=test --base=develop",
       "git": {
         "commit": true,
         "commitMessage": "chore(release): release {projectName} v{version}",

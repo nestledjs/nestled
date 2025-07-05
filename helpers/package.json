@@ -1,0 +1,39 @@
+{
+  "name": "@nestledjs/helpers",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "description": "A collection of TypeScript utility types and helper functions for common development tasks",
+  "keywords": [
+    "typescript",
+    "utilities",
+    "helpers",
+    "utility-types",
+    "deep-partial",
+    "pluralize",
+    "type-helpers",
+    "utility-functions",
+    "typescript-utilities",
+    "monorepo-utilities",
+    "development-tools",
+    "javascript-utilities"
+  ],
+  "author": "Nestled Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nestledjs/nestled.git"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "pluralize": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/pluralize": "^0.0.33"
+  }
+}
