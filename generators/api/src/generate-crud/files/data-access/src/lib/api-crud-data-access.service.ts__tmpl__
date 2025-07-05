@@ -18,7 +18,7 @@ function getRelationFields(model) {
 function getVirtualRelationFields(model) {
   const relationFields = getRelationFields(model);
   const virtualFields = [];
-  
+
   relationFields.forEach(relationField => {
     // Only generate virtual fields for relations that don't have explicit foreign keys
     if (!relationField.relationFromFields || relationField.relationFromFields.length === 0) {
@@ -59,7 +59,7 @@ function getVirtualRelationFields(model) {
       }
     }
   });
-  
+
   return virtualFields;
 }
 
@@ -67,7 +67,7 @@ function getVirtualRelationFields(model) {
 function getForeignKeyRelationFields(model) {
   const relationFields = getRelationFields(model);
   const foreignKeyFields = [];
-  
+
   relationFields.forEach(relationField => {
     if (relationField.relationFromFields && relationField.relationFromFields.length > 0) {
       // This relation has explicit foreign key fields
@@ -83,7 +83,7 @@ function getForeignKeyRelationFields(model) {
       });
     }
   });
-  
+
   return foreignKeyFields;
 }
 
@@ -92,11 +92,11 @@ function generateRelationHandling(model, operation) {
   const virtualRelationFields = getVirtualRelationFields(model);
   const foreignKeyFields = getForeignKeyRelationFields(model);
   const allRelationFields = [...virtualRelationFields, ...foreignKeyFields];
-  
+
   if (allRelationFields.length === 0) {
     return '    const data = input;';
   }
-  
+
   let code = '    const { ';
   code += virtualRelationFields.map(field => field.name).join(', ');
   if (foreignKeyFields.length > 0) {
@@ -105,7 +105,7 @@ function generateRelationHandling(model, operation) {
   }
   code += ', ...regularFields } = input;\n';
   code += '    const data: any = regularFields;\n\n';
-  
+
   // Handle virtual relation fields (many-to-many without explicit FKs)
   virtualRelationFields.forEach(field => {
     code += `    if (${field.name}) {\n`;
@@ -116,14 +116,14 @@ function generateRelationHandling(model, operation) {
     }
     code += '    }\n';
   });
-  
+
   // Handle foreign key fields (explicit FK relations)
   foreignKeyFields.forEach(field => {
     code += `    if (${field.fieldName}) {\n`;
     code += `      data.${field.relationName} = { connect: { id: ${field.fieldName} } };\n`;
     code += '    }\n';
   });
-  
+
   return code;
 }
 %>
@@ -135,7 +135,7 @@ export class ApiCrudDataAccessService {
 <% for (const model of models) { %>
   async create<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, input: dto.Create<%= model.modelName %>Input) {
 <%- generateRelationHandling(model, 'create') %>
-    
+
     return this.data['<%= model.modelPropertyName %>'].create({
       data,
       select: createSelect(info),
@@ -175,7 +175,7 @@ export class ApiCrudDataAccessService {
 
   async update<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: string, input: dto.Update<%= model.modelName %>Input) {
 <%- generateRelationHandling(model, 'update') %>
-    
+
     return this.data['<%= model.modelPropertyName %>'].update({
       where: { id },
       data,
