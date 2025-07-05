@@ -28,8 +28,13 @@ vi.mock('@nx/devkit', async (importOriginal) => {
   }
 })
 
+const mockGetDMMF = vi.fn()
+
 vi.mock('@prisma/internals', () => ({
-  getDMMF: vi.fn(),
+  getDMMF: mockGetDMMF,
+  default: {
+    getDMMF: mockGetDMMF,
+  },
 }))
 
 describe('generator-utils', () => {
@@ -38,6 +43,7 @@ describe('generator-utils', () => {
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
     vi.mocked(generateFiles).mockReset()
+    mockGetDMMF.mockReset()
   })
 
   describe('removeWorkspacesFromPackageJson', () => {
@@ -215,7 +221,7 @@ describe('generator-utils', () => {
           ],
         },
       }
-      ;(getDMMF as any).mockResolvedValue(dmmf)
+      mockGetDMMF.mockResolvedValue(dmmf)
 
       const fields = await parsePrismaSchema(schemaContent, 'User')
       expect(fields).toEqual([
@@ -232,14 +238,14 @@ describe('generator-utils', () => {
           models: [{ name: 'User', fields: [] }],
         },
       }
-      ;(getDMMF as any).mockResolvedValue(dmmf)
+      mockGetDMMF.mockResolvedValue(dmmf)
       const fields = await parsePrismaSchema(schemaContent, 'Post')
       expect(fields).toBeNull()
     })
 
     it('should return null on parsing error', async () => {
       const schemaContent = 'invalid schema'
-      ;(getDMMF as any).mockRejectedValue(new Error('parsing error'))
+      mockGetDMMF.mockRejectedValue(new Error('parsing error'))
       const fields = await parsePrismaSchema(schemaContent, 'User')
       expect(fields).toBeNull()
     })
@@ -340,7 +346,7 @@ describe('generator-utils', () => {
           ],
         },
       }
-      ;(getDMMF as any).mockResolvedValue(dmmf)
+      mockGetDMMF.mockResolvedValue(dmmf)
 
       const models = await getAllPrismaModels(tree)
       expect(models).toEqual([

@@ -19,10 +19,13 @@ import { DatePickerField } from './fields/datepicker-field'
 import { DateTimePickerField } from './fields/datetimepicker-field'
 import { TimePickerField } from './fields/timepicker-field'
 import { SelectField } from './fields/select-field'
-import { MultiSelectField } from './fields/multiselect-field'
+import { SelectFieldEnum } from './fields/select-field-enum'
+import { SelectFieldMulti } from './fields/select-field-multi'
 import { RadioField } from './fields/radio-field'
-import { SearchSelectField } from './fields/search-select-field'
-import { SearchSelectMultiField } from './fields/search-select-multi-field'
+import { SelectFieldSearch } from './fields/select-field-search'
+import { SelectFieldSearchApollo } from './fields/select-field-search-apollo'
+import { SelectFieldMultiSearch } from './fields/select-field-multi-search'
+import { SelectFieldMultiSearchApollo } from './fields/select-field-multi-search-apollo'
 import { CustomField } from './fields/custom-field'
 import { CustomCheckboxField } from './fields/custom-checkbox-field'
 import { FormLabel } from './fields/label'
@@ -118,7 +121,6 @@ function renderComponent(
         />
       )
     case FormFieldType.Select:
-    case FormFieldType.EnumSelect:
       return (
         <SelectField
           form={form}
@@ -128,9 +130,19 @@ function renderComponent(
           formReadOnlyStyle={formReadOnlyStyle}
         />
       )
+    case FormFieldType.EnumSelect:
+      return (
+        <SelectFieldEnum
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
     case FormFieldType.MultiSelect:
       return (
-        <MultiSelectField
+        <SelectFieldMulti
           form={form}
           field={field}
           hasError={hasError}
@@ -202,7 +214,17 @@ function renderComponent(
       )
     case FormFieldType.SearchSelect:
       return (
-        <SearchSelectField
+        <SelectFieldSearch
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
+    case FormFieldType.SearchSelectApollo:
+      return (
+        <SelectFieldSearchApollo
           form={form}
           field={field}
           hasError={hasError}
@@ -212,7 +234,17 @@ function renderComponent(
       )
     case FormFieldType.SearchSelectMulti:
       return (
-        <SearchSelectMultiField
+        <SelectFieldMultiSearch
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
+    case FormFieldType.SearchSelectMultiApollo:
+      return (
+        <SelectFieldMultiSearchApollo
           form={form}
           field={field}
           hasError={hasError}

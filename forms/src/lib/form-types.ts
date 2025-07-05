@@ -23,7 +23,9 @@ export enum FormFieldType {
   MultiSelect = 'MultiSelect',
   Radio = 'Radio',
   SearchSelect = 'SearchSelect',
+  SearchSelectApollo = 'SearchSelectApollo',
   SearchSelectMulti = 'SearchSelectMulti',
+  SearchSelectMultiApollo = 'SearchSelectMultiApollo',
   Content = 'Content',
   Custom = 'Custom',
   CustomCheckbox = 'CustomCheckbox',
@@ -180,11 +182,21 @@ export interface SearchSelectOption {
   value: string
 }
 
-export interface SearchSelectOptions<TDataItem = any> extends BaseFieldOptions {
+export interface SearchSelectOptions extends BaseFieldOptions {
+  options: SearchSelectOption[]
+  placeholder?: string
+}
+
+export interface SearchSelectApolloOptions<TDataItem = any> extends BaseFieldOptions {
   document: DocumentNode | TypedDocumentNode
   dataType: string
   filter?: (items: TDataItem[]) => TDataItem[]
   selectOptionsFunction?: (items: TDataItem[]) => SearchSelectOption[]
+}
+
+export interface SearchSelectMultiOptions extends BaseFieldOptions {
+  options: SearchSelectOption[]
+  placeholder?: string
 }
 
 export interface ContentOptions extends BaseFieldOptions {
@@ -278,16 +290,28 @@ interface EnumSelectField {
   type: FormFieldType.EnumSelect
   options: EnumSelectOptions
 }
-interface SearchSelectField<TDataItem> {
+interface SearchSelectField {
   key: string
   type: FormFieldType.SearchSelect
-  options: SearchSelectOptions<TDataItem>
+  options: SearchSelectOptions
 }
 
-interface SearchSelectMultiField<TDataItem> {
+interface SearchSelectApolloField<TDataItem> {
+  key: string
+  type: FormFieldType.SearchSelectApollo
+  options: SearchSelectApolloOptions<TDataItem>
+}
+
+interface SearchSelectMultiApolloField<TDataItem> {
+  key: string
+  type: FormFieldType.SearchSelectMultiApollo
+  options: SearchSelectApolloOptions<TDataItem>
+}
+
+interface SearchSelectMultiField {
   key: string
   type: FormFieldType.SearchSelectMulti
-  options: SearchSelectOptions<TDataItem>
+  options: SearchSelectMultiOptions
 }
 
 interface ContentField {
@@ -361,8 +385,10 @@ export type FormField =
   | EnumSelectField
   | MultiSelectField
   | RadioField
-  | SearchSelectField<any>
-  | SearchSelectMultiField<any>
+  | SearchSelectField
+  | SearchSelectApolloField<any>
+  | SearchSelectMultiField
+  | SearchSelectMultiApolloField<any>
   | ContentField
   | CustomFieldType<any>
   | CustomCheckboxField

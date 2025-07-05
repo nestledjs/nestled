@@ -3,7 +3,7 @@ import { resolve } from 'path'
 import { existsSync } from 'fs'
 
 // Define dependency order - dependencies first, dependents last
-const DEPENDENCY_ORDER = ['utils', 'shared', 'plugins', 'config', 'web', 'api', 'forms']
+const DEPENDENCY_ORDER = ['helpers', 'utils', 'shared', 'plugins', 'config', 'web', 'api', 'forms']
 
 async function main() {
   const [, , action, libName] = process.argv

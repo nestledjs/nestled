@@ -16,6 +16,8 @@ import {
   PasswordFieldOptions,
   PhoneFieldOptions,
   SearchSelectOptions,
+  SearchSelectApolloOptions,
+  SearchSelectMultiOptions,
   SelectOptions,
   SwitchOptions,
   TextAreaOptions,
@@ -198,12 +200,20 @@ export class FormFieldClass {
     return this.field(FormFieldType.EnumSelect, key, options)
   }
 
-  static searchSelect<TDataItem>(key: string, options: SearchSelectOptions<TDataItem>): FormField {
+  static searchSelect(key: string, options: SearchSelectOptions): FormField {
     return this.field(FormFieldType.SearchSelect, key, options)
   }
 
-  static searchSelectMulti<TDataItem>(key: string, options: SearchSelectOptions<TDataItem>): FormField {
+  static searchSelectApollo<TDataItem>(key: string, options: SearchSelectApolloOptions<TDataItem>): FormField {
+    return this.field(FormFieldType.SearchSelectApollo, key, options)
+  }
+
+  static searchSelectMulti(key: string, options: SearchSelectMultiOptions): FormField {
     return this.field(FormFieldType.SearchSelectMulti, key, options)
+  }
+
+  static searchSelectMultiApollo<TDataItem>(key: string, options: SearchSelectApolloOptions<TDataItem>): FormField {
+    return this.field(FormFieldType.SearchSelectMultiApollo, key, options)
   }
 
   static content(key: string, options: ContentOptions): FormField {

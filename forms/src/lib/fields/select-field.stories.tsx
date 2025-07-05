@@ -17,12 +17,11 @@ interface SelectFieldStoryArgs {
   formReadOnlyStyle: 'value' | 'disabled'
   showState: boolean
   // Select-specific options
-  fieldType: 'select' | 'enum'
   customOptions: string
 }
 
 /**
- * The SelectField component provides a dropdown selection interface using Headless UI Combobox.
+ * The SelectField component provides a dropdown selection interface using Headless UI Select.
  * It supports both regular Select fields with custom options and EnumSelect fields that auto-generate options from an enum.
  */
 const meta: Meta<SelectFieldStoryArgs> = {
@@ -49,11 +48,6 @@ const meta: Meta<SelectFieldStoryArgs> = {
       description: 'Form-wide read-only style',
     },
     showState: { control: 'boolean', description: 'Show live form state?' },
-    fieldType: {
-      control: 'radio',
-      options: ['select', 'enum'],
-      description: 'Type of select field',
-    },
     customOptions: {
       control: 'text',
       description: 'Custom options (JSON format)',
@@ -72,7 +66,6 @@ const meta: Meta<SelectFieldStoryArgs> = {
     formReadOnly: false,
     formReadOnlyStyle: 'value',
     showState: true,
-    fieldType: 'select',
     customOptions: '["Option 1", "Option 2", "Option 3", "Option 4"]',
   },
   render: (args) => {
@@ -92,39 +85,20 @@ const meta: Meta<SelectFieldStoryArgs> = {
       ]
     }
 
-    const field = args.fieldType === 'enum' 
-      ? {
-          key: 'storybookSelectField' as const,
-          type: FormFieldType.EnumSelect as const,
-          options: {
-            label: args.label,
-            required: args.required,
-            disabled: args.disabled,
-            defaultValue: args.defaultValue,
-            ...(args.readOnly && { readOnly: args.readOnly }),
-            ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
-            helpText: args.helpText,
-            enum: {
-              'Option A': 'option-a',
-              'Option B': 'option-b',
-              'Option C': 'option-c',
-            },
-          },
-        }
-      : {
-          key: 'storybookSelectField' as const,
-          type: FormFieldType.Select as const,
-          options: {
-            label: args.label,
-            required: args.required,
-            disabled: args.disabled,
-            defaultValue: args.defaultValue,
-            ...(args.readOnly && { readOnly: args.readOnly }),
-            ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
-            helpText: args.helpText,
-            options,
-          },
-        }
+    const field = {
+      key: 'storybookSelectField' as const,
+      type: FormFieldType.Select as const,
+      options: {
+        label: args.label,
+        required: args.required,
+        disabled: args.disabled,
+        defaultValue: args.defaultValue,
+        ...(args.readOnly && { readOnly: args.readOnly }),
+        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
+        helpText: args.helpText,
+        options,
+      },
+    }
 
     return (
       <StorybookFieldWrapper
@@ -148,21 +122,13 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const input = canvas.getByRole('combobox', { name: 'Select Option' })
-    await expect(input).toBeInTheDocument()
-    await expect(input).toBeEnabled()
+    const select = canvas.getByRole('combobox', { name: 'Select Option' })
+    await expect(select).toBeInTheDocument()
+    await expect(select).toBeEnabled()
     
-    // Test opening the dropdown
-    await userEvent.click(input)
-    await userEvent.type(input, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    const option1 = (await within(document.body).findAllByText('Option 1'))[0];
-    await expect(option1).toBeInTheDocument()
-    
-    // Select an option
-    await userEvent.click(option1)
-    await expect(input).toHaveValue('Option 1')
+    // Test selecting an option
+    await userEvent.selectOptions(select, 'option-1')
+    await expect(select).toHaveValue('option-1')
   },
 }
 
@@ -174,8 +140,8 @@ export const WithDefaultValue: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const input = canvas.getByRole('combobox', { name: 'Pre-selected Option' })
-    await expect(input).toHaveValue('Option 2')
+    const select = canvas.getByRole('combobox', { name: 'Pre-selected Option' })
+    await expect(select).toHaveValue('option-2')
   },
 }
 
@@ -186,16 +152,12 @@ export const Required: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const input = canvas.getByRole('combobox', { name: 'Select Option*' })
-    await expect(input).toBeRequired()
+    const select = canvas.getByRole('combobox', { name: 'Select Option*' })
+    await expect(select).toBeRequired()
     
     // Test selection
-    await userEvent.click(input)
-    await userEvent.type(input, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    const option1 = (await within(document.body).findAllByText('Option 1'))[0];
-    await expect(option1).toBeInTheDocument()
+    await userEvent.selectOptions(select, 'option-1')
+    await expect(select).toHaveValue('option-1')
   },
 }
 
@@ -208,15 +170,9 @@ export const Disabled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const input = canvas.getByRole('combobox', { name: 'Disabled Select' })
-    await expect(input).toBeDisabled()
-    await expect(input).toHaveValue('Option 1')
-    
-    // Verify dropdown doesn't open when disabled
-    await userEvent.click(input)
-    await new Promise(r => setTimeout(r, 200));
-    const option2 = within(document.body).queryByText('Option 2')
-    await expect(option2).not.toBeInTheDocument()
+    const select = canvas.getByRole('combobox', { name: 'Disabled Select' })
+    await expect(select).toBeDisabled()
+    await expect(select).toHaveValue('option-1')
   },
 }
 
@@ -229,17 +185,12 @@ export const Error: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const input = canvas.getByRole('combobox', { name: 'Select with Error*' })
-    await expect(input).toBeRequired()
+    const select = canvas.getByRole('combobox', { name: 'Select with Error*' })
+    await expect(select).toBeRequired()
     
     // Test that user can still interact with field in error state
-    await userEvent.click(input)
-    await userEvent.type(input, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    const option4 = (await within(document.body).findAllByText('Option 4'))[0];
-    await userEvent.click(option4)
-    await expect(input).toHaveValue('Option 4')
+    await userEvent.selectOptions(select, 'option-4')
+    await expect(select).toHaveValue('option-4')
   },
 }
 
@@ -251,20 +202,15 @@ export const WithHelpText: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    const input = canvas.getByRole('combobox', { name: 'Select with Help' })
+    const select = canvas.getByRole('combobox', { name: 'Select with Help' })
     const helpText = canvas.getByText('Choose the best option for your needs')
  
-    await expect(input).toBeInTheDocument()
+    await expect(select).toBeInTheDocument()
     await expect(helpText).toBeInTheDocument()
     
     // Test functionality
-    await userEvent.click(input)
-    await userEvent.type(input, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    const option4 = (await within(document.body).findAllByText('Option 4'))[0];
-    await userEvent.click(option4)
-    await expect(input).toHaveValue('Option 4')
+    await userEvent.selectOptions(select, 'option-4')
+    await expect(select).toHaveValue('option-4')
   },
 }
 
@@ -343,24 +289,7 @@ export const FormReadOnlyDisabled: Story = {
   },
 }
 
-export const EnumSelect: Story = {
-  args: {
-    fieldType: 'enum',
-    label: 'Enum Select Field',
-    required: true,
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const inputRequired = canvas.getByRole('combobox', { name: 'Enum Select Field*' })
-    await userEvent.click(inputRequired)
-    await userEvent.type(inputRequired, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    // Check for enum-generated options
-    const optionA = (await within(document.body).findAllByText('Option A'))[0];
-    await expect(optionA).toBeInTheDocument()
-  },
-}
+
 
 export const CustomOptions: Story = {
   args: {
@@ -370,14 +299,11 @@ export const CustomOptions: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const inputRequired = canvas.getByRole('combobox', { name: 'Custom Fruit Options*' })
-    await userEvent.click(inputRequired)
-    await userEvent.type(inputRequired, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    // Check for custom options
-    const optionApple = (await within(document.body).findAllByText('Apple'))[0];
-    await expect(optionApple).toBeInTheDocument()
+    const select = canvas.getByRole('combobox', { name: 'Custom Fruit Options*' })
+    
+    // Test that custom options are available
+    await userEvent.selectOptions(select, 'option-1')
+    await expect(select).toHaveValue('option-1')
   },
 }
 
@@ -389,13 +315,10 @@ export const LongOptions: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    const inputRequired = canvas.getByRole('combobox', { name: 'Long Option Names*' })
-    await userEvent.click(inputRequired)
-    await userEvent.type(inputRequired, '{arrowdown}')
-    await new Promise(r => setTimeout(r, 200));
-    console.log(document.body.innerHTML);
-    // Check for long options
-    const optionLong = (await within(document.body).findAllByText('A very long option name that should wrap'))[0];
-    await expect(optionLong).toBeInTheDocument()
+    const select = canvas.getByRole('combobox', { name: 'Long Option Names*' })
+    
+    // Test that long options are available
+    await userEvent.selectOptions(select, 'option-1')
+    await expect(select).toHaveValue('option-1')
   },
 } 

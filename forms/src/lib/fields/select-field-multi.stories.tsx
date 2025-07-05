@@ -94,12 +94,12 @@ const sampleOptions = [
 ]
 
 /**
- * The MultiSelectField component allows users to select multiple options from a dropdown list.
+ * The SelectFieldMulti component allows users to select multiple options from a dropdown list.
  * It features a searchable interface with selected items displayed as removable tags.
  * Built with Headless UI for accessibility and smooth interactions.
  */
 const meta: Meta<MultiSelectStoryArgs> = {
-  title: 'Forms/MultiSelectField',
+  title: 'Forms/SelectFieldMulti',
   tags: ['autodocs'],
   parameters: {
     docs: {

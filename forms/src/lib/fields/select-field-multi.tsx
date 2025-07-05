@@ -128,7 +128,7 @@ function renderMultiSelectCombobox({
   )
 }
 
-export function MultiSelectField({
+export function SelectFieldMulti({
   form,
   field,
   hasError,
@@ -210,4 +210,4 @@ export function MultiSelectField({
       </ClientOnly>
     </div>
   )
-}
+} 

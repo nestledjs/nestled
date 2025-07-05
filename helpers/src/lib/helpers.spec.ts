@@ -1,4 +1,5 @@
 import { getPluralName } from './helpers'
+import { vi } from 'vitest'
 
 describe('getPluralName', () => {
   describe('normal pluralization', () => {
@@ -163,37 +164,103 @@ describe('getPluralName', () => {
 // Type testing for DeepPartial (these are compile-time tests)
 describe('DeepPartial type', () => {
   it('should compile without errors for nested objects', () => {
-    // This test verifies that the DeepPartial type works correctly at compile time
-    // If there are any issues with the type definition, TypeScript will catch them
-    
-    interface TestUser {
+    interface TestInterface {
       name: string
-      age: number
-      profile: {
-        bio: string
+      nested: {
+        value: number
+      }
+    }
+    
+    // This should compile without errors
+    const partial: import('./helpers').DeepPartial<TestInterface> = {
+      name: 'test',
+      nested: {
+        value: 42
+      }
+    }
+    
+    expect(partial).toBeDefined()
+  })
+
+  it('should handle arrays correctly', () => {
+    interface WithArrays {
+      names: string[]
+      users: { id: number; name: string }[]
+      numbers: number[]
+    }
+    
+    // Arrays should be preserved but elements can be partial
+    const partial: import('./helpers').DeepPartial<WithArrays> = {
+      names: ['test'],
+      users: [{ id: 1 }], // name is optional due to DeepPartial
+      numbers: [1, 2, 3]
+    }
+    
+    expect(partial).toBeDefined()
+    expect(Array.isArray(partial.names)).toBe(true)
+    expect(Array.isArray(partial.users)).toBe(true)
+  })
+
+  it('should handle functions correctly', () => {
+    interface WithFunctions {
+      name: string
+      onClick: () => void
+      onSubmit: (data: any) => Promise<void>
+      calculate: (a: number, b: number) => number
+    }
+    
+    const mockFn = vi.fn()
+    const mockSubmit = vi.fn()
+    const mockCalculate = vi.fn()
+    
+    // Functions should be preserved exactly as-is
+    const partial: import('./helpers').DeepPartial<WithFunctions> = {
+      onClick: mockFn,
+      onSubmit: mockSubmit,
+      calculate: mockCalculate
+      // name is optional and omitted
+    }
+    
+    expect(partial.onClick).toBe(mockFn)
+    expect(partial.onSubmit).toBe(mockSubmit)
+    expect(partial.calculate).toBe(mockCalculate)
+  })
+
+  it('should handle complex nested structures with arrays and functions', () => {
+    interface ComplexInterface {
+      user: {
+        name: string
+        hobbies: string[]
+        friends: { name: string; age: number }[]
         settings: {
           theme: string
-          notifications: boolean
+          callbacks: {
+            onSave: () => void
+            onLoad: (data: any) => void
+          }
         }
       }
-      tags: string[]
     }
-
-    // This should compile without errors
-    const partialUser: import('./helpers').DeepPartial<TestUser> = {
-      name: 'John',
-      profile: {
+    
+    const mockSave = vi.fn()
+    const mockLoad = vi.fn()
+    
+    const partial: import('./helpers').DeepPartial<ComplexInterface> = {
+      user: {
+        hobbies: ['reading'],
+        friends: [{ name: 'Alice' }], // age is optional
         settings: {
-          theme: 'dark'
-          // notifications is optional due to DeepPartial
+          callbacks: {
+            onSave: mockSave,
+            onLoad: mockLoad
+          }
+          // theme is optional
         }
-        // bio is optional due to DeepPartial
       }
-      // age and tags are optional due to DeepPartial
     }
-
-    expect(partialUser).toBeDefined()
-    expect(partialUser.name).toBe('John')
-    expect(partialUser.profile?.settings?.theme).toBe('dark')
+    
+    expect(partial.user?.hobbies).toEqual(['reading'])
+    expect(partial.user?.friends?.[0]?.name).toBe('Alice')
+    expect(partial.user?.settings?.callbacks?.onSave).toBe(mockSave)
   })
 })

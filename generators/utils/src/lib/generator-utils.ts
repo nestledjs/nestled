@@ -10,7 +10,6 @@ import {
   updateJson,
 } from '@nx/devkit'
 import { execSync } from 'child_process'
-import { getDMMF } from '@prisma/internals'
 import * as yaml from 'yaml'
 import { AddToModulesOptions, CrudAuthConfig, GenerateTemplateOptions, ModelType } from './generator-types'
 import { libraryGenerator } from '@nx/nest'
@@ -178,6 +177,8 @@ export function mapPrismaTypeToNestJsType(prismaType: string) {
 
 export async function parsePrismaSchema(schemaContent: string, modelName: string) {
   try {
+    const prismaModule = await import('@prisma/internals')
+    const getDMMF = prismaModule.default.getDMMF || prismaModule.getDMMF
     const dmmf = await getDMMF({ datamodel: schemaContent })
     const model = dmmf.datamodel.models.find((m) => m.name === modelName)
 
@@ -302,8 +303,8 @@ export function updateTsConfigPaths(tree: Tree, importPath: string, libraryRoot:
 }
 
 export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
-  const { getDMMF } = await import('@prisma/internals')
-  const { getPrismaSchemaPath, readPrismaSchema } = await import('./generator-utils.js')
+  const prismaModule = await import('@prisma/internals')
+  const getDMMF = prismaModule.default.getDMMF || prismaModule.getDMMF
   const pluralize = (await import('pluralize')).default
 
   const prismaPath = getPrismaSchemaPath(tree)
