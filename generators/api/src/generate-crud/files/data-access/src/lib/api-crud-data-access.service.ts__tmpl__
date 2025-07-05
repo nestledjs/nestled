@@ -8,14 +8,136 @@ import * as dto from './dto'
 <% if (!model.modelName || !model.pluralModelName) { throw new Error('EJS template error: modelName or pluralModelName missing for model at index ' + idx + ': ' + JSON.stringify(model)); } %>
 <% }) %>
 
+<%
+// Helper function to get relation fields for a model
+function getRelationFields(model) {
+  return model.fields.filter(field => field.relationName && field.relationName.length > 0);
+}
+
+// Helper function to get virtual relation fields for a model
+function getVirtualRelationFields(model) {
+  const relationFields = getRelationFields(model);
+  const virtualFields = [];
+  
+  relationFields.forEach(relationField => {
+    // Only generate virtual fields for relations that don't have explicit foreign keys
+    if (!relationField.relationFromFields || relationField.relationFromFields.length === 0) {
+      if (relationField.isList) {
+        // This is a multi-relation without foreign keys (many-to-many or one-to-many from parent)
+        // Generate a virtual foreign key field for connecting
+        const virtualFieldName = relationField.name + 'Ids';
+        // Check if there's already a scalar field with this name
+        const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0));
+        if (!existingField) {
+          virtualFields.push({
+            name: virtualFieldName,
+            type: 'String',
+            isList: true,
+            isOptional: true,
+            isVirtual: true,
+            relationName: relationField.relationName,
+            relatedField: relationField.name
+          });
+        }
+      } else {
+        // This is a single relation without foreign keys (one-to-one or one-to-many from parent)
+        // Generate a virtual foreign key field for connecting
+        const virtualFieldName = relationField.name + 'Id';
+        // Check if there's already a scalar field with this name
+        const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0));
+        if (!existingField) {
+          virtualFields.push({
+            name: virtualFieldName,
+            type: 'String',
+            isList: false,
+            isOptional: true,
+            isVirtual: true,
+            relationName: relationField.relationName,
+            relatedField: relationField.name
+          });
+        }
+      }
+    }
+  });
+  
+  return virtualFields;
+}
+
+// Helper function to get foreign key fields that need relation handling
+function getForeignKeyRelationFields(model) {
+  const relationFields = getRelationFields(model);
+  const foreignKeyFields = [];
+  
+  relationFields.forEach(relationField => {
+    if (relationField.relationFromFields && relationField.relationFromFields.length > 0) {
+      // This relation has explicit foreign key fields
+      relationField.relationFromFields.forEach(fkFieldName => {
+        const fkField = model.fields.find(f => f.name === fkFieldName);
+        if (fkField) {
+          foreignKeyFields.push({
+            fieldName: fkFieldName,
+            relationName: relationField.name,
+            isRequired: !fkField.isOptional
+          });
+        }
+      });
+    }
+  });
+  
+  return foreignKeyFields;
+}
+
+// Helper function to generate relation handling code
+function generateRelationHandling(model, operation) {
+  const virtualRelationFields = getVirtualRelationFields(model);
+  const foreignKeyFields = getForeignKeyRelationFields(model);
+  const allRelationFields = [...virtualRelationFields, ...foreignKeyFields];
+  
+  if (allRelationFields.length === 0) {
+    return '    const data = input;';
+  }
+  
+  let code = '    const { ';
+  code += virtualRelationFields.map(field => field.name).join(', ');
+  if (foreignKeyFields.length > 0) {
+    if (virtualRelationFields.length > 0) code += ', ';
+    code += foreignKeyFields.map(field => field.fieldName).join(', ');
+  }
+  code += ', ...regularFields } = input;\n';
+  code += '    const data: any = regularFields;\n\n';
+  
+  // Handle virtual relation fields (many-to-many without explicit FKs)
+  virtualRelationFields.forEach(field => {
+    code += `    if (${field.name}) {\n`;
+    if (field.isList) {
+      code += `      data.${field.relatedField} = { ${operation === 'create' ? 'connect' : 'set'}: ${field.name}.map(id => ({ id })) };\n`;
+    } else {
+      code += `      data.${field.relatedField} = { connect: { id: ${field.name} } };\n`;
+    }
+    code += '    }\n';
+  });
+  
+  // Handle foreign key fields (explicit FK relations)
+  foreignKeyFields.forEach(field => {
+    code += `    if (${field.fieldName}) {\n`;
+    code += `      data.${field.relationName} = { connect: { id: ${field.fieldName} } };\n`;
+    code += '    }\n';
+  });
+  
+  return code;
+}
+%>
+
 @Injectable()
 export class ApiCrudDataAccessService {
   constructor(private readonly data: ApiCoreDataAccessService) {}
 
 <% for (const model of models) { %>
   async create<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, input: dto.Create<%= model.modelName %>Input) {
+<%- generateRelationHandling(model, 'create') %>
+    
     return this.data['<%= model.modelPropertyName %>'].create({
-      data: input,
+      data,
       select: createSelect(info),
     });
   }
@@ -52,9 +174,11 @@ export class ApiCrudDataAccessService {
   }
 
   async update<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: string, input: dto.Update<%= model.modelName %>Input) {
+<%- generateRelationHandling(model, 'update') %>
+    
     return this.data['<%= model.modelPropertyName %>'].update({
       where: { id },
-      data: input,
+      data,
       select: createSelect(info),
     });
   }

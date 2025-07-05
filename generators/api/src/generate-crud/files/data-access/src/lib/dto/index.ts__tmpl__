@@ -9,10 +9,64 @@ let enumNames = new Set();
 let usesPartialType = false;
 const alwaysOptionalFields = ['id', 'createdAt', 'updatedAt'];
 
+// Helper function to get relation fields for a model
+function getRelationFields(model) {
+  return model.fields.filter(field => field.relationName && field.relationName.length > 0);
+}
+
+// Helper function to get virtual relation fields for a model
+function getVirtualRelationFields(model) {
+  const relationFields = getRelationFields(model);
+  const virtualFields = [];
+  
+  relationFields.forEach(relationField => {
+    // Only generate virtual fields for relations that don't have explicit foreign keys
+    if (!relationField.relationFromFields || relationField.relationFromFields.length === 0) {
+      if (relationField.isList) {
+        // This is a multi-relation without foreign keys (many-to-many or one-to-many from parent)
+        // Generate a virtual foreign key field for connecting
+        const virtualFieldName = relationField.name + 'Ids';
+        // Check if there's already a scalar field with this name
+        const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0));
+        if (!existingField) {
+          virtualFields.push({
+            name: virtualFieldName,
+            type: 'String',
+            isList: true,
+            isOptional: true,
+            isVirtual: true, // Mark as virtual so we know it's generated
+            relationName: relationField.relationName,
+            relatedField: relationField.name
+          });
+        }
+      } else {
+        // This is a single relation without foreign keys (one-to-one or one-to-many from parent)
+        // Generate a virtual foreign key field for connecting
+        const virtualFieldName = relationField.name + 'Id';
+        // Check if there's already a scalar field with this name
+        const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0));
+        if (!existingField) {
+          virtualFields.push({
+            name: virtualFieldName,
+            type: 'String',
+            isList: false,
+            isOptional: true,
+            isVirtual: true, // Mark as virtual so we know it's generated
+            relationName: relationField.relationName,
+            relatedField: relationField.name
+          });
+        }
+      }
+    }
+  });
+  
+  return virtualFields;
+}
+
 // First pass to determine necessary imports and enums
 for (const model of models) {
   for (const field of model.fields) {
-    if (field.kind === 'object') continue; // Skip relation fields entirely
+    if (field.relationName && field.relationName.length > 0) continue; // Skip relation object fields
     if (field.type === 'Int') usesInt = true;
     if (field.type === 'Float' || field.type === 'Decimal') usesFloat = true;
     if (field.type === 'Json') usesGraphQLJSON = true;
@@ -34,10 +88,15 @@ import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
 import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
 
 <% for (const model of models) { %>
+<%
+// Get all regular fields (non-relation) and virtual relation fields
+const regularFields = model.fields.filter(field => !field.relationName || field.relationName.length === 0);
+const virtualRelationFields = getVirtualRelationFields(model);
+const allFields = [...regularFields, ...virtualRelationFields];
+%>
 @InputType()
 export class Create<%= model.modelName %>Input {
-<% for (const field of model.fields) { %>
-  <% if (field.kind === 'object') { continue; } %>
+<% for (const field of allFields) { %>
   <%
     let baseGqlType;
     let tsType;
@@ -66,11 +125,11 @@ export class Create<%= model.modelName %>Input {
         fieldDecoratorTypeArg = `() => ${baseGqlType}`;
       }
     }
-    // Always optional for id, createdAt, updatedAt
-    if (alwaysOptionalFields.includes(field.name)) {
+    // Always optional for id, createdAt, updatedAt, and virtual fields
+    if (alwaysOptionalFields.includes(field.name) || field.isVirtual) {
       isOptional = true;
     } else {
-      isOptional = !field.isRequired;
+      isOptional = field.isOptional;
     }
   %>
   @Field(<% if (fieldDecoratorTypeArg) { %><%- fieldDecoratorTypeArg %>, <% } %>{ nullable: <%= isOptional ? 'true' : 'false' %> })
@@ -80,8 +139,7 @@ export class Create<%= model.modelName %>Input {
 
 @InputType()
 export class Update<%= model.modelName %>Input {
-<% for (const field of model.fields) { %>
-  <% if (field.kind === 'object') { continue; } %>
+<% for (const field of allFields) { %>
   <%
     let baseGqlType;
     let tsType;
@@ -117,8 +175,7 @@ export class Update<%= model.modelName %>Input {
 
 @InputType()
 export class List<%= model.modelName %>Input extends CorePagingInput {
-<% for (const field of model.fields) { %>
-  <% if (field.kind === 'object') { continue; } %>
+<% for (const field of allFields) { %>
   <%
     let baseGqlType;
     let tsType;
