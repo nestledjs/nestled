@@ -9,6 +9,7 @@ export { RenderFormField } from './lib/render-form-field'
 export { useFormContext } from './lib/form-context'
 export { useFormConfig } from './lib/form-config-context'
 export { useFormTheme } from './lib/theme-context'
+export { createFinalTheme } from './lib/utils/resolve-theme'
 
 // Export key types for library consumers
 export type { FormField, FormFieldType, BaseFieldOptions } from './lib/form-types'
