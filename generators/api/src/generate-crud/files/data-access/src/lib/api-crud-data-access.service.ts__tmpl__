@@ -150,9 +150,7 @@ export class ApiCrudDataAccessService {
   }
 
   async <%= (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1) %>Count(input?: dto.List<%= model.modelName %>Input) {
-    const total = await this.data['<%= model.modelPropertyName %>'].count({
-      ...this.data.filter(input)
-    });
+    const total = await this.data['<%= model.modelPropertyName %>'].count()
     const count = await this.data['<%= model.modelPropertyName %>'].count({
       ...this.data.filter(input)
     });
