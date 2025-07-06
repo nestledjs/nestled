@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/api",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
