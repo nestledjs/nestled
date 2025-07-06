@@ -181,7 +181,8 @@ export class FormFieldClass {
   }
 
   static button(key: string, options: ButtonOptions = {}): FormField {
-    return this.field(FormFieldType.Button, key, options)
+    const { label, ...rest } = options
+    return this.field(FormFieldType.Button, key, rest)
   }
 
   static datePicker(key: string, options: DatePickerOptions = {}): FormField {

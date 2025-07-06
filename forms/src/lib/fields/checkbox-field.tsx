@@ -120,27 +120,6 @@ function renderControlledInput(props: CheckboxFieldProps, theme: any, inputRef: 
   )
 }
 
-function renderCustomWrapper(props: CheckboxFieldProps, inputNode: React.ReactNode, theme: any) {
-  const { field } = props
-  const options = field.options
-  const labelNode = renderLabel(field, options, theme)
-
-  if (!options.customWrapper) return null
-
-  const inputWithKey = inputNode && React.isValidElement(inputNode)
-    ? React.cloneElement(inputNode, { key: 'input' })
-    : inputNode
-  const labelWithKey = labelNode && React.isValidElement(labelNode)
-    ? React.cloneElement(labelNode, { key: 'label' })
-    : labelNode
-
-  const elements = options.fullWidthLabel
-    ? [labelWithKey, inputWithKey]
-    : [inputWithKey, labelWithKey]
-
-  return options.customWrapper(elements)
-}
-
 function renderStandardLayout(props: CheckboxFieldProps, inputNode: React.ReactNode, theme: any) {
   const { field } = props
   const options = field.options
@@ -173,11 +152,6 @@ export function CheckboxField(props: CheckboxFieldProps) {
   }
 
   const inputNode = renderControlledInput(props, theme, inputRef)
-
-  const customWrapperResult = renderCustomWrapper(props, inputNode, theme)
-  if (customWrapperResult) {
-    return customWrapperResult
-  }
 
   return renderStandardLayout(props, inputNode, theme)
 }
