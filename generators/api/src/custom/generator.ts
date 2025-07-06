@@ -1,4 +1,4 @@
-import { formatFiles, installPackagesTask, Tree, joinPathFragments } from '@nx/devkit'
+import { formatFiles, installPackagesTask, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
 import { addToModules, apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema } from '@nestledjs/utils'
 import { GenerateCustomGeneratorSchema } from './schema'
@@ -20,7 +20,6 @@ const defaultDependencies = {
   getNpmScope,
   pluralize,
   join,
-  joinPathFragments,
 }
 export type CustomGeneratorDependencies = typeof defaultDependencies
 
@@ -206,12 +205,17 @@ export async function customGeneratorLogic(
       }
     }
 
-    // Use the shared apiLibraryGenerator with template path
-    const templateRootPath = dependencies.joinPathFragments(__dirname, './files')
-    await dependencies.apiLibraryGenerator(tree, { name }, templateRootPath, undefined, false)
+    // Use the shared apiLibraryGenerator but pass empty template to avoid conflicts
+    await dependencies.apiLibraryGenerator(tree, { name }, '', undefined, false)
 
     await ensureDirExists(tree, dependencies.join(customLibraryRoot, 'src/lib/default'))
     await ensureDirExists(tree, dependencies.join(customLibraryRoot, 'src/lib/plugins'))
+
+    // Override the main index.ts created by apiLibraryGenerator with our stable version
+    const mainIndexContent = `export * from './lib/plugins'
+export * from './lib/default'
+`
+    tree.write(dependencies.join(customLibraryRoot, 'src/index.ts'), mainIndexContent)
 
     // Get all Prisma models
     const models = await getAllPrismaModels(tree, dependencies)
