@@ -1,0 +1,43 @@
+{
+  "name": "@nestledjs/generators",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "description": "Complete collection of all Nestled generators - installs all generator packages for scaffolding API, web, config, and shared code",
+  "keywords": [
+    "nestled",
+    "generators",
+    "nx",
+    "monorepo",
+    "code-generation",
+    "scaffolding",
+    "api",
+    "web",
+    "config",
+    "plugins",
+    "shared",
+    "utils",
+    "nestjs",
+    "react",
+    "typescript"
+  ],
+  "author": "Nestled Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nestledjs/nestled.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@nestledjs/api": "0.0.16",
+    "@nestledjs/config": "0.0.15",
+    "@nestledjs/plugins": "0.0.14",
+    "@nestledjs/shared": "0.0.14",
+    "@nestledjs/utils": "0.0.15",
+    "@nestledjs/web": "0.0.15"
+  }
+}

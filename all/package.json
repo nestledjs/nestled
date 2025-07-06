@@ -1,0 +1,51 @@
+{
+  "name": "@nestledjs/all",
+  "version": "0.0.1",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "description": "Complete Nestled ecosystem - includes all generators, forms library, and helper utilities in one convenient package",
+  "keywords": [
+    "nestled",
+    "generators",
+    "forms",
+    "helpers",
+    "utilities",
+    "nx",
+    "monorepo",
+    "code-generation",
+    "scaffolding",
+    "api",
+    "web",
+    "config",
+    "plugins",
+    "shared",
+    "utils",
+    "nestjs",
+    "react",
+    "typescript",
+    "form-library",
+    "utility-types",
+    "development-tools"
+  ],
+  "author": "Nestled Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nestledjs/nestled.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "tslib": "^2.3.0",
+    "@nestledjs/api": "0.0.16",
+    "@nestledjs/config": "0.0.15",
+    "@nestledjs/plugins": "0.0.14",
+    "@nestledjs/shared": "0.0.14",
+    "@nestledjs/utils": "0.0.15",
+    "@nestledjs/web": "0.0.15",
+    "@nestledjs/forms": "0.0.17",
+    "@nestledjs/helpers": "0.0.3"
+  }
+}

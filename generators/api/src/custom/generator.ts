@@ -109,8 +109,8 @@ async function generateCustomFiles(
   const pluginsDir = dependencies.join(customLibraryRoot, 'src/lib/plugins')
   await ensureDirExists(tree, defaultDir)
   await ensureDirExists(tree, pluginsDir)
-  // Only write .gitkeep in pluginsDir
-  tree.write(dependencies.join(pluginsDir, '.gitkeep'), '')
+  // Create empty index.ts in pluginsDir for custom plugins
+  tree.write(dependencies.join(pluginsDir, 'index.ts'), '')
 
   for (const model of models) {
     const kebabModel = toKebabCase(model.modelName)
@@ -177,10 +177,16 @@ export class ${model.modelName}Module {}
     })
   }
 
-  // Update index.ts to export all model modules
+  // Create stable main index.ts that exports from both plugins and default
+  const mainIndexContent = `export * from './lib/plugins'
+export * from './lib/default'
+`
+  tree.write(dependencies.join(customLibraryRoot, 'src/index.ts'), mainIndexContent)
+
+  // Update default/index.ts to export all model modules
   const modelFolders = models.map((m) => toKebabCase(m.modelName))
-  const indexContent = modelFolders.map((m) => `export * from './lib/default/${m}/${m}.module'`).join('\n')
-  tree.write(dependencies.join(customLibraryRoot, 'src/index.ts'), indexContent)
+  const defaultIndexContent = modelFolders.map((m) => `export * from './${m}/${m}.module'`).join('\n')
+  tree.write(dependencies.join(defaultDir, 'index.ts'), defaultIndexContent)
 }
 
 export async function customGeneratorLogic(

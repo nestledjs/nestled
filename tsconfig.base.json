@@ -16,9 +16,11 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@nestledjs/all": ["all/src/index.ts"],
       "@nestledjs/api": ["generators/api/src/index.ts"],
       "@nestledjs/config": ["generators/config/src/index.ts"],
       "@nestledjs/forms": ["forms/src/index.ts"],
+      "@nestledjs/generators": ["generators/generators/src/index.ts"],
       "@nestledjs/helpers": ["helpers/src/index.ts"],
       "@nestledjs/plugins": ["generators/plugins/src/index.ts"],
       "@nestledjs/shared": ["generators/shared/src/index.ts"],
