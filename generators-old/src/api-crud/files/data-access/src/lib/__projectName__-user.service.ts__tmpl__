@@ -36,7 +36,7 @@ export class <%= apiClassName %><%= modelClassName %>DataAccessUserService {
   }
 
   async userCount<%= pluralClassName %>(input?: UserList<%= modelClassName %>Input): Promise<CorePaging> {
-    const total = await this.data.<%= modelPropertyName %>.count()
+    const total = await this.data.<%= modelPropertyName %>.count({ where: this.where(input) })
     const count = await this.data.<%= modelPropertyName %>.count({ where: this.where(input) })
     const take = input?.take ?? 10
     const skip = input?.skip ?? 0
