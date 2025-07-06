@@ -109,8 +109,11 @@ async function generateCustomFiles(
   const pluginsDir = dependencies.join(customLibraryRoot, 'src/lib/plugins')
   await ensureDirExists(tree, defaultDir)
   await ensureDirExists(tree, pluginsDir)
-  // Create empty index.ts in pluginsDir for custom plugins
-  tree.write(dependencies.join(pluginsDir, 'index.ts'), '')
+  // Create empty index.ts in pluginsDir for custom plugins (only if it doesn't exist)
+  const pluginsIndexPath = dependencies.join(pluginsDir, 'index.ts')
+  if (!tree.exists(pluginsIndexPath)) {
+    tree.write(pluginsIndexPath, '')
+  }
 
   for (const model of models) {
     const kebabModel = toKebabCase(model.modelName)
