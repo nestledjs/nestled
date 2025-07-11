@@ -121,9 +121,12 @@ import { UseGuards } from '@nestjs/common'
 import type { GraphQLResolveInfo } from 'graphql'
 import { CorePaging } from '@${npmScope}/api/core/data-access'
 import { ${model.modelName} } from '@${npmScope}/api/core/models'
-import { ApiCrudDataAccessService, Create${model.modelName}Input, List${model.modelName}Input, Update${
-    model.modelName
-  }Input } from '@${npmScope}/api/generated-crud/data-access'
+import {
+    ApiCrudDataAccessService,
+    Create${model.modelName}Input,
+    List${model.modelName}Input,
+    Update${model.modelName}Input
+    } from '@${npmScope}/api/generated-crud/data-access'
 ${guardImports}
 
 @Resolver(() => ${model.modelName})
