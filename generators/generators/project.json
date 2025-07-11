@@ -4,6 +4,14 @@
   "sourceRoot": "generators/generators/src",
   "projectType": "library",
   "tags": [],
+  "implicitDependencies": [
+    "api",
+    "config",
+    "plugins",
+    "shared",
+    "utils",
+    "web"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
