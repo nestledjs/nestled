@@ -3,7 +3,7 @@ import { useForm, UseFormProps, FieldValues } from 'react-hook-form'
 import { FormField } from './form-types'
 import clsx from 'clsx'
 import { FormContext } from './form-context'
-import { RenderFormField } from './render-form-field' // Import the new renderer
+import { Field } from './field' // Import the new renderer
 import { ThemeContext } from './theme-context'
 import { FormTheme } from './form-theme'
 import { FormConfigContext, FormConfig } from './form-config-context'
@@ -68,7 +68,7 @@ export interface FormProps<T extends FieldValues = Record<string, unknown>> exte
  * 
  * // Imperative usage
  * <Form id="custom-form" submit={(values) => handleSubmit(values)}>
- *   <RenderFormField field={FormFieldClass.text('name', { label: 'Name' })} />
+ *   <Field field={FormFieldClass.text('name', { label: 'Name' })} />
  *   <button type="submit">Submit</button>
  * </Form>
  * 
@@ -78,7 +78,7 @@ export interface FormProps<T extends FieldValues = Record<string, unknown>> exte
  *   fields={[FormFieldClass.text('username', { label: 'Username' })]}
  *   submit={(values) => handleSubmit(values)}
  * >
- *   <RenderFormField field={FormFieldClass.password('password', { label: 'Password' })} />
+ *   <Field field={FormFieldClass.password('password', { label: 'Password' })} />
  *   <button type="submit">Submit</button>
  * </Form>
  * ```
@@ -115,7 +115,7 @@ export function Form<T extends FieldValues = Record<string, unknown>>({
             {/* Render fields from the declarative array */}
             {fields?.map((field) =>
               field ? (
-                <RenderFormField
+                <Field
                   key={field.key}
                   field={field}
                   formReadOnly={readOnly}

@@ -295,17 +295,17 @@ function renderComponent(
  * @example
  * ```tsx
  * // Basic usage
- * <RenderFormField 
+ * <Field 
  *   field={FormFieldClass.text('username', { label: 'Username', required: true })} 
  * />
  * 
  * // Multi-column layout with CSS Grid
  * <div className="grid grid-cols-2 gap-4">
- *   <RenderFormField 
+ *   <Field 
  *     field={FormFieldClass.text('firstName', { label: 'First Name' })}
  *     className="col-span-1"
  *   />
- *   <RenderFormField 
+ *   <Field 
  *     field={FormFieldClass.text('lastName', { label: 'Last Name' })}
  *     className="col-span-1"
  *   />
@@ -313,13 +313,13 @@ function renderComponent(
  * 
  * // Using wrapperClassName in field options
  * <div className="grid grid-cols-2 gap-4">
- *   <RenderFormField 
+ *   <Field 
  *     field={FormFieldClass.text('firstName', { 
  *       label: 'First Name',
  *       wrapperClassName: 'col-span-1'
  *     })}
  *   />
- *   <RenderFormField 
+ *   <Field 
  *     field={FormFieldClass.text('lastName', { 
  *       label: 'Last Name',
  *       wrapperClassName: 'col-span-1'
@@ -328,7 +328,7 @@ function renderComponent(
  * </div>
  * 
  * // Horizontal layout within field
- * <RenderFormField 
+ * <Field 
  *   field={FormFieldClass.checkbox('agree', { 
  *     label: 'I agree to the terms',
  *     layout: 'horizontal'
@@ -336,7 +336,7 @@ function renderComponent(
  * />
  * 
  * // Custom wrapper function
- * <RenderFormField 
+ * <Field 
  *   field={FormFieldClass.text('email', { 
  *     label: 'Email',
  *     customWrapper: (children) => (
@@ -348,7 +348,7 @@ function renderComponent(
  * />
  * ```
  */
-export function RenderFormField({
+export function Field({
   field,
   formReadOnly = false,
   formReadOnlyStyle = 'value',
@@ -420,4 +420,4 @@ export function RenderFormField({
       {fieldContent}
     </div>
   )
-}
+} 

@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { FormContext } from '../src/lib/form-context'
 import { FormConfigContext } from '../src/lib/form-config-context'
 import { ThemeContext } from '../src/lib/theme-context'
-import { RenderFormField } from '../src/lib/render-form-field'
+import { Field } from '../src/lib/field'
 import { FormField } from '../src/lib/form-types'
 import { FormTheme } from '../src/lib/form-theme'
 import { createFinalTheme } from '../src/lib/utils/resolve-theme'
@@ -51,8 +51,7 @@ export const StorybookFieldWrapper: React.FC<StorybookFieldWrapperProps> = ({
       <FormConfigContext.Provider value={{ labelDisplay }}>
         <ThemeContext.Provider value={finalTheme}>
           <FormContext.Provider value={form as any}>
-            <RenderFormField field={field} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
-
+            <Field field={field} formReadOnly={formReadOnly} formReadOnlyStyle={formReadOnlyStyle} />
             {showState && (
               <div className="mt-6 p-3 bg-gray-100 rounded text-xs">
                 <h4 className="font-bold mb-2">Live Form State:</h4>
