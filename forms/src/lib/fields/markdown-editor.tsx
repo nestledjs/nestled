@@ -178,24 +178,16 @@ export function MarkdownEditor({
             )}
           >
             <div className={theme.markdownEditor.toolbar}>
-              <span className="text-sm text-gray-500">Markdown Editor (Read-Only)</span>
+              <span className="text-sm text-gray-500">Markdown Editor (Disabled)</span>
             </div>
             <div 
               className={clsx(
                 theme.markdownEditor.preview, 
-                'opacity-50 min-h-[200px] p-4 prose prose-sm max-w-none'
+                'opacity-50 min-h-[200px] p-4 font-mono text-sm whitespace-pre-wrap'
               )}
-              dangerouslySetInnerHTML={{ 
-                __html: value
-                  .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-                  .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-                  .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-                  .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                  .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                  .replace(/`(.*?)`/g, '<code>$1</code>')
-                  .replace(/\n/g, '<br>') || '—'
-              }}
-            />
+            >
+              {value || '—'}
+            </div>
           </div>
           {field.options.helpText && (
             <div className={theme.markdownEditor.helpText}>{field.options.helpText}</div>

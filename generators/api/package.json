@@ -17,8 +17,8 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nx/devkit": "21.2.1",
-    "@nx/js": "21.2.1",
+    "@nx/devkit": "21.2.3",
+    "@nx/js": "21.2.3",
     "@prisma/internals": "^6.11.0",
     "pluralize": "^8.0.0",
     "dotenv": "16.4.5",

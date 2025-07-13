@@ -1,4 +1,5 @@
 import type { StorybookConfig } from '@storybook/react-vite'
+import { mergeConfig } from 'vite'
 
 const config: StorybookConfig = {
   stories: ['../src/lib/**/*.@(mdx|stories.@(js|jsx|ts|tsx))'],
@@ -10,6 +11,16 @@ const config: StorybookConfig = {
         viteConfigPath: 'vite.config.ts',
       },
     },
+  },
+  async viteFinal(config) {
+    return mergeConfig(config, {
+      optimizeDeps: {
+        include: ['@mdxeditor/editor'],
+      },
+      ssr: {
+        noExternal: ['@mdxeditor/editor'],
+      },
+    })
   },
 }
 

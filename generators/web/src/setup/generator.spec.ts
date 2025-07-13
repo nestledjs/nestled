@@ -43,7 +43,7 @@ describe('webSetupGenerator', () => {
         'graphql-tag': '^2.12.6',
       },
       {
-        '@nx/react': '21.2.1',
+        '@nx/react': '21.2.3',
         '@tailwindcss/vite': '^4.1.8',
         tailwindcss: '^4.1.8',
         'vite-tsconfig-paths': '^5.1.4',

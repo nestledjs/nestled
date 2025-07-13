@@ -10,6 +10,12 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    optimizeDeps: {
+      include: ['@mdxeditor/editor'],
+    },
+    ssr: {
+      noExternal: ['@mdxeditor/editor'],
+    },
     resolve: {
       alias: {
         '@nestledjs/forms': path.resolve(dirname, 'dist'),

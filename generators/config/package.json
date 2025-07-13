@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nx/devkit": "21.2.1"
+    "@nx/devkit": "21.2.3"
   },
   "devDependencies": {
     "yaml": "^2.8.0"
