@@ -1,28 +1,81 @@
 import type { Meta, StoryObj } from '@storybook/react'
-import { expect, userEvent, within } from 'storybook/test'
-  import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
-  import { FormFieldType, FormField } from '../form-types'
+import { expect, within } from 'storybook/test'
+import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
+import { FormFieldType, FormField } from '../form-types'
 
 // Define the flat controls for the Storybook UI
-  interface MarkdownEditorStoryArgs {
-    label: string
-    placeholder: string
-    required: boolean
-    disabled: boolean
-    defaultValue: string
-    height: number
-    spellCheck: boolean
-    maxLength: number
-    readOnly: boolean
-    readOnlyStyle: 'value' | 'disabled'
-    hasError: boolean
-    errorMessage: string
-    formReadOnly: boolean
-    formReadOnlyStyle: 'value' | 'disabled'
-    helpText: string
-    labelDisplay: 'default' | 'all' | 'none'
-    showState: boolean
+interface MarkdownEditorStoryArgs {
+  label: string
+  placeholder: string
+  required: boolean
+  disabled: boolean
+  defaultValue: string
+  height: number
+  spellCheck: boolean
+  maxLength: number
+  readOnly: boolean
+  readOnlyStyle: 'value' | 'disabled'
+  hasError: boolean
+  errorMessage: string
+  formReadOnly: boolean
+  formReadOnlyStyle: 'value' | 'disabled'
+  helpText: string
+  labelDisplay: 'default' | 'all' | 'none'
+  showState: boolean
+}
+
+// Helper to convert story args to FormField
+function createMarkdownEditorField(args: MarkdownEditorStoryArgs): FormField {
+  return {
+    key: 'markdownEditor',
+    type: FormFieldType.MarkdownEditor,
+    options: {
+      label: args.label,
+      placeholder: args.placeholder,
+      required: args.required,
+      disabled: args.disabled,
+      defaultValue: args.defaultValue,
+      height: args.height,
+      maxLength: args.maxLength || undefined,
+      readOnly: args.readOnly,
+      readOnlyStyle: args.readOnlyStyle,
+      helpText: args.helpText || undefined,
+    },
   }
+}
+
+// Common render function to reduce duplication
+function renderMarkdownEditor(args: MarkdownEditorStoryArgs) {
+  return (
+    <StorybookFieldWrapper
+      field={createMarkdownEditorField(args)}
+      hasError={args.hasError}
+      errorMessage={args.errorMessage}
+      formReadOnly={args.formReadOnly}
+      formReadOnlyStyle={args.formReadOnlyStyle}
+      labelDisplay={args.labelDisplay}
+      showState={args.showState}
+    />
+  )
+}
+
+// Common test utilities
+async function expectLabelToBePresent(canvas: ReturnType<typeof within>, labelText: string) {
+  await expect(canvas.getByText(labelText)).toBeInTheDocument()
+}
+
+async function expectLiveFormStateToBePresent(canvas: ReturnType<typeof within>) {
+  await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+}
+
+async function expectLoadingEditorInitially(canvas: ReturnType<typeof within>) {
+  await expect(canvas.getByText('Loading editor...')).toBeInTheDocument()
+}
+
+async function expectBasicFieldElements(canvas: ReturnType<typeof within>, labelText: string) {
+  await expectLabelToBePresent(canvas, labelText)
+  await expectLiveFormStateToBePresent(canvas)
+}
 
 /**
  * The MarkdownEditor component provides a rich text editing experience with markdown syntax.
@@ -62,7 +115,7 @@ const meta: Meta<MarkdownEditorStoryArgs> = {
     },
     showState: { control: 'boolean', description: 'Show live form state?' },
   },
-      args: {
+  args: {
     label: 'Content',
     placeholder: 'Enter your markdown content...',
     required: false,
@@ -86,49 +139,16 @@ const meta: Meta<MarkdownEditorStoryArgs> = {
 export default meta
 type Story = StoryObj<MarkdownEditorStoryArgs>
 
-// Helper to convert story args to FormField
-function createMarkdownEditorField(args: MarkdownEditorStoryArgs): FormField {
-  return {
-    key: 'markdownEditor',
-    type: FormFieldType.MarkdownEditor,
-    options: {
-      label: args.label,
-      placeholder: args.placeholder,
-      required: args.required,
-      disabled: args.disabled,
-      defaultValue: args.defaultValue,
-      height: args.height,
-      maxLength: args.maxLength || undefined,
-      readOnly: args.readOnly,
-      readOnlyStyle: args.readOnlyStyle,
-      helpText: args.helpText || undefined,
-    },
-  }
-}
-
 export const Basic: Story = {
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
     // The MDXEditor should be present in the DOM (lazy-loaded, so shows loading initially)
-    await expect(canvas.getByText('Loading editor...')).toBeInTheDocument()
+    await expectLoadingEditorInitially(canvas)
     
-    // Verify the label is present
-    await expect(canvas.getByText('Content')).toBeInTheDocument()
-    
-    // Check that the Live Form State section is present
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    // Verify basic elements
+    await expectBasicFieldElements(canvas, 'Content')
   },
 }
 
@@ -137,22 +157,12 @@ export const WithContent: Story = {
     defaultValue: '# Sample Content\n\nThis is a sample markdown document with:\n\n- **Bold text**\n- *Italic text*\n- `Code snippets`\n- [Links](https://example.com)\n\n## Lists\n\n### Bullet List\n- First item\n- Second item\n- Third item\n\n### Numbered List\n1. First item\n2. Second item\n3. Third item\n\n### Checkbox List\n- [ ] Unchecked task\n- [x] Completed task\n- [ ] Another task\n\n## Code Block\n\n```javascript\nconsole.log("Hello, World!")\n```\n\n> This is a blockquote\n\nAnd some regular paragraph text.',
     height: 400,
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
     // Check that the editor loaded by looking for the Live Form State
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectLiveFormStateToBePresent(canvas)
     
     // Check that some basic content appears in the form (should be in the JSON state)
     await expect(canvas.getByText(/Sample Content/)).toBeInTheDocument()
@@ -165,17 +175,7 @@ export const Required: Story = {
     label: 'Required Content',
     helpText: 'This field is required. Please provide some content.',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
@@ -183,7 +183,7 @@ export const Required: Story = {
     await expect(canvas.getByText('This field is required. Please provide some content.')).toBeInTheDocument()
     
     // Verify the required field label shows the required indicator (if your theme includes it)
-    await expect(canvas.getByText('Required Content')).toBeInTheDocument()
+    await expectLabelToBePresent(canvas, 'Required Content')
   },
 }
 
@@ -193,25 +193,11 @@ export const Disabled: Story = {
     defaultValue: '# Disabled Content\n\nThis editor is disabled and cannot be edited.',
     label: 'Disabled Editor',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    // Verify the label is correct 
-    await expect(canvas.getByText('Disabled Editor')).toBeInTheDocument()
-    
-    // Check that the Live Form State section is present
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectBasicFieldElements(canvas, 'Disabled Editor')
   },
 }
 
@@ -222,25 +208,14 @@ export const WithMaxLength: Story = {
     helpText: 'Maximum 100 characters allowed.',
     defaultValue: 'This is a short example with character limit.',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
     // Verify help text
     await expect(canvas.getByText('Maximum 100 characters allowed.')).toBeInTheDocument()
     
-    // Check that the Live Form State section is present  
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectLiveFormStateToBePresent(canvas)
   },
 }
 
@@ -250,25 +225,11 @@ export const ReadOnlyValue: Story = {
     defaultValue: '# Read-Only Content\n\nThis content is displayed in **read-only** mode as rendered HTML.\n\n- Item 1\n- Item 2\n- Item 3',
     label: 'Read-Only (Value Style)',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    // Verify the label
-    await expect(canvas.getByText('Read-Only (Value Style)')).toBeInTheDocument()
-    
-    // Check that the content appears in the Live Form State section (more specific)
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectBasicFieldElements(canvas, 'Read-Only (Value Style)')
   },
 }
 
@@ -279,28 +240,14 @@ export const ReadOnlyDisabled: Story = {
     defaultValue: '# Read-Only Content\n\nThis content is displayed in **disabled** editor style.',
     label: 'Read-Only (Disabled Style)',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
     // Should show disabled editor with content
     await expect(canvas.getByText('Markdown Editor (Disabled)')).toBeInTheDocument()
     
-    // Verify the label
-    await expect(canvas.getByText('Read-Only (Disabled Style)')).toBeInTheDocument()
-    
-    // Check that the content appears in the Live Form State section
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectBasicFieldElements(canvas, 'Read-Only (Disabled Style)')
   },
 }
 
@@ -311,17 +258,7 @@ export const ErrorState: Story = {
     label: 'Content with Error',
     helpText: 'This field has an error state applied.',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
@@ -329,7 +266,7 @@ export const ErrorState: Story = {
     await expect(canvas.getByText('This field has an error state applied.')).toBeInTheDocument()
     
     // Verify the label
-    await expect(canvas.getByText('Content with Error')).toBeInTheDocument()
+    await expectLabelToBePresent(canvas, 'Content with Error')
   },
 }
 
@@ -340,25 +277,11 @@ export const CustomHeight: Story = {
     defaultValue: '# Tall Editor\n\nThis editor has a custom height of 500 pixels.\n\n' + 
       Array.from({ length: 20 }, (_, i) => `Line ${i + 1}: Lorem ipsum dolor sit amet, consectetur adipiscing elit.`).join('\n\n'),
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    // Verify the label 
-    await expect(canvas.getByText('Tall Editor')).toBeInTheDocument()
-    
-    // Check that the Live Form State section is present
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectBasicFieldElements(canvas, 'Tall Editor')
   },
 }
 
@@ -368,24 +291,10 @@ export const FormReadOnly: Story = {
     defaultValue: '# Form Read-Only\n\nThis entire form is in read-only mode, affecting all fields.',
     label: 'Form-Level Read-Only',
   },
-  render: (args) => (
-    <StorybookFieldWrapper
-      field={createMarkdownEditorField(args)}
-      hasError={args.hasError}
-      errorMessage={args.errorMessage}
-      formReadOnly={args.formReadOnly}
-      formReadOnlyStyle={args.formReadOnlyStyle}
-      labelDisplay={args.labelDisplay}
-      showState={args.showState}
-    />
-  ),
+  render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    // Verify the label 
-    await expect(canvas.getByText('Form-Level Read-Only')).toBeInTheDocument()
-    
-    // Check that the Live Form State section is present
-    await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
+    await expectBasicFieldElements(canvas, 'Form-Level Read-Only')
   },
-  } 
+} 
