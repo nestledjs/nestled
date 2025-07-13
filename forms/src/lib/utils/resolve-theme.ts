@@ -65,6 +65,7 @@ export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme 
     'selectField',
     'switchField',
     'textAreaField',
+    'markdownEditor',
     'timePickerField',
     'urlField',
     'button'
@@ -108,6 +109,8 @@ export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme 
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['switchField'])
     } else if (key === 'textAreaField') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['textAreaField'])
+    } else if (key === 'markdownEditor') {
+      finalTheme[key] = mergeSection(globalStyles, section as FormTheme['markdownEditor'])
     } else if (key === 'timePickerField') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['timePickerField'])
     } else if (key === 'urlField') {
