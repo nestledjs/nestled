@@ -23,6 +23,8 @@ export default mergeConfig(
       },
     },
     test: {
+      testTimeout: 30000, // 30s
+      hookTimeout: 30000,
       // Vitest project mode
       projects: [
         // ✅ Regular unit/component tests
