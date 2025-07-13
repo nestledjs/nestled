@@ -4,6 +4,7 @@ import { FormField } from './form-types'
 import { FormContext } from './form-context'
 import { ThemeContext } from './theme-context'
 import { FormConfigContext } from './form-config-context'
+import { FormTheme } from './form-theme'
 import { createFinalTheme } from './utils/resolve-theme'
 import { Field } from './field'
 
@@ -35,7 +36,7 @@ export interface RenderFieldProps {
   /**
    * Custom theme to apply to the field
    */
-  theme?: any
+  theme?: Partial<FormTheme>
   /**
    * Controls label visibility for this field
    */
