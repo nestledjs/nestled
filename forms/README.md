@@ -10,7 +10,7 @@ A flexible React form library that supports both **declarative** and **imperativ
 - **Themeable**: Customizable styling system
 - **Validation**: Built-in validation with react-hook-form
 - **Read-only Support**: Toggle between editable and read-only modes
-- **Rich Field Types**: 20+ field types including text, email, select, date pickers, and more
+- **Rich Field Types**: 20+ field types including text, email, select, date pickers, markdown editor, and more
 
 ## 📦 Installation
 
@@ -21,6 +21,8 @@ yarn add @nestledjs/forms
 # or
 pnpm add @nestledjs/forms
 ```
+
+**Note**: The markdown editor component uses `@mdxeditor/editor` which is included as a dependency. Make sure your build system supports CSS imports for the editor styles.
 
 ## 🎯 Quick Start
 
@@ -171,6 +173,86 @@ function MixedForm() {
 }
 ```
 
+### Rich Text Editing with Markdown
+
+Create forms with rich text editing capabilities:
+
+```tsx
+import { Form, RenderFormField, FormFieldClass } from '@nestledjs/forms'
+
+function BlogPostForm() {
+  const handleImageUpload = async (file: File): Promise<string> => {
+    // Upload image to your server/CDN
+    const formData = new FormData()
+    formData.append('image', file)
+    
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData
+    })
+    
+    const { url } = await response.json()
+    return url
+  }
+
+  return (
+    <Form
+      id="blog-post-form"
+      submit={(values) => console.log('Blog post:', values)}
+    >
+      <RenderFormField 
+        field={FormFieldClass.text('title', { 
+          label: 'Post Title', 
+          required: true,
+          placeholder: 'Enter your blog post title...'
+        })} 
+      />
+      
+      <RenderFormField 
+        field={FormFieldClass.text('slug', { 
+          label: 'URL Slug', 
+          placeholder: 'my-blog-post'
+        })} 
+      />
+      
+      <RenderFormField 
+        field={FormFieldClass.markdownEditor('content', { 
+          label: 'Post Content',
+          required: true,
+          height: 400,
+          placeholder: 'Write your blog post content...\n\n**Use markdown** for formatting!\n\n- Bullet lists\n1. Numbered lists\n- [x] Checkboxes\n\n```javascript\nconsole.log("Code blocks work too!")\n```',
+          enableImageUpload: true,
+          imageUploadHandler: handleImageUpload,
+          maxImageSize: 5 * 1024 * 1024, // 5MB
+          allowedImageTypes: ['image/png', 'image/jpeg', 'image/gif'],
+          maxLength: 10000,
+          helpText: 'Supports markdown formatting, images, and code blocks'
+        })} 
+      />
+      
+      <RenderFormField 
+        field={FormFieldClass.select('category', {
+          label: 'Category',
+          options: [
+            { value: 'tech', label: 'Technology' },
+            { value: 'design', label: 'Design' },
+            { value: 'business', label: 'Business' }
+          ]
+        })} 
+      />
+      
+      <RenderFormField 
+        field={FormFieldClass.switch('published', { 
+          label: 'Publish immediately'
+        })} 
+      />
+      
+      <button type="submit">Save Post</button>
+    </Form>
+  )
+}
+```
+
 ## 🛠️ Available Field Types
 
 The `FormFieldClass` provides methods for creating all field types:
@@ -183,6 +265,15 @@ FormFieldClass.email('field', { label: 'Email Field' })
 FormFieldClass.password('field', { label: 'Password Field' })
 FormFieldClass.url('field', { label: 'URL Field' })
 FormFieldClass.phone('field', { label: 'Phone Field' })
+
+// Rich text editing
+FormFieldClass.markdownEditor('field', { 
+  label: 'Content', 
+  height: 300,
+  placeholder: 'Enter your markdown content...',
+  enableImageUpload: true,
+  maxLength: 5000
+})
 
 // Numbers and currency
 FormFieldClass.number('field', { label: 'Number', min: 0, max: 100 })
@@ -481,6 +572,64 @@ const fields = [
   })
 ]
 ```
+
+## ✍️ Markdown Editor Configuration
+
+The markdown editor provides rich text editing with full markdown support:
+
+```tsx
+FormFieldClass.markdownEditor('content', {
+  label: 'Content',
+  required: true,
+  
+  // Editor appearance
+  height: 400,
+  placeholder: 'Enter your content...',
+  
+  // Content validation
+  maxLength: 5000,
+  
+  // Image upload configuration
+  enableImageUpload: true,
+  imageUploadHandler: async (file: File) => {
+    // Custom upload logic
+    const formData = new FormData()
+    formData.append('image', file)
+    const response = await fetch('/api/upload', { method: 'POST', body: formData })
+    const { url } = await response.json()
+    return url
+  },
+  imageUploadMode: 'custom', // 'base64' | 'custom' | 'immediate'
+  maxImageSize: 5 * 1024 * 1024, // 5MB
+  allowedImageTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+  
+  // Help text
+  helpText: 'Supports markdown formatting, images, and code blocks',
+  
+  // Read-only configuration
+  readOnly: false,
+  readOnlyStyle: 'value', // 'value' | 'disabled'
+})
+```
+
+### Markdown Editor Features
+
+- **Rich text toolbar** with formatting options
+- **Live preview** of markdown content
+- **Image upload** with drag-and-drop support
+- **Code blocks** with syntax highlighting
+- **Lists** (bullet, numbered, checkbox)
+- **Links** and **blockquotes**
+- **Keyboard shortcuts** for common actions
+- **Read-only mode** for viewing content
+
+### Markdown Editor Usage Tips
+
+1. **Lists**: Use the toolbar button to toggle between bullet and numbered lists
+2. **Images**: Drag and drop images directly into the editor
+3. **Code blocks**: Use triple backticks (```) for code blocks
+4. **Shortcuts**: Press `Ctrl+B` for bold, `Ctrl+I` for italic, etc.
+5. **Checkboxes**: Type `- [ ]` for unchecked or `- [x]` for checked items
 
 ## 🎛️ Advanced Configuration
 
