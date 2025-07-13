@@ -5,9 +5,10 @@ A flexible React form library that supports both **declarative** and **imperativ
 ## 🚀 Features
 
 - **Dual API**: Use declaratively with field arrays or imperatively with individual components
+- **Standalone Fields**: Use fields outside of forms for filters, settings, and other UI elements
 - **TypeScript First**: Full type safety and IntelliSense support
 - **Flexible**: Mix and match declarative and imperative patterns
-- **Themeable**: Customizable styling system
+- **Themeable**: Customizable styling system with per-field theme overrides
 - **Validation**: Built-in validation with react-hook-form
 - **Read-only Support**: Toggle between editable and read-only modes
 - **Rich Field Types**: 20+ field types including text, email, select, date pickers, and more
@@ -24,7 +25,11 @@ pnpm add @nestledjs/forms
 
 ## 🎯 Quick Start
 
-### Declarative Usage (Recommended)
+### 1. Form Fields (Most Common)
+
+Use `Field` components within forms for most use cases:
+
+#### Declarative Usage (Recommended)
 
 Perfect for forms where you can define all fields upfront:
 
@@ -75,12 +80,12 @@ function UserRegistrationForm() {
 }
 ```
 
-### Imperative Usage
+#### Imperative Usage
 
 Perfect for dynamic forms or when you need fine-grained control:
 
 ```tsx
-import { Form, RenderFormField, FormFieldClass } from '@nestledjs/forms'
+import { Form, Field, FormFieldClass } from '@nestledjs/forms'
 
 function DynamicContactForm() {
   const [showPhone, setShowPhone] = useState(false)
@@ -90,11 +95,11 @@ function DynamicContactForm() {
       id="contact-form"
       submit={(values) => console.log('Submitted:', values)}
     >
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.text('name', { label: 'Name', required: true })} 
       />
       
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.email('email', { label: 'Email', required: true })} 
       />
       
@@ -110,12 +115,12 @@ function DynamicContactForm() {
       </div>
       
       {showPhone && (
-        <RenderFormField 
+        <Field 
           field={FormFieldClass.phone('phone', { label: 'Phone Number' })} 
         />
       )}
       
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.textArea('message', { 
           label: 'Message', 
           rows: 4,
@@ -129,12 +134,12 @@ function DynamicContactForm() {
 }
 ```
 
-### Mixed Usage
+#### Mixed Usage
 
 Combine both approaches for maximum flexibility:
 
 ```tsx
-import { Form, RenderFormField, FormFieldClass } from '@nestledjs/forms'
+import { Form, Field, FormFieldClass } from '@nestledjs/forms'
 
 function MixedForm() {
   const staticFields = [
@@ -151,14 +156,14 @@ function MixedForm() {
       {/* Static fields are rendered automatically from the fields prop */}
       
       {/* Add dynamic fields as children */}
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.password('password', { 
           label: 'Password', 
           required: true 
         })} 
       />
       
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.checkbox('terms', { 
           label: 'I agree to the terms and conditions',
           required: true
@@ -167,6 +172,64 @@ function MixedForm() {
       
       <button type="submit">Sign Up</button>
     </Form>
+  )
+}
+```
+
+### 2. Standalone Fields (Outside Forms)
+
+Use `RenderField` for individual fields outside of forms:
+
+Perfect for filters, settings panels, and other standalone UI elements:
+
+```tsx
+import { RenderField, FormFieldClass } from '@nestledjs/forms'
+import { useState } from 'react'
+
+function FilterComponent() {
+  const [selectedCategory, setSelectedCategory] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
+  
+  return (
+    <div className="filter-panel p-4 border rounded">
+      <h3>Filters</h3>
+      
+      {/* Standalone select field */}
+      <RenderField
+        field={FormFieldClass.select('category', {
+          label: 'Category',
+          options: [
+            { value: 'all', label: 'All Categories' },
+            { value: 'electronics', label: 'Electronics' },
+            { value: 'books', label: 'Books' },
+            { value: 'clothing', label: 'Clothing' }
+          ]
+        })}
+        value={selectedCategory}
+        onChange={setSelectedCategory}
+      />
+      
+      {/* Standalone search field */}
+      <RenderField
+        field={FormFieldClass.text('search', {
+          label: 'Search',
+          placeholder: 'Search products...'
+        })}
+        value={searchTerm}
+        onChange={setSearchTerm}
+        theme={{
+          textField: {
+            input: 'border-2 border-blue-300 rounded-lg px-3 py-2'
+          }
+        }}
+      />
+      
+      {/* Results display */}
+      <div className="mt-4">
+        <p>Category: {selectedCategory}</p>
+        <p>Search: {searchTerm}</p>
+      </div>
+    </div>
   )
 }
 ```
@@ -270,35 +333,35 @@ Create responsive multi-column layouts using CSS Grid or Flexbox:
 ### CSS Grid Approach
 
 ```tsx
-import { Form, RenderFormField, FormFieldClass } from '@nestledjs/forms'
+import { Form, Field, FormFieldClass } from '@nestledjs/forms'
 
 function MultiColumnForm() {
   return (
     <Form id="multi-column-form" submit={(values) => console.log(values)}>
       {/* Two-column grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <RenderFormField 
+        <Field 
           field={FormFieldClass.text('firstName', { label: 'First Name' })}
           className="col-span-1"
         />
-        <RenderFormField 
+        <Field 
           field={FormFieldClass.text('lastName', { label: 'Last Name' })}
           className="col-span-1"
         />
       </div>
 
       {/* Full-width field */}
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.email('email', { label: 'Email Address' })}
       />
 
       {/* Three-column grid for address */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <RenderFormField 
+        <Field 
           field={FormFieldClass.text('street', { label: 'Street' })}
           className="col-span-2"
         />
-        <RenderFormField 
+        <Field 
           field={FormFieldClass.text('zipCode', { label: 'ZIP' })}
           className="col-span-1"
         />
@@ -333,7 +396,7 @@ function GridFormWithFieldOptions() {
     <Form id="grid-form" submit={(values) => console.log(values)}>
       <div className="grid grid-cols-2 gap-4">
         {fields.map(field => (
-          <RenderFormField key={field.key} field={field} />
+          <Field key={field.key} field={field} />
         ))}
       </div>
       <button type="submit">Submit</button>
@@ -348,14 +411,14 @@ function GridFormWithFieldOptions() {
 function HorizontalLayoutForm() {
   return (
     <Form id="horizontal-form" submit={(values) => console.log(values)}>
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.checkbox('newsletter', { 
           label: 'Subscribe to newsletter',
           layout: 'horizontal'  // Label and input on same line
         })}
       />
       
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.checkbox('terms', { 
           label: 'I agree to the terms and conditions',
           layout: 'horizontal'
@@ -374,7 +437,7 @@ function HorizontalLayoutForm() {
 function CustomWrapperForm() {
   return (
     <Form id="custom-wrapper-form" submit={(values) => console.log(values)}>
-      <RenderFormField 
+      <Field 
         field={FormFieldClass.text('amount', { 
           label: 'Amount',
           customWrapper: (children) => (
@@ -516,14 +579,55 @@ const field = FormFieldClass.text('name', {
 ### Core Components
 
 - **`Form`**: Main form component supporting both declarative and imperative usage
-- **`RenderFormField`**: Renders individual form fields (imperative usage)
+- **`Field`**: Renders individual form fields within forms (imperative usage)
+- **`RenderField`**: Renders standalone fields outside of forms (filters, settings, etc.)
 - **`FormFieldClass`**: Factory class for creating field definitions
+
+### Component Usage Guide
+
+**Use `Field` when:**
+- Building fields inside a `<Form>` component
+- You need form validation and submission
+- You want fields to participate in form state
+
+**Use `RenderField` when:**
+- Building standalone UI elements (filters, settings panels)
+- You don't need form submission
+- You want direct value/onChange control
+- You need custom theming per field
 
 ### Hooks
 
 - **`useFormContext<T>()`**: Access form state and methods
 - **`useFormConfig()`**: Access form configuration (label display, etc.)
 - **`useFormTheme()`**: Access current theme configuration
+
+### Component Props
+
+**`Field` Props:**
+```tsx
+interface FieldProps {
+  field: FormField                    // Field definition
+  formReadOnly?: boolean              // Override read-only mode
+  formReadOnlyStyle?: 'value' | 'disabled'  // Read-only display style
+  className?: string                  // Additional CSS classes
+}
+```
+
+**`RenderField` Props:**
+```tsx
+interface RenderFieldProps {
+  field: FormField                    // Field definition
+  value?: any                         // Current field value
+  onChange?: (value: any) => void     // Change handler
+  disabled?: boolean                  // Disable the field
+  readOnly?: boolean                  // Read-only mode
+  readOnlyStyle?: 'value' | 'disabled'  // Read-only display style
+  theme?: Partial<FormTheme>          // Theme overrides
+  labelDisplay?: 'all' | 'default' | 'none'  // Label visibility
+  className?: string                  // Additional CSS classes
+}
+```
 
 ### Types
 
@@ -577,6 +681,20 @@ function TypedForm() {
 4. **Use TypeScript generics** for type safety
 5. **Leverage validation** for better user experience
 6. **Consider read-only modes** for view/edit patterns
+
+## 🔄 Backwards Compatibility
+
+For backwards compatibility, `RenderFormField` is still available as an alias for `Field`:
+
+```tsx
+// ✅ New recommended usage
+import { Field } from '@nestledjs/forms'
+<Field field={myField} />
+
+// ✅ Still works (backwards compatibility)
+import { RenderFormField } from '@nestledjs/forms'
+<RenderFormField field={myField} />
+```
 
 ## 📄 License
 
