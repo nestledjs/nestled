@@ -2,6 +2,7 @@ import { merge } from 'lodash-es'
 import clsx from 'clsx'
 import { FormTheme, FormThemeSchema } from '../form-theme'
 import { tailwindTheme } from '../themes/tailwind'
+import { DeepPartial } from '@nestledjs/helpers'
 
 /**
  * Creates the final, fully resolved theme for the entire form. This is the
@@ -34,7 +35,7 @@ function mergeSection<T extends object>(global: Partial<Record<string, string>>,
   return result
 }
 
-export function createFinalTheme(userTheme: Partial<FormTheme> = {}): FormTheme {
+export function createFinalTheme(userTheme: DeepPartial<FormTheme> = {}): FormTheme {
   // --- Step 1: Handle User Overrides ---
   const mergedTheme = merge({}, tailwindTheme, userTheme)
 

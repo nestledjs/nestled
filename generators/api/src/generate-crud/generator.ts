@@ -120,11 +120,13 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
 import { UseGuards } from '@nestjs/common'
 import type { GraphQLResolveInfo } from 'graphql'
 import { CorePaging } from '@${npmScope}/api/core/data-access'
-import { ApiCrudDataAccessService } from '@${npmScope}/api/generated-crud/data-access'
 import { ${model.modelName} } from '@${npmScope}/api/core/models'
-import { Create${model.modelName}Input, List${model.modelName}Input, Update${
-    model.modelName
-  }Input } from '@${npmScope}/api/generated-crud/data-access'
+import {
+    ApiCrudDataAccessService,
+    Create${model.modelName}Input,
+    List${model.modelName}Input,
+    Update${model.modelName}Input
+    } from '@${npmScope}/api/generated-crud/data-access'
 ${guardImports}
 
 @Resolver(() => ${model.modelName})
@@ -279,7 +281,7 @@ export async function generateCrudLogic(
     name: string,
   ) {
     const npmScope = dependencies.getNpmScope(tree)
-    
+
     // Generate feature module and resolvers
     const featureModuleContent = generateFeatureModuleContent(models, npmScope)
     tree.write(

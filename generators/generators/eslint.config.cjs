@@ -1,22 +1,58 @@
-const baseConfig = require('../../eslint.config.js')
+const tsParser = require('@typescript-eslint/parser')
+const jsonParser = require('jsonc-eslint-parser')
+const path = require('path')
 
 module.exports = [
-  ...baseConfig,
+  {
+    files: ['src/**/*.ts'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: [path.resolve(__dirname, './tsconfig.lib.json')],
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {
+      '@nx/dependency-checks': 'off',
+    },
+  },
+  {
+    files: ['**/*.spec.ts', '**/*.test.ts', 'vite.config.ts', 'vitest.config.ts'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        project: [path.resolve(__dirname, './tsconfig.spec.json')],
+        tsconfigRootDir: __dirname,
+      },
+    },
+    rules: {
+      '@nx/dependency-checks': 'off',
+    },
+  },
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      parser: tsParser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      '@nx/dependency-checks': 'off',
+    },
+  },
   {
     files: ['**/*.json'],
-    rules: {
-      '@nx/dependency-checks': [
-        'error',
-        {
-          ignoredFiles: [
-            '{projectRoot}/eslint.config.{js,cjs,mjs,ts,cts,mts}',
-            '{projectRoot}/vite.config.{js,ts,mjs,mts}',
-          ],
-        },
-      ],
-    },
     languageOptions: {
-      parser: require('jsonc-eslint-parser'),
+      parser: jsonParser,
+    },
+    rules: {
+      '@nx/dependency-checks': 'off',
     },
   },
 ]

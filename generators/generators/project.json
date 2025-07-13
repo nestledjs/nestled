@@ -3,14 +3,15 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "generators/generators/src",
   "projectType": "library",
-  "release": {
-    "version": {
-      "manifestRootsToUpdate": ["dist/{projectRoot}"],
-      "currentVersionResolver": "git-tag",
-      "fallbackCurrentVersionResolver": "disk"
-    }
-  },
   "tags": [],
+  "implicitDependencies": [
+    "api",
+    "config",
+    "plugins",
+    "shared",
+    "utils",
+    "web"
+  ],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -20,11 +21,6 @@
         "main": "generators/generators/src/index.ts",
         "tsConfig": "generators/generators/tsconfig.lib.json",
         "assets": ["generators/generators/*.md"]
-      }
-    },
-    "nx-release-publish": {
-      "options": {
-        "packageRoot": "dist/{projectRoot}"
       }
     }
   }

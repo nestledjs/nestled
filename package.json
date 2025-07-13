@@ -29,7 +29,6 @@
     "@nestjs/core": "^10.0.2",
     "@nestjs/graphql": "latest",
     "@nestjs/platform-express": "^10.0.2",
-    "@nestledjs/helpers": "0.0.3",
     "@nx/devkit": "21.2.1",
     "@prisma/internals": "^6.11.0",
     "@storybook/addon-a11y": "^9.0.15",
