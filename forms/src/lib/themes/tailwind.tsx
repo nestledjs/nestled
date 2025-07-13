@@ -304,6 +304,17 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 whitespace-pre-line',
     helpText: 'text-sm text-gray-600 mt-1',
   },
+  markdownEditor: {
+    wrapper: '',
+    editor: 'border border-gray-300 rounded-md focus-within:ring-sky-300 focus-within:border-sky-300 prose prose-sm max-w-none p-4',
+    toolbar: 'bg-gray-50 border-b border-gray-200 px-3 py-2 rounded-t-md',
+    preview: 'prose prose-sm max-w-none p-4 min-h-[200px] bg-white',
+    error: '!border-red-600 !focus-within:border-red-600 !focus-within:ring-red-600',
+    disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyValue: 'prose prose-sm max-w-none p-4 min-h-[200px] bg-gray-50 text-gray-700',
+    helpText: 'text-sm text-gray-600 mt-1',
+  },
   timePickerField: {
     wrapper: '',
     input: 'block w-full px-3 py-2 text-green-600 min-h-[2.5rem]',

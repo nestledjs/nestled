@@ -6,6 +6,7 @@ import { useFormConfig } from './form-config-context'
 
 import { TextField } from './fields/text-field'
 import { TextAreaField } from './fields/textarea-field'
+import { MarkdownEditor } from './fields/markdown-editor'
 import { EmailField } from './fields/email-field'
 import { PasswordField } from './fields/password-field'
 import { UrlField } from './fields/url-field'
@@ -53,6 +54,16 @@ function renderComponent(
     case FormFieldType.TextArea:
       return (
         <TextAreaField
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
+    case FormFieldType.MarkdownEditor:
+      return (
+        <MarkdownEditor
           form={form}
           field={field}
           hasError={hasError}

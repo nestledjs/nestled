@@ -16,11 +16,10 @@ export async function webSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       isbot: '5.1.28',
       '@apollo/client': '^3.13.8',
       '@apollo/client-integration-react-router': '0.12.0-alpha.4',
-      'graphql-tag': '^2.12.6'
-
-},
+      'graphql-tag': '^2.12.6',
+    },
     {
-      '@nx/react': '21.2.1',
+      '@nx/react': '21.2.3',
       'vite-tsconfig-paths': '^5.1.4',
       '@tailwindcss/vite': '^4.1.8',
       tailwindcss: '^4.1.8',

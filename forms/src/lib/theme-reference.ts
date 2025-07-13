@@ -362,6 +362,19 @@ export const themeReference: FormTheme = {
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 break-all',
     helpText: 'text-sm text-gray-600 mt-1',
   },
+
+  // Markdown editor fields
+  markdownEditor: {
+    wrapper: '',
+    editor: 'prose prose-sm max-w-none p-4',
+    toolbar: 'border-b border-gray-200 p-2',
+    preview: 'prose prose-sm max-w-none',
+    error: '!border-red-600',
+    disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyValue: 'prose prose-sm max-w-none',
+    helpText: 'text-sm text-gray-600 mt-1',
+  },
 }
 
 /**
@@ -421,6 +434,17 @@ export function generateThemeTemplate(): string {
       disabled: '',
       readOnly: '',
       readOnlyInput: '',
+      readOnlyValue: '',
+      helpText: '',
+    },
+    markdownEditor: {
+      wrapper: '',
+      editor: '',
+      toolbar: '',
+      preview: '',
+      error: '',
+      disabled: '',
+      readOnly: '',
       readOnlyValue: '',
       helpText: '',
     },

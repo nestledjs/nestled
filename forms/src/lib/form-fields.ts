@@ -12,6 +12,7 @@ import {
   FormField,
   FormFieldType,
   InputFieldOptions,
+  MarkdownEditorOptions,
   NumberFieldOptions,
   PasswordFieldOptions,
   PhoneFieldOptions,
@@ -110,6 +111,60 @@ export class FormFieldClass {
    */
   static textArea(key: string, options: TextAreaOptions = {}): FormField {
     return this.field(FormFieldType.TextArea, key, options)
+  }
+
+  /**
+   * Creates a markdown editor field with rich text editing capabilities.
+   * 
+   * @param key - Unique identifier for the field
+   * @param options - Configuration options including label, height, preview, toolbar, etc.
+   * @returns A markdown editor field definition
+   * 
+   * @example
+   * ```tsx
+   * FormFieldClass.markdownEditor('content', { 
+   *   label: 'Content', 
+   *   height: 400,
+   *   preview: true,
+   *   toolbar: ['bold', 'italic', 'link', 'quote', 'code']
+   * })
+   * ```
+   */
+  static markdownEditor(
+    key: string,
+    options: Partial<MarkdownEditorOptions> = {}
+  ): FormField {
+    return {
+      key,
+      type: FormFieldType.MarkdownEditor,
+      options: {
+        label: key,
+        ...options,
+      },
+    }
+  }
+
+  /**
+   * Creates a Markdown editor field with image upload support
+   */
+  static markdownEditorWithImages(
+    key: string,
+    imageUploadHandler: (file: File) => Promise<string>,
+    options: Partial<MarkdownEditorOptions> = {}
+  ): FormField {
+    return {
+      key,
+      type: FormFieldType.MarkdownEditor,
+      options: {
+        label: key,
+        enableImageUpload: true,
+        imageUploadHandler,
+        maxImageSize: 5 * 1024 * 1024, // 5MB default
+        allowedImageTypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+        imageUploadMode: 'custom',
+        ...options,
+      },
+    }
   }
 
   /**

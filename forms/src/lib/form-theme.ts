@@ -318,6 +318,19 @@ export const FormThemeSchema = z.object({
       helpText: z.string().default(''),
     })
     .default({}),
+  markdownEditor: z
+    .object({
+      wrapper: z.string().default(''),
+      editor: z.string().default(''),
+      toolbar: z.string().default(''),
+      preview: z.string().default(''),
+      error: z.string().default(''),
+      disabled: z.string().default(''),
+      readOnly: z.string().default(''),
+      readOnlyValue: z.string().default(''),
+      helpText: z.string().default(''),
+    })
+    .default({}),
   timePickerField: z
     .object({
       wrapper: z.string().default(''),

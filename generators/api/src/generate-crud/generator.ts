@@ -1,6 +1,13 @@
 import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, names, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { apiLibraryGenerator, getPrismaSchemaPath, readPrismaSchema, generateDatabaseModelContent, ModelType, getPluralName } from '@nestledjs/utils'
+import {
+  apiLibraryGenerator,
+  generateDatabaseModelContent,
+  getPluralName,
+  getPrismaSchemaPath,
+  ModelType,
+  readPrismaSchema,
+} from '@nestledjs/utils'
 import { GenerateCrudGeneratorSchema } from './schema'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
@@ -278,7 +285,6 @@ export async function generateCrudLogic(
     dataAccessLibraryRoot: string,
     featureLibraryRoot: string,
     models: ModelType[],
-    name: string,
   ) {
     const npmScope = dependencies.getNpmScope(tree)
 
@@ -319,7 +325,7 @@ export async function generateCrudLogic(
   }
 
   const { dataAccessLibraryRoot, featureLibraryRoot } = await createLibraries(tree, name, models)
-  await generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models, name)
+  await generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models)
   await dependencies.formatFiles(tree)
 
   return () => {

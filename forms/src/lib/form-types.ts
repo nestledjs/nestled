@@ -29,6 +29,7 @@ export enum FormFieldType {
   Content = 'Content',
   Custom = 'Custom',
   CustomCheckbox = 'CustomCheckbox',
+  MarkdownEditor = 'MarkdownEditor',
 }
 
 // A Base interface for options common to ALL fields
@@ -392,6 +393,7 @@ export type FormField =
   | ContentField
   | CustomFieldType<any>
   | CustomCheckboxField
+  | MarkdownEditorField
 
 // A generic prop type for all individual field components
 export interface FormFieldProps<T extends FormField> {
@@ -416,4 +418,30 @@ interface CustomCheckboxField {
   key: string
   type: FormFieldType.CustomCheckbox
   options: CustomCheckboxOptions
+}
+
+export interface MarkdownEditorOptions extends BaseFieldOptions {
+  placeholder?: string
+  height?: number
+  maxLength?: number
+  readOnly?: boolean
+  readOnlyStyle?: 'value' | 'disabled'
+  disabled?: boolean
+  helpText?: string
+  defaultValue?: string
+  required?: boolean
+  
+  // Image upload configuration
+  enableImageUpload?: boolean
+  imageUploadHandler?: (file: File) => Promise<string>
+  maxImageSize?: number // in bytes
+  allowedImageTypes?: string[] // ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  imageUploadMode?: 'immediate' | 'base64' | 'custom'
+  imageUploadPlaceholder?: string
+}
+
+interface MarkdownEditorField {
+  key: string
+  type: FormFieldType.MarkdownEditor
+  options: MarkdownEditorOptions
 }

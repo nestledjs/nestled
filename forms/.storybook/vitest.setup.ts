@@ -1,7 +1,7 @@
 import { setProjectAnnotations } from '@storybook/react-vite'
 import * as projectAnnotations from './preview'
 import '@testing-library/jest-dom'
-import { expect } from 'vitest'
+import { expect, vi } from 'vitest'
 import * as matchers from '@testing-library/jest-dom/matchers'
 
 // Extend Vitest's expect with Testing Library's matchers

@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/config",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
@@ -17,12 +17,12 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nx/devkit": "21.2.1"
+    "@nx/devkit": "21.2.3"
   },
   "devDependencies": {
     "yaml": "^2.8.0"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.1.1"
+    "@nestledjs/utils": "0.1.2"
   }
 }

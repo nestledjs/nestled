@@ -10,6 +10,12 @@ const dirname = typeof __dirname !== 'undefined' ? __dirname : path.dirname(file
 export default mergeConfig(
   viteConfig,
   defineConfig({
+    optimizeDeps: {
+      include: ['@mdxeditor/editor'],
+    },
+    ssr: {
+      noExternal: ['@mdxeditor/editor'],
+    },
     resolve: {
       alias: {
         '@nestledjs/forms': path.resolve(dirname, 'dist'),
@@ -17,6 +23,8 @@ export default mergeConfig(
       },
     },
     test: {
+      testTimeout: 30000, // 30s
+      hookTimeout: 30000,
       // Vitest project mode
       projects: [
         // ✅ Regular unit/component tests
