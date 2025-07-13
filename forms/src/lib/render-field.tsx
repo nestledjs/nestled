@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { FormField } from './form-types'
 import { FormContext } from './form-context'
 import { ThemeContext } from './theme-context'
-import { FormConfigContext, FormConfig } from './form-config-context'
+import { FormConfigContext } from './form-config-context'
 import { createFinalTheme } from './utils/resolve-theme'
 import { Field } from './field'
 
@@ -48,10 +48,10 @@ export interface RenderFieldProps {
 
 /**
  * Standalone field renderer that can be used outside of forms.
- * 
- * This component provides the same styling and functionality as fields within forms,
+ *
+ * This component provides the same styling and functionality as fields within forms
  * but can be used independently for things like filters, settings, or other UI elements.
- * 
+ *
  * @example
  * ```tsx
  * // Simple standalone select
@@ -67,7 +67,7 @@ export interface RenderFieldProps {
  *   value={selectedFilter}
  *   onChange={setSelectedFilter}
  * />
- * 
+ *
  * // Standalone text field with custom styling
  * <RenderField
  *   field={FormFieldClass.text('search', {
@@ -76,10 +76,10 @@ export interface RenderFieldProps {
  *   })}
  *   value={searchTerm}
  *   onChange={setSearchTerm}
- *   theme={{ 
- *     textField: { 
- *       input: 'border-2 border-blue-300 rounded-lg' 
- *     } 
+ *   theme={{
+ *     textField: {
+ *       input: 'border-2 border-blue-300 rounded-lg'
+ *     }
  *   }}
  * />
  * ```
@@ -94,7 +94,7 @@ export function RenderField({
   theme: userTheme = {},
   labelDisplay = 'default',
   className,
-}: RenderFieldProps) {
+}: Readonly<RenderFieldProps>) {
   // Create a minimal form instance for compatibility
   const form = useForm({
     defaultValues: {
@@ -118,7 +118,7 @@ export function RenderField({
   }, [form, field.key, onChange])
 
   const finalTheme = useMemo(() => createFinalTheme(userTheme), [userTheme])
-  const formConfig: FormConfig = { labelDisplay }
+  const formConfig = useMemo(() => ({ labelDisplay }), [labelDisplay])
 
   return (
     <div className={className}>
@@ -135,4 +135,4 @@ export function RenderField({
       </FormConfigContext.Provider>
     </div>
   )
-} 
+}

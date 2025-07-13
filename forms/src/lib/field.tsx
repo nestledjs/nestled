@@ -282,62 +282,62 @@ function renderComponent(
 /**
  * Renders a form field component based on the field definition.
  * This is the core function that enables declarative form field usage.
- * 
+ *
  * Must be used within a Form component to access form context.
  * Automatically handles field rendering, validation display, and theming.
- * 
+ *
  * @param field - The field definition object created using FormFieldClass methods
  * @param formReadOnly - Whether the field should be in read-only mode (overrides form-level setting)
  * @param formReadOnlyStyle - How to display read-only fields: 'value' shows plain text, 'disabled' shows disabled input
  * @param className - Additional CSS classes to apply to the field wrapper
  * @returns A React component that renders the appropriate field type with label, validation, and styling
- * 
+ *
  * @example
  * ```tsx
  * // Basic usage
- * <Field 
- *   field={FormFieldClass.text('username', { label: 'Username', required: true })} 
+ * <Field
+ *   field={FormFieldClass.text('username', { label: 'Username', required: true })}
  * />
- * 
+ *
  * // Multi-column layout with CSS Grid
  * <div className="grid grid-cols-2 gap-4">
- *   <Field 
+ *   <Field
  *     field={FormFieldClass.text('firstName', { label: 'First Name' })}
  *     className="col-span-1"
  *   />
- *   <Field 
+ *   <Field
  *     field={FormFieldClass.text('lastName', { label: 'Last Name' })}
  *     className="col-span-1"
  *   />
  * </div>
- * 
+ *
  * // Using wrapperClassName in field options
  * <div className="grid grid-cols-2 gap-4">
- *   <Field 
- *     field={FormFieldClass.text('firstName', { 
+ *   <Field
+ *     field={FormFieldClass.text('firstName', {
  *       label: 'First Name',
  *       wrapperClassName: 'col-span-1'
  *     })}
  *   />
- *   <Field 
- *     field={FormFieldClass.text('lastName', { 
+ *   <Field
+ *     field={FormFieldClass.text('lastName', {
  *       label: 'Last Name',
  *       wrapperClassName: 'col-span-1'
  *     })}
  *   />
  * </div>
- * 
+ *
  * // Horizontal layout within field
- * <Field 
- *   field={FormFieldClass.checkbox('agree', { 
+ * <Field
+ *   field={FormFieldClass.checkbox('agree', {
  *     label: 'I agree to the terms',
  *     layout: 'horizontal'
  *   })}
  * />
- * 
+ *
  * // Custom wrapper function
- * <Field 
- *   field={FormFieldClass.text('email', { 
+ * <Field
+ *   field={FormFieldClass.text('email', {
  *     label: 'Email',
  *     customWrapper: (children) => (
  *       <div className="flex items-center space-x-4">
@@ -353,12 +353,12 @@ export function Field({
   formReadOnly = false,
   formReadOnlyStyle = 'value',
   className,
-}: {
+}: Readonly<{
   field: FormField
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
   className?: string
-}) {
+}>) {
   const form = useFormContext()
   const { labelDisplay } = useFormConfig()
 
@@ -373,9 +373,6 @@ export function Field({
     switch (labelDisplay) {
       case 'all':
         showLabel = true
-        break
-      case 'none':
-        showLabel = false
         break
       case 'default':
       default:
@@ -420,4 +417,4 @@ export function Field({
       {fieldContent}
     </div>
   )
-} 
+}
