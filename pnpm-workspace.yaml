@@ -1,5 +1,6 @@
 packages:
   - generators/**
+
 onlyBuiltDependencies:
   - '@apollo/protobufjs'
   - '@nestjs/core'
@@ -10,6 +11,7 @@ onlyBuiltDependencies:
   - '@swc/core'
   - '@tailwindcss/oxide'
   - core-js
+  - es5-ext
   - esbuild
   - graphql-query-complexity
   - graphql-redis-subscriptions
