@@ -98,11 +98,13 @@ describe('web generator', () => {
     errorSpy.mockRestore()
   })
 
-  it.skip('should throw and log error if an exception occurs', async () => {
-    // TODO: Fix this test - currently causing ESLint issues with lazy-loaded modules
-    // const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    // await expect(generator(tree, schema)).rejects.toThrow('test error')
-    // expect(errorSpy).toHaveBeenCalledWith('Error generating Web app:', expect.any(Error))
-    // errorSpy.mockRestore()
+  it('should throw and log error if an exception occurs', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    // Mock applicationGenerator to throw
+    const appGenMock = realApplicationGenerator as unknown as ReturnType<typeof vi.fn>
+    appGenMock.mockImplementationOnce(async () => { throw new Error('test error') })
+    await expect(generator(tree, schema)).rejects.toThrow('test error')
+    expect(errorSpy).toHaveBeenCalledWith('Error generating Web app:', expect.any(Error))
+    errorSpy.mockRestore()
   })
 })
