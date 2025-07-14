@@ -1,19 +1,19 @@
-query <%= className %>($<%= propertyName %>Id: String!) {
+query <%= adminPrefix ? adminPrefix : '' %><%= className %>($<%= propertyName %>Id: String!) {
   <%= propertyName %>(<%= propertyName %>Id: $<%= propertyName %>Id) {
-    ...<%= className %>Details
+    ...<%= adminPrefix ? adminPrefix : '' %><%= className %>Details
   }
 }
 
-query <%= pluralClassName %>($input: List<%= className %>Input) {
+query <%= adminPrefix ? adminPrefix : '' %><%= pluralClassName %>($input: List<%= className %>Input) {
   <%= pluralPropertyName %>(input: $input) {
-    ...<%= className %>Details
+    ...<%= adminPrefix ? adminPrefix : '' %><%= className %>List
   }
   counters: <%= pluralPropertyName %>Count(input: $input) {
     ...CorePagingDetails
   }
 }
 
-query <%= className %>Pagination($input: List<%= className %>Input) {
+query <%= adminPrefix ? adminPrefix : '' %><%= className %>Pagination($input: List<%= className %>Input) {
   counters: <%= pluralPropertyName %>Count(input: $input) {
     ...CorePagingDetails
   }

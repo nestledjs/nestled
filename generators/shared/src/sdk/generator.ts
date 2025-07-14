@@ -9,9 +9,10 @@ import {
 } from '@nx/devkit'
 import * as path from 'path'
 import * as fs from 'fs'
-import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles } from '@nestledjs/utils'
+import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles, deleteDirectory } from '@nestledjs/utils'
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
+import { getDMMF } from '@prisma/internals'
 
 const SCALAR_TYPES = ['String', 'Int', 'Boolean', 'Float', 'DateTime', 'Json', 'BigInt', 'Decimal', 'Bytes']
 
@@ -22,49 +23,32 @@ function kebabCase(str: string): string {
     .toLowerCase()
 }
 
-function parsePrismaModels(schemaContent: string) {
-  const modelRegex = /model (\w+) \{([\s\S]*?)\}/g
-  const fieldRegex = /^\s*(\w+)\s+(\w+(?:\[\])?)(\??)(?:\s+(.*))?$/
-  const models: Record<string, { fields: { name: string; type: string; isList: boolean; isRelation: boolean }[] }> = {}
-
-  let match
-  while ((match = modelRegex.exec(schemaContent))) {
-    const [, modelName, body] = match
-    const fields = []
-
-    // Split the model body into lines and process each line
-    const lines = body.split('\n')
-    for (const line of lines) {
-      const fieldMatch = fieldRegex.exec(line)
-      if (fieldMatch) {
-        const [, name, type, , attrs] = fieldMatch
-        const isList = type.endsWith('[]')
-        const isRelation = attrs && attrs.includes('@relation')
-        fields.push({
-          name,
-          type: type.replace('[]', ''),
-          isList,
-          isRelation,
-        })
-      }
-    }
-
-    models[modelName] = { fields }
-  }
-  return models
+// Helper to get the default field for a model from DMMF
+function getDefaultField(model: any): string | undefined {
+  return model.fields.find(
+    (f: any) => f?.documentation?.includes('@defaultField')
+  )?.name
 }
 
-function getFragmentFields(fields: { name: string; type: string; isList: boolean; isRelation: boolean }[]) {
-  return fields
-    .filter(
-      (f) =>
-        !f.isList &&
-        !f.isRelation &&
-        f.name !== 'id' &&
-        !f.name.endsWith('Id') &&
-        SCALAR_TYPES.includes(f.type) // allow all non-relation, non-list, non-id fields (including enums)
+// Helper to get admin fragment fields for a model
+function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>): string {
+  return model.fields
+    .filter((f: any) => !f.isList && !f.relationName)
+    .map((f: any) => f.name)
+    .concat(
+      model.fields
+        .filter((f: any) => f.relationName && !f.isList)
+        .map((f: any) => {
+          const relatedModel = allModels.find((m: any) => m.name === f.type)
+          const defaultField = relatedModel ? getDefaultField(relatedModel) : null
+          // Refactored to avoid nested template literals
+          let relationFields = 'id';
+          if (defaultField) {
+            relationFields += `\n    ${defaultField}`;
+          }
+          return `${f.name} {\n    ${relationFields}\n  }`;
+        })
     )
-    .map((f) => f.name)
     .join('\n  ')
 }
 
@@ -83,7 +67,7 @@ async function ensureSdkLibrary(tree: Tree, dependencies: SdkGeneratorDependenci
       linter: 'eslint',
       tags: 'type:shared,scope:shared',
     })
-    
+
     // Clean up default generated files that we don't need
     deleteFiles(tree, [
       'libs/shared/sdk/src/lib/sdk.ts',
@@ -139,19 +123,21 @@ export async function sdkGeneratorLogic(
   if (!dependencies.existsSync(absSchemaPath)) throw new Error(`Prisma schema not found at ${absSchemaPath}`)
   const schemaContent = readPrismaSchema(absSchemaPath, dependencies)
 
-  // 2. Parse models
-  const models = parsePrismaModels(schemaContent)
+  // 2. Parse models using Prisma DMMF for doc comments
+  const dmmf = await getDMMF({ datamodel: schemaContent })
+  const allModels = dmmf.datamodel.models
 
   // 3. Ensure sdk library exists
   await ensureSdkLibrary(tree, dependencies)
 
   // 4. Generate database models file
-  const allModels = await getAllPrismaModels(tree)
-  const databaseModelContent = generateDatabaseModelContent(allModels)
+  const allModelsForDb = await getAllPrismaModels(tree)
+  const databaseModelContent = generateDatabaseModelContent(allModelsForDb)
   tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
 
-  // 5. For each model, generate files
-  for (const [modelName, { fields }] of Object.entries(models)) {
+  // 5. For each model, generate client files (existing logic)
+  for (const model of allModels) {
+    const modelName = model.name
     const kebabName = kebabCase(modelName)
     const modelDir = `libs/shared/sdk/src/graphql/${kebabName}`
     if (tree.exists(modelDir)) continue
@@ -160,7 +146,17 @@ export async function sdkGeneratorLogic(
     const propertyName = modelName.charAt(0).toLowerCase() + modelName.slice(1)
     const pluralClassName = dependencies.getPluralName(className)
     const pluralPropertyName = dependencies.getPluralName(propertyName)
-    const fragmentFields = getFragmentFields(fields)
+    const fragmentFields = model.fields
+      .filter(
+        (f: any) =>
+          !f.isList &&
+          !f.relationName &&
+          f.name !== 'id' &&
+          !f.name.endsWith('Id') &&
+          SCALAR_TYPES.includes(f.type)
+      )
+      .map((f: any) => f.name)
+      .join('\n  ')
 
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
       className,
@@ -171,7 +167,6 @@ export async function sdkGeneratorLogic(
       kebabName,
       tmpl: '',
     })
-    // Rename generated files to kebab-case
     ;['fragments', 'mutations', 'queries'].forEach((type) => {
       const oldPath = dependencies.join(modelDir, `__name__-${type}.graphql`)
       const newPath = dependencies.join(modelDir, `${kebabName}-${type}.graphql`)
@@ -181,15 +176,49 @@ export async function sdkGeneratorLogic(
     })
   }
 
-  // 6. Always write codegen.yml and index.ts
+  // 6. For each model, generate admin files (always overwrite)
+  // Clean up the admin-graphql directory before generating new files
+  deleteDirectory(tree, 'libs/shared/sdk/src/admin-graphql');
+  for (const model of allModels) {
+    const modelName = model.name
+    const kebabName = kebabCase(modelName)
+    const modelDir = `libs/shared/sdk/src/admin-graphql/${kebabName}`
+    // Always overwrite admin files
+    const className = modelName
+    const propertyName = modelName.charAt(0).toLowerCase() + modelName.slice(1)
+    const pluralClassName = dependencies.getPluralName(className)
+    const pluralPropertyName = dependencies.getPluralName(propertyName)
+    const fragmentFields = getAdminFragmentFields(model, allModels)
+    const adminPrefix = 'Admin'
+
+    dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
+      className,
+      propertyName,
+      pluralClassName,
+      pluralPropertyName,
+      fragmentFields,
+      kebabName,
+      adminPrefix,
+      tmpl: '',
+    })
+    ;['fragments', 'mutations', 'queries'].forEach((type) => {
+      const oldPath = dependencies.join(modelDir, `__name__-${type}.graphql`)
+      const newPath = dependencies.join(modelDir, `${kebabName}-${type}.graphql`)
+      if (tree.exists(oldPath)) {
+        tree.rename(oldPath, newPath)
+      }
+    })
+  }
+
+  // 7. Always write codegen.yml and index.ts
   const sdkSrcDir = 'libs/shared/sdk/src'
   dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files'), sdkSrcDir, { tmpl: '' })
 
-  // 7. Add scripts to package.json
+  // 8. Add scripts to package.json
   dependencies.addScriptToPackageJson(tree, 'sdk', 'graphql-codegen --config libs/shared/sdk/src/codegen.yml')
   dependencies.addScriptToPackageJson(tree, 'sdk:watch', 'pnpm sdk --watch')
 
-  // 8. Add GraphQL Codegen packages as devDependencies
+  // 9. Add GraphQL Codegen packages as devDependencies
   dependencies.addDependenciesToPackageJson(
     tree,
     {},
