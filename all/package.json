@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/all",
-  "version": "0.1.4",
+  "version": "0.1.3",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -39,12 +39,12 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nestledjs/api": "0.1.4",
+    "@nestledjs/api": "0.1.3",
     "@nestledjs/config": "0.1.2",
     "@nestledjs/plugins": "0.1.2",
     "@nestledjs/shared": "0.1.2",
     "@nestledjs/utils": "0.1.2",
-    "@nestledjs/web": "0.1.2",
+    "@nestledjs/web": "0.1.3",
     "@nestledjs/forms": "0.2.0",
     "@nestledjs/helpers": "0.1.1"
   }
