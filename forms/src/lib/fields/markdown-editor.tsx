@@ -11,7 +11,7 @@ import '@mdxeditor/editor/style.css'
 // --- Extracted Helpers ---
 
 // Default image upload handler for base64 mode
-export const defaultImageUploadHandler = (imageUploadMode: string) => async (file: File): Promise<string> => {
+export const defaultImageUploadHandler = (imageUploadMode: 'base64' | 'external') => async (file: File): Promise<string> => {
   if (imageUploadMode === 'base64') {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
