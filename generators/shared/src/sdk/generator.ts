@@ -41,7 +41,12 @@ function getAdminFragmentFields(model: any, allModels: any[]): string {
         .map((f: any) => {
           const relatedModel = allModels.find((m: any) => m.name === f.type)
           const defaultField = relatedModel ? getDefaultField(relatedModel) : null
-          return `${f.name} {\n    id${defaultField ? `\n    ${defaultField}` : ''}\n  }`
+          // Refactored to avoid nested template literals
+          let relationFields = 'id';
+          if (defaultField) {
+            relationFields += `\n    ${defaultField}`;
+          }
+          return `${f.name} {\n    ${relationFields}\n  }`;
         })
     )
     .join('\n  ')
