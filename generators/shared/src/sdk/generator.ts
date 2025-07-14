@@ -9,7 +9,7 @@ import {
 } from '@nx/devkit'
 import * as path from 'path'
 import * as fs from 'fs'
-import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles } from '@nestledjs/utils'
+import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles, deleteDirectory } from '@nestledjs/utils'
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { getDMMF } from '@prisma/internals'
@@ -31,7 +31,7 @@ function getDefaultField(model: any): string | undefined {
 }
 
 // Helper to get admin fragment fields for a model
-function getAdminFragmentFields(model: any, allModels: any[]): string {
+function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>): string {
   return model.fields
     .filter((f: any) => !f.isList && !f.relationName)
     .map((f: any) => f.name)
@@ -177,8 +177,8 @@ export async function sdkGeneratorLogic(
   }
 
   // 6. For each model, generate admin files (always overwrite)
-  // Convert allModels to a mutable array for getAdminFragmentFields
-  const allModelsMutable = Array.from(allModels)
+  // Clean up the admin-graphql directory before generating new files
+  deleteDirectory(tree, 'libs/shared/sdk/src/admin-graphql');
   for (const model of allModels) {
     const modelName = model.name
     const kebabName = kebabCase(modelName)
@@ -188,7 +188,7 @@ export async function sdkGeneratorLogic(
     const propertyName = modelName.charAt(0).toLowerCase() + modelName.slice(1)
     const pluralClassName = dependencies.getPluralName(className)
     const pluralPropertyName = dependencies.getPluralName(propertyName)
-    const fragmentFields = getAdminFragmentFields(model, allModelsMutable)
+    const fragmentFields = getAdminFragmentFields(model, allModels)
     const adminPrefix = 'Admin'
 
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
