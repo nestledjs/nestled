@@ -36,7 +36,7 @@ export interface GenerateCrudGeneratorDependencies {
 }
 
 // STEP 2: DEFINE PURE HELPER & CONTENT GENERATION FUNCTIONS
-// These functions are side-effect free and can be tested independently.
+// These functions are side-effect-free and can be tested independently.
 
 export function parseCrudAuth(comment: string): CrudAuthConfig | null {
   try {
