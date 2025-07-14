@@ -101,7 +101,7 @@ describe('web generator', () => {
   it('should throw and log error if an exception occurs', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     // Mock applicationGenerator to throw
-    const appGenMock = realApplicationGenerator as unknown as ReturnType<typeof vi.fn>
+    const appGenMock = vi.mocked(realApplicationGenerator)
     appGenMock.mockImplementationOnce(async () => { throw new Error('test error') })
     await expect(generator(tree, schema)).rejects.toThrow('test error')
     expect(errorSpy).toHaveBeenCalledWith('Error generating Web app:', expect.any(Error))
