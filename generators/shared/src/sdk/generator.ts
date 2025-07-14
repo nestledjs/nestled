@@ -23,61 +23,15 @@ function kebabCase(str: string): string {
     .toLowerCase()
 }
 
-function parsePrismaModels(schemaContent: string) {
-  const modelRegex = /model (\w+) \{([\s\S]*?)\}/g
-  const fieldRegex = /^\s*(\w+)\s+(\w+(?:\[\])?)(\??)(?:\s+(.*))?$/
-  const models: Record<string, { fields: { name: string; type: string; isList: boolean; isRelation: boolean }[] }> = {}
-
-  let match
-  while ((match = modelRegex.exec(schemaContent))) {
-    const [, modelName, body] = match
-    const fields = []
-
-    // Split the model body into lines and process each line
-    const lines = body.split('\n')
-    for (const line of lines) {
-      const fieldMatch = fieldRegex.exec(line)
-      if (fieldMatch) {
-        const [, name, type, , attrs] = fieldMatch
-        const isList = type.endsWith('[]')
-        const isRelation = attrs && attrs.includes('@relation')
-        fields.push({
-          name,
-          type: type.replace('[]', ''),
-          isList,
-          isRelation,
-        })
-      }
-    }
-
-    models[modelName] = { fields }
-  }
-  return models
-}
-
-function getFragmentFields(fields: { name: string; type: string; isList: boolean; isRelation: boolean }[]) {
-  return fields
-    .filter(
-      (f) =>
-        !f.isList &&
-        !f.isRelation &&
-        f.name !== 'id' &&
-        !f.name.endsWith('Id') &&
-        SCALAR_TYPES.includes(f.type) // allow all non-relation, non-list, non-id fields (including enums)
-    )
-    .map((f) => f.name)
-    .join('\n  ')
-}
-
-// Helper to get default field for a model from DMMF
-function getDefaultField(model: any) {
+// Helper to get the default field for a model from DMMF
+function getDefaultField(model: any): string | undefined {
   return model.fields.find(
-    (f: any) => f.documentation && f.documentation.includes('@defaultField')
+    (f: any) => f?.documentation?.includes('@defaultField')
   )?.name
 }
 
 // Helper to get admin fragment fields for a model
-function getAdminFragmentFields(model: any, allModels: any[]) {
+function getAdminFragmentFields(model: any, allModels: any[]): string {
   return model.fields
     .filter((f: any) => !f.isList && !f.relationName)
     .map((f: any) => f.name)
@@ -108,7 +62,7 @@ async function ensureSdkLibrary(tree: Tree, dependencies: SdkGeneratorDependenci
       linter: 'eslint',
       tags: 'type:shared,scope:shared',
     })
-    
+
     // Clean up default generated files that we don't need
     deleteFiles(tree, [
       'libs/shared/sdk/src/lib/sdk.ts',

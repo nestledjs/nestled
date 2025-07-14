@@ -3,7 +3,20 @@ import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
 import { sdkGeneratorLogic, SdkGeneratorDependencies } from './generator';
 import { Tree } from '@nx/devkit';
 
-const prismaSchema = `model User { id Int @id @default(autoincrement()) }`;
+const prismaSchema = `
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id   Int @id @default(autoincrement())
+}
+`;
 
 describe('sdk generator', () => {
   let tree: Tree;
@@ -42,7 +55,7 @@ describe('sdk generator', () => {
     await expect(sdkGeneratorLogic(tree, {}, mockDependencies)).rejects.toThrow('Prisma schema not found at');
   });
 
-  it('generates files and scripts for models in schema', async () => {
+  it('generates files and scripts for models in schema, including admin SDK', async () => {
     const callback = await sdkGeneratorLogic(tree, {}, mockDependencies);
     expect(mockDependencies.generateFiles).toHaveBeenCalled();
     expect(mockDependencies.addScriptToPackageJson).toHaveBeenCalledWith(tree, 'sdk', expect.any(String));
@@ -51,5 +64,20 @@ describe('sdk generator', () => {
     expect(typeof callback).toBe('function');
     if (callback) callback();
     expect(mockDependencies.installPackagesTask).toHaveBeenCalledWith(tree);
+
+    // Check that generateFiles is called for both user and admin SDK
+    const calls = vi.mocked(mockDependencies.generateFiles).mock.calls;
+    // There should be at least one call for user and one for admin
+    const userCall = calls.find(([_, __, modelDir, context]) =>
+      typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('admin-graphql')
+    );
+    const adminCall = calls.find(([_, __, modelDir, context]) =>
+      typeof modelDir === 'string' && modelDir.includes('admin-graphql') && context && context.adminPrefix === 'Admin'
+    );
+    expect(userCall).toBeTruthy();
+    expect(adminCall).toBeTruthy();
+    // Optionally, check that adminPrefix is not set for user SDK
+    expect(userCall[3].adminPrefix).toBeUndefined();
+    expect(adminCall[3].adminPrefix).toBe('Admin');
   });
 }); 
