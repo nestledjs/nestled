@@ -3,9 +3,90 @@ import { Controller } from 'react-hook-form'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useFormTheme } from '../theme-context'
+import type { MDXEditorMethods } from '@mdxeditor/editor';
 
 // Import MDXEditor styles - this is the official way per documentation
 import '@mdxeditor/editor/style.css'
+
+// --- Extracted Helpers ---
+
+// Default image upload handler for base64 mode
+export const defaultImageUploadHandler = (imageUploadMode: string) => async (file: File): Promise<string> => {
+  if (imageUploadMode === 'base64') {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(file)
+    })
+  }
+  throw new Error('Custom image upload handler required for non-base64 mode')
+}
+
+// Validate and handle image upload
+export const handleImageUpload = async ({
+  file,
+  maxImageSize,
+  allowedImageTypes,
+  imageUploadHandler,
+}: {
+  file: File
+  maxImageSize: number
+  allowedImageTypes: string[]
+  imageUploadHandler: (file: File) => Promise<string>
+}): Promise<string> => {
+  // Check file size
+  if (file.size > maxImageSize) {
+    throw new Error(`Image size must be less than ${Math.round(maxImageSize / 1024 / 1024)}MB`)
+  }
+
+  // Check file type
+  if (!allowedImageTypes.includes(file.type)) {
+    throw new Error(`Image type must be one of: ${allowedImageTypes.join(', ')}`)
+  }
+
+  // Use custom handler or default
+  return await imageUploadHandler(file)
+}
+
+// Toolbar contents as a top-level function
+export const toolbarContents = ({
+  enableImageUpload,
+  UndoRedo,
+  Separator,
+  BoldItalicUnderlineToggles,
+  CodeToggle,
+  ListsToggle,
+  CreateLink,
+  InsertImage,
+}: {
+  enableImageUpload: boolean
+  UndoRedo: React.ComponentType<object>
+  Separator: React.ComponentType<object>
+  BoldItalicUnderlineToggles: React.ComponentType<object>
+  CodeToggle: React.ComponentType<object>
+  ListsToggle: React.ComponentType<object>
+  CreateLink: React.ComponentType<object>
+  InsertImage: React.ComponentType<Record<string, never>>
+}) => (
+  <>
+    <UndoRedo />
+    <Separator />
+    <BoldItalicUnderlineToggles />
+    <CodeToggle />
+    <Separator />
+    <ListsToggle />
+    <Separator />
+    <CreateLink />
+    {enableImageUpload && (
+      <>
+        <Separator />
+        <InsertImage />
+      </>
+    )}
+  </>
+)
+
 
 // Simple loading component
 const EditorLoading = ({ height = 300 }: { height?: number }) => (
@@ -41,7 +122,7 @@ const MDXEditor = lazy(() =>
 
     // Create a simple configured editor
     const SimpleEditor = React.forwardRef<
-      any,
+      MDXEditorMethods,
       {
         value: string
         onChange: (value: string) => void
@@ -73,34 +154,17 @@ const MDXEditor = lazy(() =>
         ref,
       ) => {
         // Default image upload handler for base64 mode
-        const defaultImageUploadHandler = async (file: File): Promise<string> => {
-          if (imageUploadMode === 'base64') {
-            return new Promise((resolve, reject) => {
-              const reader = new FileReader()
-              reader.onload = () => resolve(reader.result as string)
-              reader.onerror = reject
-              reader.readAsDataURL(file)
-            })
-          }
-          throw new Error('Custom image upload handler required for non-base64 mode')
-        }
+        // Extracted helper functions outside component for shallower nesting
+        // See above for defaultImageUploadHandler and handleImageUpload definitions
 
-        // Validate and handle image upload
-        const handleImageUpload = async (file: File): Promise<string> => {
-          // Check file size
-          if (file.size > maxImageSize) {
-            throw new Error(`Image size must be less than ${Math.round(maxImageSize / 1024 / 1024)}MB`)
-          }
-
-          // Check file type
-          if (!allowedImageTypes.includes(file.type)) {
-            throw new Error(`Image type must be one of: ${allowedImageTypes.join(', ')}`)
-          }
-
-          // Use custom handler or default
-          const handler = imageUploadHandler || defaultImageUploadHandler
-          return await handler(file)
-        }
+        // Use custom handler or default
+        const handler = imageUploadHandler || defaultImageUploadHandler(imageUploadMode)
+        const handleImageUploadWrapper = async (file: File): Promise<string> => handleImageUpload({
+          file,
+          maxImageSize,
+          allowedImageTypes,
+          imageUploadHandler: handler,
+        })
 
         const plugins = [
           headingsPlugin(),
@@ -108,30 +172,23 @@ const MDXEditor = lazy(() =>
           quotePlugin(),
           linkPlugin(),
           linkDialogPlugin(),
-          ...(enableImageUpload ? [imagePlugin({ imageUploadHandler: handleImageUpload })] : []),
+          ...(enableImageUpload ? [imagePlugin({ imageUploadHandler: handleImageUploadWrapper })] : []),
           markdownShortcutPlugin(),
           ...(readOnly
             ? []
             : [
                 toolbarPlugin({
-                  toolbarContents: () => (
-                    <>
-                      <UndoRedo />
-                      <Separator />
-                      <BoldItalicUnderlineToggles />
-                      <CodeToggle />
-                      <Separator />
-                      <ListsToggle />
-                      <Separator />
-                      <CreateLink />
-                      {enableImageUpload && (
-                        <>
-                          <Separator />
-                          <InsertImage />
-                        </>
-                      )}
-                    </>
-                  ),
+                  toolbarContents: () =>
+                    toolbarContents({
+                      enableImageUpload,
+                      UndoRedo,
+                      Separator,
+                      BoldItalicUnderlineToggles,
+                      CodeToggle,
+                      ListsToggle,
+                      CreateLink,
+                      InsertImage,
+                    }),
                 }),
               ]),
         ]
