@@ -76,8 +76,8 @@ describe('sdk generator', () => {
     );
     expect(userCall).toBeTruthy();
     expect(adminCall).toBeTruthy();
-    // Optionally, check that adminPrefix is not set for user SDK
-    expect(userCall[3].adminPrefix).toBeUndefined();
+    // Check that adminPrefix is empty string for user SDK and 'Admin' for admin SDK
+    expect(userCall[3].adminPrefix).toBe('');
     expect(adminCall[3].adminPrefix).toBe('Admin');
   });
 }); 
