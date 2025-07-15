@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { SelectFieldSearch } from './select-field-search'
-import { FormFieldType, FormField } from '../form-types'
+import { FormFieldType } from '../form-types'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 
 const meta: Meta<typeof SelectFieldSearch> = {
@@ -122,9 +122,9 @@ export const LargeOptionSet: Story = {
   render: () => {
     const largeOptions = Array.from({ length: 50 }, (_, i) => ({
       value: `option-${i}`,
-      label: `Option ${i + 1}`
+      label: `Option ${i + 1}`,
     }))
-    
+
     return (
       <StorybookFieldWrapper
         field={{
@@ -157,4 +157,4 @@ export const EmptyOptions: Story = {
       }}
     />
   ),
-} 
+}
