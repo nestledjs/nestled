@@ -11,38 +11,41 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
   const { data, loading: apolloLoading, refetch } = useQuery(fieldOptions.document)
   const [options, setOptions] = useState<SearchSelectOption[]>([])
 
+  // Destructure specific properties for more precise dependency tracking
+  const { filter, selectOptionsFunction, dataType, searchFields } = fieldOptions
+
   const processData = useCallback(
     (dataList: TDataItem[]) => {
       let processedList = dataList
-      if (fieldOptions.filter) {
-        processedList = fieldOptions.filter(processedList)
+      if (filter) {
+        processedList = filter(processedList)
       }
-      return fieldOptions.selectOptionsFunction
-        ? fieldOptions.selectOptionsFunction(processedList)
+      return selectOptionsFunction
+        ? selectOptionsFunction(processedList)
         : defaultOptionsMap(processedList)
     },
-    [fieldOptions],
+    [filter, selectOptionsFunction],
   )
 
   useEffect(() => {
     if (!apolloLoading && data) {
-      setOptions(processData(data[fieldOptions.dataType] ?? []))
+      setOptions(processData(data[dataType] ?? []))
     }
-  }, [apolloLoading, data, fieldOptions.dataType, processData])
+  }, [apolloLoading, data, dataType, processData])
 
   const handleSearchChange = useCallback(
     (searchTerm: string) => {
       if (searchTerm) {
         const input: { search: string; searchFields?: string[] } = { search: searchTerm }
-        if (fieldOptions.searchFields && fieldOptions.searchFields.length > 0) {
-          input.searchFields = fieldOptions.searchFields
+        if (searchFields && searchFields.length > 0) {
+          input.searchFields = searchFields
         }
         refetch({ input }).then((res) => {
-          setOptions(processData(res.data?.[fieldOptions.dataType] ?? []))
+          setOptions(processData(res.data?.[dataType] ?? []))
         })
       }
     },
-    [refetch, fieldOptions, processData],
+    [refetch, searchFields, dataType, processData],
   )
 
   return {
