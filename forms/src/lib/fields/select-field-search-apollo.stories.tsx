@@ -112,6 +112,7 @@ export const Documentation: Story = {
           <h4 className="font-medium mb-2">Key Features</h4>
           <ul className="list-disc list-inside text-gray-700 space-y-1">
             <li>Server-side debounced search (500ms delay)</li>
+            <li>Configurable search fields via <code className="bg-gray-200 px-1 rounded">searchFields</code> prop</li>
             <li>Custom data transformation via <code className="bg-gray-200 px-1 rounded">selectOptionsFunction</code></li>
             <li>Client-side filtering with <code className="bg-gray-200 px-1 rounded">filter</code> function</li>
             <li>GraphQL query integration with <code className="bg-gray-200 px-1 rounded">document</code> prop</li>
@@ -133,6 +134,7 @@ export const Documentation: Story = {
         <div>
           <h4 className="font-medium mb-2">Optional Props</h4>
           <ul className="list-disc list-inside text-gray-700 space-y-1">
+            <li><code className="bg-gray-200 px-1 rounded">searchFields</code>: Array of field names to search (e.g., ['name', 'email'])</li>
             <li><code className="bg-gray-200 px-1 rounded">selectOptionsFunction</code>: Custom data mapping function</li>
             <li><code className="bg-gray-200 px-1 rounded">filter</code>: Client-side filtering function</li>
           </ul>

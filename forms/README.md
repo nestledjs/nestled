@@ -302,11 +302,34 @@ FormFieldClass.datePicker('field', { label: 'Date' })
 FormFieldClass.dateTimePicker('field', { label: 'Date & Time' })
 FormFieldClass.timePicker('field', { label: 'Time' })
 
-// Advanced fields
+// Search and select fields
 FormFieldClass.searchSelect('field', { 
   label: 'Search Select',
-  searchQuery: MY_GRAPHQL_QUERY,
-  optionsMap: (items) => items.map(item => ({ value: item.id, label: item.name }))
+  options: [{ value: 'a', label: 'Option A' }]
+})
+FormFieldClass.searchSelectApollo('field', { 
+  label: 'Apollo Search Select',
+  document: MY_GRAPHQL_QUERY,
+  dataType: 'users',
+  searchFields: ['name', 'email', 'firstName'],
+  selectOptionsFunction: (items) => items.map(item => ({ 
+    value: item.id, 
+    label: item.name 
+  }))
+})
+FormFieldClass.searchSelectMulti('field', { 
+  label: 'Multi Search Select',
+  options: [{ value: 'a', label: 'Option A' }]
+})
+FormFieldClass.searchSelectMultiApollo('field', { 
+  label: 'Apollo Multi Search Select',
+  document: MY_GRAPHQL_QUERY,
+  dataType: 'users',
+  searchFields: ['name', 'email', 'firstName'],
+  selectOptionsFunction: (items) => items.map(item => ({ 
+    value: item.id, 
+    label: item.name 
+  }))
 })
 
 FormFieldClass.custom('field', {
@@ -315,6 +338,91 @@ FormFieldClass.custom('field', {
     <MyCustomComponent value={value} onChange={onChange} />
   )
 })
+```
+
+## 🚀 Apollo GraphQL Integration
+
+For applications using Apollo Client, the forms library provides specialized search components that integrate with your GraphQL API:
+
+### SearchSelectApollo
+
+Single-select dropdown with server-side search:
+
+```tsx
+import { gql } from '@apollo/client'
+
+const SEARCH_USERS_QUERY = gql`
+  query SearchUsers($input: SearchInput) {
+    users(input: $input) {
+      id
+      name
+      firstName
+      lastName
+      email
+    }
+  }
+`
+
+FormFieldClass.searchSelectApollo('selectedUser', {
+  label: 'Select User',
+  document: SEARCH_USERS_QUERY,
+  dataType: 'users',
+  searchFields: ['name', 'firstName', 'lastName', 'email'], // Configure which fields to search
+  selectOptionsFunction: (users) => users.map(user => ({
+    value: user.id,
+    label: `${user.firstName} ${user.lastName}`
+  })),
+  filter: (users) => users.slice(0, 10) // Optional client-side filtering
+})
+```
+
+### SearchSelectMultiApollo
+
+Multi-select dropdown with server-side search:
+
+```tsx
+FormFieldClass.searchSelectMultiApollo('selectedUsers', {
+  label: 'Select Team Members',
+  document: SEARCH_USERS_QUERY,
+  dataType: 'users',
+  searchFields: ['name', 'firstName', 'lastName', 'email'],
+  selectOptionsFunction: (users) => users.map(user => ({
+    value: user.id,
+    label: `${user.firstName} ${user.lastName}`
+  }))
+})
+```
+
+### Key Features
+
+- **Dynamic Search Fields**: Use `searchFields` to specify which backend fields should be searched
+- **Server-side Search**: Efficient handling of large datasets
+- **Custom Data Mapping**: Transform API responses with `selectOptionsFunction`
+- **Debounced Search**: 500ms delay to reduce API calls
+- **Loading States**: Built-in loading indicators
+- **Type Safety**: Full TypeScript support with generic data types
+
+### GraphQL Requirements
+
+Your GraphQL queries must accept an `input` parameter:
+
+```graphql
+type SearchInput {
+  search: String
+  searchFields: [String!]  # Frontend specifies which fields to search
+  limit: Int
+  offset: Int
+}
+
+query SearchUsers($input: SearchInput) {
+  users(input: $input) {
+    id
+    name
+    firstName
+    lastName
+    email
+  }
+}
 ```
 
 ## 🎨 Theming
