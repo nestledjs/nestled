@@ -31,6 +31,7 @@ import type { Meta, StoryObj } from '@storybook/react'
  *     label: 'Select Users',
  *     document: SEARCH_USERS_QUERY,
  *     dataType: 'users',
+ *     searchFields: ['name', 'firstName', 'lastName', 'email'],
  *     selectOptionsFunction: (users) => users.map(user => ({ 
  *       value: user.id, 
  *       label: user.name || `${user.firstName} ${user.lastName}` 
@@ -79,6 +80,7 @@ A multi-select searchable dropdown component that integrates with Apollo GraphQL
     label: 'Field Label',
     document: GRAPHQL_QUERY,      // Apollo GraphQL query
     dataType: 'queryResultKey',   // Key in query result
+    searchFields: ['name', 'email'], // Fields to search
     selectOptionsFunction: (data) => data.map(item => ({
       value: item.id,
       label: item.name

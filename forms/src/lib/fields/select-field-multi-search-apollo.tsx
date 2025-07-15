@@ -38,7 +38,11 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
 
   const handleSearchChange = useCallback((searchTerm: string) => {
     if (searchTerm) {
-      refetch({ input: { search: searchTerm } }).then((res) => {
+      const input: { search: string; searchFields?: string[] } = { search: searchTerm }
+      if (field.options.searchFields && field.options.searchFields.length > 0) {
+        input.searchFields = field.options.searchFields
+      }
+      refetch({ input }).then((res) => {
         setOptions(processData(res.data?.[field.options.dataType] ?? []))
       })
     }

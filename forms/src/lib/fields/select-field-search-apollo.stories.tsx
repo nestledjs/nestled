@@ -32,6 +32,7 @@ import type { Meta, StoryObj } from '@storybook/react'
  *     required: true,
  *     document: SEARCH_USERS_QUERY,
  *     dataType: 'users',
+ *     searchFields: ['name', 'firstName', 'lastName', 'email'],
  *     selectOptionsFunction: (users) => 
  *       users.map(user => ({
  *         value: user.id,
@@ -64,6 +65,7 @@ The SelectFieldSearchApollo component integrates with Apollo GraphQL to provide 
 **Key Props:**
 - \`document\`: GraphQL query document
 - \`dataType\`: Key in the query result containing the array of items
+- \`searchFields\`: Array of field names to search (e.g., ['name', 'email', 'firstName'])
 - \`selectOptionsFunction\`: Function to transform data items into \`{ value, label }\` options
 - \`filter\`: Optional function to filter results client-side
 
@@ -183,6 +185,7 @@ const searchSelectField = {
     // Apollo integration
     document: SEARCH_USERS_QUERY,
     dataType: 'users', // Key in the query result
+    searchFields: ['name', 'firstName', 'lastName', 'email'], // Fields to search
     
     // Transform data into options
     selectOptionsFunction: (users) => 
