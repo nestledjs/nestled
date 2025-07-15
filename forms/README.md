@@ -425,6 +425,55 @@ query SearchUsers($input: SearchInput) {
 }
 ```
 
+### 🐛 Dropdown Positioning Issues
+
+If the dropdown options render at the bottom of the page with excessive blank space instead of next to the input field, this is a CSS positioning context issue. This commonly happens when parent elements have CSS properties that create new stacking contexts.
+
+**Common Causes:**
+- Parent elements with `transform`, `filter`, or `perspective` CSS properties
+- Containers with `position: relative/absolute/fixed` 
+- CSS frameworks that apply transforms for animations
+- Modal dialogs or overlay components
+
+**Solutions:**
+
+**1. Remove problematic CSS properties from parent containers:**
+```css
+/* Instead of this: */
+.container {
+  transform: translateX(0); /* Creates positioning context */
+}
+
+/* Use this: */
+.container {
+  /* Remove or replace transform */
+}
+```
+
+**2. Override dropdown positioning with higher z-index:**
+```css
+/* Target the dropdown specifically */
+[data-headlessui-state="open"] [role="listbox"] {
+  position: fixed !important;
+  z-index: 9999 !important;
+}
+```
+
+**3. Isolate the form field:**
+```css
+/* Wrap your form field in a container with isolation */
+.form-field-container {
+  isolation: isolate;
+  position: relative;
+}
+```
+
+**Debugging Steps:**
+1. Inspect the dropdown element in browser dev tools when mispositioned
+2. Check what element it's positioned relative to
+3. Look for CSS transforms/filters on parent elements
+4. Try the CSS solutions above to fix positioning context issues
+
 ## 🎨 Theming
 
 Customize the appearance of your forms:
