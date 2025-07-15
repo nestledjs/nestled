@@ -191,6 +191,7 @@ export interface SearchSelectOptions extends BaseFieldOptions {
 export interface SearchSelectApolloOptions<TDataItem = any> extends BaseFieldOptions {
   document: DocumentNode | TypedDocumentNode
   dataType: string
+  searchFields?: string[]
   filter?: (items: TDataItem[]) => TDataItem[]
   selectOptionsFunction?: (items: TDataItem[]) => SearchSelectOption[]
 }
