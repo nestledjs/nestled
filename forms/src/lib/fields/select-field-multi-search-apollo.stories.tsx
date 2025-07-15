@@ -320,6 +320,7 @@ const SEARCH_QUERY = gql\`
 // SearchInput type should include:
 type SearchInput = {
   search?: string
+  searchFields?: string[]  // NEW: Specify which fields to search
   limit?: number
   offset?: number
 }

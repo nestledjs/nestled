@@ -1,42 +1,12 @@
-import { useQuery } from '@apollo/client'
-import { useEffect, useState, useCallback } from 'react'
-import { SearchSelectOption, FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { SearchSelectBase } from './search-select-base'
-import { singleSelectDisplayValue, defaultOptionsMap } from './search-select-helpers'
+import { singleSelectDisplayValue } from './search-select-helpers'
+import { useApolloSearch } from './use-apollo-search'
 
 export function SelectFieldSearchApollo<
   TDataItem extends { id: string; name?: string; firstName?: string; lastName?: string }
 >({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelectApollo }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  const { data, loading: apolloLoading, refetch } = useQuery(field.options.document)
-  const [options, setOptions] = useState<SearchSelectOption[]>([])
-
-  const processData = useCallback((dataList: TDataItem[]) => {
-    let processedList = dataList
-    if (field.options.filter) {
-      processedList = field.options.filter(processedList)
-    }
-    return field.options.selectOptionsFunction
-      ? field.options.selectOptionsFunction(processedList)
-      : defaultOptionsMap(processedList)
-  }, [field.options])
-
-  useEffect(() => {
-    if (!apolloLoading && data) {
-      setOptions(processData(data[field.options.dataType] ?? []))
-    }
-  }, [apolloLoading, data, field.options.dataType, processData])
-
-  const handleSearchChange = useCallback((searchTerm: string) => {
-    if (searchTerm) {
-      const input: { search: string; searchFields?: string[] } = { search: searchTerm }
-      if (field.options.searchFields && field.options.searchFields.length > 0) {
-        input.searchFields = field.options.searchFields
-      }
-      refetch({ input }).then((res) => {
-        setOptions(processData(res.data?.[field.options.dataType] ?? []))
-      })
-    }
-  }, [refetch, field.options, processData])
+  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)
 
   const value = form.getValues(field.key)
   const selectedOption = options.find((o) => o.value === value) ?? null
