@@ -179,6 +179,7 @@ export async function sdkGeneratorLogic(
   // 6. For each model, generate admin files (always overwrite)
   // Clean up the admin-graphql directory before generating new files
   deleteDirectory(tree, 'libs/shared/sdk/src/admin-graphql');
+  console.log('Generating admin files for models:', allModels.map((m: any) => m.name));
   for (const model of allModels) {
     const modelName = model.name
     const kebabName = kebabCase(modelName)
@@ -190,6 +191,8 @@ export async function sdkGeneratorLogic(
     const pluralPropertyName = dependencies.getPluralName(propertyName)
     const fragmentFields = getAdminFragmentFields(model, allModels)
     const adminPrefix = 'Admin'
+
+    console.log('Generating admin files for', modelName, 'at', modelDir);
 
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
       className,
