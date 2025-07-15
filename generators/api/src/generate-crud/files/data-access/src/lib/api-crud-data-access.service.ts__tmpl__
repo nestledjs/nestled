@@ -138,14 +138,14 @@ function generateRelationHandling(model, operation) {
     code += '        if (Array.isArray(ids)) {\n';
     code += `          data[key] = { ${operation === 'create' ? 'connect' : 'set'}: ids.map(id => ({ id })) };\n`;
     code += '        } else {\n';
-    code += '          data[key] = { connect: { id: ids } };\n';
+    code += `          data[key] = { ${operation === 'create' ? 'connect' : 'set'}: { id: ids } };\n`;
     code += '        }\n';
   } else if (hasListFields) {
     // Only list fields
     code += `        data[key] = { ${operation === 'create' ? 'connect' : 'set'}: ids.map(id => ({ id })) };\n`;
   } else {
     // Only single fields
-    code += '        data[key] = { connect: { id: ids } };\n';
+    code += `        data[key] = { ${operation === 'create' ? 'connect' : 'set'}: { id: ids } };\n`;
   }
   
   code += '      }\n';
