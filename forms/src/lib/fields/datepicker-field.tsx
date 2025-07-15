@@ -4,7 +4,6 @@ import { Controller } from 'react-hook-form'
 import { useFormTheme } from '../theme-context'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { formatDateFromDateTime, getDateFromDateTime } from '../utils/date-time'
-import { FormLabel } from './label'
 
 export function DatePickerField({
   form,
@@ -33,8 +32,7 @@ export function DatePickerField({
   if (isReadOnly) {
     if (effectiveReadOnlyStyle === 'disabled') {
       return (
-        <div className={clsx(theme.wrapper)}>
-          <FormLabel htmlFor={field.key} label={options.label || ''} required={options.required} />
+        <>
           <input
             id={field.key}
             type="date"
@@ -47,19 +45,18 @@ export function DatePickerField({
           />
           {helpText && <div id={`${field.key}-help`} className={helpTextClass}>{helpText}</div>}
           {hasError && errorMessage && <div id={`${field.key}-error`} className={theme.error}>{errorMessage}</div>}
-        </div>
+        </>
       )
     }
     
     // Render as plain value (formatted)
     const formattedDate = formatDateFromDateTime(value) || '—'
     return (
-      <div className={clsx(theme.wrapper)}>
-        <FormLabel htmlFor={field.key} label={options.label || ''} required={options.required} />
+      <>
         <div className={clsx(theme.readOnlyValue)}>{formattedDate}</div>
         {helpText && <div id={`${field.key}-help`} className={helpTextClass}>{helpText}</div>}
         {hasError && errorMessage && <div id={`${field.key}-error`} className={theme.error}>{errorMessage}</div>}
-      </div>
+      </>
     )
   }
 
@@ -109,7 +106,6 @@ export function DatePickerField({
   if (options.customWrapper) {
     return options.customWrapper(
       <>
-        <FormLabel htmlFor={field.key} label={options.label || ''} required={options.required} />
         {input}
         {helpText && <div id={`${field.key}-help`} className={helpTextClass}>{helpText}</div>}
         {hasError && errorMessage && <div id={`${field.key}-error`} className={theme.error}>{errorMessage}</div>}
@@ -118,11 +114,10 @@ export function DatePickerField({
   }
 
   return (
-    <div className={clsx(theme.wrapper)}>
-      <FormLabel htmlFor={field.key} label={options.label || ''} required={options.required} />
+    <>
       {input}
       {helpText && <div id={`${field.key}-help`} className={helpTextClass}>{helpText}</div>}
       {hasError && errorMessage && <div id={`${field.key}-error`} className={theme.error}>{errorMessage}</div>}
-    </div>
+    </>
   )
 }

@@ -4,7 +4,6 @@ import {
   generateFiles,
   installPackagesTask,
   joinPathFragments,
-  logger,
   readJson,
   Tree,
 } from '@nx/devkit'
@@ -166,6 +165,7 @@ export async function sdkGeneratorLogic(
       pluralPropertyName,
       fragmentFields,
       kebabName,
+      adminPrefix: '',
       tmpl: '',
     })
     ;['fragments', 'mutations', 'queries'].forEach((type) => {
@@ -180,8 +180,7 @@ export async function sdkGeneratorLogic(
   // 6. For each model, generate admin files (always overwrite)
   // Clean up the admin-graphql directory before generating new files
   deleteDirectory(tree, 'libs/shared/sdk/src/admin-graphql');
-  logger.info('Generating admin files for models:');
-  logger.info(allModels.map((m: any) => m.name))
+  console.log('Generating admin files for models:', allModels.map((m: any) => m.name));
   for (const model of allModels) {
     const modelName = model.name
     const kebabName = kebabCase(modelName)
@@ -194,7 +193,7 @@ export async function sdkGeneratorLogic(
     const fragmentFields = getAdminFragmentFields(model, allModels)
     const adminPrefix = 'Admin'
 
-    logger.info(`Generating admin files for ${modelName} at ${modelDir}`);
+    console.log('Generating admin files for', modelName, 'at', modelDir);
 
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
       className,
