@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/all",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nestledjs/api": "0.1.5",
+    "@nestledjs/api": "0.1.6",
     "@nestledjs/config": "0.1.2",
     "@nestledjs/plugins": "0.1.2",
     "@nestledjs/shared": "0.1.3",
