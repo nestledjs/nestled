@@ -198,6 +198,7 @@ export interface SearchSelectApolloOptions<TDataItem = any> extends BaseFieldOpt
   searchFields?: string[]
   filter?: (items: TDataItem[]) => TDataItem[]
   selectOptionsFunction?: (items: TDataItem[]) => SearchSelectOption[]
+  submitTransform?: (value: any) => any
 }
 
 export interface SearchSelectMultiOptions extends BaseFieldOptions {
