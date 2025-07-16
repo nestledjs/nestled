@@ -30,13 +30,12 @@ export function singleSelectSubmitTransform(value: any): string | null {
 export function SelectFieldSearchApollo<
   TDataItem extends { id: string; name?: string; firstName?: string; lastName?: string }
 >({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelectApollo }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  // Create field configuration with submit transformation without mutating original
-  const fieldOptions = useMemo(() => ({
-    ...field.options,
-    submitTransform: field.options.submitTransform ?? singleSelectSubmitTransform
-  }), [field.options])
+  // Ensure the field has submit transformation for form submission
+  // The Form component looks for field.options.submitTransform during submission
+  // eslint-disable-next-line no-param-reassign
+  field.options.submitTransform ??= singleSelectSubmitTransform
   
-  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(fieldOptions)
+  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)
 
   // Use useWatch to get reactive form value updates
   const watchedValue = useWatch({

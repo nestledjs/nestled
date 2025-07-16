@@ -3,7 +3,6 @@ import { SearchSelectBase } from './search-select-base'
 import { SelectedItems, multiSelectDisplayValue } from './search-select-helpers'
 import { useFormTheme } from '../theme-context'
 import { multiSelectSubmitTransform } from './select-field-multi-search-apollo'
-import { useMemo } from 'react'
 
 export function SelectFieldMultiSearch({
   form,
@@ -17,11 +16,10 @@ export function SelectFieldMultiSearch({
 }) {
   const theme = useFormTheme()
   
-  // Create field configuration with submit transformation without mutating original
-  const fieldOptions = useMemo(() => ({
-    ...field.options,
-    submitTransform: field.options.submitTransform ?? multiSelectSubmitTransform
-  }), [field.options])
+  // Ensure the field has submit transformation for form submission
+  // The Form component looks for field.options.submitTransform during submission
+  // eslint-disable-next-line no-param-reassign
+  field.options.submitTransform ??= multiSelectSubmitTransform
   
   const value = form.getValues(field.key) ?? []
 
@@ -32,10 +30,10 @@ export function SelectFieldMultiSearch({
       hasError={hasError}
       formReadOnly={formReadOnly}
       formReadOnlyStyle={formReadOnlyStyle}
-      options={fieldOptions.options || []}
-      loading={fieldOptions.loading}
-      onSearchChange={fieldOptions.onSearchChange}
-      searchDebounceMs={fieldOptions.searchDebounceMs}
+      options={field.options.options || []}
+      loading={field.options.loading}
+      onSearchChange={field.options.onSearchChange}
+      searchDebounceMs={field.options.searchDebounceMs}
       value={value}
       onChange={(items) => form.setValue(field.key, items)}
       displayValue={multiSelectDisplayValue}
