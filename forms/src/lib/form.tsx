@@ -116,7 +116,7 @@ export function Form<T extends FieldValues = Record<string, unknown>>({
       }
 
       // Apply submitTransform functions to each field that has one
-      const transformedValues = { ...values } as any
+      const transformedValues: Record<string, unknown> = { ...values }
       
       fields
         .filter((field): field is FormField => field !== null)

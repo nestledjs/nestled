@@ -30,13 +30,13 @@ export function singleSelectSubmitTransform(value: any): string | null {
 export function SelectFieldSearchApollo<
   TDataItem extends { id: string; name?: string; firstName?: string; lastName?: string }
 >({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelectApollo }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
-  // Automatically ensure the field has the submit transformation
-  // This converts option objects to ID strings for API submission
-  if (!field.options.submitTransform) {
-    field.options.submitTransform = singleSelectSubmitTransform
-  }
+  // Create field configuration with submit transformation without mutating original
+  const fieldOptions = useMemo(() => ({
+    ...field.options,
+    submitTransform: field.options.submitTransform ?? singleSelectSubmitTransform
+  }), [field.options])
   
-  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)
+  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(fieldOptions)
 
   // Use useWatch to get reactive form value updates
   const watchedValue = useWatch({

@@ -62,7 +62,7 @@ export interface BaseFieldOptions {
    * This is useful for fields that store rich objects internally but need to submit simple values.
    * For example, multi-select fields that display option objects but submit ID arrays.
    */
-  submitTransform?: (displayValue: any) => any
+  submitTransform?: (displayValue: unknown) => unknown
 }
 
 // Specific options interfaces that extend the base
