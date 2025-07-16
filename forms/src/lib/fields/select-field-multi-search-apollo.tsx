@@ -125,7 +125,16 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
         }
       }
 
-      // Handle unexpected format
+      // Handle unexpected format - try to extract value property if it exists
+      if (item && typeof item === 'object' && 'value' in item) {
+        const itemId = String(item.value)
+        return {
+          value: itemId,
+          label: itemId,
+        }
+      }
+
+      // Last fallback for truly unexpected formats
       const itemId = String(item)
       return {
         value: itemId,
