@@ -71,13 +71,14 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
 }) {
   const theme = useFormTheme()
   
-  // Create field configuration with submit transformation without mutating original
-  const fieldOptions = useMemo(() => ({
-    ...field.options,
-    submitTransform: field.options.submitTransform ?? multiSelectSubmitTransform
-  }), [field.options])
+  // Ensure the field has submit transformation for form submission
+  // The Form component looks for field.options.submitTransform during submission
+  // eslint-disable-next-line no-param-reassign
+  if (!field.options.submitTransform) {
+    field.options.submitTransform = multiSelectSubmitTransform
+  }
   
-  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(fieldOptions)
+  const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)
 
   // Cache for selected options to preserve labels when they're not in current search results
   const [selectedOptionsCache, setSelectedOptionsCache] = useState<Map<string, SearchSelectOption>>(new Map())
