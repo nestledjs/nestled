@@ -143,10 +143,11 @@ export const FormThemeSchema = z.object({
     .object({
       wrapper: z.string().default(''),
       container: z.string().default(''),
-      selectedItemsContainer: z.string().default(''),
+      inputContainer: z.string().default(''),
       selectedItem: z.string().default(''),
       selectedItemLabel: z.string().default(''),
       selectedItemRemoveButton: z.string().default(''),
+      selectedItemRemoveIcon: z.string().default(''),
       input: z.string().default(''),
       button: z.string().default(''),
       buttonIcon: z.string().default(''),
@@ -305,6 +306,7 @@ export const FormThemeSchema = z.object({
       disabled: z.string().default(''),
       readOnly: z.string().default(''),
       readOnlyValue: z.string().default(''),
+      helpText: z.string().default(''),
     })
     .default({}),
   textAreaField: z

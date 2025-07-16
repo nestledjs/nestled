@@ -41,7 +41,9 @@ export function singleSelectDisplayValue(value: SearchSelectOption | null): stri
 }
 
 export function multiSelectDisplayValue(value: SearchSelectOption[]): string {
-  return Array.isArray(value) ? value.map((v: any) => v.label ?? v).join(', ') : ''
+  // For multi-select, always return empty string so input stays clear for next search
+  // Selected items are displayed as tokens above the input
+  return ''
 }
 
 // Option mapping functions

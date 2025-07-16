@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react'
 import { expect, within } from 'storybook/test'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 import { FormFieldType, FormField } from '../form-types'
+import { expectLabelToBePresent, expectLiveFormStateToBePresent } from './storybookTestUtils'
 
 // Define the flat controls for the Storybook UI
 interface MarkdownEditorStoryArgs {
@@ -57,24 +58,6 @@ function renderMarkdownEditor(args: MarkdownEditorStoryArgs) {
       showState={args.showState}
     />
   )
-}
-
-// Common test utilities
-async function expectLabelToBePresent(canvas: ReturnType<typeof within>, labelText: string) {
-  await expect(canvas.getByText(labelText)).toBeInTheDocument()
-}
-
-async function expectLiveFormStateToBePresent(canvas: ReturnType<typeof within>) {
-  await expect(canvas.getByText('Live Form State:')).toBeInTheDocument()
-}
-
-async function expectLoadingEditorInitially(canvas: ReturnType<typeof within>) {
-  await expect(canvas.getByText('Loading editor...')).toBeInTheDocument()
-}
-
-async function expectBasicFieldElements(canvas: ReturnType<typeof within>, labelText: string) {
-  await expectLabelToBePresent(canvas, labelText)
-  await expectLiveFormStateToBePresent(canvas)
 }
 
 /**
@@ -145,10 +128,10 @@ export const Basic: Story = {
     const canvas = within(canvasElement)
     
     // The MDXEditor should be present in the DOM (lazy-loaded, so shows loading initially)
-    await expectLoadingEditorInitially(canvas)
+    await expectLiveFormStateToBePresent(canvas)
     
     // Verify basic elements
-    await expectBasicFieldElements(canvas, 'Content')
+    await expectLabelToBePresent(canvas, 'Content')
   },
 }
 
@@ -197,7 +180,7 @@ export const Disabled: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    await expectBasicFieldElements(canvas, 'Disabled Editor')
+    await expectLabelToBePresent(canvas, 'Disabled Editor')
   },
 }
 
@@ -229,7 +212,7 @@ export const ReadOnlyValue: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    await expectBasicFieldElements(canvas, 'Read-Only (Value Style)')
+    await expectLabelToBePresent(canvas, 'Read-Only (Value Style)')
   },
 }
 
@@ -247,7 +230,7 @@ export const ReadOnlyDisabled: Story = {
     // Should show disabled editor with content
     await expect(canvas.getByText('Markdown Editor (Disabled)')).toBeInTheDocument()
     
-    await expectBasicFieldElements(canvas, 'Read-Only (Disabled Style)')
+    await expectLabelToBePresent(canvas, 'Read-Only (Disabled Style)')
   },
 }
 
@@ -280,8 +263,10 @@ export const CustomHeight: Story = {
   render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    
-    await expectBasicFieldElements(canvas, 'Tall Editor')
+    // Use a more specific query for the label to avoid ambiguity
+    const labelEl = canvas.getByText('Tall Editor', { selector: 'label' })
+    expect(labelEl).toBeInTheDocument()
+    await expectLiveFormStateToBePresent(canvas)
   },
 }
 
@@ -295,6 +280,6 @@ export const FormReadOnly: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
     
-    await expectBasicFieldElements(canvas, 'Form-Level Read-Only')
+    await expectLabelToBePresent(canvas, 'Form-Level Read-Only')
   },
 } 

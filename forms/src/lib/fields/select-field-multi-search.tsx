@@ -24,6 +24,9 @@ export function SelectFieldMultiSearch({
       formReadOnly={formReadOnly}
       formReadOnlyStyle={formReadOnlyStyle}
       options={field.options.options || []}
+      loading={field.options.loading}
+      onSearchChange={field.options.onSearchChange}
+      searchDebounceMs={field.options.searchDebounceMs}
       value={value}
       onChange={(items) => form.setValue(field.key, items)}
       displayValue={multiSelectDisplayValue}
