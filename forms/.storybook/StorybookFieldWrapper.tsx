@@ -29,9 +29,24 @@ export const StorybookFieldWrapper: React.FC<StorybookFieldWrapperProps> = ({
   formReadOnlyStyle,
   labelDisplay = 'default',
 }) => {
+  // Patch: Normalize defaultValue for MultiSelect and SearchSelectMulti fields
+  let normalizedDefaultValue = field.options.defaultValue
+  if (
+    (field.type === 'MultiSelect' || field.type === 'SearchSelectMulti') &&
+    Array.isArray(field.options.defaultValue) &&
+    field.options.options &&
+    field.options.defaultValue.length > 0 &&
+    typeof field.options.defaultValue[0] === 'string'
+  ) {
+    // Map string IDs to { label, value } objects using the options array
+    normalizedDefaultValue = field.options.defaultValue
+      .map((id) => field.options.options.find((opt) => opt.value === id))
+      .filter(Boolean)
+  }
+
   const form = useForm({
     defaultValues: {
-      [field.key]: field.options.defaultValue,
+      [field.key]: normalizedDefaultValue,
     },
   })
 

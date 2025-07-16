@@ -23,6 +23,9 @@ export function SelectFieldSearch({
       formReadOnly={formReadOnly}
       formReadOnlyStyle={formReadOnlyStyle}
       options={field.options.options}
+      loading={field.options.loading}
+      onSearchChange={field.options.onSearchChange}
+      searchDebounceMs={field.options.searchDebounceMs}
       value={selectedOption}
       onChange={(option) => form.setValue(field.key, option?.value || null)}
       displayValue={singleSelectDisplayValue}

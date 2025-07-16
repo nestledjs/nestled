@@ -280,8 +280,10 @@ export const CustomHeight: Story = {
   render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    
-    await expectBasicFieldElements(canvas, 'Tall Editor')
+    // Use a more specific query for the label to avoid ambiguity
+    const labelEl = canvas.getByText('Tall Editor', { selector: 'label' })
+    expect(labelEl).toBeInTheDocument()
+    await expectLiveFormStateToBePresent(canvas)
   },
 }
 

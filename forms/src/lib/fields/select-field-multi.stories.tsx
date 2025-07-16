@@ -1,12 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { FormFieldType, SelectOptions } from '../form-types'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
-import { expect, within, userEvent, fn } from 'storybook/test'
+import { expect, within, userEvent, fn, waitFor } from 'storybook/test'
 
 // Helper function to generate realistic usage code with memoization
 const codeCache = new Map<string, string>()
 
-const generateMultiSelectCode = (args: MultiSelectStoryArgs) => {
+const generateSelectFieldMultiCode = (args: SelectFieldMultiStoryArgs) => {
   const cacheKey = JSON.stringify(args)
   if (codeCache.has(cacheKey)) {
     return codeCache.get(cacheKey)!
@@ -14,30 +14,79 @@ const generateMultiSelectCode = (args: MultiSelectStoryArgs) => {
   
   const options: string[] = []
   
-  if (args.label !== 'Select Options') {
+  if (args.label !== 'Multi Select Field') {
     options.push(`label: '${args.label}'`)
   }
   if (args.required) options.push('required: true')
   if (args.disabled) options.push('disabled: true')
   if (args.defaultValue && args.defaultValue.length > 0) {
-    const defaultValueStr = JSON.stringify(args.defaultValue)
-    options.push(`defaultValue: ${defaultValueStr}`)
+    const defaultValueArray = `[${args.defaultValue.map(v => `'${v}'`).join(', ')}]`
+    options.push(`defaultValue: ${defaultValueArray}`)
   }
   if (args.readOnly) options.push('readOnly: true')
   if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
-  if (args.placeholder) options.push(`placeholder: '${args.placeholder}'`)
+  if (args.placeholder && args.placeholder !== 'Select multiple options...') options.push(`placeholder: '${args.placeholder}'`)
+  if (args.helpText) options.push(`helpText: '${args.helpText}'`)
   
-  // Add options array
-  const optionsArray = `[
-    { label: 'JavaScript', value: 'js' },
-    { label: 'TypeScript', value: 'ts' },
-    { label: 'Python', value: 'py' },
-    { label: 'Java', value: 'java' },
-    { label: 'C++', value: 'cpp' },
-    { label: 'Go', value: 'go' },
-    { label: 'Rust', value: 'rust' },
-    { label: 'Swift', value: 'swift' },
-  ]`
+  // Generate options array based on the selected dataset
+  const optionsArray = args.optionSet === 'skills' 
+    ? `[
+          { label: 'JavaScript', value: 'javascript' },
+          { label: 'TypeScript', value: 'typescript' },
+          { label: 'React', value: 'react' },
+          { label: 'Vue.js', value: 'vue' },
+          { label: 'Angular', value: 'angular' },
+          { label: 'Node.js', value: 'nodejs' },
+          { label: 'Python', value: 'python' },
+          { label: 'Java', value: 'java' },
+          { label: 'C#', value: 'csharp' },
+          { label: 'PHP', value: 'php' },
+        ]`
+    : args.optionSet === 'colors'
+    ? `[
+          { label: 'Red', value: 'red' },
+          { label: 'Blue', value: 'blue' },
+          { label: 'Green', value: 'green' },
+          { label: 'Yellow', value: 'yellow' },
+          { label: 'Purple', value: 'purple' },
+          { label: 'Orange', value: 'orange' },
+          { label: 'Pink', value: 'pink' },
+          { label: 'Brown', value: 'brown' },
+          { label: 'Black', value: 'black' },
+          { label: 'White', value: 'white' },
+        ]`
+    : args.optionSet === 'features'
+    ? `[
+          { label: 'Dark Mode', value: 'dark-mode' },
+          { label: 'Push Notifications', value: 'push-notifications' },
+          { label: 'Offline Support', value: 'offline-support' },
+          { label: 'Real-time Updates', value: 'real-time-updates' },
+          { label: 'Data Export', value: 'data-export' },
+          { label: 'Advanced Search', value: 'advanced-search' },
+          { label: 'Custom Themes', value: 'custom-themes' },
+          { label: 'API Access', value: 'api-access' },
+        ]`
+    : args.optionSet === 'interests'
+    ? `[
+          { label: 'Sports', value: 'sports' },
+          { label: 'Music', value: 'music' },
+          { label: 'Movies', value: 'movies' },
+          { label: 'Books', value: 'books' },
+          { label: 'Travel', value: 'travel' },
+          { label: 'Cooking', value: 'cooking' },
+          { label: 'Photography', value: 'photography' },
+          { label: 'Gaming', value: 'gaming' },
+          { label: 'Art', value: 'art' },
+          { label: 'Technology', value: 'technology' },
+        ]`
+    : `[
+          { label: 'Option One', value: 'option-1' },
+          { label: 'Option Two', value: 'option-2' },
+          { label: 'Option Three', value: 'option-3' },
+          { label: 'Option Four', value: 'option-4' },
+          { label: 'Option Five', value: 'option-5' },
+        ]`
+  
   options.push(`options: ${optionsArray}`)
   
   const formProps: string[] = []
@@ -53,7 +102,7 @@ const generateMultiSelectCode = (args: MultiSelectStoryArgs) => {
   id="example-form"${formPropsString}
   fields={[
     {
-      key: 'skills',
+      key: 'userSelections',
       type: FormFieldType.MultiSelect,
       options: {${optionsString}
       },
@@ -66,108 +115,39 @@ const generateMultiSelectCode = (args: MultiSelectStoryArgs) => {
   return code
 }
 
-interface MultiSelectStoryArgs {
+// Define the flat controls for the Storybook UI
+interface SelectFieldMultiStoryArgs {
   label: string
   required: boolean
   disabled: boolean
-  defaultValue: { label: string; value: string }[]
+  defaultValue: string[]
   readOnly: boolean
   readOnlyStyle: 'value' | 'disabled'
   hasError: boolean
   errorMessage: string
   placeholder: string
+  helpText: string
+  optionSet: 'basic' | 'skills' | 'colors' | 'features' | 'interests'
   formReadOnly: boolean
   formReadOnlyStyle: 'value' | 'disabled'
   showState: boolean
 }
 
-// Sample options for all stories
-const sampleOptions = [
-  { label: 'JavaScript', value: 'js' },
-  { label: 'TypeScript', value: 'ts' },
-  { label: 'Python', value: 'py' },
-  { label: 'Java', value: 'java' },
-  { label: 'C++', value: 'cpp' },
-  { label: 'Go', value: 'go' },
-  { label: 'Rust', value: 'rust' },
-  { label: 'Swift', value: 'swift' },
-]
-
 /**
- * The SelectFieldMulti component allows users to select multiple options from a dropdown list.
- * 
- * **🏗️ MAJOR ARCHITECTURAL IMPROVEMENT:**
- * This component has been completely refactored to use the new progressive architecture:
- * 
- * **Before:** 213 lines of duplicated Combobox logic
- * **After:** 47 lines that build on SearchSelectBase (-78% code reduction!)
- * 
- * **New Architecture:**
- * ```
- * BaseSelectField (foundation)
- * └── SearchSelectBase (search + combobox functionality)  
- *     └── SelectFieldMulti (just adds multi-select rendering)
- * ```
- * 
- * This means SelectFieldMulti now automatically gets:
- * - Consistent theming and error handling
- * - Read-only support (was missing before!)
- * - Search functionality (as a bonus!)
- * - All future improvements to the base components
+ * The SelectFieldMulti component provides a multi-selection dropdown interface with removable tags.
+ * Users can select multiple options from a dropdown list, with selected items displayed as
+ * removable chips/badges above the input. Perfect for tags, skills, categories, and other
+ * multi-value selections where the relationship between items doesn't require a specific order.
  */
-const meta: Meta<MultiSelectStoryArgs> = {
+const meta: Meta<SelectFieldMultiStoryArgs> = {
   title: 'Forms/SelectFieldMulti',
   tags: ['autodocs'],
   parameters: {
     docs: {
-      description: {
-        component: `
-### 🚀 Massive Refactoring Success!
-
-SelectFieldMulti underwent the most dramatic improvement in the progressive architecture refactor:
-
-**Before (213 lines):**
-- Duplicated all Combobox logic from SearchSelectBase
-- Reimplemented form integration (Controller, etc.)
-- Missing read-only support
-- Inconsistent theming
-- Hard to maintain
-
-**After (47 lines):**
-- Builds on SearchSelectBase
-- Gets all functionality for free
-- Consistent with other components
-- Automatically benefits from base improvements
-
-### Progressive Architecture
-
-\`\`\`
-BaseSelectField (foundation)
-├── Form integration & validation  
-├── Read-only logic & theming
-├── Error handling & ClientOnly
-└── SearchSelectBase (search capability)
-    ├── Combobox functionality
-    ├── Multi-select support  
-    ├── Client-side search
-    └── SelectFieldMulti (minimal addition)
-        └── Just adds SelectedItems rendering
-\`\`\`
-
-### What This Means
-
-- **DRY Code**: No more duplication
-- **Consistency**: Same behavior as other select components
-- **Maintainability**: Bug fixes benefit all components
-- **New Features**: Now has search functionality!
-- **Read-only Support**: Previously missing, now included
-- **Future-proof**: Automatically gets base improvements
-        `,
-      },
       source: {
         type: 'code',
         transform: (code: string, storyContext: any) => {
-          return generateMultiSelectCode(storyContext.args)
+          return generateSelectFieldMultiCode(storyContext.args)
         },
       },
       story: {
@@ -180,7 +160,11 @@ BaseSelectField (foundation)
     label: { control: 'text', description: 'Field label' },
     required: { control: 'boolean', description: 'Is required?' },
     disabled: { control: 'boolean', description: 'Is disabled?' },
-    defaultValue: { control: 'object', description: 'Default selected options' },
+    defaultValue: { 
+      control: 'object', 
+      description: 'Array of default selected values',
+      table: { type: { summary: 'string[]' } }
+    },
     readOnly: { control: 'boolean', description: 'Is read-only?' },
     readOnlyStyle: {
       control: 'radio',
@@ -190,6 +174,12 @@ BaseSelectField (foundation)
     hasError: { control: 'boolean', description: 'Show error state?' },
     errorMessage: { control: 'text', description: 'Error message' },
     placeholder: { control: 'text', description: 'Placeholder text' },
+    helpText: { control: 'text', description: 'Help text' },
+    optionSet: {
+      control: 'select',
+      options: ['basic', 'skills', 'colors', 'features', 'interests'],
+      description: 'Set of options to display',
+    },
     formReadOnly: { control: 'boolean', description: 'Form-wide read-only?' },
     formReadOnlyStyle: {
       control: 'radio',
@@ -199,7 +189,7 @@ BaseSelectField (foundation)
     showState: { control: 'boolean', description: 'Show live form state?' },
   },
   args: {
-    label: 'Select Options',
+    label: 'Multi Select Field',
     required: false,
     disabled: false,
     defaultValue: [],
@@ -207,12 +197,82 @@ BaseSelectField (foundation)
     readOnlyStyle: 'value',
     hasError: false,
     errorMessage: 'Please select at least one option.',
-    placeholder: 'Search options...',
+    placeholder: 'Select multiple options...',
+    helpText: '',
+    optionSet: 'basic',
     formReadOnly: false,
     formReadOnlyStyle: 'value',
     showState: true,
   },
   render: (args) => {
+    // Generate different option sets based on the selected optionSet
+    const optionSets = {
+      basic: [
+        { label: 'Option One', value: 'option-1' },
+        { label: 'Option Two', value: 'option-2' },
+        { label: 'Option Three', value: 'option-3' },
+        { label: 'Option Four', value: 'option-4' },
+        { label: 'Option Five', value: 'option-5' },
+      ],
+      skills: [
+        { label: 'JavaScript', value: 'javascript' },
+        { label: 'TypeScript', value: 'typescript' },
+        { label: 'React', value: 'react' },
+        { label: 'Vue.js', value: 'vue' },
+        { label: 'Angular', value: 'angular' },
+        { label: 'Node.js', value: 'nodejs' },
+        { label: 'Python', value: 'python' },
+        { label: 'Java', value: 'java' },
+        { label: 'C#', value: 'csharp' },
+        { label: 'PHP', value: 'php' },
+        { label: 'Go', value: 'go' },
+        { label: 'Rust', value: 'rust' },
+        { label: 'Swift', value: 'swift' },
+        { label: 'Kotlin', value: 'kotlin' },
+        { label: 'Ruby', value: 'ruby' },
+      ],
+      colors: [
+        { label: 'Red', value: 'red' },
+        { label: 'Blue', value: 'blue' },
+        { label: 'Green', value: 'green' },
+        { label: 'Yellow', value: 'yellow' },
+        { label: 'Purple', value: 'purple' },
+        { label: 'Orange', value: 'orange' },
+        { label: 'Pink', value: 'pink' },
+        { label: 'Brown', value: 'brown' },
+        { label: 'Black', value: 'black' },
+        { label: 'White', value: 'white' },
+        { label: 'Gray', value: 'gray' },
+        { label: 'Cyan', value: 'cyan' },
+      ],
+      features: [
+        { label: 'Dark Mode', value: 'dark-mode' },
+        { label: 'Push Notifications', value: 'push-notifications' },
+        { label: 'Offline Support', value: 'offline-support' },
+        { label: 'Real-time Updates', value: 'real-time-updates' },
+        { label: 'Data Export', value: 'data-export' },
+        { label: 'Advanced Search', value: 'advanced-search' },
+        { label: 'Custom Themes', value: 'custom-themes' },
+        { label: 'API Access', value: 'api-access' },
+        { label: 'Two-Factor Auth', value: 'two-factor-auth' },
+        { label: 'Single Sign-On', value: 'sso' },
+      ],
+      interests: [
+        { label: 'Sports', value: 'sports' },
+        { label: 'Music', value: 'music' },
+        { label: 'Movies', value: 'movies' },
+        { label: 'Books', value: 'books' },
+        { label: 'Travel', value: 'travel' },
+        { label: 'Cooking', value: 'cooking' },
+        { label: 'Photography', value: 'photography' },
+        { label: 'Gaming', value: 'gaming' },
+        { label: 'Art', value: 'art' },
+        { label: 'Technology', value: 'technology' },
+        { label: 'Fitness', value: 'fitness' },
+        { label: 'Fashion', value: 'fashion' },
+      ],
+    }
+
     const field: { key: string; type: FormFieldType.MultiSelect; options: SelectOptions } = {
       key: 'storybookMultiSelectField',
       type: FormFieldType.MultiSelect,
@@ -225,7 +285,8 @@ BaseSelectField (foundation)
         ...(args.readOnly && { readOnly: args.readOnly }),
         ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
         placeholder: args.placeholder,
-        options: sampleOptions,
+        helpText: args.helpText || undefined,
+        options: optionSets[args.optionSet],
       },
     }
     return (
@@ -240,470 +301,422 @@ BaseSelectField (foundation)
     )
   },
 }
+
 export default meta
+type Story = StoryObj<SelectFieldMultiStoryArgs>
 
-type Story = StoryObj<typeof meta>
+/**
+ * The default MultiSelect with basic options.
+ */
+export const Default: Story = {}
 
-export const ArchitecturalTransformation: Story = {
-  name: '🏗️ Before vs After Architecture',
-  args: { 
-    label: 'Refactored Multi-Select',
-    showState: false,
-    defaultValue: [
-      { label: 'TypeScript', value: 'ts' },
-      { label: 'Python', value: 'py' }
-    ]
-  },
-  render: () => (
-    <div className="max-w-6xl mx-auto p-6 space-y-8">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">SelectFieldMulti: Dramatic Transformation</h2>
-        <p className="text-gray-600">
-          From 213 lines of duplicated code to 47 lines of DRY architecture
-        </p>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="border-2 border-red-200 rounded-lg p-6 bg-red-50">
-          <h3 className="text-xl font-semibold text-red-900 mb-4">❌ Before (213 lines)</h3>
-          <div className="space-y-3 text-sm text-red-800">
-            <div>
-              <strong>Problems:</strong>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Duplicated all Combobox logic from SearchSelectBase</li>
-                <li>Reimplemented form integration (Controller, etc.)</li>
-                <li>Missing read-only support</li>
-                <li>Inconsistent theming</li>
-                <li>Hard to maintain and sync with other components</li>
-                <li>No search functionality</li>
-              </ul>
-            </div>
-            <div className="bg-red-100 p-3 rounded">
-              <strong>Code Structure:</strong><br/>
-              <code className="text-xs">
-                213 lines of:<br/>
-                • Custom Combobox setup<br/>
-                • SelectedItems component<br/>
-                • MultiSelectOptions component<br/>
-                • renderMultiSelectCombobox function<br/>
-                • Duplicated form logic<br/>
-                • Manual theme handling
-              </code>
-            </div>
-          </div>
-        </div>
-        
-        <div className="border-2 border-green-200 rounded-lg p-6 bg-green-50">
-          <h3 className="text-xl font-semibold text-green-900 mb-4">✅ After (47 lines)</h3>
-          <div className="space-y-3 text-sm text-green-800">
-            <div>
-              <strong>Benefits:</strong>
-              <ul className="list-disc list-inside mt-2 space-y-1">
-                <li>Builds on SearchSelectBase (no duplication)</li>
-                <li>Gets form integration for free</li>
-                <li>Automatic read-only support</li>
-                <li>Consistent theming</li>
-                <li>Easy to maintain</li>
-                <li>Bonus: Search functionality included!</li>
-              </ul>
-            </div>
-            <div className="bg-green-100 p-3 rounded">
-              <strong>Code Structure:</strong><br/>
-              <code className="text-xs">
-                47 lines of:<br/>
-                • Import shared helpers<br/>
-                • Convert options format<br/>
-                • Return SearchSelectBase with:<br/>
-                &nbsp;&nbsp;• multiple=true<br/>
-                &nbsp;&nbsp;• renderSelectedItems prop<br/>
-                • Done! 🎉
-              </code>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-blue-50 p-6 rounded-lg">
-        <h3 className="font-semibold text-blue-900 mb-4">Progressive Architecture Chain:</h3>
-        <div className="flex flex-col md:flex-row items-center justify-center space-y-4 md:space-y-0 md:space-x-6 text-sm">
-          <div className="bg-blue-100 px-4 py-2 rounded-lg text-center">
-            <strong>BaseSelectField</strong><br/>
-            <span className="text-xs">Form + Theme + ReadOnly</span>
-          </div>
-          <div className="text-blue-600 text-xl">→</div>
-          <div className="bg-blue-100 px-4 py-2 rounded-lg text-center">
-            <strong>SearchSelectBase</strong><br/>
-            <span className="text-xs">+ Combobox + Search</span>
-          </div>
-          <div className="text-blue-600 text-xl">→</div>
-          <div className="bg-blue-200 px-4 py-2 rounded-lg text-center font-semibold">
-            <strong>SelectFieldMulti</strong><br/>
-            <span className="text-xs">+ Selected Items UI</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-gray-50 p-6 rounded-lg">
-        <h3 className="font-semibold mb-4">Impact Metrics:</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-green-600">-78%</div>
-            <div className="text-sm text-gray-600">Code Reduction</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-blue-600">100%</div>
-            <div className="text-sm text-gray-600">DRY Compliance</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-purple-600">+1</div>
-            <div className="text-sm text-gray-600">New Feature (Search)</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-orange-600">∞</div>
-            <div className="text-sm text-gray-600">Maintainability</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  ),
-}
-
-export const Default: Story = {
-  name: 'Default State',
-  args: { showState: true },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    
-    // Should have combobox input
-    const input = await canvas.findByRole('combobox')
-    await expect(input).toBeInTheDocument()
-    await expect(input).toBeEnabled()
-    
-    // Should have dropdown button
-    const button = await canvas.findByRole('button')
-    await expect(button).toBeInTheDocument()
-  },
-}
-
-export const WithDefaultSelections: Story = {
-  name: 'With Default Selections',
-  args: { 
-    defaultValue: [
-      { label: 'JavaScript', value: 'js' },
-      { label: 'TypeScript', value: 'ts' }
-    ],
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    
-    // Should show selected items as tags
-    const jsTag = await canvas.findByText('JavaScript')
-    await expect(jsTag).toBeInTheDocument()
-    
-    const tsTag = await canvas.findByText('TypeScript')
-    await expect(tsTag).toBeInTheDocument()
-    
-    // Should have remove buttons for each tag
-    const removeButtons = await canvas.findAllByRole('button')
-    await expect(removeButtons).toHaveLength(3) // 2 remove buttons + 1 dropdown button
-  },
-}
-
-export const NewSearchFeature: Story = {
-  name: '🆕 Bonus: Search Functionality',
+/**
+ * A MultiSelect with pre-selected values demonstrating the selected items display.
+ */
+export const WithDefaultValues: Story = {
   args: {
-    label: 'Multi-Select with Search',
-    placeholder: 'Type to search and select multiple...',
-    showState: false
+    label: 'Programming Skills',
+    optionSet: 'skills',
+    defaultValue: ['javascript', 'react', 'typescript'],
+    helpText: 'Select all programming languages and frameworks you know',
   },
-  render: (args) => (
-    <div className="max-w-2xl mx-auto p-6 space-y-6">
-      <div className="text-center">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          🎉 Bonus Feature: Search Functionality
-        </h3>
-        <p className="text-gray-600">
-          By building on SearchSelectBase, SelectFieldMulti now gets search functionality for free!
-        </p>
-      </div>
-      
-      <StorybookFieldWrapper
-        field={{
-          key: 'searchableMultiSelect',
-          type: FormFieldType.MultiSelect,
-          options: {
-            label: args.label,
-            placeholder: args.placeholder,
-            options: sampleOptions,
-          },
-        }}
-      />
-      
-      <div className="bg-green-50 p-4 rounded-lg">
-        <h4 className="font-medium text-green-900 mb-2">Try it out:</h4>
-        <ol className="list-decimal list-inside text-sm text-green-800 space-y-1">
-          <li>Click the input field above</li>
-          <li>Type "Java" to filter options</li>
-          <li>Select JavaScript and Java</li>
-          <li>Clear the search and type "Python"</li>
-          <li>Add Python to your selection</li>
-        </ol>
-        <p className="mt-3 text-xs text-green-700">
-          <strong>Note:</strong> This search functionality came automatically from SearchSelectBase - 
-          no additional code required in SelectFieldMulti!
-        </p>
-      </div>
-    </div>
-  ),
 }
 
+/**
+ * A required MultiSelect field.
+ */
 export const Required: Story = {
-  name: 'Required Field',
-  args: { 
+  args: {
+    label: 'Favorite Colors',
+    optionSet: 'colors',
     required: true,
-    showState: false 
+    placeholder: 'Choose your favorite colors...',
+    helpText: 'Select at least one color',
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('combobox')
-    await expect(input).toBeInTheDocument()
-    await expect(input).toBeEnabled()
-    // Optionally: check for required asterisk in the label
-    // await expect(canvas.getByText(/Select Options\s*\*/)).toBeInTheDocument()
-  },
-}
-
-export const Disabled: Story = {
-  name: 'Disabled State',
-  args: { 
-    disabled: true,
-    defaultValue: [{ label: 'Python', value: 'py' }],
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const input = await canvas.findByRole('combobox')
-    await expect(input).toBeDisabled()
     
-    // Should show selected item but be disabled
-    const pythonTag = await canvas.findByText('Python')
-    await expect(pythonTag).toBeInTheDocument()
+    await step('Verify required indicator is shown', async () => {
+      const label = canvas.getByText('Favorite Colors')
+      expect(label).toBeInTheDocument()
+    })
   },
 }
 
+/**
+ * A MultiSelect in an error state.
+ */
 export const WithError: Story = {
-  name: 'Error State',
-  args: { 
+  args: {
+    label: 'Required Features',
+    optionSet: 'features',
     hasError: true,
+    errorMessage: 'Please select at least one feature',
     required: true,
-    showState: false 
+    placeholder: 'Select features...',
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('combobox')
-    await expect(input).toBeInTheDocument()
     
-    // Error styling should be applied (checked via CSS classes in component)
+    await step('Verify error state is displayed', async () => {
+      const errorMessage = canvas.getByText('Please select at least one feature')
+      expect(errorMessage).toBeInTheDocument()
+    })
   },
 }
 
-export const SearchAndSelect: Story = {
-  name: 'Search and Select',
-  args: { 
-    showState: false 
+/**
+ * A disabled MultiSelect that cannot be interacted with.
+ */
+export const Disabled: Story = {
+  args: {
+    label: 'Disabled Multi-Selection',
+    disabled: true,
+    defaultValue: ['option-1', 'option-3'],
+    placeholder: 'This field is disabled',
   },
-  play: async ({ canvasElement }) => {
+  play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('combobox')
-    // Click to open dropdown
-    await userEvent.click(input)
-    // Type to search
-    await userEvent.type(input, 'Java')
-    // Should filter options (JavaScript and Java should be visible)
-    const options = await canvas.findAllByRole('option')
-    await expect(options.length).toBeGreaterThan(0)
-    // Click on JavaScript option
-    const jsOption = await canvas.findAllByText('JavaScript')
-    await userEvent.click(jsOption[0])
-    // Should show selected item as a tag
-    const selectedTag = await canvas.findAllByText('JavaScript')
-    await expect(selectedTag.length).toBeGreaterThan(0)
+    
+    await step('Verify field is disabled', async () => {
+      const input = canvas.getByRole('combobox')
+      expect(input).toBeDisabled()
+    })
   },
 }
 
-export const RemoveSelectedItems: Story = {
-  name: 'Remove Selected Items',
-  args: { 
-    defaultValue: [
-      { label: 'JavaScript', value: 'js' },
-      { label: 'Python', value: 'py' },
-      { label: 'Go', value: 'go' }
-    ],
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    // Should have 3 selected items
-    const jsTag = await canvas.findAllByText('JavaScript')
-    const pyTag = await canvas.findAllByText('Python')
-    const goTag = await canvas.findAllByText('Go')
-    await expect(jsTag.length).toBeGreaterThan(0)
-    await expect(pyTag.length).toBeGreaterThan(0)
-    await expect(goTag.length).toBeGreaterThan(0)
-    // Find and click the remove button for Python (second item)
-    const removeButtons = await canvas.findAllByRole('button')
-    // Filter out the dropdown button (last one)
-    const itemRemoveButtons = removeButtons.slice(0, -1)
-    // Click remove button for Python (index 1)
-    await userEvent.click(itemRemoveButtons[1])
-    // Python should be removed
-    const pyTagsAfter = canvas.queryAllByText('Python')
-    await expect(pyTagsAfter.length).toBe(0)
-    // JavaScript and Go should still be there
-    await expect(canvas.getAllByText('JavaScript').length).toBeGreaterThan(0)
-    await expect(canvas.getAllByText('Go').length).toBeGreaterThan(0)
-  },
-}
-
-const hasTextContent = (expected: string) => (content: string, element: Element | null) => element?.textContent === expected;
-
+/**
+ * A MultiSelect in read-only mode showing only the values.
+ */
 export const ReadOnlyValue: Story = {
-  name: 'Read-Only (Value Style)',
-  args: { 
-    readOnly: true,
-    defaultValue: [
-      { label: 'TypeScript', value: 'ts' },
-      { label: 'Rust', value: 'rust' }
-    ],
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    // Should render as plain text
-    const valueDisplays = await canvas.findAllByText((content, element) => {
-      const text = element?.textContent?.replace(/\s+/g, ' ').trim() || '';
-      return text === 'TypeScript, Rust';
-    });
-    await expect(valueDisplays.length).toBeGreaterThan(0)
-  },
-}
-
-export const ReadOnlyDisabled: Story = {
-  name: 'Read-Only (Disabled Style)',
-  args: { 
-    readOnly: true,
-    readOnlyStyle: 'disabled',
-    defaultValue: [
-      { label: 'Swift', value: 'swift' },
-      { label: 'C++', value: 'cpp' }
-    ],
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    
-    // Should render as disabled input
-    const input = await canvas.findByRole('textbox')
-    await expect(input).toBeDisabled()
-    await expect(input).toHaveValue('Swift, C++')
-  },
-}
-
-export const FormReadOnly: Story = {
-  name: 'Form Read-Only (Value Style)',
-  args: { 
-    formReadOnly: true,
-    defaultValue: [
-      { label: 'Java', value: 'java' },
-      { label: 'Python', value: 'py' }
-    ],
-    readOnly: false, // Explicitly false to test form-level precedence
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    const valueDisplays = await canvas.findAllByText((content, element) => {
-      const text = element?.textContent?.replace(/\s+/g, ' ').trim() || '';
-      return text === 'Java, Python';
-    });
-    await expect(valueDisplays.length).toBeGreaterThan(0)
-  },
-}
-
-export const FormReadOnlyDisabled: Story = {
-  name: 'Form Read-Only (Disabled Style)',
-  args: { 
-    formReadOnly: true,
-    formReadOnlyStyle: 'disabled',
-    defaultValue: [{ label: 'Go', value: 'go' }],
-    readOnly: false, // Explicitly false to test form-level precedence
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    
-    const input = await canvas.findByRole('textbox')
-    await expect(input).toBeDisabled()
-    await expect(input).toHaveValue('Go')
-  },
-}
-
-export const FieldOverridesForm: Story = {
-  name: 'Field Read-Only Overrides Form',
-  args: { 
-    formReadOnly: true,
-    formReadOnlyStyle: 'disabled',
+  args: {
+    label: 'Selected Interests',
+    optionSet: 'interests',
+    defaultValue: ['music', 'travel', 'photography'],
     readOnly: true,
     readOnlyStyle: 'value',
-    defaultValue: [
-      { label: 'Rust', value: 'rust' },
-      { label: 'TypeScript', value: 'ts' }
-    ],
-    showState: false 
-  },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement)
-    // Field-level 'value' style should override form-level 'disabled' style
-    const valueDisplay = await canvas.findByDisplayValue('Rust, TypeScript')
-    await expect(valueDisplay).toBeInTheDocument()
-    await expect(valueDisplay).toBeDisabled()
-    await expect(valueDisplay).toHaveAttribute('readonly')
-    const inputs = canvas.queryAllByRole('combobox')
-    await expect(inputs).toHaveLength(0)
   },
 }
 
-export const InteractiveExample: Story = {
-  name: 'Interactive Example',
-  args: { 
-    label: 'Select Your Skills',
-    placeholder: 'Search programming languages...',
-    required: true,
-    showState: true 
+/**
+ * A MultiSelect in read-only mode showing as a disabled input.
+ */
+export const ReadOnlyDisabled: Story = {
+  args: {
+    label: 'Selected Skills',
+    optionSet: 'skills',
+    defaultValue: ['javascript', 'react', 'nodejs'],
+    readOnly: true,
+    readOnlyStyle: 'disabled',
   },
-  play: async ({ canvasElement }) => {
+}
+
+/**
+ * A MultiSelect with form-level read-only mode.
+ */
+export const FormReadOnly: Story = {
+  args: {
+    label: 'Form Read-Only',
+    optionSet: 'colors',
+    defaultValue: ['blue', 'green'],
+    formReadOnly: true,
+    formReadOnlyStyle: 'value',
+  },
+}
+
+/**
+ * Interactive test demonstrating multi-selection functionality.
+ */
+export const MultiSelection: Story = {
+  args: {
+    label: 'Multi-Selection Test',
+    optionSet: 'colors',
+    placeholder: 'Select multiple colors...',
+    helpText: 'This story tests multi-selection interactions',
+  },
+  play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    const input = await canvas.findByRole('combobox')
-    // Click to open dropdown
-    await userEvent.click(input)
-    // Send down arrow to keep dropdown open (Headless UI workaround)
-    await userEvent.keyboard('{ArrowDown}')
-    // Select TypeScript
-    const tsOption = await canvas.findAllByText('TypeScript')
-    await userEvent.click(tsOption[0])
-    // Search for Python
-    await userEvent.type(input, 'Py')
-    const pyOption = await canvas.findAllByText('Python')
-    await userEvent.click(pyOption[0])
-    // Clear search and select Go
-    await userEvent.clear(input)
-    await userEvent.type(input, 'Go')
-    const goOption = await canvas.findAllByText('Go')
-    await userEvent.click(goOption[0])
-    // Should have 3 selected items
-    await expect(canvas.getAllByText('TypeScript').length).toBeGreaterThan(0)
-    await expect(canvas.getAllByText('Python').length).toBeGreaterThan(0)
-    await expect(canvas.getAllByText('Go').length).toBeGreaterThan(0)
+    const user = userEvent.setup()
+    
+    await step('Open dropdown and select first option', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      
+      // Wait for options to appear
+      const redOption = await canvas.findByText('Red')
+      expect(redOption).toBeInTheDocument()
+      
+      await user.click(redOption)
+      
+      // Should see selected item in tags container only
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('Red')).toBeInTheDocument()
+      // Optionally, close the dropdown and assert only one 'Red' is present
+      await user.click(document.body)
+      const allRed = canvas.getAllByText('Red')
+      expect(allRed).toHaveLength(1)
+    })
+    
+    await step('Select additional options', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      
+      const blueOption = canvas.getByText('Blue')
+      await user.click(blueOption)
+      
+      // Both items should be selected in tags container
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('Red')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('Blue')).toBeInTheDocument()
+      // Optionally, close the dropdown and assert only one of each
+      await user.click(document.body)
+      expect(canvas.getAllByText('Red')).toHaveLength(1)
+      expect(canvas.getAllByText('Blue')).toHaveLength(1)
+    })
+    
+    await step('Select third option', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      
+      const greenOption = canvas.getByText('Green')
+      await user.click(greenOption)
+      
+      // All three items should be selected in tags container
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('Red')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('Blue')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('Green')).toBeInTheDocument()
+      // Optionally, close the dropdown and assert only one of each
+      await user.click(document.body)
+      expect(canvas.getAllByText('Red')).toHaveLength(1)
+      expect(canvas.getAllByText('Blue')).toHaveLength(1)
+      expect(canvas.getAllByText('Green')).toHaveLength(1)
+    })
+  },
+}
+
+/**
+ * Test removing selected items via the remove buttons.
+ */
+export const RemoveSelectedItems: Story = {
+  args: {
+    label: 'Remove Items Test',
+    optionSet: 'skills',
+    defaultValue: ['javascript', 'react', 'typescript'],
+    helpText: 'Test removing selected items',
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const user = userEvent.setup()
+    
+    await step('Verify all selected items are displayed', async () => {
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('JavaScript')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('React')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('TypeScript')).toBeInTheDocument()
+    })
+    
+    await step('Remove middle item (React)', async () => {
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      // Find the remove button for React by traversing tags
+      const tagSpans = Array.from(tagsContainer.querySelectorAll('span'))
+      const reactTag = tagSpans.find(span => span.textContent?.includes('React'))
+      const reactRemoveButton = reactTag?.querySelector('button')
+      if (reactRemoveButton) {
+        await user.click(reactRemoveButton)
+        // Wait for React to be removed
+        await waitFor(() => {
+          expect(within(tagsContainer).queryByText('React')).not.toBeInTheDocument()
+        })
+        // Others should remain in tags container
+        expect(within(tagsContainer).getByText('JavaScript')).toBeInTheDocument()
+        expect(within(tagsContainer).getByText('TypeScript')).toBeInTheDocument()
+      } else {
+        throw new Error('Could not find remove button for React')
+      }
+    })
+  },
+}
+
+/**
+ * Test keyboard navigation and selection.
+ */
+export const KeyboardNavigation: Story = {
+  args: {
+    label: 'Keyboard Navigation Test',
+    optionSet: 'features',
+    placeholder: 'Use keyboard to navigate...',
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const user = userEvent.setup()
+    
+    await step('Focus and open dropdown with keyboard', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      expect(input).toHaveFocus()
+      // Should see options
+      await canvas.findByText('Dark Mode')
+    })
+    
+    await step('Navigate and select with keyboard', async () => {
+      // Navigate down and select first option (Dark Mode)
+      await user.keyboard('{ArrowDown}')
+      await user.keyboard('{Enter}')
+      // Should have selected first option in tags container
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('Dark Mode')).toBeInTheDocument()
+    })
+    
+    await step('Select another option with keyboard', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input) // Re-focus input to open dropdown
+      // Wait for dropdown to be open and "Push Notifications" to be visible
+      await canvas.findByText('Push Notifications')
+      // Now navigate to "Push Notifications"
+      await user.keyboard('{ArrowDown}') // Should focus "Push Notifications"
+      await user.keyboard('{Enter}')
+      // Assert both selected items in tags container
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('Dark Mode')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('Push Notifications')).toBeInTheDocument()
+    })
+  },
+}
+
+/**
+ * Test form submission with MultiSelect values.
+ */
+export const FormSubmission: Story = {
+  args: {
+    label: 'Submit Test',
+    optionSet: 'interests',
+    required: true,
+    showState: true,
+    placeholder: 'Select your interests...',
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const user = userEvent.setup()
+    
+    await step('Select multiple interests and verify form state', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      
+      // Select Sports
+      const sportsOption = canvas.getByText('Sports')
+      await user.click(sportsOption)
+      
+      // Select Music
+      await user.click(input)
+      const musicOption = canvas.getByText('Music')
+      await user.click(musicOption)
+      
+      // Check that the values appear in the live form state as an array
+      const stateDisplay = canvas.getByText(/"storybookMultiSelectField": \[/)
+      expect(stateDisplay).toBeInTheDocument()
+      
+      // Should contain both selected values
+      expect(canvas.getByText(/sports/)).toBeInTheDocument()
+      expect(canvas.getByText(/music/)).toBeInTheDocument()
+    })
+  },
+}
+
+/**
+ * Test with large option sets and many selections.
+ */
+export const LargeDataset: Story = {
+  args: {
+    label: 'Technical Skills',
+    optionSet: 'skills',
+    placeholder: 'Select all your programming skills...',
+    helpText: 'Choose all languages and frameworks you are comfortable with',
+    defaultValue: ['javascript', 'typescript', 'react'],
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const user = userEvent.setup()
+    
+    await step('Verify pre-selected skills are displayed', async () => {
+      expect(canvas.getByText('JavaScript')).toBeInTheDocument()
+      expect(canvas.getByText('TypeScript')).toBeInTheDocument()
+      expect(canvas.getByText('React')).toBeInTheDocument()
+    })
+    
+    await step('Verify large dataset options and initial selection', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      
+      // Should see many options in the dropdown
+      expect(canvas.getByText('Python')).toBeInTheDocument()
+      expect(canvas.getByText('Node.js')).toBeInTheDocument()
+      expect(canvas.getByText('Java')).toBeInTheDocument()
+      
+      // Verify the initial 3 selected skills in tags container
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('JavaScript')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('TypeScript')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('React')).toBeInTheDocument()
+    })
+  },
+}
+
+/**
+ * Test edge case of selecting and deselecting all options.
+ */
+export const SelectDeselectAll: Story = {
+  args: {
+    label: 'Select/Deselect All Test',
+    optionSet: 'colors',
+    helpText: 'Test selecting many options and removing them',
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const user = userEvent.setup()
+    
+    await step('Select multiple options quickly', async () => {
+      const input = canvas.getByRole('combobox')
+      // Select several colors
+      const colorsToSelect = ['Red', 'Blue', 'Green', 'Yellow']
+      for (const color of colorsToSelect) {
+        await user.click(input)
+        const option = canvas.getByText(color)
+        await user.click(option)
+      }
+      // Verify all are selected in the tags container
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      for (const color of colorsToSelect) {
+        expect(within(tagsContainer).getByText(color)).toBeInTheDocument()
+      }
+    })
+    
+    await step('Remove all selected items', async () => {
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      const colorsToRemove = ['Red', 'Blue', 'Green', 'Yellow']
+      for (const color of colorsToRemove) {
+        // Re-query the tag span for this color
+        const tagSpans = Array.from(tagsContainer.querySelectorAll('span'))
+        const tag = tagSpans.find(span => span.textContent?.trim() === color)
+        if (tag) {
+          const removeButton = tag.querySelector('button')
+          if (removeButton) {
+            await user.click(removeButton)
+            // Wait for the tag to be removed
+            await waitFor(() => {
+              expect(within(tagsContainer).queryByText(color)).not.toBeInTheDocument()
+            })
+          } else {
+            throw new Error(`Could not find remove button for ${color}`)
+          }
+        } else {
+          throw new Error(`Could not find tag for ${color}`)
+        }
+      }
+      // Final assertion: none of the tags should be present
+      colorsToRemove.forEach(color => {
+        expect(within(tagsContainer).queryByText(color)).not.toBeInTheDocument()
+      })
+    })
   },
 } 

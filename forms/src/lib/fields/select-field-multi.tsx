@@ -3,6 +3,8 @@ import { SearchSelectBase } from './search-select-base'
 import { SelectedItems, multiSelectDisplayValue } from './search-select-helpers'
 import { useFormTheme } from '../theme-context'
 
+
+
 export function SelectFieldMulti({
   form,
   field,
@@ -17,7 +19,7 @@ export function SelectFieldMulti({
   const value = form.getValues(field.key) ?? []
   
   // Convert SelectOption[] to SearchSelectOption[] by ensuring values are strings
-  const searchOptions = (field.options.options || []).map(option => ({
+  const searchOptions = (field.options?.options ?? []).map(option => ({
     label: option.label,
     value: String(option.value)
   }))
@@ -32,8 +34,8 @@ export function SelectFieldMulti({
       options={searchOptions}
       // No search functionality - just client-side filtering handled by SearchSelectBase
       value={value}
-      onChange={(items) => form.setValue(field.key, items)}
-      displayValue={multiSelectDisplayValue}
+      onChange={(newValue) => form.setValue(field.key, newValue)}
+      displayValue={() => ''} // Always empty for multi-select
       multiple={true}
       themeKey="multiSelect"
       renderSelectedItems={(value, onChange) => (

@@ -186,6 +186,10 @@ export interface SearchSelectOption {
 export interface SearchSelectOptions extends BaseFieldOptions {
   options: SearchSelectOption[]
   placeholder?: string
+  // Server-side search capabilities
+  onSearchChange?: (search: string) => void
+  loading?: boolean
+  searchDebounceMs?: number
 }
 
 export interface SearchSelectApolloOptions<TDataItem = any> extends BaseFieldOptions {
@@ -199,6 +203,10 @@ export interface SearchSelectApolloOptions<TDataItem = any> extends BaseFieldOpt
 export interface SearchSelectMultiOptions extends BaseFieldOptions {
   options: SearchSelectOption[]
   placeholder?: string
+  // Server-side search capabilities
+  onSearchChange?: (search: string) => void
+  loading?: boolean
+  searchDebounceMs?: number
 }
 
 export interface ContentOptions extends BaseFieldOptions {

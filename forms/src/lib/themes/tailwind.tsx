@@ -31,9 +31,9 @@ export const tailwindTheme = FormThemeSchema.parse({
     wrapper: '',
     row: 'flex items-center gap-2',
     rowFullWidth: 'flex items-center justify-between',
-    input: 'h-4 w-4 text-green_web rounded cursor-pointer',
+    input: 'h-4 w-4 text-sky-600 rounded cursor-pointer',
     focus: 'focus:ring-2 focus:ring-sky-300 focus:border-sky-300',
-    checked: 'bg-green_web border-green_web',
+    checked: 'bg-sky-600 border-sky-600',
     error: '!border-red-600 !focus:border-red-600',
     disabled: 'opacity-50 cursor-not-allowed',
     readOnly: 'text-gray-700 font-medium',
@@ -43,7 +43,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     errorText: 'text-xs text-red-600',
     indeterminate: 'bg-gray-300 border-gray-400',
     readonlyCheckedIcon: (
-      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <svg className="w-5 h-5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
       </svg>
     ),
@@ -59,9 +59,9 @@ export const tailwindTheme = FormThemeSchema.parse({
     rowFullWidth: 'flex items-center justify-between',
     checkboxContainer: 'relative inline-flex items-center cursor-pointer select-none',
     hiddenInput: 'peer absolute opacity-0 w-5 h-5 cursor-pointer',
-    customCheckbox: 'inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300 transition-colors bg-white mr-2 peer-focus:ring-2 peer-focus:ring-green-400 peer-focus:ring-offset-2',
+    customCheckbox: 'inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300 transition-colors bg-white mr-2 peer-focus:ring-2 peer-focus:ring-sky-300 peer-focus:ring-offset-2',
     focus: '', // Empty since focus styles are now in customCheckbox
-    checked: '!bg-green-500 border-green-500',
+    checked: '!bg-sky-600 border-sky-600',
     error: '!border-red-600',
     disabled: 'opacity-50 cursor-not-allowed',
     readOnly: 'text-gray-700 font-medium',
@@ -76,7 +76,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     ),
     uncheckedIcon: null, // No icon when unchecked by default
     readonlyCheckedIcon: (
-      <svg className="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <svg className="w-4 h-4 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
       </svg>
     ),
@@ -140,10 +140,11 @@ export const tailwindTheme = FormThemeSchema.parse({
   multiSelect: {
     wrapper: '',
     container: 'relative',
-    selectedItemsContainer: 'flex flex-wrap items-center gap-1 rounded-md border border-gray-300 bg-white p-1 pr-10 shadow-sm focus-within:ring-2 focus-within:ring-sky-300 focus-within:border-sky-300',
+    inputContainer: 'flex flex-wrap items-center gap-1 rounded-md border border-gray-300 bg-white p-1 pr-10 shadow-sm focus-within:ring-2 focus-within:ring-sky-300 focus-within:border-sky-300',
     selectedItem: 'flex items-center gap-x-1 whitespace-nowrap rounded-sm bg-sky-100 px-2 py-0.5 text-sm text-sky-700',
     selectedItemLabel: '',
     selectedItemRemoveButton: 'text-sky-500 hover:text-sky-800 transition-colors',
+    selectedItemRemoveIcon: 'h-3 w-3',
     input: 'min-w-[6rem] flex-grow bg-transparent p-1 focus:ring-0 border-none focus:outline-none',
     button: 'absolute inset-y-0 right-0 flex items-center pr-2',
     buttonIcon: 'h-5 w-5 text-gray-400',
@@ -152,7 +153,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     optionActive: 'bg-sky-100 text-sky-900',
     optionSelected: 'font-medium',
     optionLabel: 'block truncate',
-    optionCheckIcon: 'absolute inset-y-0 left-0 flex items-center pl-3 text-sky-600 h-5 w-5',
+    optionCheckIcon: 'absolute inset-y-0 left-0 flex items-center pl-3 text-sky-600',
     error: '!border-red-600 !focus-within:border-red-600 !focus-within:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
@@ -199,8 +200,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     radioContainer: 'flex flex-row items-center',
     input: 'size-4 appearance-none rounded-full border-2 border-gray-300 bg-white focus:outline-none cursor-pointer',
     inputFullWidth: '!size-6',
-    inputChecked: '!bg-green-600 !border-green-600 shadow-[inset_0_0_0_3px_white]',
-    inputFocus: 'focus:ring-green-500 focus:ring-2',
+    inputChecked: '!bg-sky-600 !border-sky-600 shadow-[inset_0_0_0_3px_white]',
+    inputFocus: 'focus:ring-sky-300 focus:ring-2',
     inputDisabled: 'opacity-50 cursor-not-allowed',
     label: 'text-sm grow cursor-pointer',
     labelFullWidth: 'text-sm ml-2 grow',
@@ -212,7 +213,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnlySelected: 'flex flex-row items-center',
     readOnlyUnselected: 'w-5 h-5 text-red-600',
     readOnlyIcon: (
-      <svg className="w-5 h-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+      <svg className="w-5 h-5 text-sky-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
       </svg>
     ),
@@ -233,7 +234,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     optionActive: 'text-white bg-sky-600',
     optionSelected: 'font-medium',
     optionLabel: 'block truncate',
-    optionCheckIcon: 'absolute inset-y-0 left-0 flex items-center pl-3 text-sky-600 h-5 w-5',
+    optionCheckIcon: 'absolute inset-y-0 left-0 flex items-center pl-3 text-sky-600',
     loadingText: 'p-2 text-sm text-gray-500',
     error: '!border-red-600 !focus:border-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
@@ -245,19 +246,19 @@ export const tailwindTheme = FormThemeSchema.parse({
     wrapper: '',
     container: 'relative',
     inputContainer: 'flex flex-wrap items-center gap-1 rounded-md border border-gray-300 bg-white p-1 pr-10 shadow-sm',
-    selectedItem: 'flex items-center gap-x-1 whitespace-nowrap rounded-sm bg-orange-100 px-2 py-0.5 text-sm text-orange-700',
+    selectedItem: 'flex items-center gap-x-1 whitespace-nowrap rounded-sm bg-sky-100 px-2 py-0.5 text-sm text-sky-700',
     selectedItemLabel: '',
-    selectedItemRemoveButton: 'text-orange-500 hover:text-orange-800 transition-colors',
+    selectedItemRemoveButton: 'text-sky-500 hover:text-sky-800 transition-colors',
     selectedItemRemoveIcon: 'h-3 w-3',
     input: 'min-w-[6rem] flex-grow bg-transparent p-1 focus:ring-0 border-none focus:outline-none',
     button: 'absolute inset-y-0 right-0 flex items-center pr-2',
     buttonIcon: 'h-5 w-5 text-gray-400',
     dropdown: 'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
     option: 'cursor-default select-none relative py-2 pl-10 pr-4',
-    optionActive: 'text-white bg-orange-600',
+    optionActive: 'text-white bg-sky-600',
     optionSelected: 'font-medium',
     optionLabel: 'block truncate',
-    optionCheckIcon: 'absolute inset-y-0 left-0 flex items-center pl-3 text-orange-600 h-5 w-5',
+    optionCheckIcon: 'absolute inset-y-0 left-0 flex items-center pl-3 text-sky-600',
     loadingText: 'p-2 text-sm text-gray-500',
     noResultsText: 'p-2 text-sm text-gray-500',
     error: '!border-red-600 !focus:border-red-600',
@@ -285,8 +286,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     container: 'flex items-center justify-between',
     label: 'ml-3 text-md text-gray-700',
     switchTrack: 'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
-    switchTrackOn: 'bg-green-600 focus:ring-green-600',
-    switchTrackOff: 'bg-gray-200 focus:ring-green-600',
+    switchTrackOn: 'bg-sky-600 focus:ring-sky-300',
+    switchTrackOff: 'bg-gray-200 focus:ring-sky-300',
     switchThumb: 'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200',
     switchThumbOn: 'translate-x-5',
     switchThumbOff: 'translate-x-0',
@@ -294,6 +295,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     disabled: 'cursor-not-allowed opacity-50',
     readOnly: 'text-gray-700 font-medium',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
+    helpText: 'text-sm text-gray-600 mt-1',
   },
   textAreaField: {
     wrapper: '',
@@ -317,7 +319,7 @@ export const tailwindTheme = FormThemeSchema.parse({
   },
   timePickerField: {
     wrapper: '',
-    input: 'block w-full px-3 py-2 text-green-600 min-h-[2.5rem]',
+    input: 'block w-full px-3 py-2 sm:text-sm min-h-[2.5rem]',
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
     readOnly: 'text-gray-700 font-medium',
@@ -325,7 +327,7 @@ export const tailwindTheme = FormThemeSchema.parse({
   },
   urlField: {
     wrapper: '',
-    input: 'block w-full px-3 py-2 text-blue-600 min-h-[2.5rem]',
+    input: 'block w-full px-3 py-2 sm:text-sm min-h-[2.5rem]',
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
     readOnly: 'text-gray-700 font-medium',

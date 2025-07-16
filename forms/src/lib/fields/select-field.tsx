@@ -1,4 +1,3 @@
-import { Select } from '@headlessui/react'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType, SelectOption } from '../form-types'
 import { BaseSelectField } from './base-select-field'
@@ -31,17 +30,19 @@ export function SelectField({
       themeKey="selectField"
       renderReadOnlyValue={renderReadOnlyValue}
     >
-      {({ fieldValue, onChange, isDisabled, isRequired, fieldId, theme }) => (
+      {({ fieldValue, onChange, onBlur, isDisabled, isRequired, fieldId, theme }) => (
         <div className={theme.wrapper}>
           <div className={theme.container}>
-            <Select
+            <select
               id={fieldId}
               name={fieldId}
               value={fieldValue || ''}
-              onChange={onChange}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={onBlur}
               disabled={isDisabled}
               required={isRequired}
-              invalid={hasError}
+              aria-invalid={hasError}
+              role="combobox"
               className={clsx(
                 theme.input,
                 hasError && theme.error,
@@ -61,7 +62,7 @@ export function SelectField({
                   {option.label}
                 </option>
               ))}
-            </Select>
+            </select>
             <div className={theme.arrow}>
               <svg className={theme.arrowIcon} viewBox="0 0 20 20" fill="currentColor">
                 <path
