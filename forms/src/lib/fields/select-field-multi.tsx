@@ -2,6 +2,8 @@ import { FormFieldProps, FormField, FormFieldType } from '../form-types'
 import { SearchSelectBase } from './search-select-base'
 import { SelectedItems } from './search-select-helpers'
 import { useFormTheme } from '../theme-context'
+import { multiSelectSubmitTransform } from './select-field-multi-search-apollo'
+import { useMemo } from 'react'
 
 export function SelectFieldMulti({
   form,
@@ -14,10 +16,17 @@ export function SelectFieldMulti({
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
   const theme = useFormTheme()
+  
+  // Create field configuration with submit transformation without mutating original
+  const fieldOptions = useMemo(() => ({
+    ...field.options,
+    submitTransform: field.options.submitTransform ?? multiSelectSubmitTransform
+  }), [field.options])
+  
   const value = form.getValues(field.key) ?? []
 
   // Convert SelectOption[] to SearchSelectOption[] by ensuring values are strings
-  const searchOptions = (field.options?.options ?? []).map((option) => ({
+  const searchOptions = (fieldOptions?.options ?? []).map((option) => ({
     label: option.label,
     value: String(option.value),
   }))

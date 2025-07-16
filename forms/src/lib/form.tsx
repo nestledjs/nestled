@@ -107,22 +107,45 @@ export function Form<T extends FieldValues = Record<string, unknown>>({
   // Create the value for our new context
   const formConfig: FormConfig = { labelDisplay }
 
+  // Create a wrapper function that applies field transformations before submission
+  const handleSubmitWithTransform = useMemo(() => {
+    return (values: T) => {
+      if (!fields) {
+        // No fields to transform, call submit directly
+        return submit(values)
+      }
+
+      // Apply submitTransform functions to each field that has one
+      const transformedValues: Record<string, unknown> = { ...values }
+      
+      fields
+        .filter((field): field is FormField => field !== null)
+        .forEach((field) => {
+          if (field.options.submitTransform && field.key in transformedValues) {
+            transformedValues[field.key] = field.options.submitTransform(transformedValues[field.key])
+          }
+        })
+
+      return submit(transformedValues as T)
+    }
+  }, [fields, submit])
+
   return (
     <FormConfigContext.Provider value={formConfig}>
       <ThemeContext.Provider value={finalTheme}>
         <FormContext.Provider value={form as unknown as import('react-hook-form').UseFormReturn<import('react-hook-form').FieldValues>}>
-          <form id={id} className={clsx('space-y-6', className)} onSubmit={form.handleSubmit(submit)}>
+          <form id={id} className={clsx('space-y-6', className)} onSubmit={form.handleSubmit(handleSubmitWithTransform)}>
             {/* Render fields from the declarative array */}
-            {fields?.map((field) =>
-              field ? (
+            {fields
+              ?.filter((field): field is FormField => field !== null)
+              .map((field) => (
                 <RenderFormField
                   key={field.key}
                   field={field}
                   formReadOnly={readOnly}
                   formReadOnlyStyle={readOnlyStyle}
                 />
-              ) : null,
-            )}
+              ))}
 
             {/* Render any manually placed fields */}
             {children}

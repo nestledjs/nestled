@@ -57,6 +57,12 @@ export interface BaseFieldOptions {
    * Useful for layout customization (e.g., grid positioning, flexbox, spacing).
    */
   wrapperClassName?: string
+  /**
+   * Optional transformation function to convert field value from display format to submission format.
+   * This is useful for fields that store rich objects internally but need to submit simple values.
+   * For example, multi-select fields that display option objects but submit ID arrays.
+   */
+  submitTransform?: (displayValue: unknown) => unknown
 }
 
 // Specific options interfaces that extend the base
