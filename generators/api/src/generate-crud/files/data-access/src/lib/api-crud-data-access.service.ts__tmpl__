@@ -77,7 +77,8 @@ function getForeignKeyRelationFields(model) {
           foreignKeyFields.push({
             fieldName: fkFieldName,
             relationName: relationField.name,
-            isRequired: !fkField.isOptional
+            isRequired: !fkField.isOptional,
+            isList: relationField.isList
           });
         }
       });
@@ -106,48 +107,45 @@ function generateRelationHandling(model, operation) {
   code += ', ...regularFields } = input;\n';
   code += '    const data: any = regularFields;\n\n';
 
-  // Create relation mapping object
-  code += '    const connectFields = {\n';
+  // Create relation mapping object with field type metadata
+  code += '    const relationMappings = {\n';
   
   // Add virtual relation fields to the mapping
   virtualRelationFields.forEach(field => {
-    if (field.isList) {
-      code += `      ${field.relatedField}: ${field.name},\n`;
-    } else {
-      code += `      ${field.relatedField}: ${field.name},\n`;
-    }
+    code += `      ${field.relatedField}: { ids: ${field.name}, isVirtual: true, isList: ${field.isList} },\n`;
   });
   
   // Add foreign key fields to the mapping
   foreignKeyFields.forEach(field => {
-    code += `      ${field.relationName}: ${field.fieldName},\n`;
+    code += `      ${field.relationName}: { ids: ${field.fieldName}, isVirtual: false, isList: ${field.isList || false} },\n`;
   });
   
   code += '    };\n\n';
 
-  // Generate the iteration logic
-  code += '    for (const [key, ids] of Object.entries(connectFields)) {\n';
-  code += '      if (ids) {\n';
+  // Generate the improved iteration logic
+  code += '    for (const [relationName, config] of Object.entries(relationMappings)) {\n';
+  code += '      if (config.ids !== undefined && config.ids !== null) {\n';
   
-  // Handle different connection types based on operation and field type
-  const hasListFields = virtualRelationFields.some(field => field.isList);
-  const hasSingleFields = virtualRelationFields.some(field => !field.isList) || foreignKeyFields.length > 0;
-  
-  if (hasListFields && hasSingleFields) {
-    // Mixed field types - need to check if it's an array
-    code += '        if (Array.isArray(ids)) {\n';
-    code += `          data[key] = { ${operation === 'create' ? 'connect' : 'set'}: ids.map(id => ({ id })) };\n`;
-    code += '        } else {\n';
-    code += '          data[key] = { connect: { id: ids } };\n';
-    code += '        }\n';
-  } else if (hasListFields) {
-    // Only list fields
-    code += `        data[key] = { ${operation === 'create' ? 'connect' : 'set'}: ids.map(id => ({ id })) };\n`;
-  } else {
-    // Only single fields
-    code += '        data[key] = { connect: { id: ids } };\n';
-  }
-  
+  // Improved logic based on relationship type and operation
+  code += '        if (config.isVirtual) {\n';
+  code += '          // Virtual relationships (many-to-many or one-to-many reverse)\n';
+  code += '          if (config.isList) {\n';
+  code += '            // Many-to-many or one-to-many from the "many" side - use set for updates\n';
+  code += `            data[relationName] = { ${operation === 'create' ? 'connect' : 'set'}: Array.isArray(config.ids) ? config.ids.map(id => ({ id })) : [{ id: config.ids }] };\n`;
+  code += '          } else {\n';
+  code += '            // Single virtual relationship - use connect\n';
+  code += '            data[relationName] = { connect: { id: config.ids } };\n';
+  code += '          }\n';
+  code += '        } else {\n';
+  code += '          // Foreign key relationships (belongs-to) - always use connect for single values\n';
+  code += '          if (config.isList) {\n';
+  code += '            // This case should be rare, but handle arrays if they exist\n';
+  code += '            data[relationName] = { connect: Array.isArray(config.ids) ? config.ids.map(id => ({ id })) : [{ id: config.ids }] };\n';
+  code += '          } else {\n';
+  code += '            // Single foreign key relationship - use connect\n';
+  code += '            data[relationName] = { connect: { id: config.ids } };\n';
+  code += '          }\n';
+  code += '        }\n';
   code += '      }\n';
   code += '    }\n';
 
