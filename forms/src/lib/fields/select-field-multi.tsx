@@ -1,9 +1,7 @@
 import { FormFieldProps, FormField, FormFieldType } from '../form-types'
 import { SearchSelectBase } from './search-select-base'
-import { SelectedItems, multiSelectDisplayValue } from './search-select-helpers'
+import { SelectedItems } from './search-select-helpers'
 import { useFormTheme } from '../theme-context'
-
-
 
 export function SelectFieldMulti({
   form,
@@ -17,11 +15,11 @@ export function SelectFieldMulti({
 }) {
   const theme = useFormTheme()
   const value = form.getValues(field.key) ?? []
-  
+
   // Convert SelectOption[] to SearchSelectOption[] by ensuring values are strings
-  const searchOptions = (field.options?.options ?? []).map(option => ({
+  const searchOptions = (field.options?.options ?? []).map((option) => ({
     label: option.label,
-    value: String(option.value)
+    value: String(option.value),
   }))
 
   return (
@@ -39,12 +37,8 @@ export function SelectFieldMulti({
       multiple={true}
       themeKey="multiSelect"
       renderSelectedItems={(value, onChange) => (
-        <SelectedItems 
-          value={value} 
-          onChange={onChange} 
-          theme={theme.multiSelect} 
-        />
+        <SelectedItems value={value} onChange={onChange} theme={theme.multiSelect} />
       )}
     />
   )
-} 
+}

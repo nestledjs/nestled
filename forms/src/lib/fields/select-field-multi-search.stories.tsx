@@ -1,7 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { FormFieldType, SearchSelectMultiOptions } from '../form-types'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
-import { expect, within, userEvent, fn } from 'storybook/test'
+import { expect, within, userEvent } from 'storybook/test'
+import { countries } from './storyOptions'
+import { expectLiveFormStateToBePresent } from './storybookTestUtils'
 
 // Helper function to generate realistic usage code with memoization
 const codeCache = new Map<string, string>()
@@ -9,28 +11,31 @@ const codeCache = new Map<string, string>()
 const generateSelectFieldMultiSearchCode = (args: SelectFieldMultiSearchStoryArgs) => {
   const cacheKey = JSON.stringify(args)
   if (codeCache.has(cacheKey)) {
-    return codeCache.get(cacheKey)!
+    return codeCache.get(cacheKey)
   }
-  
+
   const options: string[] = []
-  
+
   if (args.label !== 'Multi Search Select Field') {
     options.push(`label: '${args.label}'`)
   }
   if (args.required) options.push('required: true')
   if (args.disabled) options.push('disabled: true')
   if (args.defaultValue && args.defaultValue.length > 0) {
-    const defaultValueArray = `[${args.defaultValue.map(v => `'${v}'`).join(', ')}]`
+    const defaultValueArray = '[' + args.defaultValue.map((v) => "'" + v + "'").join(', ') + ']'
     options.push(`defaultValue: ${defaultValueArray}`)
   }
   if (args.readOnly) options.push('readOnly: true')
   if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
-  if (args.placeholder && args.placeholder !== 'Search and select multiple...') options.push(`placeholder: '${args.placeholder}'`)
+  if (args.placeholder && args.placeholder !== 'Search and select multiple...')
+    options.push(`placeholder: '${args.placeholder}'`)
   if (args.helpText) options.push(`helpText: '${args.helpText}'`)
-  
+
   // Generate options array based on the selected dataset
-  const optionsArray = args.optionSet === 'countries' 
-    ? `[
+  let optionsArray: string
+  switch (args.optionSet) {
+    case 'countries':
+      optionsArray = `[
           { label: 'United States', value: 'US' },
           { label: 'Canada', value: 'CA' },
           { label: 'United Kingdom', value: 'UK' },
@@ -42,8 +47,9 @@ const generateSelectFieldMultiSearchCode = (args: SelectFieldMultiSearchStoryArg
           { label: 'India', value: 'IN' },
           { label: 'China', value: 'CN' },
         ]`
-    : args.optionSet === 'universities'
-    ? `[
+      break
+    case 'universities':
+      optionsArray = `[
           { label: 'Harvard University', value: 'harvard' },
           { label: 'Stanford University', value: 'stanford' },
           { label: 'Massachusetts Institute of Technology', value: 'mit' },
@@ -53,8 +59,9 @@ const generateSelectFieldMultiSearchCode = (args: SelectFieldMultiSearchStoryArg
           { label: 'Yale University', value: 'yale' },
           { label: 'Princeton University', value: 'princeton' },
         ]`
-    : args.optionSet === 'companies'
-    ? `[
+      break
+    case 'companies':
+      optionsArray = `[
           { label: 'Apple Inc.', value: 'apple' },
           { label: 'Microsoft Corporation', value: 'microsoft' },
           { label: 'Alphabet Inc. (Google)', value: 'google' },
@@ -64,8 +71,9 @@ const generateSelectFieldMultiSearchCode = (args: SelectFieldMultiSearchStoryArg
           { label: 'NVIDIA Corporation', value: 'nvidia' },
           { label: 'Netflix Inc.', value: 'netflix' },
         ]`
-    : args.optionSet === 'cities'
-    ? `[
+      break
+    case 'cities':
+      optionsArray = `[
           { label: 'New York City', value: 'nyc' },
           { label: 'Los Angeles', value: 'la' },
           { label: 'Chicago', value: 'chicago' },
@@ -75,25 +83,32 @@ const generateSelectFieldMultiSearchCode = (args: SelectFieldMultiSearchStoryArg
           { label: 'San Antonio', value: 'san-antonio' },
           { label: 'San Diego', value: 'san-diego' },
         ]`
-    : `[
+      break
+    default:
+      optionsArray = `[
           { label: 'Option Alpha', value: 'alpha' },
           { label: 'Option Beta', value: 'beta' },
           { label: 'Option Gamma', value: 'gamma' },
           { label: 'Option Delta', value: 'delta' },
           { label: 'Option Epsilon', value: 'epsilon' },
         ]`
-  
+      break
+  }
+
   options.push(`options: ${optionsArray}`)
-  
+
   const formProps: string[] = []
   if (args.formReadOnly) formProps.push('readOnly={true}')
   if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
-  
-  const optionsString = options.length > 0 ? `
-        ${options.join(',\n        ')},` : ''
-  
+
+  const optionsString =
+    options.length > 0
+      ? `
+        ${options.join(',\n        ')},`
+      : ''
+
   const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
-  
+
   const code = `<Form
   id="example-form"${formPropsString}
   fields={[
@@ -106,7 +121,7 @@ const generateSelectFieldMultiSearchCode = (args: SelectFieldMultiSearchStoryArg
   ]}
   submit={(values) => console.log(values)}
 />`
-  
+
   codeCache.set(cacheKey, code)
   return code
 }
@@ -156,10 +171,10 @@ const meta: Meta<SelectFieldMultiSearchStoryArgs> = {
     label: { control: 'text', description: 'Field label' },
     required: { control: 'boolean', description: 'Is required?' },
     disabled: { control: 'boolean', description: 'Is disabled?' },
-    defaultValue: { 
-      control: 'object', 
+    defaultValue: {
+      control: 'object',
       description: 'Array of default selected values',
-      table: { type: { summary: 'string[]' } }
+      table: { type: { summary: 'string[]' } },
     },
     readOnly: { control: 'boolean', description: 'Is read-only?' },
     readOnlyStyle: {
@@ -210,28 +225,7 @@ const meta: Meta<SelectFieldMultiSearchStoryArgs> = {
         { label: 'Option Delta', value: 'delta' },
         { label: 'Option Epsilon', value: 'epsilon' },
       ],
-      countries: [
-        { label: 'United States', value: 'US' },
-        { label: 'Canada', value: 'CA' },
-        { label: 'United Kingdom', value: 'UK' },
-        { label: 'Germany', value: 'DE' },
-        { label: 'France', value: 'FR' },
-        { label: 'Japan', value: 'JP' },
-        { label: 'Australia', value: 'AU' },
-        { label: 'Brazil', value: 'BR' },
-        { label: 'India', value: 'IN' },
-        { label: 'China', value: 'CN' },
-        { label: 'South Korea', value: 'KR' },
-        { label: 'Italy', value: 'IT' },
-        { label: 'Spain', value: 'ES' },
-        { label: 'Netherlands', value: 'NL' },
-        { label: 'Sweden', value: 'SE' },
-        { label: 'Norway', value: 'NO' },
-        { label: 'Denmark', value: 'DK' },
-        { label: 'Finland', value: 'FI' },
-        { label: 'Switzerland', value: 'CH' },
-        { label: 'Austria', value: 'AT' },
-      ],
+      countries,
       universities: [
         { label: 'Harvard University', value: 'harvard' },
         { label: 'Stanford University', value: 'stanford' },
@@ -360,7 +354,7 @@ export const Required: Story = {
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    
+
     await step('Verify required indicator is shown', async () => {
       const label = canvas.getByText('Target Companies')
       expect(label).toBeInTheDocument()
@@ -382,7 +376,7 @@ export const WithError: Story = {
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    
+
     await step('Verify error state is displayed', async () => {
       const errorMessage = canvas.getByText('Please select at least one city')
       expect(errorMessage).toBeInTheDocument()
@@ -402,7 +396,7 @@ export const Disabled: Story = {
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
-    
+
     await step('Verify field is disabled', async () => {
       const input = canvas.getByRole('combobox')
       expect(input).toBeDisabled()
@@ -462,37 +456,37 @@ export const SearchAndMultiSelect: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Search for specific countries', async () => {
       const input = canvas.getByRole('combobox')
       await user.click(input)
       await user.type(input, 'unit')
-      
+
       // Should show filtered options
       await canvas.findByText('United States')
       await canvas.findByText('United Kingdom')
-      
+
       // Should not show non-matching options
       expect(canvas.queryByText('Germany')).not.toBeInTheDocument()
     })
-    
+
     await step('Select filtered option', async () => {
       const usOption = canvas.getByText('United States')
       await user.click(usOption)
-      
+
       // Should see selected item in tags container
       const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
       expect(within(tagsContainer).getByText('United States')).toBeInTheDocument()
     })
-    
+
     await step('Clear search and select another option', async () => {
       const input = canvas.getByRole('combobox')
       await user.clear(input)
       await user.type(input, 'canada')
-      
+
       const canadaOption = canvas.getByText('Canada')
       await user.click(canadaOption)
-      
+
       // Test passed - country selections completed
     })
   },
@@ -511,41 +505,43 @@ export const SearchWithRemoval: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Verify pre-selected universities', async () => {
       const universitiesTagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
       expect(within(universitiesTagsContainer).getByText('Harvard University')).toBeInTheDocument()
       expect(within(universitiesTagsContainer).getByText('Stanford University')).toBeInTheDocument()
       expect(within(universitiesTagsContainer).getByText('Massachusetts Institute of Technology')).toBeInTheDocument()
     })
-    
+
     await step('Search for new university', async () => {
       const input = canvas.getByRole('combobox')
       await user.click(input)
       await user.type(input, 'yale')
-      
+
       const yaleOption = canvas.getByText('Yale University')
       await user.click(yaleOption)
-      
+
       // Test passed - interaction completed
     })
-    
+
     await step('Remove one selected university', async () => {
       // Find and click remove button for Stanford
       const removeButtons = canvas.getAllByRole('button')
-      const stanfordRemoveButton = removeButtons.find(button => 
-        button.closest('*')?.textContent?.includes('Stanford University')
+      const stanfordRemoveButton = removeButtons.find((button) =>
+        button.closest('*')?.textContent?.includes('Stanford University'),
       )
-      
+
       if (stanfordRemoveButton) {
         await user.click(stanfordRemoveButton)
-        
+
         // Stanford should be removed from tags container
         const finalUniversitiesContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
         expect(within(finalUniversitiesContainer).queryByText('Stanford University')).not.toBeInTheDocument()
         // Others should remain in tags container
         expect(within(finalUniversitiesContainer).getByText('Harvard University')).toBeInTheDocument()
-        expect(within(finalUniversitiesContainer).getByText('Massachusetts Institute of Technology')).toBeInTheDocument()
+        expect(
+          within(finalUniversitiesContainer).getByText('Massachusetts Institute of Technology'),
+        ).toBeInTheDocument()
         expect(within(finalUniversitiesContainer).getByText('Yale University')).toBeInTheDocument()
       }
     })
@@ -565,38 +561,38 @@ export const AdvancedSearch: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Test partial word matching', async () => {
       const input = canvas.getByRole('combobox')
       await user.click(input)
       await user.type(input, 'micro')
-      
+
       await canvas.findByText('Microsoft Corporation')
       expect(canvas.queryByText('Apple Inc.')).not.toBeInTheDocument()
     })
-    
+
     await step('Select and search for another', async () => {
       const microsoftOption = canvas.getByText('Microsoft Corporation')
       await user.click(microsoftOption)
-      
+
       const input = canvas.getByRole('combobox')
       await user.clear(input)
       await user.type(input, 'APPLE')
-      
+
       await canvas.findByText('Apple Inc.')
       await user.click(canvas.getByText('Apple Inc.'))
-      
+
       // Test passed - interactions completed
     })
-    
+
     await step('Test searching with existing selections', async () => {
       const input = canvas.getByRole('combobox')
       await user.clear(input)
       await user.type(input, 'google')
-      
+
       const googleOption = canvas.getByText('Alphabet Inc. (Google)')
       await user.click(googleOption)
-      
+
       // Test passed - advanced search completed
     })
   },
@@ -614,35 +610,35 @@ export const KeyboardNavigation: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Search and navigate with keyboard', async () => {
       const input = canvas.getByRole('combobox')
       await user.click(input)
       await user.type(input, 'san')
-      
+
       // Wait for filtered results
       await canvas.findByText('San Antonio')
       await canvas.findByText('San Diego')
       await canvas.findByText('San Jose')
     })
-    
+
     await step('Navigate and select with arrow keys', async () => {
       // Navigate down and select
       await user.keyboard('{ArrowDown}')
       await user.keyboard('{ArrowDown}')
       await user.keyboard('{Enter}')
-      
+
       // Test passed - keyboard interaction completed
     })
-    
+
     await step('Continue searching for more selections', async () => {
       const input = canvas.getByRole('combobox')
       await user.clear(input)
       await user.type(input, 'chicago')
-      
+
       await user.keyboard('{ArrowDown}')
       await user.keyboard('{Enter}')
-      
+
       // Test passed - multiple selections completed
     })
   },
@@ -662,29 +658,29 @@ export const FormSubmission: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Search and select multiple countries', async () => {
       const input = canvas.getByRole('combobox')
       await user.click(input)
       await user.type(input, 'united')
-      
+
       // Select United States
       const usOption = canvas.getByText('United States')
       await user.click(usOption)
-      
+
       // Search and select United Kingdom
       await user.clear(input)
       await user.type(input, 'kingdom')
       const ukOption = canvas.getByText('United Kingdom')
       await user.click(ukOption)
-      
+
       // Check that the values appear in the live form state as an array
-      const stateDisplay = canvas.getByText(/"storybookMultiSearchSelectField": \[/)
-      expect(stateDisplay).toBeInTheDocument()
-      
+      expectLiveFormStateToBePresent(canvas)
+
       // Should contain both selected values
-      expect(canvas.getByText(/US/)).toBeInTheDocument()
-      expect(canvas.getByText(/UK/)).toBeInTheDocument()
+      const tagsContainer = canvas.getByRole('combobox').closest('[class*="flex-wrap"]') as HTMLElement
+      expect(within(tagsContainer).getByText('United States')).toBeInTheDocument()
+      expect(within(tagsContainer).getByText('United Kingdom')).toBeInTheDocument()
     })
   },
 }
@@ -702,21 +698,21 @@ export const NoSearchResults: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Search for non-existent university', async () => {
       const input = canvas.getByRole('combobox')
       await user.click(input)
       await user.type(input, 'nonexistent university xyz')
-      
+
       // Should show no results or empty list
       expect(canvas.queryByText('Harvard University')).not.toBeInTheDocument()
       expect(canvas.queryByText('Stanford University')).not.toBeInTheDocument()
     })
-    
+
     await step('Clear search to restore options', async () => {
       const input = canvas.getByRole('combobox')
       await user.clear(input)
-      
+
       // Options should be available again when search is cleared
       await user.type(input, 'harvard')
       await canvas.findByText('Harvard University')
@@ -737,47 +733,47 @@ export const ComprehensiveWorkflow: Story = {
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
     const user = userEvent.setup()
-    
+
     await step('Search and select multiple tech companies', async () => {
       const input = canvas.getByRole('combobox')
-      
+
       // Search for and select Apple
       await user.click(input)
       await user.type(input, 'apple')
       await user.click(canvas.getByText('Apple Inc.'))
-      
+
       // Search for and select Microsoft
       await user.clear(input)
       await user.type(input, 'microsoft')
       await user.click(canvas.getByText('Microsoft Corporation'))
-      
+
       // Search for and select Google
       await user.clear(input)
       await user.type(input, 'alphabet')
       await user.click(canvas.getByText('Alphabet Inc. (Google)'))
-      
+
       // Test passed - comprehensive workflow completed
     })
-    
+
     await step('Remove one company and add another', async () => {
       // Remove Microsoft
       const removeButtons = canvas.getAllByRole('button')
-      const microsoftRemoveButton = removeButtons.find(button => 
-        button.closest('*')?.textContent?.includes('Microsoft Corporation')
+      const microsoftRemoveButton = removeButtons.find((button) =>
+        button.closest('*')?.textContent?.includes('Microsoft Corporation'),
       )
-      
+
       if (microsoftRemoveButton) {
         await user.click(microsoftRemoveButton)
         expect(canvas.queryByText('Microsoft Corporation')).not.toBeInTheDocument()
       }
-      
+
       // Add Tesla
       const input = canvas.getByRole('combobox')
       await user.clear(input)
       await user.type(input, 'tesla')
       await user.click(canvas.getByText('Tesla Inc.'))
-      
+
       // Test passed - final workflow state completed
     })
   },
-} 
+}

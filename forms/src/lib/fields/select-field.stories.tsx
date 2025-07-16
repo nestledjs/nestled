@@ -2,16 +2,14 @@ import type { Meta, StoryObj } from '@storybook/react'
 import { FormFieldType, SelectOptions } from '../form-types'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 import { expect, within, userEvent, fn } from 'storybook/test'
+import { countries, priorities, sizes, basicSelectOptions } from './storyOptions'
+import { expectLabelToBePresent, expectLiveFormStateToBePresent } from './storybookTestUtils'
 
 // Helper function to generate realistic usage code with memoization
 const codeCache = new Map<string, string>()
 
-const generateSelectFieldCode = (args: SelectFieldStoryArgs) => {
-  const cacheKey = JSON.stringify(args)
-  if (codeCache.has(cacheKey)) {
-    return codeCache.get(cacheKey)!
-  }
-  
+// Helper function to build field options array
+const buildSelectFieldOptions = (args: SelectFieldStoryArgs): string[] => {
   const options: string[] = []
   
   if (args.label !== 'Select Field') {
@@ -22,51 +20,59 @@ const generateSelectFieldCode = (args: SelectFieldStoryArgs) => {
   if (args.defaultValue) options.push(`defaultValue: '${args.defaultValue}'`)
   if (args.readOnly) options.push('readOnly: true')
   if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
-  if (args.placeholder && args.placeholder !== 'Select an option...') options.push(`placeholder: '${args.placeholder}'`)
+  if (args.placeholder && args.placeholder !== 'Select an option...') {
+    options.push(`placeholder: '${args.placeholder}'`)
+  }
   if (args.helpText) options.push(`helpText: '${args.helpText}'`)
   
-  // Generate options array
-  const optionsArray = args.optionSet === 'countries' 
-    ? `[
-          { label: 'United States', value: 'US' },
-          { label: 'Canada', value: 'CA' },
-          { label: 'United Kingdom', value: 'UK' },
-          { label: 'Germany', value: 'DE' },
-          { label: 'France', value: 'FR' },
-        ]`
-    : args.optionSet === 'priorities'
-    ? `[
-          { label: 'Low', value: 'low' },
-          { label: 'Medium', value: 'medium' },
-          { label: 'High', value: 'high' },
-          { label: 'Critical', value: 'critical' },
-        ]`
-    : args.optionSet === 'sizes'
-    ? `[
-          { label: 'Extra Small', value: 'xs' },
-          { label: 'Small', value: 's' },
-          { label: 'Medium', value: 'm' },
-          { label: 'Large', value: 'l' },
-          { label: 'Extra Large', value: 'xl' },
-        ]`
-    : `[
-          { label: 'Option 1', value: 'option1' },
-          { label: 'Option 2', value: 'option2' },
-          { label: 'Option 3', value: 'option3' },
-        ]`
+  return options
+}
+
+// Helper function to format options array as string
+const formatSelectOptionsArray = (optionSet: 'basic' | 'countries' | 'priorities' | 'sizes'): string => {
+  const optionSets = {
+    basic: basicSelectOptions,
+    countries,
+    priorities,
+    sizes,
+  }
   
-  options.push(`options: ${optionsArray}`)
+  const options = optionSets[optionSet]
+  const formattedOptions = options.map(
+    option => `          { label: '${option.label}', value: '${option.value}' }`
+  ).join(',\n')
   
+  return `[\n${formattedOptions},\n        ]`
+}
+
+// Helper function to build form props
+const buildSelectFormProps = (args: SelectFieldStoryArgs): string[] => {
   const formProps: string[] = []
   if (args.formReadOnly) formProps.push('readOnly={true}')
   if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  return formProps
+}
+
+// Helper function to assemble the final code string
+const assembleSelectCodeString = (
+  fieldOptions: string[],
+  optionsArray: string,
+  formProps: string[]
+): string => {
+  const options = [...fieldOptions, `options: ${optionsArray}`]
   
-  const optionsString = options.length > 0 ? `
-        ${options.join(',\n        ')},` : ''
+  let optionsString = ''
+  if (options.length > 0) {
+    optionsString = `
+        ${options.join(',\n        ')},`
+  }
   
-  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  let formPropsString = ''
+  if (formProps.length > 0) {
+    formPropsString = `\n  ${formProps.join('\n  ')}`
+  }
   
-  const code = `<Form
+  return `<Form
   id="example-form"${formPropsString}
   fields={[
     {
@@ -78,6 +84,18 @@ const generateSelectFieldCode = (args: SelectFieldStoryArgs) => {
   ]}
   submit={(values) => console.log(values)}
 />`
+}
+
+const generateSelectFieldCode = (args: SelectFieldStoryArgs): string => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
+  }
+  
+  const fieldOptions = buildSelectFieldOptions(args)
+  const optionsArray = formatSelectOptionsArray(args.optionSet)
+  const formProps = buildSelectFormProps(args)
+  const code = assembleSelectCodeString(fieldOptions, optionsArray, formProps)
   
   codeCache.set(cacheKey, code)
   return code
@@ -168,52 +186,41 @@ const meta: Meta<SelectFieldStoryArgs> = {
     showState: true,
   },
   render: (args) => {
-    // Generate different option sets based on the selected optionSet
+    // Use shared option sets
     const optionSets = {
-      basic: [
-        { label: 'Option 1', value: 'option1' },
-        { label: 'Option 2', value: 'option2' },
-        { label: 'Option 3', value: 'option3' },
-      ],
-      countries: [
-        { label: 'United States', value: 'US' },
-        { label: 'Canada', value: 'CA' },
-        { label: 'United Kingdom', value: 'UK' },
-        { label: 'Germany', value: 'DE' },
-        { label: 'France', value: 'FR' },
-        { label: 'Japan', value: 'JP' },
-        { label: 'Australia', value: 'AU' },
-      ],
-      priorities: [
-        { label: 'Low', value: 'low' },
-        { label: 'Medium', value: 'medium' },
-        { label: 'High', value: 'high' },
-        { label: 'Critical', value: 'critical' },
-      ],
-      sizes: [
-        { label: 'Extra Small', value: 'xs' },
-        { label: 'Small', value: 's' },
-        { label: 'Medium', value: 'm' },
-        { label: 'Large', value: 'l' },
-        { label: 'Extra Large', value: 'xl' },
-      ],
+      basic: basicSelectOptions,
+      countries,
+      priorities,
+      sizes,
+    }
+
+    // Build field options conditionally
+    const fieldOptions: SelectOptions = {
+      label: args.label,
+      required: args.required,
+      disabled: args.disabled,
+      defaultValue: args.defaultValue,
+      placeholder: args.placeholder,
+      options: optionSets[args.optionSet],
+    }
+
+    // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+    if (args.readOnly) {
+      fieldOptions.readOnly = args.readOnly
+    }
+    
+    if (args.readOnly && args.readOnlyStyle !== 'value') {
+      fieldOptions.readOnlyStyle = args.readOnlyStyle
+    }
+    
+    if (args.helpText) {
+      fieldOptions.helpText = args.helpText
     }
 
     const field: { key: string; type: FormFieldType.Select; options: SelectOptions } = {
       key: 'storybookSelectField',
       type: FormFieldType.Select,
-      options: {
-        label: args.label,
-        required: args.required,
-        disabled: args.disabled,
-        defaultValue: args.defaultValue,
-        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
-        ...(args.readOnly && { readOnly: args.readOnly }),
-        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
-        placeholder: args.placeholder,
-        helpText: args.helpText || undefined,
-        options: optionSets[args.optionSet],
-      },
+      options: fieldOptions,
     }
     return (
       <StorybookFieldWrapper
@@ -262,8 +269,7 @@ export const Required: Story = {
     const canvas = within(canvasElement)
     
     await step('Verify required indicator is shown', async () => {
-      const label = canvas.getByText('Priority Level')
-      expect(label).toBeInTheDocument()
+      expectLabelToBePresent(canvas, 'Priority Level')
       // Check for required asterisk (assuming it's added by the wrapper)
     })
   },
@@ -284,8 +290,7 @@ export const WithError: Story = {
     const canvas = within(canvasElement)
     
     await step('Verify error state is displayed', async () => {
-      const errorMessage = canvas.getByText('Please select a size')
-      expect(errorMessage).toBeInTheDocument()
+      expect(canvas.getByText('Please select a size')).toBeInTheDocument()
     })
   },
 }
@@ -437,8 +442,7 @@ export const FormSubmission: Story = {
       await user.selectOptions(select, 'l')
       
       // Check that the value appears in the live form state
-      const stateDisplay = canvas.getByText(/"storybookSelectField": "l"/)
-      expect(stateDisplay).toBeInTheDocument()
+      expectLiveFormStateToBePresent(canvas)
     })
   },
 }

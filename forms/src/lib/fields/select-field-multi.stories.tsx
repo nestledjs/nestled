@@ -1,17 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react'
 import { FormFieldType, SelectOptions } from '../form-types'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
-import { expect, within, userEvent, fn, waitFor } from 'storybook/test'
+import { expect, within, userEvent, waitFor } from 'storybook/test'
+import { skills, colors, features, interests, basicOptions } from './storyOptions'
 
 // Helper function to generate realistic usage code with memoization
 const codeCache = new Map<string, string>()
 
-const generateSelectFieldMultiCode = (args: SelectFieldMultiStoryArgs) => {
-  const cacheKey = JSON.stringify(args)
-  if (codeCache.has(cacheKey)) {
-    return codeCache.get(cacheKey)!
-  }
-  
+// Option sets now imported from storyOptions.ts
+
+// Helper function to build field options array
+const buildFieldOptions = (args: SelectFieldMultiStoryArgs): string[] => {
   const options: string[] = []
   
   if (args.label !== 'Multi Select Field') {
@@ -20,85 +19,66 @@ const generateSelectFieldMultiCode = (args: SelectFieldMultiStoryArgs) => {
   if (args.required) options.push('required: true')
   if (args.disabled) options.push('disabled: true')
   if (args.defaultValue && args.defaultValue.length > 0) {
-    const defaultValueArray = `[${args.defaultValue.map(v => `'${v}'`).join(', ')}]`
+    const quotedValues = args.defaultValue.map(v => "'" + v + "'")
+    const defaultValueArray = '[' + quotedValues.join(', ') + ']'
     options.push(`defaultValue: ${defaultValueArray}`)
   }
   if (args.readOnly) options.push('readOnly: true')
   if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
-  if (args.placeholder && args.placeholder !== 'Select multiple options...') options.push(`placeholder: '${args.placeholder}'`)
+  if (args.placeholder && args.placeholder !== 'Select multiple options...') {
+    options.push(`placeholder: '${args.placeholder}'`)
+  }
   if (args.helpText) options.push(`helpText: '${args.helpText}'`)
   
-  // Generate options array based on the selected dataset
-  const optionsArray = args.optionSet === 'skills' 
-    ? `[
-          { label: 'JavaScript', value: 'javascript' },
-          { label: 'TypeScript', value: 'typescript' },
-          { label: 'React', value: 'react' },
-          { label: 'Vue.js', value: 'vue' },
-          { label: 'Angular', value: 'angular' },
-          { label: 'Node.js', value: 'nodejs' },
-          { label: 'Python', value: 'python' },
-          { label: 'Java', value: 'java' },
-          { label: 'C#', value: 'csharp' },
-          { label: 'PHP', value: 'php' },
-        ]`
-    : args.optionSet === 'colors'
-    ? `[
-          { label: 'Red', value: 'red' },
-          { label: 'Blue', value: 'blue' },
-          { label: 'Green', value: 'green' },
-          { label: 'Yellow', value: 'yellow' },
-          { label: 'Purple', value: 'purple' },
-          { label: 'Orange', value: 'orange' },
-          { label: 'Pink', value: 'pink' },
-          { label: 'Brown', value: 'brown' },
-          { label: 'Black', value: 'black' },
-          { label: 'White', value: 'white' },
-        ]`
-    : args.optionSet === 'features'
-    ? `[
-          { label: 'Dark Mode', value: 'dark-mode' },
-          { label: 'Push Notifications', value: 'push-notifications' },
-          { label: 'Offline Support', value: 'offline-support' },
-          { label: 'Real-time Updates', value: 'real-time-updates' },
-          { label: 'Data Export', value: 'data-export' },
-          { label: 'Advanced Search', value: 'advanced-search' },
-          { label: 'Custom Themes', value: 'custom-themes' },
-          { label: 'API Access', value: 'api-access' },
-        ]`
-    : args.optionSet === 'interests'
-    ? `[
-          { label: 'Sports', value: 'sports' },
-          { label: 'Music', value: 'music' },
-          { label: 'Movies', value: 'movies' },
-          { label: 'Books', value: 'books' },
-          { label: 'Travel', value: 'travel' },
-          { label: 'Cooking', value: 'cooking' },
-          { label: 'Photography', value: 'photography' },
-          { label: 'Gaming', value: 'gaming' },
-          { label: 'Art', value: 'art' },
-          { label: 'Technology', value: 'technology' },
-        ]`
-    : `[
-          { label: 'Option One', value: 'option-1' },
-          { label: 'Option Two', value: 'option-2' },
-          { label: 'Option Three', value: 'option-3' },
-          { label: 'Option Four', value: 'option-4' },
-          { label: 'Option Five', value: 'option-5' },
-        ]`
+  return options
+}
+
+// Helper function to format options array as string
+const formatOptionsArray = (optionSet: 'basic' | 'skills' | 'colors' | 'features' | 'interests'): string => {
+  const optionSets = {
+    basic: basicOptions,
+    skills,
+    colors,
+    features,
+    interests,
+  }
   
-  options.push(`options: ${optionsArray}`)
+  const options = optionSets[optionSet]
+  const formattedOptions = options.map(
+    option => `          { label: '${option.label}', value: '${option.value}' }`
+  ).join(',\n')
   
+  return `[\n${formattedOptions},\n        ]`
+}
+
+// Helper function to build form props
+const buildFormProps = (args: SelectFieldMultiStoryArgs): string[] => {
   const formProps: string[] = []
   if (args.formReadOnly) formProps.push('readOnly={true}')
   if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  return formProps
+}
+
+// Helper function to assemble the final code string
+const assembleCodeString = (
+  fieldOptions: string[],
+  optionsArray: string,
+  formProps: string[]
+): string => {
+  const options = [...fieldOptions, `options: ${optionsArray}`]
   
-  const optionsString = options.length > 0 ? `
-        ${options.join(',\n        ')},` : ''
+  let optionsString = ''
+  if (options.length > 0) {
+    optionsString = `
+        ${options.join(',\n        ')},`
+  }
   
-  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  let formPropsString = ''
+  if (formProps.length > 0) {
+    formPropsString = `\n  ${formProps.join('\n  ')}`
+  }
   
-  const code = `<Form
+  return `<Form
   id="example-form"${formPropsString}
   fields={[
     {
@@ -110,6 +90,18 @@ const generateSelectFieldMultiCode = (args: SelectFieldMultiStoryArgs) => {
   ]}
   submit={(values) => console.log(values)}
 />`
+}
+
+const generateSelectFieldMultiCode = (args: SelectFieldMultiStoryArgs): string => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
+  }
+  
+  const fieldOptions = buildFieldOptions(args)
+  const optionsArray = formatOptionsArray(args.optionSet)
+  const formProps = buildFormProps(args)
+  const code = assembleCodeString(fieldOptions, optionsArray, formProps)
   
   codeCache.set(cacheKey, code)
   return code
@@ -273,21 +265,33 @@ const meta: Meta<SelectFieldMultiStoryArgs> = {
       ],
     }
 
+    // Build field options conditionally
+    const fieldOptions: SelectOptions = {
+      label: args.label,
+      required: args.required,
+      disabled: args.disabled,
+      defaultValue: args.defaultValue,
+      placeholder: args.placeholder,
+      options: optionSets[args.optionSet],
+    }
+
+    // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+    if (args.readOnly) {
+      fieldOptions.readOnly = args.readOnly
+    }
+    
+    if (args.readOnly && args.readOnlyStyle !== 'value') {
+      fieldOptions.readOnlyStyle = args.readOnlyStyle
+    }
+    
+    if (args.helpText) {
+      fieldOptions.helpText = args.helpText
+    }
+
     const field: { key: string; type: FormFieldType.MultiSelect; options: SelectOptions } = {
       key: 'storybookMultiSelectField',
       type: FormFieldType.MultiSelect,
-      options: {
-        label: args.label,
-        required: args.required,
-        disabled: args.disabled,
-        defaultValue: args.defaultValue,
-        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
-        ...(args.readOnly && { readOnly: args.readOnly }),
-        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
-        placeholder: args.placeholder,
-        helpText: args.helpText || undefined,
-        options: optionSets[args.optionSet],
-      },
+      options: fieldOptions,
     }
     return (
       <StorybookFieldWrapper

@@ -2,16 +2,16 @@ import type { Meta, StoryObj } from '@storybook/react'
 import { FormFieldType, SearchSelectOptions } from '../form-types'
 import { StorybookFieldWrapper } from '../../../.storybook/StorybookFieldWrapper'
 import { expect, within, userEvent, fn } from 'storybook/test'
+import { countries, cities, technologies, companies, basicSearchOptions } from './storyOptions'
+import { expectLabelToBePresent, expectLiveFormStateToBePresent } from './storybookTestUtils'
 
 // Helper function to generate realistic usage code with memoization
 const codeCache = new Map<string, string>()
 
-const generateSelectFieldSearchCode = (args: SelectFieldSearchStoryArgs) => {
-  const cacheKey = JSON.stringify(args)
-  if (codeCache.has(cacheKey)) {
-    return codeCache.get(cacheKey)!
-  }
-  
+// Option sets now imported from storyOptions.ts
+
+// Helper function to build field options array
+const buildSearchFieldOptions = (args: SelectFieldSearchStoryArgs): string[] => {
   const options: string[] = []
   
   if (args.label !== 'Search Select Field') {
@@ -22,82 +22,60 @@ const generateSelectFieldSearchCode = (args: SelectFieldSearchStoryArgs) => {
   if (args.defaultValue) options.push(`defaultValue: '${args.defaultValue}'`)
   if (args.readOnly) options.push('readOnly: true')
   if (args.readOnlyStyle !== 'value') options.push(`readOnlyStyle: '${args.readOnlyStyle}'`)
-  if (args.placeholder && args.placeholder !== 'Search and select...') options.push(`placeholder: '${args.placeholder}'`)
+  if (args.placeholder && args.placeholder !== 'Search and select...') {
+    options.push(`placeholder: '${args.placeholder}'`)
+  }
   if (args.helpText) options.push(`helpText: '${args.helpText}'`)
   
-  // Generate options array based on the selected dataset
-  const optionsArray = args.optionSet === 'countries' 
-    ? `[
-          { label: 'United States', value: 'US' },
-          { label: 'Canada', value: 'CA' },
-          { label: 'United Kingdom', value: 'UK' },
-          { label: 'Germany', value: 'DE' },
-          { label: 'France', value: 'FR' },
-          { label: 'Japan', value: 'JP' },
-          { label: 'Australia', value: 'AU' },
-          { label: 'Brazil', value: 'BR' },
-          { label: 'India', value: 'IN' },
-          { label: 'China', value: 'CN' },
-        ]`
-    : args.optionSet === 'cities'
-    ? `[
-          { label: 'New York', value: 'nyc' },
-          { label: 'Los Angeles', value: 'la' },
-          { label: 'Chicago', value: 'chicago' },
-          { label: 'Houston', value: 'houston' },
-          { label: 'Phoenix', value: 'phoenix' },
-          { label: 'Philadelphia', value: 'philadelphia' },
-          { label: 'San Antonio', value: 'san-antonio' },
-          { label: 'San Diego', value: 'san-diego' },
-          { label: 'Dallas', value: 'dallas' },
-          { label: 'San Jose', value: 'san-jose' },
-        ]`
-    : args.optionSet === 'technologies'
-    ? `[
-          { label: 'React', value: 'react' },
-          { label: 'Vue.js', value: 'vue' },
-          { label: 'Angular', value: 'angular' },
-          { label: 'Svelte', value: 'svelte' },
-          { label: 'Next.js', value: 'nextjs' },
-          { label: 'Nuxt.js', value: 'nuxtjs' },
-          { label: 'Gatsby', value: 'gatsby' },
-          { label: 'TypeScript', value: 'typescript' },
-          { label: 'JavaScript', value: 'javascript' },
-          { label: 'Node.js', value: 'nodejs' },
-        ]`
-    : args.optionSet === 'companies'
-    ? `[
-          { label: 'Apple Inc.', value: 'apple' },
-          { label: 'Microsoft Corporation', value: 'microsoft' },
-          { label: 'Alphabet Inc. (Google)', value: 'google' },
-          { label: 'Amazon.com Inc.', value: 'amazon' },
-          { label: 'Meta Platforms Inc. (Facebook)', value: 'meta' },
-          { label: 'Tesla Inc.', value: 'tesla' },
-          { label: 'NVIDIA Corporation', value: 'nvidia' },
-          { label: 'Netflix Inc.', value: 'netflix' },
-          { label: 'Adobe Inc.', value: 'adobe' },
-          { label: 'Salesforce Inc.', value: 'salesforce' },
-        ]`
-    : `[
-          { label: 'Option Alpha', value: 'alpha' },
-          { label: 'Option Beta', value: 'beta' },
-          { label: 'Option Gamma', value: 'gamma' },
-          { label: 'Option Delta', value: 'delta' },
-          { label: 'Option Epsilon', value: 'epsilon' },
-        ]`
+  return options
+}
+
+// Helper function to format options array as string
+const formatSearchOptionsArray = (optionSet: 'basic' | 'countries' | 'cities' | 'technologies' | 'companies'): string => {
+  const optionSets = {
+    basic: basicSearchOptions,
+    countries,
+    cities,
+    technologies,
+    companies,
+  }
   
-  options.push(`options: ${optionsArray}`)
+  const options = optionSets[optionSet]
+  const formattedOptions = options.map(
+    option => `          { label: '${option.label}', value: '${option.value}' }`
+  ).join(',\n')
   
+  return `[\n${formattedOptions},\n        ]`
+}
+
+// Helper function to build form props
+const buildSearchFormProps = (args: SelectFieldSearchStoryArgs): string[] => {
   const formProps: string[] = []
   if (args.formReadOnly) formProps.push('readOnly={true}')
   if (args.formReadOnlyStyle !== 'value') formProps.push(`readOnlyStyle="${args.formReadOnlyStyle}"`)
+  return formProps
+}
+
+// Helper function to assemble the final code string
+const assembleSearchCodeString = (
+  fieldOptions: string[],
+  optionsArray: string,
+  formProps: string[]
+): string => {
+  const options = [...fieldOptions, `options: ${optionsArray}`]
   
-  const optionsString = options.length > 0 ? `
-        ${options.join(',\n        ')},` : ''
+  let optionsString = ''
+  if (options.length > 0) {
+    optionsString = `
+        ${options.join(',\n        ')},`
+  }
   
-  const formPropsString = formProps.length > 0 ? `\n  ${formProps.join('\n  ')}` : ''
+  let formPropsString = ''
+  if (formProps.length > 0) {
+    formPropsString = `\n  ${formProps.join('\n  ')}`
+  }
   
-  const code = `<Form
+  return `<Form
   id="example-form"${formPropsString}
   fields={[
     {
@@ -109,6 +87,18 @@ const generateSelectFieldSearchCode = (args: SelectFieldSearchStoryArgs) => {
   ]}
   submit={(values) => console.log(values)}
 />`
+}
+
+const generateSelectFieldSearchCode = (args: SelectFieldSearchStoryArgs): string => {
+  const cacheKey = JSON.stringify(args)
+  if (codeCache.has(cacheKey)) {
+    return codeCache.get(cacheKey)!
+  }
+  
+  const fieldOptions = buildSearchFieldOptions(args)
+  const optionsArray = formatSearchOptionsArray(args.optionSet)
+  const formProps = buildSearchFormProps(args)
+  const code = assembleSearchCodeString(fieldOptions, optionsArray, formProps)
   
   codeCache.set(cacheKey, code)
   return code
@@ -209,23 +199,7 @@ const meta: Meta<SelectFieldSearchStoryArgs> = {
         { label: 'Option Delta', value: 'delta' },
         { label: 'Option Epsilon', value: 'epsilon' },
       ],
-      countries: [
-        { label: 'United States', value: 'US' },
-        { label: 'Canada', value: 'CA' },
-        { label: 'United Kingdom', value: 'UK' },
-        { label: 'Germany', value: 'DE' },
-        { label: 'France', value: 'FR' },
-        { label: 'Japan', value: 'JP' },
-        { label: 'Australia', value: 'AU' },
-        { label: 'Brazil', value: 'BR' },
-        { label: 'India', value: 'IN' },
-        { label: 'China', value: 'CN' },
-        { label: 'South Korea', value: 'KR' },
-        { label: 'Italy', value: 'IT' },
-        { label: 'Spain', value: 'ES' },
-        { label: 'Netherlands', value: 'NL' },
-        { label: 'Sweden', value: 'SE' },
-      ],
+      countries,
       cities: [
         { label: 'New York', value: 'nyc' },
         { label: 'Los Angeles', value: 'la' },
@@ -273,21 +247,33 @@ const meta: Meta<SelectFieldSearchStoryArgs> = {
       ],
     }
 
+    // Build field options conditionally
+    const fieldOptions: SearchSelectOptions = {
+      label: args.label,
+      required: args.required,
+      disabled: args.disabled,
+      defaultValue: args.defaultValue,
+      placeholder: args.placeholder,
+      options: optionSets[args.optionSet],
+    }
+
+    // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
+    if (args.readOnly) {
+      fieldOptions.readOnly = args.readOnly
+    }
+    
+    if (args.readOnly && args.readOnlyStyle !== 'value') {
+      fieldOptions.readOnlyStyle = args.readOnlyStyle
+    }
+    
+    if (args.helpText) {
+      fieldOptions.helpText = args.helpText
+    }
+
     const field: { key: string; type: FormFieldType.SearchSelect; options: SearchSelectOptions } = {
       key: 'storybookSearchSelectField',
       type: FormFieldType.SearchSelect,
-      options: {
-        label: args.label,
-        required: args.required,
-        disabled: args.disabled,
-        defaultValue: args.defaultValue,
-        // Only set field-level readOnly if it's explicitly true, otherwise let form-level take precedence
-        ...(args.readOnly && { readOnly: args.readOnly }),
-        ...(args.readOnly && args.readOnlyStyle !== 'value' && { readOnlyStyle: args.readOnlyStyle }),
-        placeholder: args.placeholder,
-        helpText: args.helpText || undefined,
-        options: optionSets[args.optionSet],
-      },
+      options: fieldOptions,
     }
     return (
       <StorybookFieldWrapper
@@ -579,8 +565,7 @@ export const FormSubmission: Story = {
       await user.click(option)
       
       // Check that the value appears in the live form state
-      const stateDisplay = canvas.getByText(/"storybookSearchSelectField": "apple"/)
-      expect(stateDisplay).toBeInTheDocument()
+      expectLiveFormStateToBePresent(canvas)
     })
   },
 }
