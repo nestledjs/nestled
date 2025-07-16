@@ -33,9 +33,7 @@ export function SelectFieldSearchApollo<
   // Ensure the field has submit transformation for form submission
   // The Form component looks for field.options.submitTransform during submission
   // eslint-disable-next-line no-param-reassign
-  if (!field.options.submitTransform) {
-    field.options.submitTransform = singleSelectSubmitTransform
-  }
+  field.options.submitTransform ??= singleSelectSubmitTransform
   
   const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)
 

@@ -3,7 +3,6 @@ import { SearchSelectBase } from './search-select-base'
 import { SelectedItems } from './search-select-helpers'
 import { useFormTheme } from '../theme-context'
 import { multiSelectSubmitTransform } from './select-field-multi-search-apollo'
-import { useMemo } from 'react'
 
 export function SelectFieldMulti({
   form,
@@ -20,9 +19,7 @@ export function SelectFieldMulti({
   // Ensure the field has submit transformation for form submission
   // The Form component looks for field.options.submitTransform during submission
   // eslint-disable-next-line no-param-reassign
-  if (!field.options.submitTransform) {
-    field.options.submitTransform = multiSelectSubmitTransform
-  }
+  field.options.submitTransform ??= multiSelectSubmitTransform
   
   const value = form.getValues(field.key) ?? []
 
