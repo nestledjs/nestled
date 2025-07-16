@@ -241,6 +241,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnly: 'text-gray-700 font-medium',
     readOnlyInput: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
+    fallback: 'h-10 w-full rounded-md border border-gray-300 bg-gray-100',
   },
   searchSelectMultiField: {
     wrapper: '',
@@ -266,6 +267,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnly: 'text-gray-700 font-medium',
     readOnlyInput: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
+    fallback: 'h-10 w-full rounded-md border border-gray-300 bg-gray-100',
   },
   selectField: {
     wrapper: '',
@@ -280,6 +282,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
     helpText: 'text-sm text-gray-600 mt-1',
+    fallback: 'h-10 w-full rounded-md border border-gray-300 bg-gray-100',
   },
   switchField: {
     wrapper: '',

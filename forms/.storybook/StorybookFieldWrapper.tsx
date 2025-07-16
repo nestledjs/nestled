@@ -7,6 +7,7 @@ import { RenderFormField } from '../src/lib/render-form-field'
 import { FormField } from '../src/lib/form-types'
 import { FormTheme } from '../src/lib/form-theme'
 import { createFinalTheme } from '../src/lib/utils/resolve-theme'
+import { SelectOption, SearchSelectOption } from '../src/lib/form-types'
 
 interface StorybookFieldWrapperProps {
   showState?: boolean
@@ -19,6 +20,21 @@ interface StorybookFieldWrapperProps {
   labelDisplay?: 'default' | 'all' | 'none'
 }
 
+// Type guard to check if an option is a SelectOption
+const isSelectOption = (option: any): option is SelectOption => {
+  return option && typeof option === 'object' && 'label' in option && 'value' in option
+}
+
+// Type guard to check if an option is a SearchSelectOption
+const isSearchSelectOption = (option: any): option is SearchSelectOption => {
+  return option && typeof option === 'object' && 'label' in option && 'value' in option && typeof option.value === 'string'
+}
+
+// Type guard to check if defaultValue is an array of strings
+const isStringArray = (value: any): value is string[] => {
+  return Array.isArray(value) && value.length > 0 && typeof value[0] === 'string'
+}
+
 export const StorybookFieldWrapper: React.FC<StorybookFieldWrapperProps> = ({
   field,
   showState = true,
@@ -29,19 +45,37 @@ export const StorybookFieldWrapper: React.FC<StorybookFieldWrapperProps> = ({
   formReadOnlyStyle,
   labelDisplay = 'default',
 }) => {
-  // Patch: Normalize defaultValue for MultiSelect and SearchSelectMulti fields
-  let normalizedDefaultValue = field.options.defaultValue
-  if (
-    (field.type === 'MultiSelect' || field.type === 'SearchSelectMulti') &&
-    Array.isArray(field.options.defaultValue) &&
-    field.options.options &&
-    field.options.defaultValue.length > 0 &&
-    typeof field.options.defaultValue[0] === 'string'
-  ) {
-    // Map string IDs to { label, value } objects using the options array
-    normalizedDefaultValue = field.options.defaultValue
-      .map((id) => field.options.options.find((opt) => opt.value === id))
-      .filter(Boolean)
+  // Normalize defaultValue for MultiSelect and SearchSelectMulti fields with proper type safety
+  let normalizedDefaultValue: any = field.options.defaultValue
+
+  if (field.type === 'MultiSelect' || field.type === 'SearchSelectMulti') {
+    const defaultValue = field.options.defaultValue
+    const options = field.options.options
+
+    // Only normalize if we have a string array and options to map against
+    if (isStringArray(defaultValue) && options && Array.isArray(options)) {
+      if (field.type === 'MultiSelect') {
+        // For MultiSelect, map to SelectOption[]
+        const mappedOptions = defaultValue
+          .map((id) => options.find((opt) => String(opt.value) === id))
+          .filter((opt): opt is SelectOption => isSelectOption(opt))
+        
+        // Only use mapped options if we found all the values
+        if (mappedOptions.length === defaultValue.length) {
+          normalizedDefaultValue = mappedOptions
+        }
+      } else if (field.type === 'SearchSelectMulti') {
+        // For SearchSelectMulti, map to SearchSelectOption[]
+        const mappedOptions = defaultValue
+          .map((id) => options.find((opt) => opt.value === id))
+          .filter((opt): opt is SearchSelectOption => isSearchSelectOption(opt))
+        
+        // Only use mapped options if we found all the values
+        if (mappedOptions.length === defaultValue.length) {
+          normalizedDefaultValue = mappedOptions
+        }
+      }
+    }
   }
 
   const form = useForm({

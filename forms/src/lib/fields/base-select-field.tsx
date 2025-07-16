@@ -75,7 +75,7 @@ export function BaseSelectField({
 
   // Render interactive field
   return (
-    <ClientOnly fallback={<div className="h-10 w-full rounded-md border border-gray-300 bg-gray-100" />}>
+    <ClientOnly fallback={<div className={fieldTheme.fallback} />}>
       <Controller
         control={form.control}
         name={field.key}

@@ -42,6 +42,7 @@ export function SelectField({
               disabled={isDisabled}
               required={isRequired}
               aria-invalid={hasError}
+              aria-describedby={field.options.helpText ? `${fieldId}-help` : undefined}
               role="combobox"
               className={clsx(
                 theme.input,
@@ -74,7 +75,7 @@ export function SelectField({
             </div>
           </div>
           {field.options.helpText && (
-            <div className={theme.helpText}>{field.options.helpText}</div>
+            <div id={`${fieldId}-help`} className={theme.helpText}>{field.options.helpText}</div>
           )}
         </div>
       )}
