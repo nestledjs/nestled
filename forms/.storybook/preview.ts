@@ -5,6 +5,7 @@ import type { Decorator, Preview } from '@storybook/react'
 import { tailwindTheme } from '@nestledjs/forms'
 
 // Import as string rather than URL to avoid dependency scanning issues
+import '@mdxeditor/editor/style.css'
 import './styles.css'
 // Using a fixed path since we know where it will be in runtime
 const TAILWIND_CSS_PATH = '/forms/.storybook/styles.css'

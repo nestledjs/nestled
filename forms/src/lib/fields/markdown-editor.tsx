@@ -1,12 +1,9 @@
-import React, { lazy, Suspense } from 'react'
+import React, { lazy, Suspense, useRef, useCallback } from 'react'
 import { Controller } from 'react-hook-form'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useFormTheme } from '../theme-context'
 import type { MDXEditorMethods } from '@mdxeditor/editor';
-
-// Import MDXEditor styles - this is the official way per documentation
-import '@mdxeditor/editor/style.css'
 
 // --- Extracted Helpers ---
 
@@ -47,6 +44,31 @@ export const handleImageUpload = async ({
 
   // Use custom handler or default
   return await imageUploadHandler(file)
+}
+
+// Convert markdown to HTML using a simple parser (you could also use a more robust solution)
+export const markdownToHtml = async (markdown: string): Promise<string> => {
+  // Simple markdown to HTML conversion
+  // For a more robust solution, you could use libraries like 'marked' or 'markdown-it'
+  if (typeof window !== 'undefined') {
+    try {
+      // Try to use the browser's built-in markdown parser if available
+      // This is a basic implementation - you might want to use a proper markdown parser
+      return markdown
+        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
+        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+        .replace(/\*(.*)\*/gim, '<em>$1</em>')
+        .replace(/!\[([^\]]*)\]\(([^)]*)\)/gim, '<img alt="$1" src="$2" />')
+        .replace(/\[([^\]]*)\]\(([^)]*)\)/gim, '<a href="$2">$1</a>')
+        .replace(/\n$/gim, '<br />')
+    } catch (error) {
+      console.warn('Failed to convert markdown to HTML:', error)
+      return markdown
+    }
+  }
+  return markdown
 }
 
 // Toolbar contents as a top-level function
@@ -135,6 +157,8 @@ const MDXEditor = lazy(() =>
         maxImageSize?: number
         allowedImageTypes?: string[]
         imageUploadMode?: 'immediate' | 'base64' | 'custom'
+        outputFormat?: 'markdown' | 'html' | 'both'
+        onHtmlChange?: (html: string) => void
       }
     >(
       (
@@ -150,13 +174,11 @@ const MDXEditor = lazy(() =>
           maxImageSize = 5 * 1024 * 1024, // 5MB default
           allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
           imageUploadMode = 'base64',
+          outputFormat = 'markdown',
+          onHtmlChange,
         },
         ref,
       ) => {
-        // Default image upload handler for base64 mode
-        // Extracted helper functions outside component for shallower nesting
-        // See above for defaultImageUploadHandler and handleImageUpload definitions
-
         // Use custom handler or default
         const handler = imageUploadHandler || defaultImageUploadHandler(imageUploadMode)
         const handleImageUploadWrapper = async (file: File): Promise<string> => handleImageUpload({
@@ -165,6 +187,21 @@ const MDXEditor = lazy(() =>
           allowedImageTypes,
           imageUploadHandler: handler,
         })
+
+        // Handle dual format output
+        const handleChange = useCallback(async (newValue: string) => {
+          onChange(newValue) // Always provide markdown
+
+          // If we need HTML output as well
+          if ((outputFormat === 'html' || outputFormat === 'both') && onHtmlChange) {
+            try {
+              const html = await markdownToHtml(newValue)
+              onHtmlChange(html)
+            } catch (error) {
+              console.warn('Failed to convert markdown to HTML:', error)
+            }
+          }
+        }, [onChange, onHtmlChange, outputFormat])
 
         const plugins = [
           headingsPlugin(),
@@ -197,7 +234,7 @@ const MDXEditor = lazy(() =>
           <MDXEditor
             ref={ref}
             markdown={value || ''}
-            onChange={onChange}
+            onChange={handleChange}
             onBlur={onBlur}
             plugins={plugins}
             readOnly={readOnly}
@@ -224,6 +261,7 @@ export function MarkdownEditor({
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
   const theme = useFormTheme()
+  const htmlFieldKey = `${field.key}_html` // Store HTML in a separate field if needed
 
   // Determine the read-only state with field-level precedence
   const isReadOnly = field.options.readOnly ?? formReadOnly
@@ -277,6 +315,8 @@ export function MarkdownEditor({
               maxImageSize={field.options.maxImageSize}
               allowedImageTypes={field.options.allowedImageTypes}
               imageUploadMode={field.options.imageUploadMode}
+              outputFormat={field.options.outputFormat}
+              onHtmlChange={field.options.onHtmlChange}
             />
           </Suspense>
         </div>
@@ -330,6 +370,17 @@ export function MarkdownEditor({
                 maxImageSize={field.options.maxImageSize}
                 allowedImageTypes={field.options.allowedImageTypes}
                 imageUploadMode={field.options.imageUploadMode}
+                outputFormat={field.options.outputFormat}
+                onHtmlChange={(html: string) => {
+                  // Store HTML in a separate field if outputFormat is 'both'
+                  if (field.options.outputFormat === 'both') {
+                    form.setValue(htmlFieldKey, html)
+                  }
+                  // Call custom callback if provided
+                  if (field.options.onHtmlChange) {
+                    field.options.onHtmlChange(html)
+                  }
+                }}
               />
               {field.options.maxLength && (
                 <div className="text-sm text-gray-500 mt-1 text-right">
