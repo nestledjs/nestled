@@ -2,6 +2,7 @@ import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { SearchSelectBase } from './search-select-base'
 import { SelectedItems, multiSelectDisplayValue } from './search-select-helpers'
 import { useFormTheme } from '../theme-context'
+import { multiSelectSubmitTransform } from './select-field-multi-search-apollo'
 
 export function SelectFieldMultiSearch({
   form,
@@ -13,6 +14,12 @@ export function SelectFieldMultiSearch({
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
+  // Automatically ensure the field has the submit transformation
+  // This converts option objects to ID arrays for API submission
+  if (!field.options.submitTransform) {
+    field.options.submitTransform = multiSelectSubmitTransform
+  }
+
   const theme = useFormTheme()
   const value = form.getValues(field.key) ?? []
 
