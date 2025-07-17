@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useRef, useCallback } from 'react'
+import React, { lazy, Suspense, useRef, useCallback, useEffect } from 'react'
 import { Controller } from 'react-hook-form'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
@@ -132,7 +132,6 @@ export const toolbarContents = ({
   </>
 )
 
-
 // Simple loading component
 const EditorLoading = ({ height = 300 }: { height?: number }) => (
   <div
@@ -143,177 +142,256 @@ const EditorLoading = ({ height = 300 }: { height?: number }) => (
   </div>
 )
 
-// Lazy load MDXEditor with basic configuration
-const MDXEditor = lazy(() =>
-  import('@mdxeditor/editor').then((mod) => {
-    const {
-      MDXEditor,
-      toolbarPlugin,
-      listsPlugin,
-      quotePlugin,
-      headingsPlugin,
-      linkPlugin,
-      linkDialogPlugin,
-      imagePlugin,
-      markdownShortcutPlugin,
-      UndoRedo,
-      BoldItalicUnderlineToggles,
-      CodeToggle,
-      CreateLink,
-      InsertImage,
-      ListsToggle,
-      Separator,
-    } = mod
+// Track instances using custom z-index for proper cleanup
+// This prevents memory leaks by only removing the global style tag when all instances are unmounted
+let customZIndexInstanceCount = 0
 
-    // Create a simple configured editor
-    const SimpleEditor = React.forwardRef<
-      MDXEditorMethods,
-      {
-        value: string
-        onChange: (value: string) => void
-        onBlur?: () => void
-        placeholder?: string
-        readOnly?: boolean
-        className?: string
-        enableImageUpload?: boolean
-        imageUploadHandler?: (file: File) => Promise<string>
-        maxImageSize?: number
-        allowedImageTypes?: string[]
-        imageUploadMode?: 'immediate' | 'base64' | 'custom'
-        outputFormat?: 'markdown' | 'html' | 'both'
-        onHtmlChange?: (html: string) => void
-        overlayContainer?: HTMLElement | null
-        popupZIndex?: number
+// Custom hook for managing popup z-index styles
+const usePopupZIndex = (popupZIndex?: number) => {
+  useEffect(() => {
+    if (!popupZIndex || typeof window === 'undefined') return
+
+    const styleId = 'mdx-editor-popup-z-index'
+    let style = document.getElementById(styleId) as HTMLStyleElement
+    
+    // Increment instance counter
+    customZIndexInstanceCount++
+    
+    if (!style) {
+      style = document.createElement('style')
+      style.id = styleId
+      document.head.appendChild(style)
+    }
+    
+    style.textContent = `
+      .mdxeditor-popup-container {
+        z-index: ${popupZIndex} !important;
       }
-    >(
-      (
-        {
-          value,
-          onChange,
-          onBlur,
-          placeholder,
-          readOnly = false,
-          className,
-          enableImageUpload = false,
-          imageUploadHandler,
-          maxImageSize = 5 * 1024 * 1024, // 5MB default
-          allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
-          imageUploadMode = 'base64',
-          outputFormat = 'markdown',
-          onHtmlChange,
-          overlayContainer,
-          popupZIndex,
-        },
-        ref,
-      ) => {
-        // Use custom handler or default
-        const handler = imageUploadHandler || defaultImageUploadHandler(imageUploadMode)
-        const handleImageUploadWrapper = async (file: File): Promise<string> => handleImageUpload({
-          file,
-          maxImageSize,
-          allowedImageTypes,
-          imageUploadHandler: handler,
-        })
+      .mdxeditor .mdxeditor-popup-container * {
+        z-index: ${popupZIndex} !important;
+      }
+    `
+    
+    return () => {
+      // Decrement instance counter and cleanup if no instances remain
+      customZIndexInstanceCount--
+      if (customZIndexInstanceCount <= 0) {
+        const styleElement = document.getElementById(styleId)
+        if (styleElement) {
+          document.head.removeChild(styleElement)
+        }
+        // Reset counter to prevent negative values
+        customZIndexInstanceCount = 0
+      }
+    }
+  }, [popupZIndex])
 
-        // Handle dual format output
-        const handleChange = useCallback(async (newValue: string) => {
-          onChange(newValue) // Always provide markdown
+  return popupZIndex ? {
+    '--mdx-popup-z-index': popupZIndex.toString(),
+  } as React.CSSProperties : undefined
+}
 
-          // If we need HTML output as well
-          if ((outputFormat === 'html' || outputFormat === 'both') && onHtmlChange) {
-            try {
-              const html = await markdownToHtml(newValue)
-              onHtmlChange(html)
-            } catch (error) {
-              console.warn('Failed to convert markdown to HTML:', error)
-            }
-          }
-        }, [onChange, onHtmlChange, outputFormat])
+// Extract plugin configuration
+const createEditorPlugins = (
+  enableImageUpload: boolean,
+  imageUploadHandler: (file: File) => Promise<string>,
+  readOnly: boolean,
+  pluginComponents: any
+) => {
+  const {
+    headingsPlugin,
+    listsPlugin,
+    quotePlugin,
+    linkPlugin,
+    linkDialogPlugin,
+    imagePlugin,
+    markdownShortcutPlugin,
+    toolbarPlugin,
+  } = pluginComponents
 
-        // Apply custom z-index styling if specified
-        const editorStyle = popupZIndex ? {
-          '--mdx-popup-z-index': popupZIndex.toString(),
-        } as React.CSSProperties : undefined
+  const basePlugins = [
+    headingsPlugin(),
+    listsPlugin(),
+    quotePlugin(),
+    linkPlugin(),
+    linkDialogPlugin(),
+    markdownShortcutPlugin(),
+  ]
 
-        // Inject CSS for custom z-index if needed
-        React.useEffect(() => {
-          if (popupZIndex && typeof window !== 'undefined') {
-            const styleId = 'mdx-editor-popup-z-index'
-            let style = document.getElementById(styleId) as HTMLStyleElement
-            
-            if (!style) {
-              style = document.createElement('style')
-              style.id = styleId
-              document.head.appendChild(style)
-            }
-            
-            style.textContent = `
-              .mdxeditor-popup-container {
-                z-index: ${popupZIndex} !important;
-              }
-              .mdxeditor .mdxeditor-popup-container * {
-                z-index: ${popupZIndex} !important;
-              }
-            `
-            
-            return () => {
-              // Cleanup on unmount if this was the last editor with custom z-index
-              const allEditors = document.querySelectorAll('[style*="--mdx-popup-z-index"]')
-              if (allEditors.length === 0 && style) {
-                document.head.removeChild(style)
-              }
-            }
-          }
-        }, [popupZIndex])
+  const imagePlugins = enableImageUpload ? [imagePlugin({ imageUploadHandler })] : []
+  
+  const toolbarPlugins = readOnly ? [] : [
+    toolbarPlugin({
+      toolbarContents: () => toolbarContents({
+        enableImageUpload,
+        ...pluginComponents.toolbarComponents,
+      }),
+    }),
+  ]
 
-        const plugins = [
-          headingsPlugin(),
-          listsPlugin(),
-          quotePlugin(),
-          linkPlugin(),
-          linkDialogPlugin(),
-          ...(enableImageUpload ? [imagePlugin({ imageUploadHandler: handleImageUploadWrapper })] : []),
-          markdownShortcutPlugin(),
-          ...(readOnly
-            ? []
-            : [
-                toolbarPlugin({
-                  toolbarContents: () =>
-                    toolbarContents({
-                      enableImageUpload,
-                      UndoRedo,
-                      Separator,
-                      BoldItalicUnderlineToggles,
-                      CodeToggle,
-                      ListsToggle,
-                      CreateLink,
-                      InsertImage,
-                    }),
-                }),
-              ]),
-        ]
+  return [...basePlugins, ...imagePlugins, ...toolbarPlugins]
+}
 
-        return (
-          <div style={editorStyle}>
-            <MDXEditor
-              ref={ref}
-              markdown={value || ''}
-              onChange={handleChange}
-              onBlur={onBlur}
-              plugins={plugins}
-              readOnly={readOnly}
-              placeholder={placeholder}
-              className={className}
-              overlayContainer={overlayContainer}
-            />
-          </div>
-        )
-      },
+// Extract image upload wrapper creation
+const createImageUploadWrapper = (
+  imageUploadHandler?: (file: File) => Promise<string>,
+  imageUploadMode = 'base64',
+  maxImageSize = 5 * 1024 * 1024,
+  allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+) => {
+  const handler = imageUploadHandler || defaultImageUploadHandler(imageUploadMode)
+  return async (file: File): Promise<string> => handleImageUpload({
+    file,
+    maxImageSize,
+    allowedImageTypes,
+    imageUploadHandler: handler,
+  })
+}
+
+// Extract change handler logic as a custom hook
+const useChangeHandler = (
+  onChange: (value: string) => void,
+  outputFormat: 'markdown' | 'html' | 'both',
+  onHtmlChange?: (html: string) => void
+) => {
+  return useCallback(async (newValue: string) => {
+    onChange(newValue) // Always provide markdown
+
+    // If we need HTML output as well
+    if ((outputFormat === 'html' || outputFormat === 'both') && onHtmlChange) {
+      try {
+        const html = await markdownToHtml(newValue)
+        onHtmlChange(html)
+      } catch (error) {
+        console.warn('Failed to convert markdown to HTML:', error)
+      }
+    }
+  }, [onChange, onHtmlChange, outputFormat])
+}
+
+// Simplified editor component interface
+interface SimpleEditorProps {
+  value: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+  readOnly?: boolean
+  className?: string
+  enableImageUpload?: boolean
+  imageUploadHandler?: (file: File) => Promise<string>
+  maxImageSize?: number
+  allowedImageTypes?: string[]
+  imageUploadMode?: 'immediate' | 'base64' | 'custom'
+  outputFormat?: 'markdown' | 'html' | 'both'
+  onHtmlChange?: (html: string) => void
+  overlayContainer?: HTMLElement | null
+  popupZIndex?: number
+}
+
+// Create the editor component factory
+const createSimpleEditor = (mod: any) => {
+  const {
+    MDXEditor,
+    toolbarPlugin,
+    listsPlugin,
+    quotePlugin,
+    headingsPlugin,
+    linkPlugin,
+    linkDialogPlugin,
+    imagePlugin,
+    markdownShortcutPlugin,
+    UndoRedo,
+    BoldItalicUnderlineToggles,
+    CodeToggle,
+    CreateLink,
+    InsertImage,
+    ListsToggle,
+    Separator,
+  } = mod
+
+  const toolbarComponents = {
+    UndoRedo,
+    Separator,
+    BoldItalicUnderlineToggles,
+    CodeToggle,
+    ListsToggle,
+    CreateLink,
+    InsertImage,
+  }
+
+  const pluginComponents = {
+    headingsPlugin,
+    listsPlugin,
+    quotePlugin,
+    linkPlugin,
+    linkDialogPlugin,
+    imagePlugin,
+    markdownShortcutPlugin,
+    toolbarPlugin,
+    toolbarComponents,
+  }
+
+  return React.forwardRef<MDXEditorMethods, SimpleEditorProps>((props, ref) => {
+    const {
+      value,
+      onChange,
+      onBlur,
+      placeholder,
+      readOnly = false,
+      className,
+      enableImageUpload = false,
+      imageUploadHandler,
+      maxImageSize = 5 * 1024 * 1024,
+      allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
+      imageUploadMode = 'base64',
+      outputFormat = 'markdown',
+      onHtmlChange,
+      overlayContainer,
+      popupZIndex,
+    } = props
+
+    const editorStyle = usePopupZIndex(popupZIndex)
+    const handleChange = useChangeHandler(onChange, outputFormat, onHtmlChange)
+    
+    const imageUploadWrapper = createImageUploadWrapper(
+      imageUploadHandler,
+      imageUploadMode,
+      maxImageSize,
+      allowedImageTypes
+    )
+    
+    const plugins = createEditorPlugins(
+      enableImageUpload,
+      imageUploadWrapper,
+      readOnly,
+      pluginComponents
     )
 
+    return (
+      <div style={editorStyle}>
+        <MDXEditor
+          ref={ref}
+          markdown={value || ''}
+          onChange={handleChange}
+          onBlur={onBlur}
+          plugins={plugins}
+          readOnly={readOnly}
+          placeholder={placeholder}
+          className={className}
+          overlayContainer={overlayContainer}
+        />
+      </div>
+    )
+  })
+}
+
+// Lazy load MDXEditor with extracted configuration
+const MDXEditor = lazy(() =>
+  import('@mdxeditor/editor').then((mod) => {
+    const SimpleEditor = createSimpleEditor(mod)
     SimpleEditor.displayName = 'SimpleEditor'
     return { default: SimpleEditor }
-  }),
+  })
 )
 
 export function MarkdownEditor({
