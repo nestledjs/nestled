@@ -125,16 +125,21 @@ function generateRelationHandling(model, operation) {
   // Generate the improved iteration logic
   code += '    for (const [relationName, config] of Object.entries(relationMappings)) {\n';
   code += '      if (config.ids !== undefined && config.ids !== null) {\n';
-  code += '        // Virtual list relationships use set for updates, connect for creates\n';
-  code += '        // All other relationships always use connect\n';
-  code += '        const useSet = config.isVirtual && config.isList && operation === \'update\';\n';
-  code += '        const relationOperation = useSet ? \'set\' : \'connect\';\n';
   code += '        const ids = Array.isArray(config.ids) ? config.ids.map(id => ({ id })) : [{ id: config.ids }];\n';
   code += '        \n';
-  code += '        if (config.isList || useSet) {\n';
+  code += '        if (config.isList) {\n';
+  
+  if (operation === 'update') {
+    code += '          // List relationships: use set for updates on virtual relations, connect for foreign key relations\n';
+    code += '          const relationOperation = config.isVirtual ? \'set\' : \'connect\';\n';
+  } else {
+    code += '          // List relationships: always use connect for creates\n';
+    code += '          const relationOperation = \'connect\';\n';
+  }
+  
   code += '          data[relationName] = { [relationOperation]: ids };\n';
   code += '        } else {\n';
-  code += '          // Single relationship - extract the single id\n';
+  code += '          // Single relationship - always use connect\n';
   code += '          data[relationName] = { connect: { id: config.ids } };\n';
   code += '        }\n';
   code += '      }\n';
@@ -170,8 +175,8 @@ export class ApiCrudDataAccessService {
     const count = await this.data['<%= model.modelPropertyName %>'].count({
       ...this.data.filter(input)
     });
-    const take = input?.take || 10
-    const skip = input?.skip || 0
+    const take = input?.take ?? 10
+    const skip = input?.skip ?? 0
     const page = Math.floor(skip / take)
      return {
       take,
