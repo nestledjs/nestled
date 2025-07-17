@@ -1,24 +1,26 @@
-import React, { lazy, Suspense, useCallback } from 'react'
+import React, { lazy, Suspense, useCallback, useEffect } from 'react'
 import { Controller } from 'react-hook-form'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useFormTheme } from '../theme-context'
-import type { MDXEditorMethods } from '@mdxeditor/editor';
+import type { MDXEditorMethods } from '@mdxeditor/editor'
 
 // --- Extracted Helpers ---
 
 // Default image upload handler for base64 mode
-export const defaultImageUploadHandler = (imageUploadMode: string) => async (file: File): Promise<string> => {
-  if (imageUploadMode === 'base64') {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
+export const defaultImageUploadHandler =
+  (imageUploadMode: string) =>
+  async (file: File): Promise<string> => {
+    if (imageUploadMode === 'base64') {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result as string)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+    }
+    throw new Error('Custom image upload handler required for non-base64 mode')
   }
-  throw new Error('Custom image upload handler required for non-base64 mode')
-}
 
 // Validate and handle image upload
 export const handleImageUpload = async ({
@@ -66,26 +68,28 @@ export const markdownToHtml = async (markdown: string): Promise<string> => {
   if (typeof window !== 'undefined') {
     try {
       // Use non-backtracking patterns to prevent ReDoS
-      return markdown
-        // Headings - safe patterns with line boundaries and length limits
-        .replace(/^### ([^\r\n]{0,200})$/gim, '<h3>$1</h3>')
-        .replace(/^## ([^\r\n]{0,200})$/gim, '<h2>$1</h2>')
-        .replace(/^# ([^\r\n]{0,200})$/gim, '<h1>$1</h1>')
-        
-        // Bold text - ReDoS-safe pattern with negated character class and length limit
-        .replace(/\*\*([^*\r\n]{1,500}?)\*\*/gim, '<strong>$1</strong>')
-        
-        // Italic text - ReDoS-safe pattern with negated character class and length limit
-        .replace(/\*([^*\r\n]{1,500}?)\*/gim, '<em>$1</em>')
-        
-        // Images - safe with negated character classes and length limits
-        .replace(/!\[([^\]]{0,200})\]\(([^)\s]{1,500})\)/gim, '<img alt="$1" src="$2" />')
-        
-        // Links - safe with negated character classes and length limits
-        .replace(/\[([^\]]{0,200})\]\(([^)\s]{1,500})\)/gim, '<a href="$2">$1</a>')
-        
-        // Line breaks
-        .replace(/\n$/gim, '<br />')
+      return (
+        markdown
+          // Headings - safe patterns with line boundaries and length limits
+          .replace(/^### ([^\r\n]{0,200})$/gim, '<h3>$1</h3>')
+          .replace(/^## ([^\r\n]{0,200})$/gim, '<h2>$1</h2>')
+          .replace(/^# ([^\r\n]{0,200})$/gim, '<h1>$1</h1>')
+
+          // Bold text - ReDoS-safe pattern with negated character class and length limit
+          .replace(/\*\*([^*\r\n]{1,500}?)\*\*/gim, '<strong>$1</strong>')
+
+          // Italic text - ReDoS-safe pattern with negated character class and length limit
+          .replace(/\*([^*\r\n]{1,500}?)\*/gim, '<em>$1</em>')
+
+          // Images - safe with negated character classes and length limits
+          .replace(/!\[([^\]]{0,200})\]\(([^)\s]{1,500})\)/gim, '<img alt="$1" src="$2" />')
+
+          // Links - safe with negated character classes and length limits
+          .replace(/\[([^\]]{0,200})\]\(([^)\s]{1,500})\)/gim, '<a href="$2">$1</a>')
+
+          // Line breaks
+          .replace(/\n$/gim, '<br />')
+      )
     } catch (error) {
       console.warn('Failed to convert markdown to HTML:', error)
       return markdown
@@ -153,16 +157,16 @@ const usePopupZIndex = (popupZIndex?: number) => {
 
     const styleId = 'mdx-editor-popup-z-index'
     let style = document.getElementById(styleId) as HTMLStyleElement
-    
+
     // Increment instance counter
     customZIndexInstanceCount++
-    
+
     if (!style) {
       style = document.createElement('style')
       style.id = styleId
       document.head.appendChild(style)
     }
-    
+
     style.textContent = `
       .mdxeditor-popup-container {
         z-index: ${popupZIndex} !important;
@@ -171,7 +175,7 @@ const usePopupZIndex = (popupZIndex?: number) => {
         z-index: ${popupZIndex} !important;
       }
     `
-    
+
     return () => {
       // Decrement instance counter and cleanup if no instances remain
       customZIndexInstanceCount--
@@ -186,9 +190,11 @@ const usePopupZIndex = (popupZIndex?: number) => {
     }
   }, [popupZIndex])
 
-  return popupZIndex ? {
-    '--mdx-popup-z-index': popupZIndex.toString(),
-  } as React.CSSProperties : undefined
+  return popupZIndex
+    ? ({
+        '--mdx-popup-z-index': popupZIndex.toString(),
+      } as React.CSSProperties)
+    : undefined
 }
 
 // Extract plugin configuration
@@ -196,7 +202,7 @@ const createEditorPlugins = (
   enableImageUpload: boolean,
   imageUploadHandler: (file: File) => Promise<string>,
   readOnly: boolean,
-  pluginComponents: any
+  pluginComponents: any,
 ) => {
   const {
     headingsPlugin,
@@ -219,15 +225,18 @@ const createEditorPlugins = (
   ]
 
   const imagePlugins = enableImageUpload ? [imagePlugin({ imageUploadHandler })] : []
-  
-  const toolbarPlugins = readOnly ? [] : [
-    toolbarPlugin({
-      toolbarContents: () => toolbarContents({
-        enableImageUpload,
-        ...pluginComponents.toolbarComponents,
-      }),
-    }),
-  ]
+
+  const toolbarPlugins = readOnly
+    ? []
+    : [
+        toolbarPlugin({
+          toolbarContents: () =>
+            toolbarContents({
+              enableImageUpload,
+              ...pluginComponents.toolbarComponents,
+            }),
+        }),
+      ]
 
   return [...basePlugins, ...imagePlugins, ...toolbarPlugins]
 }
@@ -237,36 +246,40 @@ const createImageUploadWrapper = (
   imageUploadHandler?: (file: File) => Promise<string>,
   imageUploadMode = 'base64',
   maxImageSize = 5 * 1024 * 1024,
-  allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
+  allowedImageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
 ) => {
   const handler = imageUploadHandler || defaultImageUploadHandler(imageUploadMode)
-  return async (file: File): Promise<string> => handleImageUpload({
-    file,
-    maxImageSize,
-    allowedImageTypes,
-    imageUploadHandler: handler,
-  })
+  return async (file: File): Promise<string> =>
+    handleImageUpload({
+      file,
+      maxImageSize,
+      allowedImageTypes,
+      imageUploadHandler: handler,
+    })
 }
 
 // Extract change handler logic as a custom hook
 const useChangeHandler = (
   onChange: (value: string) => void,
   outputFormat: 'markdown' | 'html' | 'both',
-  onHtmlChange?: (html: string) => void
+  onHtmlChange?: (html: string) => void,
 ) => {
-  return useCallback(async (newValue: string) => {
-    onChange(newValue) // Always provide markdown
+  return useCallback(
+    async (newValue: string) => {
+      onChange(newValue) // Always provide markdown
 
-    // If we need HTML output as well
-    if ((outputFormat === 'html' || outputFormat === 'both') && onHtmlChange) {
-      try {
-        const html = await markdownToHtml(newValue)
-        onHtmlChange(html)
-      } catch (error) {
-        console.warn('Failed to convert markdown to HTML:', error)
+      // If we need HTML output as well
+      if ((outputFormat === 'html' || outputFormat === 'both') && onHtmlChange) {
+        try {
+          const html = await markdownToHtml(newValue)
+          onHtmlChange(html)
+        } catch (error) {
+          console.warn('Failed to convert markdown to HTML:', error)
+        }
       }
-    }
-  }, [onChange, onHtmlChange, outputFormat])
+    },
+    [onChange, onHtmlChange, outputFormat],
+  )
 }
 
 // Simplified editor component interface
@@ -352,20 +365,15 @@ const createSimpleEditor = (mod: any) => {
 
     const editorStyle = usePopupZIndex(popupZIndex)
     const handleChange = useChangeHandler(onChange, outputFormat, onHtmlChange)
-    
+
     const imageUploadWrapper = createImageUploadWrapper(
       imageUploadHandler,
       imageUploadMode,
       maxImageSize,
-      allowedImageTypes
+      allowedImageTypes,
     )
-    
-    const plugins = createEditorPlugins(
-      enableImageUpload,
-      imageUploadWrapper,
-      readOnly,
-      pluginComponents
-    )
+
+    const plugins = createEditorPlugins(enableImageUpload, imageUploadWrapper, readOnly, pluginComponents)
 
     return (
       <div style={editorStyle}>
@@ -391,7 +399,7 @@ const MDXEditor = lazy(() =>
     const SimpleEditor = createSimpleEditor(mod)
     SimpleEditor.displayName = 'SimpleEditor'
     return { default: SimpleEditor }
-  })
+  }),
 )
 
 export function MarkdownEditor({
