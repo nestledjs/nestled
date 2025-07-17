@@ -13,7 +13,7 @@ export { useFormTheme } from './lib/theme-context'
 export { createFinalTheme } from './lib/utils/resolve-theme'
 
 // Export key types for library consumers
-export type { FormField, FormFieldType, BaseFieldOptions } from './lib/form-types'
+export type { FormField, FormFieldType, BaseFieldOptions, MarkdownEditorOptions } from './lib/form-types'
 export type { FormConfig } from './lib/form-config-context'
 
 // Field Components
