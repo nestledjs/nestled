@@ -837,7 +837,10 @@ FormFieldClass.markdownEditor('content', {
 // - content_html: "<h1>Hello</h1><p>This is <strong>bold</strong></p>"
 ```
 
-**Note**: The built-in markdown-to-HTML conversion is basic. For production use with complex markdown, consider using a more robust parser like `marked` or `markdown-it`.
+**⚠️ Security Note**: The built-in markdown-to-HTML conversion is basic and designed for simple use cases. For production use:
+- Use robust, security-tested parsers like `marked`, `markdown-it`, or `remark`
+- The built-in converter includes ReDoS protection (input size limits, safe regex patterns)
+- Consider server-side conversion for untrusted input to avoid client-side DoS attacks
 
 ### Modal-on-Modal Conflicts
 

@@ -46,22 +46,45 @@ export const handleImageUpload = async ({
   return await imageUploadHandler(file)
 }
 
-// Convert markdown to HTML using a simple parser (you could also use a more robust solution)
+// Convert markdown to HTML using ReDoS-safe regex patterns
+// SECURITY: This function includes protections against ReDoS (Regular Expression Denial of Service):
+// 1. Input size limits (100KB max)
+// 2. Length-bounded capture groups
+// 3. Negated character classes instead of .* patterns
+// 4. Non-greedy quantifiers where appropriate
+// For production use with untrusted input, consider server-side conversion with battle-tested parsers
 export const markdownToHtml = async (markdown: string): Promise<string> => {
-  // Simple markdown to HTML conversion
-  // For a more robust solution, you could use libraries like 'marked' or 'markdown-it'
+  // Prevent DoS by limiting input size (100KB max)
+  const MAX_INPUT_SIZE = 100 * 1024
+  if (markdown.length > MAX_INPUT_SIZE) {
+    console.warn('Markdown input too large, truncating to prevent DoS')
+    markdown = markdown.substring(0, MAX_INPUT_SIZE)
+  }
+
+  // Simple markdown to HTML conversion with ReDoS-safe patterns
+  // For production use, consider using libraries like 'marked' or 'markdown-it'
   if (typeof window !== 'undefined') {
     try {
-      // Try to use the browser's built-in markdown parser if available
-      // This is a basic implementation - you might want to use a proper markdown parser
+      // Use non-backtracking patterns to prevent ReDoS
       return markdown
-        .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-        .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
-        .replace(/\*(.*)\*/gim, '<em>$1</em>')
-        .replace(/!\[([^\]]*)\]\(([^)]*)\)/gim, '<img alt="$1" src="$2" />')
-        .replace(/\[([^\]]*)\]\(([^)]*)\)/gim, '<a href="$2">$1</a>')
+        // Headings - safe patterns with line boundaries and length limits
+        .replace(/^### ([^\r\n]{0,200})$/gim, '<h3>$1</h3>')
+        .replace(/^## ([^\r\n]{0,200})$/gim, '<h2>$1</h2>')
+        .replace(/^# ([^\r\n]{0,200})$/gim, '<h1>$1</h1>')
+        
+        // Bold text - ReDoS-safe pattern with negated character class and length limit
+        .replace(/\*\*([^*\r\n]{1,500}?)\*\*/gim, '<strong>$1</strong>')
+        
+        // Italic text - ReDoS-safe pattern with negated character class and length limit
+        .replace(/\*([^*\r\n]{1,500}?)\*/gim, '<em>$1</em>')
+        
+        // Images - safe with negated character classes and length limits
+        .replace(/!\[([^\]]{0,200})\]\(([^)\s]{1,500})\)/gim, '<img alt="$1" src="$2" />')
+        
+        // Links - safe with negated character classes and length limits
+        .replace(/\[([^\]]{0,200})\]\(([^)\s]{1,500})\)/gim, '<a href="$2">$1</a>')
+        
+        // Line breaks
         .replace(/\n$/gim, '<br />')
     } catch (error) {
       console.warn('Failed to convert markdown to HTML:', error)
