@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/forms",
-  "version": "0.2.6",
+  "version": "0.3.0",
   "exports": {
     ".": {
       "import": "./index.js",
@@ -36,12 +36,12 @@
   },
   "peerDependencies": {
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "@mdxeditor/editor": "^3.39.1"
   },
   "dependencies": {
     "date-fns": "^4.1.0",
     "zod": "^3.0.0",
-    "@mdxeditor/editor": "^3.39.1",
     "@hookform/resolvers": "^3.0.0",
     "react-hook-form": "^7.58.1",
     "react-phone-number-input": "^3.4.12",

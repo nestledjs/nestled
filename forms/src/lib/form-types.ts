@@ -453,6 +453,14 @@ export interface MarkdownEditorOptions extends BaseFieldOptions {
   allowedImageTypes?: string[] // ['image/png', 'image/jpeg', 'image/gif', 'image/webp']
   imageUploadMode?: 'immediate' | 'base64' | 'custom'
   imageUploadPlaceholder?: string
+  
+  // Dual format output configuration
+  outputFormat?: 'markdown' | 'html' | 'both' // New option for output format
+  onHtmlChange?: (html: string) => void // Callback for HTML content
+  
+  // Modal/Dialog configuration
+  overlayContainer?: HTMLElement | null // Custom container for editor popups (fixes modal-on-modal conflicts)
+  popupZIndex?: number // Custom z-index for popups
 }
 
 interface MarkdownEditorField {

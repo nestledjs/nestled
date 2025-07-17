@@ -129,6 +129,25 @@ export class FormFieldClass {
    *   toolbar: ['bold', 'italic', 'link', 'quote', 'code']
    * })
    * ```
+   * 
+   * @example Dual format output
+   * ```tsx
+   * FormFieldClass.markdownEditor('content', { 
+   *   label: 'Content',
+   *   outputFormat: 'both', // Outputs both markdown and HTML
+   *   onHtmlChange: (html) => console.log('HTML:', html)
+   * })
+   * ```
+   * 
+   * @example Modal-on-modal fix
+   * ```tsx
+   * FormFieldClass.markdownEditor('content', { 
+   *   label: 'Content',
+   *   // Fix for when MarkdownEditor is inside a modal
+   *   overlayContainer: document.getElementById('modal-container'),
+   *   popupZIndex: 10000, // Higher than your modal's z-index
+   * })
+   * ```
    */
   static markdownEditor(
     key: string,
@@ -139,6 +158,7 @@ export class FormFieldClass {
       type: FormFieldType.MarkdownEditor,
       options: {
         label: key,
+        outputFormat: 'markdown', // Default to markdown only
         ...options,
       },
     }

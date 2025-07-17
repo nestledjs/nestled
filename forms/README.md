@@ -22,7 +22,25 @@ yarn add @nestledjs/forms
 pnpm add @nestledjs/forms
 ```
 
-**Note**: The markdown editor component uses `@mdxeditor/editor` which is included as a dependency. Make sure your build system supports CSS imports for the editor styles.
+## 📋 Requirements
+
+### For MarkdownEditor Component
+
+If you plan to use the `MarkdownEditor` field type, you'll need to:
+
+1. **Install the peer dependency:**
+   ```bash
+   npm install @mdxeditor/editor
+   # or
+   yarn add @mdxeditor/editor
+   # or
+   pnpm add @mdxeditor/editor
+   ```
+
+2. **Import the required CSS** in your application entry point (e.g., `main.tsx`, `App.tsx`):
+   ```tsx
+   import '@mdxeditor/editor/style.css'
+   ```
 
 ## 🎯 Quick Start
 
@@ -746,6 +764,13 @@ FormFieldClass.markdownEditor('content', {
   // Content validation
   maxLength: 5000,
   
+  // Output format configuration
+  outputFormat: 'both', // 'markdown' | 'html' | 'both'
+  onHtmlChange: (html) => {
+    // Handle HTML output when outputFormat is 'html' or 'both'
+    console.log('Generated HTML:', html)
+  },
+  
   // Image upload configuration
   enableImageUpload: true,
   imageUploadHandler: async (file: File) => {
@@ -773,6 +798,7 @@ FormFieldClass.markdownEditor('content', {
 
 - **Rich text toolbar** with formatting options
 - **Live preview** of markdown content
+- **Dual format output** - Get both markdown and HTML
 - **Image upload** with drag-and-drop support
 - **Code blocks** with syntax highlighting
 - **Lists** (bullet, numbered, checkbox)
@@ -787,6 +813,62 @@ FormFieldClass.markdownEditor('content', {
 3. **Code blocks**: Use triple backticks (```) for code blocks
 4. **Shortcuts**: Press `Ctrl+B` for bold, `Ctrl+I` for italic, etc.
 5. **Checkboxes**: Type `- [ ]` for unchecked or `- [x]` for checked items
+
+### Dual Format Output
+
+The Markdown Editor can output in three modes:
+
+- **`'markdown'`** (default): Only outputs markdown content
+- **`'html'`**: Converts and outputs HTML content
+- **`'both'`**: Outputs both markdown (in the main field) and HTML (in a `_html` suffixed field)
+
+```tsx
+// Example: Get both markdown and HTML
+FormFieldClass.markdownEditor('content', {
+  outputFormat: 'both',
+  onHtmlChange: (html) => {
+    // Access HTML as it's generated
+    setGeneratedHtml(html)
+  }
+})
+
+// When outputFormat is 'both', form data will contain:
+// - content: "# Hello\n\nThis is **bold**"
+// - content_html: "<h1>Hello</h1><p>This is <strong>bold</strong></p>"
+```
+
+**⚠️ Security Note**: The built-in markdown-to-HTML conversion is basic and designed for simple use cases. For production use:
+- Use robust, security-tested parsers like `marked`, `markdown-it`, or `remark`
+- The built-in converter includes ReDoS protection (input size limits, safe regex patterns)
+- Consider server-side conversion for untrusted input to avoid client-side DoS attacks
+
+### Modal-on-Modal Conflicts
+
+If your MarkdownEditor is inside a modal and the link/image dialogs don't appear properly, this is due to z-index conflicts. Here's how to fix it:
+
+**Option 1: Custom Overlay Container**
+```tsx
+FormFieldClass.markdownEditor('content', {
+  label: 'Content',
+  overlayContainer: document.getElementById('your-modal-container'), // Render popups inside your modal
+})
+```
+
+**Option 2: Higher Z-Index**
+```tsx
+FormFieldClass.markdownEditor('content', {
+  label: 'Content', 
+  popupZIndex: 10000, // Set higher than your modal's z-index
+})
+```
+
+**Option 3: CSS Override**
+```css
+/* In your global CSS */
+.mdxeditor-popup-container {
+  z-index: 9999 !important; /* Higher than your modal */
+}
+```
 
 ## 🎛️ Advanced Configuration
 
