@@ -33,7 +33,7 @@ function getDefaultField(model: any): string | undefined {
 // Helper to get admin fragment fields for a model
 function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>): string {
   return model.fields
-    .filter((f: any) => !f.isList && !f.relationName && f.name !== 'id')
+    .filter((f: any) => !f.isList && !f.relationName && !f.isId)
     .map((f: any) => f.name)
     .concat(
       model.fields
