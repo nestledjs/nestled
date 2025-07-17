@@ -839,6 +839,34 @@ FormFieldClass.markdownEditor('content', {
 
 **Note**: The built-in markdown-to-HTML conversion is basic. For production use with complex markdown, consider using a more robust parser like `marked` or `markdown-it`.
 
+### Modal-on-Modal Conflicts
+
+If your MarkdownEditor is inside a modal and the link/image dialogs don't appear properly, this is due to z-index conflicts. Here's how to fix it:
+
+**Option 1: Custom Overlay Container**
+```tsx
+FormFieldClass.markdownEditor('content', {
+  label: 'Content',
+  overlayContainer: document.getElementById('your-modal-container'), // Render popups inside your modal
+})
+```
+
+**Option 2: Higher Z-Index**
+```tsx
+FormFieldClass.markdownEditor('content', {
+  label: 'Content', 
+  popupZIndex: 10000, // Set higher than your modal's z-index
+})
+```
+
+**Option 3: CSS Override**
+```css
+/* In your global CSS */
+.mdxeditor-popup-container {
+  z-index: 9999 !important; /* Higher than your modal */
+}
+```
+
 ## 🎛️ Advanced Configuration
 
 ### Label Display Control

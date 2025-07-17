@@ -138,6 +138,16 @@ export class FormFieldClass {
    *   onHtmlChange: (html) => console.log('HTML:', html)
    * })
    * ```
+   * 
+   * @example Modal-on-modal fix
+   * ```tsx
+   * FormFieldClass.markdownEditor('content', { 
+   *   label: 'Content',
+   *   // Fix for when MarkdownEditor is inside a modal
+   *   overlayContainer: document.getElementById('modal-container'),
+   *   popupZIndex: 10000, // Higher than your modal's z-index
+   * })
+   * ```
    */
   static markdownEditor(
     key: string,

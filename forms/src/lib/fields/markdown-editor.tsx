@@ -159,6 +159,8 @@ const MDXEditor = lazy(() =>
         imageUploadMode?: 'immediate' | 'base64' | 'custom'
         outputFormat?: 'markdown' | 'html' | 'both'
         onHtmlChange?: (html: string) => void
+        overlayContainer?: HTMLElement | null
+        popupZIndex?: number
       }
     >(
       (
@@ -176,6 +178,8 @@ const MDXEditor = lazy(() =>
           imageUploadMode = 'base64',
           outputFormat = 'markdown',
           onHtmlChange,
+          overlayContainer,
+          popupZIndex,
         },
         ref,
       ) => {
@@ -202,6 +206,42 @@ const MDXEditor = lazy(() =>
             }
           }
         }, [onChange, onHtmlChange, outputFormat])
+
+        // Apply custom z-index styling if specified
+        const editorStyle = popupZIndex ? {
+          '--mdx-popup-z-index': popupZIndex.toString(),
+        } as React.CSSProperties : undefined
+
+        // Inject CSS for custom z-index if needed
+        React.useEffect(() => {
+          if (popupZIndex && typeof window !== 'undefined') {
+            const styleId = 'mdx-editor-popup-z-index'
+            let style = document.getElementById(styleId) as HTMLStyleElement
+            
+            if (!style) {
+              style = document.createElement('style')
+              style.id = styleId
+              document.head.appendChild(style)
+            }
+            
+            style.textContent = `
+              .mdxeditor-popup-container {
+                z-index: ${popupZIndex} !important;
+              }
+              .mdxeditor .mdxeditor-popup-container * {
+                z-index: ${popupZIndex} !important;
+              }
+            `
+            
+            return () => {
+              // Cleanup on unmount if this was the last editor with custom z-index
+              const allEditors = document.querySelectorAll('[style*="--mdx-popup-z-index"]')
+              if (allEditors.length === 0 && style) {
+                document.head.removeChild(style)
+              }
+            }
+          }
+        }, [popupZIndex])
 
         const plugins = [
           headingsPlugin(),
@@ -231,16 +271,19 @@ const MDXEditor = lazy(() =>
         ]
 
         return (
-          <MDXEditor
-            ref={ref}
-            markdown={value || ''}
-            onChange={handleChange}
-            onBlur={onBlur}
-            plugins={plugins}
-            readOnly={readOnly}
-            placeholder={placeholder}
-            className={className}
-          />
+          <div style={editorStyle}>
+            <MDXEditor
+              ref={ref}
+              markdown={value || ''}
+              onChange={handleChange}
+              onBlur={onBlur}
+              plugins={plugins}
+              readOnly={readOnly}
+              placeholder={placeholder}
+              className={className}
+              overlayContainer={overlayContainer}
+            />
+          </div>
         )
       },
     )
@@ -317,6 +360,8 @@ export function MarkdownEditor({
               imageUploadMode={field.options.imageUploadMode}
               outputFormat={field.options.outputFormat}
               onHtmlChange={field.options.onHtmlChange}
+              overlayContainer={field.options.overlayContainer}
+              popupZIndex={field.options.popupZIndex}
             />
           </Suspense>
         </div>
@@ -371,6 +416,8 @@ export function MarkdownEditor({
                 allowedImageTypes={field.options.allowedImageTypes}
                 imageUploadMode={field.options.imageUploadMode}
                 outputFormat={field.options.outputFormat}
+                overlayContainer={field.options.overlayContainer}
+                popupZIndex={field.options.popupZIndex}
                 onHtmlChange={(html: string) => {
                   // Store HTML in a separate field if outputFormat is 'both'
                   if (field.options.outputFormat === 'both') {
