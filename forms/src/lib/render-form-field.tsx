@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useMemo, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { FormField, FormFieldType } from './form-types'
 import { useFormContext } from './form-context'
@@ -373,6 +373,66 @@ export function RenderFormField({
   const form = useFormContext()
   const { labelDisplay } = useFormConfig()
 
+  // Watch all form values for conditional logic
+  const formValues = form.watch()
+
+  // Evaluate conditional logic
+  const conditionalState = useMemo(() => {
+    const { showWhen, requiredWhen, disabledWhen } = field.options
+
+    try {
+      // Evaluate visibility condition
+      const isVisible = showWhen ? showWhen(formValues) : true
+      
+      // Evaluate required condition  
+      const isDynamicallyRequired = requiredWhen ? requiredWhen(formValues) : false
+      
+      // Evaluate disabled condition
+      const isDynamicallyDisabled = disabledWhen ? disabledWhen(formValues) : false
+
+      return {
+        isVisible,
+        isDynamicallyRequired,
+        isDynamicallyDisabled,
+      }
+    } catch (error) {
+      // If conditional functions throw errors, default to showing the field
+      console.warn(`Error evaluating conditional logic for field ${field.key}:`, error)
+      return {
+        isVisible: true,
+        isDynamicallyRequired: false,
+        isDynamicallyDisabled: false,
+      }
+    }
+  }, [formValues, field.options, field.key])
+
+  // Track previous required state to avoid infinite loops
+  const previousRequiredRef = useRef<boolean | undefined>(undefined)
+  
+  // Update validation rules when conditional required changes
+  useEffect(() => {
+    const currentRequired = field.options.required || conditionalState.isDynamicallyRequired
+    
+    // Only update if the required state has actually changed
+    if (previousRequiredRef.current !== currentRequired) {
+      previousRequiredRef.current = currentRequired
+      
+      try {
+        // Update field registration with new required state
+        form.register(field.key, { 
+          required: currentRequired ? 'This field is required' : false 
+        })
+      } catch (error) {
+        console.warn(`Error updating field registration for ${field.key}:`, error)
+      }
+    }
+  }, [conditionalState.isDynamicallyRequired, field.options.required, field.key, form])
+
+  // Early return if field should be hidden
+  if (!conditionalState.isVisible) {
+    return null
+  }
+
   const error = form.formState.errors[field.key]
   const errorMessage = (error?.message as string) ?? (error ? 'This field is required' : null)
 
@@ -395,11 +455,25 @@ export function RenderFormField({
     }
   }
 
+  // Determine final required state (static OR dynamic)
+  const finalRequired = field.options.required || conditionalState.isDynamicallyRequired
+
   const labelComponent = showLabel && (
-    <FormLabel htmlFor={field.key} label={field.options.label ?? ''} required={field.options.required} />
+    <FormLabel htmlFor={field.key} label={field.options.label ?? ''} required={finalRequired} />
   )
 
-  const component = renderComponent(form, field, formReadOnly, formReadOnlyStyle)
+  // Create modified field with dynamic disabled state
+  const finalDisabled = field.options.disabled || conditionalState.isDynamicallyDisabled
+  const modifiedField: FormField = {
+    ...field,
+    options: {
+      ...field.options,
+      disabled: finalDisabled,
+      required: finalRequired
+    }
+  } as FormField
+
+  const component = renderComponent(form, modifiedField, formReadOnly, formReadOnlyStyle)
 
   // --- RESPECT FIELD OPTIONS FOR LAYOUT ---
   const layout = field.options.layout || 'vertical'

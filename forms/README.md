@@ -7,6 +7,7 @@ A flexible React form library that supports both **declarative** and **imperativ
 - **Dual API**: Use declaratively with field arrays or imperatively with individual components
 - **TypeScript First**: Full type safety and IntelliSense support
 - **Flexible**: Mix and match declarative and imperative patterns
+- **Conditional Logic**: Dynamic show/hide, required, and disabled field behavior based on form values
 - **Themeable**: Customizable styling system
 - **Validation**: Built-in validation with react-hook-form
 - **Read-only Support**: Toggle between editable and read-only modes
@@ -97,14 +98,12 @@ function UserRegistrationForm() {
 
 ### Imperative Usage
 
-Perfect for dynamic forms or when you need fine-grained control:
+Perfect for dynamic forms or when you need fine-grained control. Supports all the same features including conditional logic:
 
 ```tsx
 import { Form, RenderFormField, FormFieldClass } from '@nestledjs/forms'
 
 function DynamicContactForm() {
-  const [showPhone, setShowPhone] = useState(false)
-  
   return (
     <Form
       id="contact-form"
@@ -118,22 +117,19 @@ function DynamicContactForm() {
         field={FormFieldClass.email('email', { label: 'Email', required: true })} 
       />
       
-      <div>
-        <label>
-          <input 
-            type="checkbox" 
-            checked={showPhone}
-            onChange={(e) => setShowPhone(e.target.checked)}
-          />
-          Include phone number
-        </label>
-      </div>
+      <RenderFormField 
+        field={FormFieldClass.checkbox('includePhone', { 
+          label: 'Include phone number' 
+        })} 
+      />
       
-      {showPhone && (
-        <RenderFormField 
-          field={FormFieldClass.phone('phone', { label: 'Phone Number' })} 
-        />
-      )}
+      <RenderFormField 
+        field={FormFieldClass.phone('phone', { 
+          label: 'Phone Number',
+          showWhen: (values) => values.includePhone === true,
+          requiredWhen: (values) => values.includePhone === true
+        })} 
+      />
       
       <RenderFormField 
         field={FormFieldClass.textArea('message', { 
@@ -721,6 +717,121 @@ function FormWithCustomField() {
 }
 ```
 
+## 🔀 Conditional Field Logic
+
+Create dynamic forms where fields show, hide, become required, or get disabled based on other field values:
+
+### Basic Conditional Visibility
+
+```tsx
+const fields = [
+  FormFieldClass.select('contactMethod', {
+    label: 'Contact Method',
+    required: true,
+    options: [
+      { value: 'email', label: 'Email' },
+      { value: 'phone', label: 'Phone' },
+      { value: 'mail', label: 'Mail' }
+    ]
+  }),
+  
+  // This field only appears when email is selected
+  FormFieldClass.email('email', {
+    label: 'Email Address',
+    required: true,
+    showWhen: (formValues) => formValues.contactMethod === 'email'
+  }),
+  
+  // This field only appears when phone is selected
+  FormFieldClass.phone('phone', {
+    label: 'Phone Number',
+    required: true,
+    showWhen: (formValues) => formValues.contactMethod === 'phone'
+  })
+]
+```
+
+### Conditional Required Fields
+
+```tsx
+const fields = [
+  FormFieldClass.select('accountType', {
+    label: 'Account Type',
+    required: true,
+    options: [
+      { value: 'personal', label: 'Personal' },
+      { value: 'business', label: 'Business' }
+    ]
+  }),
+  
+  // This field becomes required only for business accounts
+  FormFieldClass.text('companyName', {
+    label: 'Company Name',
+    requiredWhen: (formValues) => formValues.accountType === 'business'
+  }),
+  
+  FormFieldClass.text('taxId', {
+    label: 'Tax ID',
+    requiredWhen: (formValues) => formValues.accountType === 'business'
+  })
+]
+```
+
+### Conditional Disabled Fields
+
+```tsx
+const fields = [
+  FormFieldClass.checkbox('useCompanyEmail', {
+    label: 'Use company email address'
+  }),
+  
+  // This field becomes disabled when checkbox is checked
+  FormFieldClass.email('personalEmail', {
+    label: 'Personal Email',
+    disabledWhen: (formValues) => formValues.useCompanyEmail === true
+  })
+]
+```
+
+### Complex Conditional Logic
+
+```tsx
+const fields = [
+  FormFieldClass.select('userType', {
+    label: 'User Type',
+    options: [
+      { value: 'student', label: 'Student' },
+      { value: 'teacher', label: 'Teacher' },
+      { value: 'admin', label: 'Administrator' }
+    ]
+  }),
+  
+  FormFieldClass.checkbox('isHeadOfDepartment', {
+    label: 'Head of Department',
+    showWhen: (values) => values.userType === 'teacher'
+  }),
+  
+  // Multiple conditions combined
+  FormFieldClass.text('officeNumber', {
+    label: 'Office Number',
+    showWhen: (values) => values.userType === 'teacher' && values.isHeadOfDepartment,
+    requiredWhen: (values) => values.userType === 'teacher' && values.isHeadOfDepartment
+  })
+]
+```
+
+### Available Conditional Properties
+
+- **`showWhen(formValues): boolean`** - Controls field visibility
+- **`requiredWhen(formValues): boolean`** - Makes field required dynamically
+- **`disabledWhen(formValues): boolean`** - Disables field interaction
+
+All conditional functions:
+- Receive the current form values as their first parameter
+- Are re-evaluated whenever any form value changes
+- Work with both declarative and imperative APIs
+- Include error handling for robust operation
+
 ## 📝 Validation
 
 Built-in validation support with custom validators:
@@ -895,7 +1006,12 @@ const field = FormFieldClass.text('name', {
   helpText: 'Enter your full name',
   placeholder: 'John Doe',
   defaultValue: 'Default Name',
-  validate: (value) => value.length > 0 || 'Name is required'
+  validate: (value) => value.length > 0 || 'Name is required',
+  
+  // Conditional logic properties
+  showWhen: (formValues) => formValues.shouldShowName,
+  requiredWhen: (formValues) => formValues.accountType === 'business',
+  disabledWhen: (formValues) => formValues.useGeneratedName
 })
 ```
 

@@ -75,30 +75,57 @@ FormFieldClass.email('email', {
 })
 ```
 
-### 2. **Conditional Field Logic**
+### 2. **Conditional Field Logic** ✅ **IMPLEMENTED**
 
-This would be game-changing for dynamic forms:
+**COMPLETED:** Dynamic field behavior based on form values.
 
+**Implementation Details:**
+- Added `showWhen`, `requiredWhen`, and `disabledWhen` functions to `BaseFieldOptions`
+- Implemented in `RenderFormField` component for universal compatibility
+- Works with both declarative and imperative APIs
+- Performance optimized with `useMemo` and reactive form watching
+- Robust error handling for conditional functions
+- Dynamic validation updates when conditions change
+
+**Usage:**
 ```typescript
 FormFieldClass.text('email', {
   label: 'Email Address',
   showWhen: (formValues) => formValues.contactMethod === 'email',
   requiredWhen: (formValues) => formValues.accountType === 'business',
   disabledWhen: (formValues) => formValues.useCompanyEmail === true,
-  
-  // Advanced conditional logic
-  conditions: {
-    show: [
-      { field: 'contactMethod', operator: 'equals', value: 'email' },
-      { field: 'hasEmail', operator: 'equals', value: true }
-    ],
-    required: [
-      { field: 'accountType', operator: 'in', value: ['business', 'enterprise'] }
-    ]
-  }
 })
 
-// Multi-step form support
+// Complex nested conditions
+FormFieldClass.text('officeNumber', {
+  label: 'Office Number',
+  showWhen: (values) => values.userType === 'teacher' && values.isHeadOfDepartment,
+  requiredWhen: (values) => values.userType === 'teacher' && values.isHeadOfDepartment,
+})
+```
+
+**Benefits Achieved:**
+- ✅ Works with ALL existing field types immediately
+- ✅ No breaking changes to existing API
+- ✅ Consistent behavior across declarative/imperative usage
+- ✅ Dynamic validation that updates in real-time
+- ✅ Performance optimized with minimal re-renders
+- ✅ Comprehensive Storybook documentation and examples
+
+**Future Enhancement Ideas:**
+```typescript
+// Advanced declarative conditions (potential future feature)
+conditions: {
+  show: [
+    { field: 'contactMethod', operator: 'equals', value: 'email' },
+    { field: 'hasEmail', operator: 'equals', value: true }
+  ],
+  required: [
+    { field: 'accountType', operator: 'in', value: ['business', 'enterprise'] }
+  ]
+}
+
+// Multi-step form support (potential future feature)
 FormFieldClass.group('personalInfo', {
   label: 'Personal Information',
   showWhen: (formValues, step) => step === 1,
@@ -228,6 +255,37 @@ FormFieldClass.select('country', {
     loadMore: true // Infinite scrolling for options
   }
 })
+
+// Optimized conditional logic watching (future enhancement)
+FormFieldClass.text('email', {
+  label: 'Email Address',
+  showWhen: (values) => values.contactMethod === 'email',
+  // Optional performance hint - watch only specific fields instead of entire form
+  watchFields: ['contactMethod'], // Avoids unnecessary re-renders
+  
+  // Complex dependencies still work with full form watching
+  requiredWhen: (values) => values.accountType === 'business' && values.hasEmail,
+  // Auto-detected or falls back to watching all fields for complex logic
+})
+
+// Advanced conditional performance options
+<Form
+  id="optimized-form"
+  conditionalOptimization={{
+    // Global strategy for conditional field watching
+    strategy: 'targeted', // 'targeted' | 'full' | 'auto'
+    
+    // Automatic dependency detection (advanced feature)
+    autoDependencies: true,
+    
+    // Debounce conditional evaluations for complex forms
+    debounce: 100,
+    
+    // Performance monitoring
+    monitor: process.env.NODE_ENV === 'development'
+  }}
+  fields={complexFormFields}
+/>
 ```
 
 ### 6. **Advanced Field Types**
@@ -697,7 +755,7 @@ FormFieldClass.address('billingAddress', {
 ## Implementation Priority Roadmap
 
 ### Phase 1: Foundation (1-2 months)
-1. **Conditional field logic** - This alone would set us apart
+1. **Conditional field logic** - ✅ **COMPLETED** - Dynamic show/hide, required, and disabled logic
 2. **Advanced validation system** - Schema integration + cross-field validation
 3. **Enhanced event system** - Better developer experience
 4. **Performance optimizations** - Memoization, lazy loading

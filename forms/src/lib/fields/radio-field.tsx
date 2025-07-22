@@ -16,28 +16,23 @@ export function RadioField(
   const options: RadioFormFieldOptions = props.field?.options
 
   useEffect(() => {
-    if (options?.defaultValue !== undefined) {
+    // Only set default values if field doesn't have a value yet and default is specified
+    const currentValue = props.form.getValues(props.field.key)
+    if (options?.defaultValue !== undefined && (currentValue === undefined || currentValue === '')) {
       const defaultOption = options?.radioOptions?.find((o: RadioOption) => o.value === options?.defaultValue)
-      if (props.form.setValue) {
-        props.form.setValue(props.field.key, defaultOption?.value)
+      if (defaultOption?.value) {
+        props.form.setValue(props.field.key, defaultOption.value)
       }
       if (options?.defaultSubValue !== undefined && defaultOption?.checkedSubOption) {
         setSubOptionKey(defaultOption?.checkedSubOption?.key)
         setSubOptionValue(options?.defaultSubValue)
-        if (props.form.setValue) {
-          props.form.setValue(defaultOption?.checkedSubOption?.key, options?.defaultSubValue)
-        }
+        props.form.setValue(defaultOption?.checkedSubOption?.key, options?.defaultSubValue)
       }
     }
   }, [
     options?.defaultValue,
     options?.defaultSubValue,
-    props.form.setValue,
     props.field.key,
-    options,
-    options.radioOptions,
-    props.form,
-    props.field,
   ])
 
   const isReadOnly = options.readOnly ?? props.formReadOnly
