@@ -63,6 +63,58 @@ export interface BaseFieldOptions {
    * For example, multi-select fields that display option objects but submit ID arrays.
    */
   submitTransform?: (displayValue: unknown) => unknown
+  
+  // Conditional logic properties
+  /**
+   * Function that determines if this field should be visible based on current form values.
+   * If this returns false, the field will not be rendered at all.
+   * 
+   * @param formValues - Current values of all form fields
+   * @returns true if field should be shown, false if it should be hidden
+   * 
+   * @example
+   * ```tsx
+   * FormFieldClass.text('email', {
+   *   label: 'Email Address',
+   *   showWhen: (values) => values.contactMethod === 'email'
+   * })
+   * ```
+   */
+  showWhen?: (formValues: any) => boolean
+  
+  /**
+   * Function that determines if this field should be required based on current form values.
+   * This dynamically overrides the static 'required' property.
+   * 
+   * @param formValues - Current values of all form fields  
+   * @returns true if field should be required, false otherwise
+   * 
+   * @example
+   * ```tsx
+   * FormFieldClass.text('companyName', {
+   *   label: 'Company Name',
+   *   requiredWhen: (values) => values.accountType === 'business'
+   * })
+   * ```
+   */
+  requiredWhen?: (formValues: any) => boolean
+  
+  /**
+   * Function that determines if this field should be disabled based on current form values.
+   * This dynamically overrides the static 'disabled' property.
+   * 
+   * @param formValues - Current values of all form fields
+   * @returns true if field should be disabled, false otherwise
+   * 
+   * @example
+   * ```tsx
+   * FormFieldClass.text('personalEmail', {
+   *   label: 'Personal Email',
+   *   disabledWhen: (values) => values.useCompanyEmail === true
+   * })
+   * ```
+   */
+  disabledWhen?: (formValues: any) => boolean
 }
 
 // Specific options interfaces that extend the base
