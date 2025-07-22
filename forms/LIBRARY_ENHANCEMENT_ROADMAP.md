@@ -255,6 +255,37 @@ FormFieldClass.select('country', {
     loadMore: true // Infinite scrolling for options
   }
 })
+
+// Optimized conditional logic watching (future enhancement)
+FormFieldClass.text('email', {
+  label: 'Email Address',
+  showWhen: (values) => values.contactMethod === 'email',
+  // Optional performance hint - watch only specific fields instead of entire form
+  watchFields: ['contactMethod'], // Avoids unnecessary re-renders
+  
+  // Complex dependencies still work with full form watching
+  requiredWhen: (values) => values.accountType === 'business' && values.hasEmail,
+  // Auto-detected or falls back to watching all fields for complex logic
+})
+
+// Advanced conditional performance options
+<Form
+  id="optimized-form"
+  conditionalOptimization={{
+    // Global strategy for conditional field watching
+    strategy: 'targeted', // 'targeted' | 'full' | 'auto'
+    
+    // Automatic dependency detection (advanced feature)
+    autoDependencies: true,
+    
+    // Debounce conditional evaluations for complex forms
+    debounce: 100,
+    
+    // Performance monitoring
+    monitor: process.env.NODE_ENV === 'development'
+  }}
+  fields={complexFormFields}
+/>
 ```
 
 ### 6. **Advanced Field Types**

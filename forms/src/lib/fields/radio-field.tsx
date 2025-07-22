@@ -33,7 +33,6 @@ export function RadioField(
     options?.defaultValue,
     options?.defaultSubValue,
     props.field.key,
-    // Removed problematic dependencies that change on every render
   ])
 
   const isReadOnly = options.readOnly ?? props.formReadOnly
