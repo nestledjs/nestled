@@ -13,7 +13,14 @@ export { useFormTheme } from './lib/theme-context'
 export { createFinalTheme } from './lib/utils/resolve-theme'
 
 // Export key types for library consumers
-export type { FormField, FormFieldType, BaseFieldOptions, MarkdownEditorOptions } from './lib/form-types'
+export type { 
+  FormField, 
+  FormFieldType, 
+  BaseFieldOptions, 
+  MarkdownEditorOptions,
+  CheckboxGroupOption,
+  CheckboxGroupOptions 
+} from './lib/form-types'
 export type { FormConfig } from './lib/form-config-context'
 
 // Field Components
@@ -36,6 +43,7 @@ export { SelectField } from './lib/fields/select-field'
 export { SelectFieldEnum } from './lib/fields/select-field-enum'
 export { SelectFieldMulti } from './lib/fields/select-field-multi'
 export { RadioField } from './lib/fields/radio-field'
+export { CheckboxGroupField } from './lib/fields/checkbox-group'
 export { SelectFieldSearch } from './lib/fields/select-field-search'
 export { SelectFieldSearchApollo, singleSelectSubmitTransform } from './lib/fields/select-field-search-apollo'
 export { SelectFieldMultiSearch } from './lib/fields/select-field-multi-search'

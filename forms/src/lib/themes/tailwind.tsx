@@ -59,7 +59,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     rowFullWidth: 'flex items-center justify-between',
     checkboxContainer: 'relative inline-flex items-center cursor-pointer select-none',
     hiddenInput: 'peer absolute opacity-0 w-5 h-5 cursor-pointer',
-    customCheckbox: 'inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300 transition-colors bg-white mr-2 peer-focus:ring-2 peer-focus:ring-sky-300 peer-focus:ring-offset-2',
+    customCheckbox:
+      'inline-flex items-center justify-center w-5 h-5 rounded border border-gray-300 transition-colors bg-white mr-2 peer-focus:ring-2 peer-focus:ring-sky-300 peer-focus:ring-offset-2',
     focus: '', // Empty since focus styles are now in customCheckbox
     checked: '!bg-sky-600 border-sky-600',
     error: '!border-red-600',
@@ -88,7 +89,8 @@ export const tailwindTheme = FormThemeSchema.parse({
   },
   customField: {
     wrapper: '',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
     errorContainer: 'mt-2 p-3 bg-red-50 border border-red-200 rounded-md',
     errorText: 'text-sm text-red-600',
@@ -100,7 +102,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
   dateTimePicker: {
@@ -110,7 +113,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
   emailField: {
@@ -120,7 +124,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
   moneyField: {
@@ -134,13 +139,15 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
   multiSelect: {
     wrapper: '',
     container: 'relative',
-    inputContainer: 'flex flex-wrap items-center gap-1 rounded-md border border-gray-300 bg-white p-1 pr-10 shadow-sm focus-within:ring-2 focus-within:ring-sky-300 focus-within:border-sky-300',
+    inputContainer:
+      'flex flex-wrap items-center gap-1 rounded-md border border-gray-300 bg-white p-1 pr-10 shadow-sm focus-within:ring-2 focus-within:ring-sky-300 focus-within:border-sky-300',
     selectedItem: 'flex items-center gap-x-1 whitespace-nowrap rounded-sm bg-sky-100 px-2 py-0.5 text-sm text-sky-700',
     selectedItemLabel: '',
     selectedItemRemoveButton: 'text-sky-500 hover:text-sky-800 transition-colors',
@@ -148,7 +155,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     input: 'min-w-[6rem] flex-grow bg-transparent p-1 focus:ring-0 border-none focus:outline-none',
     button: 'absolute inset-y-0 right-0 flex items-center pr-2',
     buttonIcon: 'h-5 w-5 text-gray-400',
-    dropdown: 'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
+    dropdown:
+      'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
     option: 'cursor-pointer select-none relative py-2 pl-10 pr-4',
     optionActive: 'bg-sky-100 text-sky-900',
     optionSelected: 'font-medium',
@@ -157,7 +165,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus-within:border-red-600 !focus-within:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
   numberField: {
@@ -166,7 +175,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
   },
   passwordField: {
@@ -175,7 +185,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 font-mono tracking-wider',
   },
   phoneField: {
@@ -185,7 +196,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
     errorMessage: 'text-xs sm:text-sm mt-2 mx-1 text-red-700',
   },
@@ -223,13 +235,43 @@ export const tailwindTheme = FormThemeSchema.parse({
       </svg>
     ),
   },
+  checkboxGroup: {
+    wrapper: '',
+    container: 'flex w-full',
+    containerRow: 'flex-row gap-x-4',
+    containerColumn: 'flex-col gap-y-1',
+    optionContainer: 'flex',
+    optionContainerFullWidth: 'w-full justify-between',
+    optionContainerFancy: 'border rounded-md',
+    checkboxContainer: 'flex flex-row items-center',
+    input: 'size-4 appearance-none rounded border-2 border-gray-300 bg-white focus:outline-none cursor-pointer',
+    inputFullWidth: '!size-6',
+    inputChecked: '!bg-sky-600 !border-sky-600 shadow-[inset_0_0_0_2px_white]',
+    inputFocus: 'focus:ring-sky-300 focus:ring-2',
+    inputDisabled: 'opacity-50 cursor-not-allowed',
+    error: '!border-red-600 !focus:border-red-600',
+    disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
+    label: 'text-sm grow cursor-pointer',
+    labelFullWidth: 'text-sm ml-2 grow',
+    labelRow: 'p-1 pl-2',
+    labelColumn: 'p-4',
+    readOnly: 'text-gray-700 font-medium',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyValue: 'min-h-[2.5rem] flex items-start px-3 py-2 text-gray-700',
+    readOnlyContainer: 'flex flex-col gap-y-1',
+    readOnlySelected: 'flex flex-row items-center gap-x-2',
+    readOnlyUnselected: 'text-gray-500 italic',
+    helpText: 'text-sm text-gray-600 mt-1',
+  },
   searchSelectField: {
     wrapper: '',
     container: 'relative',
     input: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10',
     button: 'absolute inset-y-0 right-0 flex items-center pr-2',
     buttonIcon: 'h-5 w-5 text-gray-400',
-    dropdown: 'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
+    dropdown:
+      'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
     option: 'cursor-default select-none relative py-2 pl-10 pr-4',
     optionActive: 'text-white bg-sky-600',
     optionSelected: 'font-medium',
@@ -239,7 +281,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
+    readOnlyInput:
+      'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
     fallback: 'h-10 w-full rounded-md border border-gray-300 bg-gray-100',
   },
@@ -254,7 +297,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     input: 'min-w-[6rem] flex-grow bg-transparent p-1 focus:ring-0 border-none focus:outline-none',
     button: 'absolute inset-y-0 right-0 flex items-center pr-2',
     buttonIcon: 'h-5 w-5 text-gray-400',
-    dropdown: 'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
+    dropdown:
+      'absolute z-10 mt-1 w-fit min-w-[12rem] bg-white shadow-lg max-h-60 rounded-md py-1 text-base border border-gray-300 overflow-auto focus:outline-none sm:text-sm',
     option: 'cursor-default select-none relative py-2 pl-10 pr-4',
     optionActive: 'text-white bg-sky-600',
     optionSelected: 'font-medium',
@@ -265,7 +309,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
+    readOnlyInput:
+      'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10 opacity-50 cursor-not-allowed bg-gray-100',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
     fallback: 'h-10 w-full rounded-md border border-gray-300 bg-gray-100',
   },
@@ -279,7 +324,8 @@ export const tailwindTheme = FormThemeSchema.parse({
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
     readOnly: 'text-gray-700 font-medium',
-    readOnlyInput: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
+    readOnlyInput:
+      'min-h-[2.5rem] flex items-center px-3 text-gray-700 w-full border border-gray-300 rounded bg-gray-50',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
     helpText: 'text-sm text-gray-600 mt-1',
     fallback: 'h-10 w-full rounded-md border border-gray-300 bg-gray-100',
@@ -288,10 +334,12 @@ export const tailwindTheme = FormThemeSchema.parse({
     wrapper: '',
     container: 'flex items-center justify-between',
     label: 'ml-3 text-md text-gray-700',
-    switchTrack: 'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
+    switchTrack:
+      'relative inline-flex flex-shrink-0 h-6 w-11 border-2 border-transparent rounded-full cursor-pointer transition-colors ease-in-out duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2',
     switchTrackOn: 'bg-sky-600 focus:ring-sky-300',
     switchTrackOff: 'bg-gray-200 focus:ring-sky-300',
-    switchThumb: 'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200',
+    switchThumb:
+      'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow transform ring-0 transition ease-in-out duration-200',
     switchThumbOn: 'translate-x-5',
     switchThumbOff: 'translate-x-0',
     error: '!border-red-600 !focus:ring-red-600',
@@ -302,7 +350,8 @@ export const tailwindTheme = FormThemeSchema.parse({
   },
   textAreaField: {
     wrapper: '',
-    textarea: 'block w-full resize-none px-3 py-2 min-h-[2.5rem] border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-sky-300 focus:border-sky-300',
+    textarea:
+      'block w-full resize-none px-3 py-2 min-h-[2.5rem] border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-sky-300 focus:border-sky-300',
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
     readOnly: 'text-gray-700 font-medium',
@@ -311,7 +360,8 @@ export const tailwindTheme = FormThemeSchema.parse({
   },
   markdownEditor: {
     wrapper: '',
-    editor: 'border border-gray-300 rounded-md focus-within:ring-sky-300 focus-within:border-sky-300 prose prose-sm max-w-none p-4',
+    editor:
+      'border border-gray-300 rounded-md focus-within:ring-sky-300 focus-within:border-sky-300 prose prose-sm max-w-none p-4',
     toolbar: 'bg-gray-50 border-b border-gray-200 px-3 py-2 rounded-t-md',
     preview: 'prose prose-sm max-w-none p-4 min-h-[200px] bg-white',
     error: '!border-red-600 !focus-within:border-red-600 !focus-within:ring-red-600',

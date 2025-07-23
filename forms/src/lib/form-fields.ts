@@ -2,6 +2,7 @@ import {
   BaseFieldOptions,
   ButtonOptions,
   CheckboxOptions,
+  CheckboxGroupOptions,
   ContentOptions,
   CurrencyFieldOptions,
   CustomCheckboxOptions,
@@ -245,6 +246,31 @@ export class FormFieldClass {
 
   static checkbox(key: string, options: CheckboxOptions = {}): FormField {
     return this.field(FormFieldType.Checkbox, key, options)
+  }
+
+  /**
+   * Creates a checkbox group field with multiple selectable options.
+   * 
+   * @param key - Unique identifier for the field
+   * @param options - Configuration options including checkboxOptions array, layout, etc.
+   * @returns A checkbox group field definition
+   * 
+   * @example
+   * ```tsx
+   * FormFieldClass.checkboxGroup('interests', { 
+   *   label: 'Interests', 
+   *   checkboxOptions: [
+   *     { key: 'sports', value: 'sports', label: 'Sports' },
+   *     { key: 'music', value: 'music', label: 'Music' },
+   *     { key: 'travel', value: 'travel', label: 'Travel' }
+   *   ],
+   *   checkboxDirection: 'column',
+   *   defaultValue: 'sports,music' // comma-separated selected values
+   * })
+   * ```
+   */
+  static checkboxGroup(key: string, options: CheckboxGroupOptions): FormField {
+    return this.field(FormFieldType.CheckboxGroup, key, options)
   }
 
   static customCheckbox(key: string, options: CustomCheckboxOptions = {}): FormField {
