@@ -4,6 +4,16 @@ import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType, CheckboxGroupOption, CheckboxGroupOptions } from '../form-types'
 import { useFormTheme } from '../theme-context'
 
+// Utility functions for value conversion (moved outside component for performance)
+const stringToArray = (value: string | null | undefined, separator: string): string[] => {
+  if (!value || value.trim() === '') return []
+  return value.split(separator).map(v => v.trim()).filter(v => v !== '')
+}
+
+const arrayToString = (values: string[], separator: string): string => {
+  return values.join(separator)
+}
+
 export function CheckboxGroupField({
   form,
   field,
@@ -24,16 +34,6 @@ export function CheckboxGroupField({
   // Get separator for value parsing (default: comma)
   const separator = options.valueSeparator ?? ','
 
-  // Utility functions for value conversion
-  const stringToArray = (value: string | null | undefined): string[] => {
-    if (!value || value.trim() === '') return []
-    return value.split(separator).map(v => v.trim()).filter(v => v !== '')
-  }
-
-  const arrayToString = (values: string[]): string => {
-    return values.join(separator)
-  }
-
   // Extract checkbox change handler to reduce nesting
   const createCheckboxChangeHandler = (onChange: (value: string) => void, selectedValues: string[]) => {
     return (optionValue: string | number, isChecked: boolean) => {
@@ -50,7 +50,7 @@ export function CheckboxGroupField({
         newSelectedValues = selectedValues.filter(v => v !== valueStr)
       }
       
-      onChange(arrayToString(newSelectedValues))
+      onChange(arrayToString(newSelectedValues, separator))
     }
   }
 
@@ -125,7 +125,7 @@ export function CheckboxGroupField({
   // Handle read-only rendering
   function renderReadOnly() {
     const value = form.getValues(field.key)
-    const selectedValues = stringToArray(value)
+    const selectedValues = stringToArray(value, separator)
     const selectedOptions = options.checkboxOptions.filter(opt => 
       selectedValues.includes(String(opt.value))
     )
@@ -177,7 +177,7 @@ export function CheckboxGroupField({
         defaultValue={options.defaultValue || ''}
         rules={{ required: options.required }}
         render={({ field: { onChange, value } }) => {
-          const selectedValues = stringToArray(value)
+          const selectedValues = stringToArray(value, separator)
           const handleCheckboxChange = createCheckboxChangeHandler(onChange, selectedValues)
 
           return (
