@@ -227,6 +227,36 @@ export const FormThemeSchema = z.object({
       readOnlyUnselectedIcon: z.any().optional(),
     })
     .default({}),
+  checkboxGroup: z
+    .object({
+      wrapper: z.string().default(''),
+      container: z.string().default(''),
+      containerRow: z.string().default(''),
+      containerColumn: z.string().default(''),
+      optionContainer: z.string().default(''),
+      optionContainerFullWidth: z.string().default(''),
+      optionContainerFancy: z.string().default(''),
+      checkboxContainer: z.string().default(''),
+      input: z.string().default(''),
+      inputFullWidth: z.string().default(''),
+      inputChecked: z.string().default(''),
+      inputFocus: z.string().default(''),
+      inputDisabled: z.string().default(''),
+      error: z.string().default(''),
+      disabled: z.string().default(''),
+      label: z.string().default(''),
+      labelFullWidth: z.string().default(''),
+      labelRow: z.string().default(''),
+      labelColumn: z.string().default(''),
+      readOnly: z.string().default(''),
+      readOnlyInput: z.string().default(''),
+      readOnlyValue: z.string().default(''),
+      readOnlyContainer: z.string().default(''),
+      readOnlySelected: z.string().default(''),
+      readOnlyUnselected: z.string().default(''),
+      helpText: z.string().default(''),
+    })
+    .default({}),
   searchSelectField: z
     .object({
       wrapper: z.string().default(''),

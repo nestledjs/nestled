@@ -61,6 +61,7 @@ export function createFinalTheme(userTheme: DeepPartial<FormTheme> = {}): FormTh
     'passwordField',
     'phoneField',
     'radioField',
+    'checkboxGroup',
     'searchSelectField',
     'searchSelectMultiField',
     'selectField',
@@ -100,6 +101,8 @@ export function createFinalTheme(userTheme: DeepPartial<FormTheme> = {}): FormTh
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['phoneField'])
     } else if (key === 'radioField') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['radioField'])
+    } else if (key === 'checkboxGroup') {
+      finalTheme[key] = mergeSection(globalStyles, section as FormTheme['checkboxGroup'])
     } else if (key === 'searchSelectField') {
       finalTheme[key] = mergeSection(globalStyles, section as FormTheme['searchSelectField'])
     } else if (key === 'searchSelectMultiField') {

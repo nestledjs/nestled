@@ -22,6 +22,7 @@ export enum FormFieldType {
   EnumSelect = 'EnumSelect',
   MultiSelect = 'MultiSelect',
   Radio = 'Radio',
+  CheckboxGroup = 'CheckboxGroup',
   SearchSelect = 'SearchSelect',
   SearchSelectApollo = 'SearchSelectApollo',
   SearchSelectMulti = 'SearchSelectMulti',
@@ -409,6 +410,11 @@ interface RadioField {
   type: FormFieldType.Radio
   options: RadioFormFieldOptions
 }
+interface CheckboxGroupField {
+  key: string
+  type: FormFieldType.CheckboxGroup
+  options: CheckboxGroupOptions
+}
 
 export interface RadioOption {
   key: string
@@ -433,6 +439,24 @@ export interface RadioFormFieldOptions extends BaseFieldOptions {
   disabled?: boolean
 }
 
+export interface CheckboxGroupOption {
+  key: string
+  value: string | number
+  label: string
+  hidden?: boolean
+}
+
+export interface CheckboxGroupOptions extends BaseFieldOptions {
+  checkboxOptions: CheckboxGroupOption[]
+  defaultValue?: string // comma-separated string of selected values
+  fullWidthLabel?: boolean
+  checkboxDirection?: 'row' | 'column'
+  customWrapper?: (children: React.ReactNode) => JSX.Element
+  fancyStyle?: boolean
+  // Separator for storing multiple values (default: comma)
+  valueSeparator?: string
+}
+
 // The final FormField is a union of all possible field shapes
 export type FormField =
   | InputField
@@ -453,6 +477,7 @@ export type FormField =
   | EnumSelectField
   | MultiSelectField
   | RadioField
+  | CheckboxGroupField
   | SearchSelectField
   | SearchSelectApolloField<any>
   | SearchSelectMultiField

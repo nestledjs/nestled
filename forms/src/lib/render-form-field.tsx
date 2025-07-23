@@ -23,6 +23,7 @@ import { SelectField } from './fields/select-field'
 import { SelectFieldEnum } from './fields/select-field-enum'
 import { SelectFieldMulti } from './fields/select-field-multi'
 import { RadioField } from './fields/radio-field'
+import { CheckboxGroupField } from './fields/checkbox-group'
 import { SelectFieldSearch } from './fields/select-field-search'
 import { SelectFieldSearchApollo } from './fields/select-field-search-apollo'
 import { SelectFieldMultiSearch } from './fields/select-field-multi-search'
@@ -216,6 +217,16 @@ function renderComponent(
     case FormFieldType.Radio:
       return (
         <RadioField
+          form={form}
+          field={field}
+          hasError={hasError}
+          formReadOnly={formReadOnly}
+          formReadOnlyStyle={formReadOnlyStyle}
+        />
+      )
+    case FormFieldType.CheckboxGroup:
+      return (
+        <CheckboxGroupField
           form={form}
           field={field}
           hasError={hasError}
