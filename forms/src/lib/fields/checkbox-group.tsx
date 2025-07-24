@@ -25,6 +25,8 @@ export function CheckboxGroupField({
   formReadOnlyStyle?: 'value' | 'disabled'
 }) {
   const theme = useFormTheme()
+  const checkboxTheme = theme.checkbox
+  const groupTheme = theme.checkboxGroup
   const options: CheckboxGroupOptions = field.options
 
   // Determine read-only state with field-level precedence
@@ -62,12 +64,12 @@ export function CheckboxGroupField({
       <div 
         key={option.key} 
         className={clsx(
-          theme.checkboxGroup.optionContainer,
-          options.fullWidthLabel && theme.checkboxGroup.optionContainerFullWidth,
-          options.fancyStyle && theme.checkboxGroup.optionContainerFancy
+          groupTheme.optionContainer,
+          options.fullWidthLabel && groupTheme.optionContainerFullWidth,
+          options.fancyStyle && groupTheme.optionContainerFancy
         )}
       >
-        <div className={clsx(theme.checkboxGroup.checkboxContainer)}>
+        <div className={clsx(groupTheme.checkboxContainer)}>
           <input
             type="checkbox"
             id={`${field.key}_${option.key}`}
@@ -75,22 +77,20 @@ export function CheckboxGroupField({
             onChange={(e) => handleChange(option.value, e.target.checked)}
             disabled={isDisabled}
             className={clsx(
-              theme.checkboxGroup.input,
-              options.fullWidthLabel && theme.checkboxGroup.inputFullWidth,
-              isChecked && theme.checkboxGroup.inputChecked,
-              theme.checkboxGroup.inputFocus,
-              isDisabled && theme.checkboxGroup.inputDisabled,
-              hasError && theme.checkboxGroup.error
+              checkboxTheme.input,
+              isChecked && checkboxTheme.checked,
+              isDisabled && checkboxTheme.disabled,
+              hasError && checkboxTheme.error
             )}
           />
           <label 
             htmlFor={`${field.key}_${option.key}`}
             className={clsx(
-              theme.checkboxGroup.label,
-              options.fullWidthLabel && theme.checkboxGroup.labelFullWidth,
+              groupTheme.label,
+              options.fullWidthLabel && groupTheme.labelFullWidth,
               options.checkboxDirection !== 'row' 
-                ? theme.checkboxGroup.labelColumn 
-                : theme.checkboxGroup.labelRow
+                ? groupTheme.labelColumn 
+                : groupTheme.labelRow
             )}
           >
             {option.label}
@@ -102,20 +102,20 @@ export function CheckboxGroupField({
 
   // Extract read-only option rendering
   const renderReadOnlyOption = (option: CheckboxGroupOption, isChecked: boolean) => (
-    <div key={option.key} className={clsx(theme.checkboxGroup.optionContainer)}>
-      <div className={clsx(theme.checkboxGroup.checkboxContainer)}>
+    <div key={option.key} className={clsx(groupTheme.optionContainer)}>
+      <div className={clsx(groupTheme.checkboxContainer)}>
         <input
           type="checkbox"
           checked={isChecked}
           disabled={true}
           className={clsx(
-            theme.checkboxGroup.input,
-            theme.checkboxGroup.inputDisabled,
-            isChecked && theme.checkboxGroup.inputChecked
+            checkboxTheme.input,
+            checkboxTheme.disabled,
+            isChecked && checkboxTheme.checked
           )}
           readOnly
         />
-        <label className={clsx(theme.checkboxGroup.label)}>
+        <label className={clsx(groupTheme.label)}>
           {option.label}
         </label>
       </div>
@@ -132,12 +132,12 @@ export function CheckboxGroupField({
 
     if (readOnlyStyle === 'disabled') {
       return (
-        <div className={clsx(theme.checkboxGroup.wrapper)}>
+        <div className={clsx(groupTheme.wrapper)}>
           <div className={clsx(
-            theme.checkboxGroup.container,
+            groupTheme.container,
             options.checkboxDirection !== 'row' 
-              ? theme.checkboxGroup.containerColumn 
-              : theme.checkboxGroup.containerRow
+              ? groupTheme.containerColumn 
+              : groupTheme.containerRow
           )}>
             {options.checkboxOptions.map((option: CheckboxGroupOption) => {
               const isChecked = selectedValues.includes(String(option.value))
@@ -150,17 +150,17 @@ export function CheckboxGroupField({
 
     // Render as plain values
     return (
-      <div className={clsx(theme.checkboxGroup.readOnlyValue)}>
+      <div className={clsx(groupTheme.readOnlyValue)}>
         {selectedOptions.length > 0 ? (
-          <div className={clsx(theme.checkboxGroup.readOnlyContainer)}>
+          <div className={clsx(groupTheme.readOnlyContainer)}>
             {selectedOptions.map((option, index) => (
-              <div key={option.key} className={clsx(theme.checkboxGroup.readOnlySelected)}>
+              <div key={option.key} className={clsx(groupTheme.readOnlySelected)}>
                 <span>✓ {option.label}</span>
               </div>
             ))}
           </div>
         ) : (
-          <div className={clsx(theme.checkboxGroup.readOnlyUnselected)}>
+          <div className={clsx(groupTheme.readOnlyUnselected)}>
             No options selected
           </div>
         )}
@@ -181,12 +181,12 @@ export function CheckboxGroupField({
           const handleCheckboxChange = createCheckboxChangeHandler(onChange, selectedValues)
 
           return (
-            <div className={clsx(theme.checkboxGroup.wrapper)}>
+            <div className={clsx(groupTheme.wrapper)}>
               <div className={clsx(
-                theme.checkboxGroup.container,
+                groupTheme.container,
                 options.checkboxDirection !== 'row' 
-                  ? theme.checkboxGroup.containerColumn 
-                  : theme.checkboxGroup.containerRow
+                  ? groupTheme.containerColumn 
+                  : groupTheme.containerRow
               )}>
                 {options.checkboxOptions.map((option: CheckboxGroupOption) => {
                   const isChecked = selectedValues.includes(String(option.value))
