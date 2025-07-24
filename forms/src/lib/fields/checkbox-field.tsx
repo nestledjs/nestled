@@ -105,7 +105,6 @@ function renderControlledInput(props: CheckboxFieldProps, theme: any, inputRef: 
           required={options.required}
           className={clsx(
             theme.input,
-            theme.focus,
             options.disabled && theme.disabled,
             hasError && theme.error,
             controllerField.value && theme.checked,

@@ -78,7 +78,6 @@ export function CheckboxGroupField({
             disabled={isDisabled}
             className={clsx(
               checkboxTheme.input,
-              checkboxTheme.focus,
               isChecked && checkboxTheme.checked,
               isDisabled && checkboxTheme.disabled,
               hasError && checkboxTheme.error
