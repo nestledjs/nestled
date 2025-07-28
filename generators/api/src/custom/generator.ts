@@ -98,6 +98,30 @@ function toKebabCase(str: string): string {
     .toLowerCase()
 }
 
+function updateIndexFileAdditively(
+  tree: Tree,
+  indexPath: string,
+  newExports: string[],
+  dependencies: CustomGeneratorDependencies,
+) {
+  const existingContent = tree.exists(indexPath) ? tree.read(indexPath)?.toString() || '' : ''
+  const existingLines = existingContent.split('\n').filter(line => line.trim() !== '')
+  const existingExports = new Set(existingLines)
+  
+  // Add new exports that don't already exist
+  newExports.forEach(exportLine => {
+    if (!existingExports.has(exportLine)) {
+      existingExports.add(exportLine)
+    }
+  })
+  
+  // Convert back to sorted array and join
+  const allExports = Array.from(existingExports).sort()
+  const updatedContent = allExports.join('\n') + (allExports.length > 0 ? '\n' : '')
+  
+  tree.write(indexPath, updatedContent)
+}
+
 async function generateCustomFiles(
   tree: Tree,
   customLibraryRoot: string,
@@ -180,10 +204,11 @@ export class ${model.modelName}Module {}
     })
   }
 
-  // Update default/index.ts to export all model modules
+  // Update default/index.ts to additively export model modules
   const modelFolders = models.map((m) => toKebabCase(m.modelName))
-  const defaultIndexContent = modelFolders.map((m) => `export * from './${m}/${m}.module'`).join('\n')
-  tree.write(dependencies.join(defaultDir, 'index.ts'), defaultIndexContent)
+  const newModelExports = modelFolders.map((m) => `export * from './${m}/${m}.module'`)
+  const defaultIndexPath = dependencies.join(defaultDir, 'index.ts')
+  updateIndexFileAdditively(tree, defaultIndexPath, newModelExports, dependencies)
 }
 
 export async function customGeneratorLogic(
