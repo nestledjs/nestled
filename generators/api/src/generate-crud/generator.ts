@@ -40,7 +40,7 @@ export interface GenerateCrudGeneratorDependencies {
 
 export function parseCrudAuth(comment: string): CrudAuthConfig | null {
   try {
-    const match = comment.match(/@crudAuth:\s*(\{.*\})/)
+    const match = RegExp(/@crudAuth:\s*(\{.*})/).exec(comment)
     if (!match) return null
     return JSON.parse(match[1])
   } catch (e) {
@@ -110,7 +110,11 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
   }
 
   const guardImports =
-    usedGuards.size > 0 ? `import { ${Array.from(usedGuards).sort().join(', ')} } from '@${npmScope}/api/utils'` : ''
+    usedGuards.size > 0
+      ? `import { ${Array.from(usedGuards)
+          .sort((a, b) => a.localeCompare(b))
+          .join(', ')} } from '@${npmScope}/api/utils'`
+      : ''
 
   const readManyGuardDecorator = model.auth?.readMany ? getGuardForAuthLevel(model.auth.readMany) : 'GqlAuthAdminGuard'
   const countGuardDecorator = model.auth?.count ? getGuardForAuthLevel(model.auth.count) : 'GqlAuthAdminGuard'
