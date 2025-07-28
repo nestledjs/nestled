@@ -102,7 +102,6 @@ function updateIndexFileAdditively(
   tree: Tree,
   indexPath: string,
   newExports: string[],
-  dependencies: CustomGeneratorDependencies,
 ) {
   const existingContent = tree.exists(indexPath) ? tree.read(indexPath)?.toString() || '' : ''
   const existingLines = existingContent.split('\n').filter(line => line.trim() !== '')
@@ -116,8 +115,8 @@ function updateIndexFileAdditively(
   })
   
   // Convert back to sorted array and join
-  const allExports = Array.from(existingExports).sort()
-  const updatedContent = allExports.join('\n') + (allExports.length > 0 ? '\n' : '')
+  const allExports = Array.from(existingExports).sort((a, b) => a.localeCompare(b))
+  const updatedContent = allExports.map(exp => String(exp)).join('\n') + (allExports.length > 0 ? '\n' : '')
   
   tree.write(indexPath, updatedContent)
 }
@@ -208,7 +207,7 @@ export class ${model.modelName}Module {}
   const modelFolders = models.map((m) => toKebabCase(m.modelName))
   const newModelExports = modelFolders.map((m) => `export * from './${m}/${m}.module'`)
   const defaultIndexPath = dependencies.join(defaultDir, 'index.ts')
-  updateIndexFileAdditively(tree, defaultIndexPath, newModelExports, dependencies)
+  updateIndexFileAdditively(tree, defaultIndexPath, newModelExports)
 }
 
 export async function customGeneratorLogic(
