@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/generators",
-  "version": "0.1.12",
+  "version": "0.1.13",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
