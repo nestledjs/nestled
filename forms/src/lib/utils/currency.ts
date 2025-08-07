@@ -353,7 +353,7 @@ export function formatCurrency(
   // Add 'thousands' separators
   const formattedInteger = integerPart.replace(/(\d)(?=(\d{3})+(?!\d))/g, `$1${config.thousandsSeparator}`)
 
-  // Combine with decimal separator if needed
+  // Combine with a decimal separator if needed
   const formattedValue = decimalPart ? `${formattedInteger}${config.decimalSeparator}${decimalPart}` : formattedInteger
 
   // Build the final string
