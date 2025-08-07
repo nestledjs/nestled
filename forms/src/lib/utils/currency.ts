@@ -303,7 +303,7 @@ export function getCurrencyConfig(code: CurrencyCode): CurrencyConfig {
  * Get all available currencies as options for select fields
  */
 export function getCurrencyOptions() {
-  return Object.values(CURRENCY_CONFIGS).map(config => ({
+  return Object.values(CURRENCY_CONFIGS).map((config) => ({
     value: config.code,
     label: `${config.symbol} ${config.code} - ${config.name}`,
   }))
@@ -314,7 +314,7 @@ export function getCurrencyOptions() {
  */
 export function getPopularCurrencyOptions() {
   const popularCurrencies: CurrencyCode[] = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY']
-  return popularCurrencies.map(code => ({
+  return popularCurrencies.map((code) => ({
     value: code,
     label: `${CURRENCY_CONFIGS[code].symbol} ${code} - ${CURRENCY_CONFIGS[code].name}`,
   }))
@@ -330,13 +330,9 @@ export function formatCurrency(
     showSymbol?: boolean
     showCode?: boolean
     includeDecimals?: boolean
-  } = {}
+  } = {},
 ): string {
-  const {
-    showSymbol = true,
-    showCode = false,
-    includeDecimals = true,
-  } = options
+  const { showSymbol = true, showCode = false, includeDecimals = true } = options
 
   if (value === null || value === undefined || value === '') {
     return ''
@@ -350,21 +346,19 @@ export function formatCurrency(
   // Format the number with proper decimal places
   const decimalPlaces = includeDecimals ? config.decimalPlaces : 0
   const formattedNumber = numValue.toFixed(decimalPlaces)
-  
+
   // Split into integer and decimal parts
   const [integerPart, decimalPart] = formattedNumber.split('.')
-  
-  // Add thousands separators
-  const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, config.thousandsSeparator)
-  
-  // Combine with decimal separator if needed
-  const formattedValue = decimalPart 
-    ? `${formattedInteger}${config.decimalSeparator}${decimalPart}`
-    : formattedInteger
+
+  // Add 'thousands' separators
+  const formattedInteger = integerPart.replace(/\B(?=(?:\d{3})+(?!\d))/g, config.thousandsSeparator)
+
+  // Combine with a decimal separator if needed
+  const formattedValue = decimalPart ? `${formattedInteger}${config.decimalSeparator}${decimalPart}` : formattedInteger
 
   // Build the final string
   let result = formattedValue
-  
+
   if (showSymbol) {
     if (config.symbolPosition === 'before') {
       result = `${config.symbol}${result}`
@@ -372,34 +366,28 @@ export function formatCurrency(
       result = `${result} ${config.symbol}`
     }
   }
-  
+
   if (showCode) {
     result = `${result} ${config.code}`
   }
-  
+
   return result
 }
 
 /**
  * Parse a formatted currency string back to a number
  */
-export function parseCurrency(
-  value: string,
-  config: CurrencyConfig
-): number | null {
+export function parseCurrency(value: string, config: CurrencyConfig): number | null {
   if (!value || typeof value !== 'string') {
     return null
   }
 
   // Remove currency symbol and code
-  let cleanValue = value
-    .replace(config.symbol, '')
-    .replace(config.code, '')
-    .trim()
+  let cleanValue = value.replace(config.symbol, '').replace(config.code, '').trim()
 
   // Replace thousands separators
   cleanValue = cleanValue.replace(new RegExp(`\\${config.thousandsSeparator}`, 'g'), '')
-  
+
   // Replace decimal separator with standard dot
   if (config.decimalSeparator !== '.') {
     cleanValue = cleanValue.replace(config.decimalSeparator, '.')
@@ -424,7 +412,7 @@ export function getCurrencyStep(config: CurrencyConfig): string {
  */
 export function resolveCurrencyConfig(
   currency: CurrencyCode | 'custom' = 'USD',
-  customCurrency?: Partial<CurrencyConfig>
+  customCurrency?: Partial<CurrencyConfig>,
 ): CurrencyConfig {
   if (currency === 'custom' && customCurrency) {
     // Merge custom config with USD defaults
@@ -434,7 +422,7 @@ export function resolveCurrencyConfig(
       code: customCurrency.code || 'USD',
     }
   }
-  
+
   return CURRENCY_CONFIGS[currency as CurrencyCode] || CURRENCY_CONFIGS.USD
 }
 
@@ -453,22 +441,22 @@ export function convertCurrency(
   amount: number,
   fromCurrency: CurrencyCode,
   toCurrency: CurrencyCode,
-  exchangeRates?: Record<string, number>
+  exchangeRates?: Record<string, number>,
 ): number {
   // This is a simplified example - in practice you'd use real exchange rates
   if (fromCurrency === toCurrency) {
     return amount
   }
-  
+
   if (!exchangeRates) {
     throw new Error('Exchange rates required for currency conversion')
   }
-  
+
   const rate = exchangeRates[`${fromCurrency}_${toCurrency}`]
   if (!rate) {
     throw new Error(`Exchange rate not found for ${fromCurrency} to ${toCurrency}`)
   }
-  
+
   return amount * rate
 }
 
@@ -478,16 +466,16 @@ export function convertCurrency(
 export function formatCurrencyForDisplay(
   value: number | string | null | undefined,
   currency: CurrencyCode,
-  context: 'input' | 'display' | 'compact' = 'display'
+  context: 'input' | 'display' | 'compact' = 'display',
 ): string {
   const config = getCurrencyConfig(currency)
-  
+
   switch (context) {
     case 'input': {
       // For input fields - no thousands separators, standard decimal
       return formatCurrency(value, { ...config, thousandsSeparator: '' }, { showSymbol: false })
     }
-    
+
     case 'compact': {
       // For compact display - abbreviated large numbers
       const numValue = typeof value === 'string' ? parseFloat(value) : value
@@ -498,11 +486,11 @@ export function formatCurrencyForDisplay(
       }
       return formatCurrency(value, config)
     }
-    
+
     case 'display':
     default: {
       // Standard display format
       return formatCurrency(value, config)
     }
   }
-} 
+}
