@@ -16,7 +16,6 @@
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
     "paths": {
-      "@nestledjs/all": ["all/src/index.ts"],
       "@nestledjs/api": ["generators/api/src/index.ts"],
       "@nestledjs/config": ["generators/config/src/index.ts"],
       "@nestledjs/forms": ["forms/src/index.ts"],
