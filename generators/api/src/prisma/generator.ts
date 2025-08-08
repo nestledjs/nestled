@@ -48,6 +48,11 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
     if (!json.scripts['prisma:reset']) {
       json.scripts['prisma:reset'] = 'pnpm prisma migrate reset && pnpm prisma:seed'
     }
+    // Add db-update convenience script to regenerate CRUD, models, custom, and SDK
+    if (!json.scripts['db-update']) {
+      json.scripts['db-update'] =
+        'nx g @nestledjs/api:generate-crud && pnpm generate:models && nx g @nestledjs/api:custom && nx g @nestledjs/shared:sdk'
+    }
     return json
   })
 
