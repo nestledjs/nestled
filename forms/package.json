@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/forms",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "exports": {
     ".": {
       "import": "./index.js",
@@ -45,6 +45,6 @@
     "@hookform/resolvers": "^3.0.0",
     "react-hook-form": "^7.58.1",
     "react-phone-number-input": "^3.4.12",
-    "@nestledjs/helpers": "^0.1.1"
+    "@nestledjs/helpers": "^0.1.2"
   }
 }

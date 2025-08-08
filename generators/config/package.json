@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/config",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
@@ -23,6 +23,6 @@
     "yaml": "^2.8.0"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.1.2"
+    "@nestledjs/utils": "0.1.3"
   }
 }
