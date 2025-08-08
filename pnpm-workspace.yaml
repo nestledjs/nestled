@@ -21,3 +21,4 @@ onlyBuiltDependencies:
   - prisma
   - prisma-graphql-type-decimal
   - type-graphql
+  - unrs-resolver
