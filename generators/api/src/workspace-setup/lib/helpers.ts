@@ -41,7 +41,7 @@ export function ensureDockerIsRunning() {
 
 export function isDockerComposeRunning(): boolean {
   try {
-    const res = execSync('pnpm run docker:ps', { stdio: ['inherit', 'inherit'], cwd: workspaceRoot })
+    const res = execSync('pnpm run docker:push', { stdio: ['inherit', 'inherit'], cwd: workspaceRoot })
     if (res) {
       log('Docker Compose is Running')
       return true

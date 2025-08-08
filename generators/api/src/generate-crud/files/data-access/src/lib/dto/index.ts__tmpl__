@@ -1,91 +1,88 @@
 <%# EJS template for generating DTOs %>
 <%
-let gqlImports = new Set(['Field', 'InputType']);
-let usesGraphQLJSON = false;
-let usesInt = false;
-let usesFloat = false;
-let usesID = false;
-let enumNames = new Set();
-let usesPartialType = false;
-const alwaysOptionalFields = ['id', 'createdAt', 'updatedAt'];
+let gqlImports = new Set(['Field', 'InputType'])
+let usesGraphQLJSON = false
+let usesInt = false
+let usesFloat = false
+let usesID = false
+let enumNames = new Set()
+let usesPartialType = false
+const alwaysOptionalFields = ['id', 'createdAt', 'updatedAt']
 
 // Helper function to get relation fields for a model
 function getRelationFields(model) {
-  return model.fields.filter(field => field.relationName && field.relationName.length > 0);
+    return model.fields.filter(field => field.relationName && field.relationName.length > 0)
 }
 
 // Helper function to get virtual relation fields for a model
 function getVirtualRelationFields(model) {
-  const relationFields = getRelationFields(model);
-  const virtualFields = [];
-  
-  relationFields.forEach(relationField => {
-    // Only generate virtual fields for relations that don't have explicit foreign keys
-    if (!relationField.relationFromFields || relationField.relationFromFields.length === 0) {
-      if (relationField.isList) {
-        // This is a multi-relation without foreign keys (many-to-many or one-to-many from parent)
-        // Generate a virtual foreign key field for connecting
-        const virtualFieldName = relationField.name + 'Ids';
-        // Check if there's already a scalar field with this name
-        const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0));
-        if (!existingField) {
-          virtualFields.push({
-            name: virtualFieldName,
-            type: 'String',
-            isList: true,
-            isOptional: true,
-            isVirtual: true, // Mark as virtual so we know it's generated
-            relationName: relationField.relationName,
-            relatedField: relationField.name
-          });
+    const relationFields = getRelationFields(model)
+    const virtualFields = []
+
+    relationFields.forEach(relationField => {
+        // Only generate virtual fields for relations that don't have explicit foreign keys
+        if (!relationField.relationFromFields || relationField.relationFromFields.length === 0) {
+            if (relationField.isList) {
+                // This is a multi-relation without foreign keys (many-to-many or one-to-many from parent)
+                // Generate a virtual foreign key field for connecting
+                const virtualFieldName = relationField.name + 'Ids'
+                // Check if there's already a scalar field with this name
+                const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0))
+                if (!existingField) {
+                    virtualFields.push({
+                        name: virtualFieldName,
+                        type: 'String',
+                        isList: true,
+                        isOptional: true,
+                        isVirtual: true, // Mark as virtual so we know it's generated
+                        relationName: relationField.relationName,
+                        relatedField: relationField.name,
+                    })
+                }
+            } else {
+                // This is a single relation without foreign keys (one-to-one or one-to-many from parent)
+                // Generate a virtual foreign key field for connecting
+                const virtualFieldName = relationField.name + 'Id'
+                // Check if there's already a scalar field with this name
+                const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0))
+                if (!existingField) {
+                    virtualFields.push({
+                        name: virtualFieldName,
+                        type: 'String',
+                        isList: false,
+                        isOptional: true,
+                        isVirtual: true, // Mark as virtual so we know it's generated
+                        relationName: relationField.relationName,
+                        relatedField: relationField.name,
+                    })
+                }
+            }
         }
-      } else {
-        // This is a single relation without foreign keys (one-to-one or one-to-many from parent)
-        // Generate a virtual foreign key field for connecting
-        const virtualFieldName = relationField.name + 'Id';
-        // Check if there's already a scalar field with this name
-        const existingField = model.fields.find(f => f.name === virtualFieldName && (!f.relationName || f.relationName.length === 0));
-        if (!existingField) {
-          virtualFields.push({
-            name: virtualFieldName,
-            type: 'String',
-            isList: false,
-            isOptional: true,
-            isVirtual: true, // Mark as virtual so we know it's generated
-            relationName: relationField.relationName,
-            relatedField: relationField.name
-          });
-        }
-      }
-    }
-  });
-  
-  return virtualFields;
+    })
+
+    return virtualFields
 }
 
 // First pass to determine necessary imports and enums
 for (const model of models) {
-  for (const field of model.fields) {
-    if (field.relationName && field.relationName.length > 0) continue; // Skip relation object fields
-    if (field.type === 'Int') usesInt = true;
-    if (field.type === 'Float' || field.type === 'Decimal') usesFloat = true;
-    if (field.type === 'Json') usesGraphQLJSON = true;
-    if (field.type === 'ID') usesID = true;
-    if (field.kind === 'enum') {
-      enumNames.add(field.type);
+    for (const field of model.fields) {
+        if (field.relationName && field.relationName.length > 0) continue // Skip relation object fields
+        if (field.type === 'Int') usesInt = true
+        if (field.type === 'Float' || field.type === 'Decimal') usesFloat = true
+        if (field.type === 'Json') usesGraphQLJSON = true
+        if (field.type === 'ID') usesID = true
+        if (field.kind === 'enum') {
+            enumNames.add(field.type)
+        }
     }
-  }
 }
 
-if (usesInt) gqlImports.add('Int');
-if (usesFloat) gqlImports.add('Float');
-if (usesID) gqlImports.add('ID');
-usesPartialType = models.length > 0; // If we generate any Update input, we need PartialType
+if (usesInt) gqlImports.add('Int')
+if (usesFloat) gqlImports.add('Float')
+if (usesID) gqlImports.add('ID')
+usesPartialType = models.length > 0 // If we generate any Update input, we need PartialType
 %>
-import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
-<% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '@<%= npmScope %>/api/core/models'
-<% } %><% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
-import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
+import { CorePagingInput } from '@'<% } %>
 
 <% for (const model of models) { %>
 <%
@@ -125,7 +122,7 @@ export class Create<%= model.modelName %>Input {
         fieldDecoratorTypeArg = `() => ${baseGqlType}`;
       }
     }
-    // Always optional for id, createdAt, updatedAt, virtual fields, and relation fields
+    // Always optional for id, createdAt, updatedAt, virtual fields, and relational fields
     if (alwaysOptionalFields.includes(field.name) || field.isVirtual || field.relationName) {
       isOptional = true;
     } else {
