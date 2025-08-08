@@ -311,7 +311,6 @@ function generateIndex(): string {
   return `// Generated from Prisma schema
 export * from './models'
 export * from './enums'
-export * from './core-paging.model'
 `
 }
 
