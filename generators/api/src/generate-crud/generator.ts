@@ -244,6 +244,7 @@ export async function generateCrudLogic(
           pluralName: getPluralName(model.name),
           fields: model.fields.map((field) => ({
             name: field.name,
+            kind: field.kind,
             type: field.type,
             isOptional: !field.isRequired,
             isId: field.isId,
