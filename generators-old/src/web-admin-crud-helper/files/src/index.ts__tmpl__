@@ -1,2 +1,0 @@
-export * from './lib/web-admin-create-form'
-export * from './lib/web-admin-update-form'

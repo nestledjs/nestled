@@ -1,4 +1,0 @@
-export * from './lib/web-<%= name %>-list'
-export * from './lib/web-<%= name %>-create'
-export * from './lib/web-<%= name %>-update'
-export * from './lib/web-<%= name %>-helper'

@@ -1,4 +1,0 @@
-export * from './lib/<%= projectName %>.module'
-export * from './lib/<%= projectName %>-admin.service'
-export * from './lib/<%= projectName %>-public.service'
-export * from './lib/<%= projectName %>-user.service'
