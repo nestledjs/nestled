@@ -82,7 +82,7 @@ if (usesFloat) gqlImports.add('Float')
 if (usesID) gqlImports.add('ID')
 usesPartialType = models.length > 0 // If we generate any Update input, we need PartialType
 %>
-import { CorePagingInput } from '@'<% } %>
+import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access';
 
 <% for (const model of models) { %>
 <%
