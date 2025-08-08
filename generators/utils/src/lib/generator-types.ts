@@ -11,6 +11,7 @@ export interface CrudAuthConfig {
 
 export interface ModelField {
   name: string
+  kind?: string
   type: string
   isOptional?: boolean
   isId?: boolean

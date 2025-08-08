@@ -125,8 +125,8 @@ export class Create<%= model.modelName %>Input {
         fieldDecoratorTypeArg = `() => ${baseGqlType}`;
       }
     }
-    // Always optional for id, createdAt, updatedAt, virtual fields, and relational fields
-    if (alwaysOptionalFields.includes(field.name) || field.isVirtual || field.relationName) {
+    // Always optional for id, createdAt, updatedAt, virtual fields, relational fields, and fields with DB defaults
+    if (alwaysOptionalFields.includes(field.name) || field.isVirtual || field.relationName || field.hasDefaultValue) {
       isOptional = true;
     } else {
       isOptional = field.isOptional;
