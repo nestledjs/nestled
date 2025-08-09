@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule, RequestMethod } from '@nestjs/common'
 import { LoggerMiddleware } from './applogger.middleware'
-import { ConfigModule } from '@nestjs/config'
-import { configuration, validationSchema } from '@<%= npmScope %>/api/config'
+import { ConfigModule as NestConfigModule } from '@nestjs/config'
+import { ConfigModule as AppConfigModule, configuration, validationSchema } from '@<%= npmScope %>/api/config'
 
 // Auto-generated modules with special functions
 export const coreModules = [
@@ -24,7 +24,7 @@ export const appModules = [
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
+    NestConfigModule.forRoot({
       load: [configuration],
       validationSchema: validationSchema,
       validationOptions: {
@@ -33,11 +33,12 @@ export const appModules = [
       },
       isGlobal: true,
     }),
+    AppConfigModule,
     ...appModules,
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(LoggerMiddleware)  .forRoutes({ path: '*path', method: RequestMethod.ALL })
+    consumer.apply(LoggerMiddleware).forRoutes({ path: '*path', method: RequestMethod.ALL })
   }
 }

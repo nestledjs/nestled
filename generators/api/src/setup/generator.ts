@@ -40,6 +40,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'graphql-redis-subscriptions': '^2.7.0',
       ioredis: '^5.6.1',
       'cookie-parser': '^1.4.7',
+      helmet: '^8.1.0',
       'passport-jwt': '^4.0.1',
     },
     {
@@ -54,7 +55,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       '@swc-node/register': '~1.10.10',
       '@swc/cli': '~0.7.7',
       '@swc/core': '~1.12.1',
-      '@types/cookie-parser': '^1.4.3',
+      '@types/cookie-parser': '^1.4.9',
       '@types/express': '^5.0.3',
       '@types/nodemailer': '^6.4.7',
       '@types/passport-jwt': '^4.0.1',
