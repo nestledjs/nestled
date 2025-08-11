@@ -8,4 +8,8 @@ fragment CorePagingDetails on CorePaging {
   page
   skip
   total
+  filteredTotal
+  pages
+  hasNext
+  hasPrev
 }
