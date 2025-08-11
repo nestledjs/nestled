@@ -172,18 +172,23 @@ export class ApiCrudDataAccessService {
 
   async <%= (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1) %>Count(input?: dto.List<%= model.modelName %>Input) {
     const total = await this.data['<%= model.modelPropertyName %>'].count()
-    const count = await this.data['<%= model.modelPropertyName %>'].count({
-      ...this.data.filter(input)
-    });
-    const take = input?.take ?? 10
-    const skip = input?.skip ?? 0
+    const { where, take = 10, skip = 0 } = this.data.filter(input)
+    const filteredTotal = await this.data['<%= model.modelPropertyName %>'].count({ where })
     const page = Math.floor(skip / take)
-     return {
+    const pages = take > 0 ? Math.ceil(filteredTotal / take) : 0
+    const hasNext = skip + take < filteredTotal
+    const hasPrev = skip > 0
+    const count = Math.max(0, Math.min(take, filteredTotal - skip))
+    return {
       take,
       skip,
       page,
+      pages,
+      hasNext,
+      hasPrev,
       count,
       total,
+      filteredTotal,
     }
   }
 

@@ -1,11 +1,9 @@
 import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo'
 import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
 import { GraphQLModule } from '@nestjs/graphql'
 import { join } from 'path'
 import { Request, Response } from 'express'
 import { apiCorePubSub } from '@<%= npmScope %>/api/core/data-access'
-import { configuration, validationSchema } from '@<%= npmScope %>/api/config'
 import { Context } from 'graphql-ws'
 import { ApiCoreFeatureController } from './api-core-feature.controller'
 import { ApiCoreFeatureResolver } from './api-core-feature.resolver'
@@ -23,11 +21,6 @@ const redisPubSubProvider = {
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      load: [configuration],
-      validationSchema,
-    }),
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'api-schema.graphql'),

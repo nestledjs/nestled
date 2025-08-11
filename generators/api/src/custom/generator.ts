@@ -135,7 +135,12 @@ async function generateCustomFiles(
   // Create empty index.ts in pluginsDir for custom plugins (only if it doesn't exist)
   const pluginsIndexPath = dependencies.join(pluginsDir, 'index.ts')
   if (!tree.exists(pluginsIndexPath)) {
-    tree.write(pluginsIndexPath, '')
+    tree.write(pluginsIndexPath, "export const customPlugins = []\n")
+  } else {
+    const existingPluginsIndex = tree.read(pluginsIndexPath)?.toString() ?? ''
+    if (existingPluginsIndex.trim() === '') {
+      tree.write(pluginsIndexPath, "export const customPlugins = []\n")
+    }
   }
 
   for (const model of models) {

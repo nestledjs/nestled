@@ -25,10 +25,23 @@ export class ApiUserDataAccessService {
   ): Promise<CorePaging> {
     await this.data.ensureAdminUser(adminId);
     const total = await this.data.user.count();
+    const { where, take = 20, skip = 0 } = this.data.filter(paging);
+    const filteredTotal = await this.data.user.count({ where });
+    const page = Math.floor(skip / take);
+    const pages = take > 0 ? Math.ceil(filteredTotal / take) : 0;
+    const hasNext = skip + take < filteredTotal;
+    const hasPrev = skip > 0;
+    const count = Math.max(0, Math.min(take, filteredTotal - skip));
     return {
-      take: paging?.take ?? 20,
-      skip: paging?.skip ?? 0,
+      take,
+      skip,
+      page,
+      pages,
+      hasNext,
+      hasPrev,
+      count,
       total,
+      filteredTotal,
     };
   }
 
