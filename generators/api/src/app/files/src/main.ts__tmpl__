@@ -93,7 +93,7 @@ async function bootstrap() {
     origin: (origin: string, callback: (err: Error | null, allow?: boolean) => void) => {
       if (!origin) return callback(null, true)
       if (origins.includes(origin)) return callback(null, true)
-      return callback(new Error(`Origin ${origin} not allowed by CORS`))
+      return callback(new Error('Not allowed by CORS'))
     },
   })
 
@@ -105,7 +105,7 @@ async function bootstrap() {
     if (req.originalUrl.startsWith(`/${globalPrefix}/webhooks/`)) {
       return express.raw({
         type: '*/*',
-        verify: (req: any, res, buf) => { req.rawBody = buf },
+        verify: (req: Request, res, buf) => { (req as any).rawBody = buf },
       })(req, res, next)
     }
     return express.json()(req, res, next)
@@ -113,7 +113,16 @@ async function bootstrap() {
   app.use(express.urlencoded({ extended: true }))
 
   // 7. Cookie Parser: Parse and optionally sign cookies.
-  app.use(cookieParser(configService.cookie.secret || 'default-secret-in-dev'))
+  const cookieSecret = configService.cookie.secret
+  if (!cookieSecret) {
+    if (process.env['NODE_ENV'] === 'production') {
+      Logger.error('Cookie secret is not configured in production. Set configService.cookie.secret.')
+      process.exit(1)
+    } else {
+      Logger.warn('Using default cookie secret in development. Set configService.cookie.secret for better security.')
+    }
+  }
+  app.use(cookieParser(cookieSecret || 'default-secret-in-dev'))
 
   // --- Application Start ---
   const port = process.env.PORT
