@@ -321,6 +321,26 @@ export function getPopularCurrencyOptions() {
 }
 
 /**
+ * Group digits in the integer part with a thousands separator without using regex.
+ * This avoids potential super-linear backtracking issues in complex regexes.
+ */
+function groupThousands(intPart: string, separator: string): string {
+  const isNegative = intPart.startsWith('-')
+  let digits = isNegative ? intPart.slice(1) : intPart
+  if (digits.length <= 3 || separator === '') {
+    return isNegative ? '-' + digits : digits
+  }
+
+  let output = ''
+  for (let i = digits.length; i > 3; i -= 3) {
+    output = separator + digits.slice(i - 3, i) + output
+  }
+  const headLength = digits.length % 3 || 3
+  const result = digits.slice(0, headLength) + output
+  return isNegative ? '-' + result : result
+}
+
+/**
  * Format a number as currency based on currency configuration
  */
 export function formatCurrency(
@@ -351,7 +371,7 @@ export function formatCurrency(
   const [integerPart, decimalPart] = formattedNumber.split('.')
 
   // Add 'thousands' separators
-  const formattedInteger = integerPart.replace(/\B(?=(?:\d{3})+(?!\d))/g, config.thousandsSeparator)
+  const formattedInteger = groupThousands(integerPart, config.thousandsSeparator)
 
   // Combine with a decimal separator if needed
   const formattedValue = decimalPart ? `${formattedInteger}${config.decimalSeparator}${decimalPart}` : formattedInteger
