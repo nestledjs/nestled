@@ -31,7 +31,16 @@ async function bootstrap() {
       return callback(new Error('Not allowed by CORS'));
     },
   });
-  app.use(cookieParser(configService.cookie.secret || 'secret'));
+  const cookieSecret = configService.cookie.secret
+  if (!cookieSecret) {
+    if (process.env['NODE_ENV'] === 'production') {
+      Logger.error('Cookie secret is not configured in production. Set configService.cookie.secret.')
+      process.exit(1)
+    } else {
+      Logger.warn('Using default cookie secret in development. Set configService.cookie.secret for better security.')
+    }
+  }
+  app.use(cookieParser(cookieSecret || 'default-secret-in-dev'))
 
   await app.listen(port, host, () => {
     Logger.log(`Listening at http://${host}:${port}/${prefix}`)
