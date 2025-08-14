@@ -276,6 +276,7 @@ export const FormThemeSchema = z.object({
       readOnly: z.string().default(''),
       readOnlyInput: z.string().default(''),
       readOnlyValue: z.string().default(''),
+      fallback: z.string().default(''),
     })
     .default({}),
   searchSelectMultiField: z
@@ -303,6 +304,7 @@ export const FormThemeSchema = z.object({
       readOnly: z.string().default(''),
       readOnlyInput: z.string().default(''),
       readOnlyValue: z.string().default(''),
+      fallback: z.string().default(''),
     })
     .default({}),
   selectField: z
@@ -319,6 +321,7 @@ export const FormThemeSchema = z.object({
       readOnlyInput: z.string().default(''),
       readOnlyValue: z.string().default(''),
       helpText: z.string().default(''),
+      fallback: z.string().default(''),
     })
     .default({}),
   switchField: z

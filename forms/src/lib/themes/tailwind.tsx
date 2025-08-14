@@ -377,6 +377,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
     readOnly: 'text-gray-700 font-medium',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700',
+    helpText: 'text-sm text-gray-600 mt-1',
   },
   urlField: {
     wrapper: '',
@@ -385,6 +386,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     disabled: 'bg-gray-100 cursor-not-allowed opacity-50',
     readOnly: 'text-gray-700 font-medium',
     readOnlyValue: 'min-h-[2.5rem] flex items-center px-3 text-gray-700 break-all',
+    helpText: 'text-sm text-gray-600 mt-1',
   },
 
   // Add more fields as needed
