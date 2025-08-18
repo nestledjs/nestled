@@ -14,7 +14,7 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
 
   // Update package.json scripts (remove deprecated prisma.schema field if present)
   updateJson(tree, 'package.json', (json) => {
-    if (json.prisma && json.prisma.schema) {
+    if (json.prisma?.schema) {
       delete json.prisma.schema
     }
     if (!json.prisma) {
