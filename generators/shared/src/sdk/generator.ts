@@ -9,7 +9,7 @@ import {
 } from '@nx/devkit'
 import * as path from 'path'
 import * as fs from 'fs'
-import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles, deleteDirectory } from '@nestledjs/utils'
+import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles, deleteDirectory, getPrismaSchemaPath } from '@nestledjs/utils'
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { getDMMF } from '@prisma/internals'
@@ -101,6 +101,7 @@ const defaultDependencies = {
   addScriptToPackageJson,
   getPluralName,
   libraryGenerator,
+  getPrismaSchemaPath,
   // Specific functions from path and fs
   join: path.join,
   existsSync: fs.existsSync,
@@ -115,10 +116,13 @@ export async function sdkGeneratorLogic(
   schema: unknown,
   dependencies: SdkGeneratorDependencies = defaultDependencies,
 ) {
-  // 1. Read prisma schema path from package.json
-  const pkgJson = dependencies.readJson(tree, 'package.json')
-  const prismaSchemaPath = pkgJson.prisma?.schema
-  if (!prismaSchemaPath) throw new Error('Prisma schema path not found in package.json')
+  // 1. Resolve prisma schema path using shared utility (config-aware), fallback to package.json
+  let prismaSchemaPath = dependencies.getPrismaSchemaPath?.(tree) as string | null
+  if (!prismaSchemaPath) {
+    const pkgJson = dependencies.readJson(tree, 'package.json')
+    prismaSchemaPath = pkgJson.prisma?.schema
+  }
+  if (!prismaSchemaPath) throw new Error('Prisma schema path not found (config or package.json)')
   const absSchemaPath = dependencies.join(tree.root, prismaSchemaPath)
   if (!dependencies.existsSync(absSchemaPath)) throw new Error(`Prisma schema not found at ${absSchemaPath}`)
   const schemaContent = readPrismaSchema(absSchemaPath, dependencies)

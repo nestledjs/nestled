@@ -93,15 +93,48 @@ export function removeQuestionMarkAtEnd(str: string) {
   return str.replace(/\?$/, '')
 }
 
+function parseSchemaPathFromConfig(configContent: string): string | null {
+  // Match: schema: path.join('libs','api','prisma','src','lib','schemas')
+  const joinRegex = /schema\s*:\s*path\.join\(([^)]+)\)/
+  const joinExec = joinRegex.exec(configContent)
+  if (joinExec?.[1]) {
+    const quotedRegex = /['"`]([^'"`]+)['"`]/g
+    const parts: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = quotedRegex.exec(joinExec[1])) !== null) {
+      parts.push(m[1])
+    }
+    if (parts.length) return parts.join('/')
+  }
+  // Match: schema: 'libs/api/prisma/src/lib/schemas'
+  const strRegex = /schema\s*:\s*['"`]([^'"`]+)['"`]/
+  const strExec = strRegex.exec(configContent)
+  if (strExec?.[1]) return strExec[1]
+  return null
+}
+
 export function getPrismaSchemaPath(tree: Tree) {
-  const packageJsonContent = tree.read('package.json')
-  if (!packageJsonContent) {
-    console.error("Can't find package.json")
-    return null
+  // 1) Prefer prisma.config.ts if present
+  const cfg = 'prisma.config.ts'
+  if (tree.exists(cfg)) {
+    const cfgContent = tree.read(cfg, 'utf-8')?.toString() || ''
+    const fromConfig = parseSchemaPathFromConfig(cfgContent)
+    if (fromConfig) return fromConfig
   }
 
-  const packageJson = JSON.parse(packageJsonContent.toString())
-  return packageJson.prisma?.schema || null
+  // 2) Fallback to package.json { prisma: { schema } } for backwards compatibility
+  if (tree.exists('package.json')) {
+    try {
+      const packageJson = readJson(tree, 'package.json') as any
+      const fromPkg = packageJson?.prisma?.schema
+      if (fromPkg) return fromPkg
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  // 3) Final fallback to the conventional default location used in this workspace
+  return 'libs/api/prisma/src/lib/schemas'
 }
 
 export function readPrismaSchema(tree: Tree, prismaPath: string) {

@@ -43,10 +43,10 @@ describe('sdk generator', () => {
     vi.clearAllMocks();
   });
 
-  it('throws if prisma schema path is missing in package.json', async () => {
+  it('throws if prisma schema path is missing in config or package.json', async () => {
     mockDependencies.readJson = vi.fn().mockReturnValue({});
     await expect(sdkGeneratorLogic(tree, {}, mockDependencies)).rejects.toThrow(
-      'Prisma schema path not found in package.json',
+      'Prisma schema path not found (config or package.json)',
     );
   });
 

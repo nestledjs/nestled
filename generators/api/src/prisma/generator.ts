@@ -1,4 +1,4 @@
-import { formatFiles, installPackagesTask, joinPathFragments, Tree, updateJson } from '@nx/devkit'
+import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, Tree, updateJson } from '@nx/devkit'
 import { apiLibraryGenerator } from '@nestledjs/utils'
 import { ApiPrismaGeneratorSchema } from './schema'
 
@@ -6,12 +6,25 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
   const templateRootPath = joinPathFragments(__dirname, './files')
   const overwrite = options.overwrite === true
 
-  // Update package.json
+  // Create prisma.config.ts at workspace root via template (idempotent)
+  if (!tree.exists('prisma.config.ts')) {
+    generateFiles(tree, joinPathFragments(templateRootPath, 'config'), '.', { tmpl: '' })
+    // Ensure rename from template path to root file name if needed
+    if (!tree.exists('prisma.config.ts') && tree.exists('./prisma.config.ts__tmpl__')) {
+      tree.rename('./prisma.config.ts__tmpl__', 'prisma.config.ts')
+    }
+  }
+
+  // Update package.json scripts (remove deprecated prisma.schema field if present)
   updateJson(tree, 'package.json', (json) => {
-    // Add prisma schema path
-    json.prisma = {
-      schema: 'libs/api/prisma/src/lib/schemas',
-      seed: 'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
+    if (json.prisma?.schema) {
+      delete json.prisma.schema
+    }
+    if (!json.prisma) {
+      json.prisma = {}
+    }
+    if (!json.prisma.seed) {
+      json.prisma.seed = 'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts'
     }
     // Add GraphQL model generation script for the 'core' library
     if (!json.scripts) {

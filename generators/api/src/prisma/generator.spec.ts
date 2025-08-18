@@ -36,10 +36,15 @@ describe('prisma generator', () => {
 
     const packageJson = JSON.parse(tree.read('package.json', 'utf-8'))
 
-    expect(packageJson.prisma).toEqual({
-      schema: 'libs/api/prisma/src/lib/schemas',
-      seed: 'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
-    })
+    // prisma.schema is deprecated and should not be set
+    expect(packageJson.prisma?.schema).toBeUndefined()
+    // seed script still allowed on package.json.prisma for compatibility
+    expect(packageJson.prisma?.seed).toBe(
+      'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
+    )
+
+    // prisma.config.ts should be generated
+    expect(tree.exists('prisma.config.ts')).toBe(true)
 
     expect(packageJson.scripts['generate:models']).toBe(
       'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/core/models/src/lib/generate-models.ts',
