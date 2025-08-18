@@ -6,12 +6,22 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
   const templateRootPath = joinPathFragments(__dirname, './files')
   const overwrite = options.overwrite === true
 
-  // Update package.json
+  // Create prisma.config.ts at workspace root and keep scripts updated
+  if (!tree.exists('prisma.config.ts')) {
+    const cfg = `import 'dotenv/config'\nimport * as path from 'node:path'\nimport { defineConfig } from 'prisma/config'\n\nexport default defineConfig({\n  schema: path.join('libs', 'api', 'prisma', 'src', 'lib', 'schemas'),\n  migrations: {\n    seed: 'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',\n  },\n})\n`
+    tree.write('prisma.config.ts', cfg)
+  }
+
+  // Update package.json scripts (remove deprecated prisma.schema field if present)
   updateJson(tree, 'package.json', (json) => {
-    // Add prisma schema path
-    json.prisma = {
-      schema: 'libs/api/prisma/src/lib/schemas',
-      seed: 'ts-node --project libs/api/core/models/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
+    if (json.prisma && json.prisma.schema) {
+      delete json.prisma.schema
+    }
+    if (!json.prisma) {
+      json.prisma = {}
+    }
+    if (!json.prisma.seed) {
+      json.prisma.seed = 'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts'
     }
     // Add GraphQL model generation script for the 'core' library
     if (!json.scripts) {
