@@ -20,24 +20,37 @@ function findProjectRoot(startDir: string): string {
   }
 }
 
-// Determine the correct prisma import path based on package.json configuration
+// Determine the correct prisma import path based on configuration
 function getPrismaImportPath(): string {
   try {
     const projectRoot = findProjectRoot(__dirname)
-    const packageJsonPath = join(projectRoot, 'package.json')
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
-
-    const schemaPathSetting = packageJson.prisma?.schema || ''
-
-    // Updated logic: if the schema path includes 'libs/api/prisma' (or similar new structure)
-    if (
-      schemaPathSetting.includes('libs/api/prisma') ||
-      schemaPathSetting.includes('prisma/src/lib')
-    ) {
-      return '@<%= npmScope %>/api/prisma'
+    const cfgCandidates = ['prisma.config.ts']
+    let schemaPathSetting = ''
+    for (const cfg of cfgCandidates) {
+      const configPath = join(projectRoot, cfg)
+      if (existsSync(configPath)) {
+        const content = readFileSync(configPath, 'utf-8')
+        const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
+        if (joinMatch && joinMatch[1]) {
+          const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+          if (parts.length) schemaPathSetting = parts.join('/')
+        }
+        if (!schemaPathSetting) {
+          const strMatch = content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
+          if (strMatch && strMatch[1]) schemaPathSetting = strMatch[1]
+        }
+        if (schemaPathSetting) break
+      }
+    }
+    if (!schemaPathSetting) {
+      const packageJsonPath = join(projectRoot, 'package.json')
+      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
+      schemaPathSetting = packageJson.prisma?.schema || ''
     }
 
-    // Fallback to the original path if not explicitly the new structure
+    if (schemaPathSetting.includes('libs/api/prisma') || schemaPathSetting.includes('prisma/src/lib')) {
+      return '@<%= npmScope %>/api/prisma'
+    }
     return '@<%= npmScope %>/api/core/data-access'
   } catch (error) {
     console.error('Error determining Prisma import path:', error)
@@ -46,20 +59,34 @@ function getPrismaImportPath(): string {
   }
 }
 
-// Get schema directory path from package.json
+// Get schema directory path from configuration
 function getPrismaSchemaDir(): string {
   // Renamed
   try {
     const projectRoot = findProjectRoot(__dirname)
+    const cfgCandidates = ['prisma.config.ts']
+    for (const cfg of cfgCandidates) {
+      const configPath = join(projectRoot, cfg)
+      if (existsSync(configPath)) {
+        const content = readFileSync(configPath, 'utf-8')
+        const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
+        if (joinMatch && joinMatch[1]) {
+          const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+          if (parts.length) return join(projectRoot, parts.join('/'))
+        }
+        const strMatch = content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
+        if (strMatch && strMatch[1]) {
+          return join(projectRoot, strMatch[1])
+        }
+      }
+    }
+    // Fallback to old package.json field if config not found
     const packageJsonPath = join(projectRoot, 'package.json')
     const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
-
-    if (!packageJson.prisma?.schema) {
-      throw new Error('prisma.schema path not found in package.json')
+    if (packageJson.prisma?.schema) {
+      return join(projectRoot, packageJson.prisma.schema)
     }
-
-    // Join the project root with the schema path (which should be a directory)
-    return join(projectRoot, packageJson.prisma.schema)
+    throw new Error('Prisma schema path not found in config')
   } catch (error) {
     console.error('Error getting Prisma schema directory path:', error)
     // Fallback to the old directory path for backward compatibility
