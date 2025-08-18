@@ -93,36 +93,34 @@ export function removeQuestionMarkAtEnd(str: string) {
   return str.replace(/\?$/, '')
 }
 
+function parseSchemaPathFromConfig(configContent: string): string | null {
+  // Match: schema: path.join('libs','api','prisma','src','lib','schemas')
+  const joinMatch = configContent.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
+  if (joinMatch?.[1]) {
+    const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+    if (parts.length) return parts.join('/')
+  }
+  // Match: schema: 'libs/api/prisma/src/lib/schemas'
+  const strMatch = configContent.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
+  if (strMatch?.[1]) return strMatch[1]
+  return null
+}
+
 export function getPrismaSchemaPath(tree: Tree) {
   // 1) Prefer prisma.config.ts if present
-  const configCandidates = ['prisma.config.ts']
-  for (const cfg of configCandidates) {
-    if (tree.exists(cfg)) {
-      const cfgContent = tree.read(cfg, 'utf-8')?.toString() || ''
-      // Try to match: schema: path.join('libs','api','prisma','src','lib','schemas')
-      const joinMatch = cfgContent.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
-      if (joinMatch && joinMatch[1]) {
-        const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
-        if (parts.length) {
-          return parts.join('/')
-        }
-      }
-      // Try to match: schema: 'libs/api/prisma/src/lib/schemas'
-      const strMatch = cfgContent.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
-      if (strMatch && strMatch[1]) {
-        return strMatch[1]
-      }
-    }
+  const cfg = 'prisma.config.ts'
+  if (tree.exists(cfg)) {
+    const cfgContent = tree.read(cfg, 'utf-8')?.toString() || ''
+    const fromConfig = parseSchemaPathFromConfig(cfgContent)
+    if (fromConfig) return fromConfig
   }
 
   // 2) Fallback to package.json { prisma: { schema } } for backwards compatibility
-  const packageJsonContent = tree.read('package.json')
-  if (packageJsonContent) {
+  if (tree.exists('package.json')) {
     try {
-      const packageJson = JSON.parse(packageJsonContent.toString())
-      if (packageJson?.prisma?.schema) {
-        return packageJson.prisma.schema
-      }
+      const packageJson = readJson(tree, 'package.json') as any
+      const fromPkg = packageJson?.prisma?.schema
+      if (fromPkg) return fromPkg
     } catch {
       // ignore parse errors
     }
