@@ -94,14 +94,42 @@ export function removeQuestionMarkAtEnd(str: string) {
 }
 
 export function getPrismaSchemaPath(tree: Tree) {
-  const packageJsonContent = tree.read('package.json')
-  if (!packageJsonContent) {
-    console.error("Can't find package.json")
-    return null
+  // 1) Prefer prisma.config.ts if present
+  const configCandidates = ['prisma.config.ts']
+  for (const cfg of configCandidates) {
+    if (tree.exists(cfg)) {
+      const cfgContent = tree.read(cfg, 'utf-8')?.toString() || ''
+      // Try to match: schema: path.join('libs','api','prisma','src','lib','schemas')
+      const joinMatch = cfgContent.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
+      if (joinMatch && joinMatch[1]) {
+        const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+        if (parts.length) {
+          return parts.join('/')
+        }
+      }
+      // Try to match: schema: 'libs/api/prisma/src/lib/schemas'
+      const strMatch = cfgContent.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
+      if (strMatch && strMatch[1]) {
+        return strMatch[1]
+      }
+    }
   }
 
-  const packageJson = JSON.parse(packageJsonContent.toString())
-  return packageJson.prisma?.schema || null
+  // 2) Fallback to package.json { prisma: { schema } } for backwards compatibility
+  const packageJsonContent = tree.read('package.json')
+  if (packageJsonContent) {
+    try {
+      const packageJson = JSON.parse(packageJsonContent.toString())
+      if (packageJson?.prisma?.schema) {
+        return packageJson.prisma.schema
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }
+
+  // 3) Final fallback to the conventional default location used in this workspace
+  return 'libs/api/prisma/src/lib/schemas'
 }
 
 export function readPrismaSchema(tree: Tree, prismaPath: string) {
