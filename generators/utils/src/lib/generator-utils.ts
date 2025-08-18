@@ -95,14 +95,21 @@ export function removeQuestionMarkAtEnd(str: string) {
 
 function parseSchemaPathFromConfig(configContent: string): string | null {
   // Match: schema: path.join('libs','api','prisma','src','lib','schemas')
-  const joinMatch = configContent.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
-  if (joinMatch?.[1]) {
-    const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+  const joinRegex = /schema\s*:\s*path\.join\(([^)]+)\)/
+  const joinExec = joinRegex.exec(configContent)
+  if (joinExec?.[1]) {
+    const quotedRegex = /['"`]([^'"`]+)['"`]/g
+    const parts: string[] = []
+    let m: RegExpExecArray | null
+    while ((m = quotedRegex.exec(joinExec[1])) !== null) {
+      parts.push(m[1])
+    }
     if (parts.length) return parts.join('/')
   }
   // Match: schema: 'libs/api/prisma/src/lib/schemas'
-  const strMatch = configContent.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
-  if (strMatch?.[1]) return strMatch[1]
+  const strRegex = /schema\s*:\s*['"`]([^'"`]+)['"`]/
+  const strExec = strRegex.exec(configContent)
+  if (strExec?.[1]) return strExec[1]
   return null
 }
 
