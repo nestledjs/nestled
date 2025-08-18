@@ -3,6 +3,16 @@ import { join } from 'path'
 import { execSync } from 'child_process'
 import { getDMMF } from '@prisma/internals'
 
+function extractQuotedStrings(input: string): string[] {
+  const values: string[] = []
+  const regex = /['"`]([^'"`]+)['"`]/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(input)) !== null) {
+    values.push(match[1])
+  }
+  return values
+}
+
 // Find project root and get schema path from package.json
 function findProjectRoot(startDir: string): string {
   try {
@@ -32,7 +42,7 @@ function getPrismaImportPath(): string {
         const content = readFileSync(configPath, 'utf-8')
         const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
         if (joinMatch && joinMatch[1]) {
-          const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+          const parts = extractQuotedStrings(joinMatch[1])
           if (parts.length) schemaPathSetting = parts.join('/')
         }
         if (!schemaPathSetting) {
@@ -71,7 +81,7 @@ function getPrismaSchemaDir(): string {
         const content = readFileSync(configPath, 'utf-8')
         const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
         if (joinMatch && joinMatch[1]) {
-          const parts = Array.from(joinMatch[1].matchAll(/['"`]([^'"`]+)['"`]/g)).map((m) => m[1])
+          const parts = extractQuotedStrings(joinMatch[1])
           if (parts.length) return join(projectRoot, parts.join('/'))
         }
         const strMatch = content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
