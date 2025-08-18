@@ -136,13 +136,13 @@ describe('generator-utils', () => {
       expect(getPrismaSchemaPath(tree)).toBe('prisma/schema.prisma')
     })
 
-    it('should return null if package.json does not exist', () => {
-      expect(getPrismaSchemaPath(tree)).toBeNull()
+    it('should return default path if package.json does not exist', () => {
+      expect(getPrismaSchemaPath(tree)).toBe('libs/api/prisma/src/lib/schemas')
     })
 
-    it('should return null if prisma schema path is not in package.json', () => {
+    it('should return default path if prisma schema path is not in package.json', () => {
       writeJson(tree, 'package.json', {})
-      expect(getPrismaSchemaPath(tree)).toBeNull()
+      expect(getPrismaSchemaPath(tree)).toBe('libs/api/prisma/src/lib/schemas')
     })
   })
 
