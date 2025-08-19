@@ -13,6 +13,34 @@ function extractQuotedStrings(input: string): string[] {
   return values
 }
 
+// Parse `schema` from prisma.config.ts content
+function parseSchemaPathSettingFromConfigContent(content: string): string | null {
+  const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)?.[1]
+  if (joinMatch) {
+    const parts = extractQuotedStrings(joinMatch)
+    if (parts.length) return parts.join('/')
+  }
+  return content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? null
+}
+
+// Resolve schema setting from prisma.config.ts or package.json
+function getSchemaPathSetting(projectRoot: string): string | null {
+  const configPath = join(projectRoot, 'prisma.config.ts')
+  if (existsSync(configPath)) {
+    const content = readFileSync(configPath, 'utf-8')
+    const fromConfig = parseSchemaPathSettingFromConfigContent(content)
+    if (fromConfig) return fromConfig
+  }
+
+  try {
+    const packageJsonPath = join(projectRoot, 'package.json')
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
+    return packageJson?.prisma?.schema ?? null
+  } catch {
+    return null
+  }
+}
+
 // Find project root and get schema path from package.json
 function findProjectRoot(startDir: string): string {
   try {
@@ -34,29 +62,7 @@ function findProjectRoot(startDir: string): string {
 function getPrismaImportPath(): string {
   try {
     const projectRoot = findProjectRoot(__dirname)
-    const cfgCandidates = ['prisma.config.ts']
-    let schemaPathSetting = ''
-    for (const cfg of cfgCandidates) {
-      const configPath = join(projectRoot, cfg)
-      if (existsSync(configPath)) {
-        const content = readFileSync(configPath, 'utf-8')
-        const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
-        if (joinMatch && joinMatch[1]) {
-          const parts = extractQuotedStrings(joinMatch[1])
-          if (parts.length) schemaPathSetting = parts.join('/')
-        }
-        if (!schemaPathSetting) {
-          const strMatch = content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
-          if (strMatch && strMatch[1]) schemaPathSetting = strMatch[1]
-        }
-        if (schemaPathSetting) break
-      }
-    }
-    if (!schemaPathSetting) {
-      const packageJsonPath = join(projectRoot, 'package.json')
-      const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
-      schemaPathSetting = packageJson.prisma?.schema || ''
-    }
+    const schemaPathSetting = getSchemaPathSetting(projectRoot) ?? ''
 
     if (schemaPathSetting.includes('libs/api/prisma') || schemaPathSetting.includes('prisma/src/lib')) {
       return '@<%= npmScope %>/api/prisma'
@@ -74,29 +80,9 @@ function getPrismaSchemaDir(): string {
   // Renamed
   try {
     const projectRoot = findProjectRoot(__dirname)
-    const cfgCandidates = ['prisma.config.ts']
-    for (const cfg of cfgCandidates) {
-      const configPath = join(projectRoot, cfg)
-      if (existsSync(configPath)) {
-        const content = readFileSync(configPath, 'utf-8')
-        const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)
-        if (joinMatch && joinMatch[1]) {
-          const parts = extractQuotedStrings(joinMatch[1])
-          if (parts.length) return join(projectRoot, parts.join('/'))
-        }
-        const strMatch = content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)
-        if (strMatch && strMatch[1]) {
-          return join(projectRoot, strMatch[1])
-        }
-      }
-    }
-    // Fallback to old package.json field if config not found
-    const packageJsonPath = join(projectRoot, 'package.json')
-    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'))
-    if (packageJson.prisma?.schema) {
-      return join(projectRoot, packageJson.prisma.schema)
-    }
-    throw new Error('Prisma schema path not found in config')
+    const setting = getSchemaPathSetting(projectRoot)
+    if (setting) return join(projectRoot, setting)
+    throw new Error('Prisma schema path not found in config or package.json')
   } catch (error) {
     console.error('Error getting Prisma schema directory path:', error)
     // Fallback to the old directory path for backward compatibility

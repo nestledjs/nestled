@@ -796,9 +796,13 @@ export interface DatabaseModel {
 
 export const DATABASE_MODELS: DatabaseModel[] = ${JSON.stringify(models, null, 2)}
 
-export const DATABASE_MODELS_BY_NAME: Record<string, DatabaseModel> = {
-${models.map(model => `  ${model.modelName}: DATABASE_MODELS.find(m => m.modelName === '${model.modelName}')!,`).join('\n')}
-}
+export const DATABASE_MODELS_BY_NAME: Record<string, DatabaseModel> = DATABASE_MODELS.reduce(
+  (acc, m) => {
+    acc[m.modelName] = m
+    return acc
+  },
+  {} as Record<string, DatabaseModel>,
+)
 
 export const DATABASE_MODEL_NAMES = [
 ${models.map(model => `  '${model.modelName}',`).join('\n')}
