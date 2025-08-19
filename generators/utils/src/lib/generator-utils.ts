@@ -93,15 +93,36 @@ export function removeQuestionMarkAtEnd(str: string) {
   return str.replace(/\?$/, '')
 }
 
+// Helper to extract the argument string of path.join(), handling nested parentheses
+function extractPathJoinArgs(content: string): string | null {
+  const needle = 'path.join('
+  const pathJoinIndex = content.indexOf(needle)
+  if (pathJoinIndex === -1) return null
+  let start = content.indexOf('(', pathJoinIndex)
+  if (start === -1) return null
+  start++ // move past '('
+  let depth = 1
+  let end = start
+  while (end < content.length && depth > 0) {
+    const ch = content[end]
+    if (ch === '(') depth++
+    else if (ch === ')') depth--
+    end++
+  }
+  if (depth === 0) {
+    return content.slice(start, end - 1)
+  }
+  return null
+}
+
 function parseSchemaPathFromConfig(configContent: string): string | null {
   // Match: schema: path.join('libs','api','prisma','src','lib','schemas')
-  const joinRegex = /schema\s*:\s*path\.join\(([^)]+)\)/
-  const joinExec = joinRegex.exec(configContent)
-  if (joinExec?.[1]) {
+  const joinArgs = extractPathJoinArgs(configContent)
+  if (joinArgs) {
     const quotedRegex = /['"`]([^'"`]+)['"`]/g
     const parts: string[] = []
     let m: RegExpExecArray | null
-    while ((m = quotedRegex.exec(joinExec[1])) !== null) {
+    while ((m = quotedRegex.exec(joinArgs)) !== null) {
       parts.push(m[1])
     }
     if (parts.length) return parts.join('/')
@@ -796,9 +817,13 @@ export interface DatabaseModel {
 
 export const DATABASE_MODELS: DatabaseModel[] = ${JSON.stringify(models, null, 2)}
 
-export const DATABASE_MODELS_BY_NAME: Record<string, DatabaseModel> = {
-${models.map(model => `  ${model.modelName}: DATABASE_MODELS.find(m => m.modelName === '${model.modelName}')!,`).join('\n')}
-}
+export const DATABASE_MODELS_BY_NAME: Record<string, DatabaseModel> = DATABASE_MODELS.reduce(
+  (acc, m) => {
+    acc[m.modelName] = m
+    return acc
+  },
+  {} as Record<string, DatabaseModel>,
+)
 
 export const DATABASE_MODEL_NAMES = [
 ${models.map(model => `  '${model.modelName}',`).join('\n')}
