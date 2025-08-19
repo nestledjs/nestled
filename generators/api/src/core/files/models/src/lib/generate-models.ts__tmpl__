@@ -13,11 +13,33 @@ function extractQuotedStrings(input: string): string[] {
   return values
 }
 
+// Helper to extract the argument string of path.join(), handling nested parentheses
+function extractPathJoinArgs(content: string): string | null {
+  const needle = 'path.join('
+  const pathJoinIndex = content.indexOf(needle)
+  if (pathJoinIndex === -1) return null
+  let start = content.indexOf('(', pathJoinIndex)
+  if (start === -1) return null
+  start++ // move past '('
+  let depth = 1
+  let end = start
+  while (end < content.length && depth > 0) {
+    const ch = content[end]
+    if (ch === '(') depth++
+    else if (ch === ')') depth--
+    end++
+  }
+  if (depth === 0) {
+    return content.slice(start, end - 1)
+  }
+  return null
+}
+
 // Parse `schema` from prisma.config.ts content
 function parseSchemaPathSettingFromConfigContent(content: string): string | null {
-  const joinMatch = content.match(/schema\s*:\s*path\.join\(([^)]+)\)/)?.[1]
-  if (joinMatch) {
-    const parts = extractQuotedStrings(joinMatch)
+  const joinArgs = extractPathJoinArgs(content)
+  if (joinArgs) {
+    const parts = extractQuotedStrings(joinArgs)
     if (parts.length) return parts.join('/')
   }
   return content.match(/schema\s*:\s*['"`]([^'"`]+)['"`]/)?.[1] ?? null
