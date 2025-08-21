@@ -9,10 +9,10 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
   fieldOptions: SearchSelectApolloOptions<TDataItem>
 ) {
   const { data, loading: apolloLoading, refetch } = useQuery(fieldOptions.document)
-  const [options, setOptions] = useState<SearchSelectOption[]>([])
+  const [options, setOptions] = useState<SearchSelectOption[]>(fieldOptions.initialOptions || [])
 
   // Destructure specific properties for more precise dependency tracking
-  const { filter, selectOptionsFunction, dataType, searchFields } = fieldOptions
+  const { filter, selectOptionsFunction, dataType, searchFields, initialOptions } = fieldOptions
 
   const processData = useCallback(
     (dataList: TDataItem[]) => {
@@ -20,11 +20,23 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
       if (filter) {
         processedList = filter(processedList)
       }
-      return selectOptionsFunction
+      
+      const apolloOptions = selectOptionsFunction
         ? selectOptionsFunction(processedList)
         : defaultOptionsMap(processedList)
+      
+      // Merge initial options with Apollo results, avoiding duplicates
+      if (initialOptions && initialOptions.length > 0) {
+        const apolloValues = new Set(apolloOptions.map(opt => opt.value))
+        const uniqueInitialOptions = initialOptions.filter(opt => !apolloValues.has(opt.value))
+        
+        // Put initial options first, then Apollo options
+        return [...uniqueInitialOptions, ...apolloOptions]
+      }
+      
+      return apolloOptions
     },
-    [filter, selectOptionsFunction],
+    [filter, selectOptionsFunction, initialOptions],
   )
 
   useEffect(() => {
@@ -43,9 +55,15 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
         refetch({ input }).then((res) => {
           setOptions(processData(res.data?.[dataType] ?? []))
         })
+        return
+      }
+      
+      // When search is cleared, reset to initial Apollo data merged with initial options
+      if (data) {
+        setOptions(processData(data[dataType] ?? []))
       }
     },
-    [refetch, searchFields, dataType, processData],
+    [refetch, searchFields, dataType, processData, data],
   )
 
   return {
