@@ -257,6 +257,12 @@ export interface SearchSelectApolloOptions<TDataItem = any> extends BaseFieldOpt
   searchFields?: string[]
   filter?: (items: TDataItem[]) => TDataItem[]
   selectOptionsFunction?: (items: TDataItem[]) => SearchSelectOption[]
+  /**
+   * Initial options to display before Apollo data loads.
+   * Useful for showing pre-selected values with proper labels,
+   * especially when the selected item might not be in the first page of results.
+   */
+  initialOptions?: SearchSelectOption[]
 }
 
 export interface SearchSelectMultiOptions extends BaseFieldOptions {
