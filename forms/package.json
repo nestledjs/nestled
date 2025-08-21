@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/forms",
-  "version": "0.4.8",
+  "version": "0.4.9",
   "exports": {
     ".": {
       "import": "./index.js",
