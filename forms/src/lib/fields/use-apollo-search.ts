@@ -55,11 +55,12 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
         refetch({ input }).then((res) => {
           setOptions(processData(res.data?.[dataType] ?? []))
         })
-      } else {
-        // When search is cleared, reset to initial Apollo data merged with initial options
-        if (data) {
-          setOptions(processData(data[dataType] ?? []))
-        }
+        return
+      }
+      
+      // When search is cleared, reset to initial Apollo data merged with initial options
+      if (data) {
+        setOptions(processData(data[dataType] ?? []))
       }
     },
     [refetch, searchFields, dataType, processData, data],
