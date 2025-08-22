@@ -22,6 +22,8 @@ export type {
   CheckboxGroupOptions 
 } from './lib/form-types'
 export type { FormConfig } from './lib/form-config-context'
+// Re-export react-hook-form's FieldValues for consumers
+export type { FieldValues } from 'react-hook-form'
 
 // Field Components
 export { TextField } from './lib/fields/text-field'
