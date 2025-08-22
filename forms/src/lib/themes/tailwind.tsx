@@ -134,7 +134,7 @@ export const tailwindTheme = FormThemeSchema.parse({
     currencySymbol: 'absolute left-3 z-10 text-gray-500 pointer-events-none select-none flex items-center',
     currencySymbolHidden: 'hidden',
     input: 'block w-full px-3 py-2 sm:text-sm min-h-[2.5rem]',
-    inputWithSymbol: 'pl-12', // Additional left padding when symbol is visible (increased for longer symbols)
+    inputWithSymbol: 'pl-12',
     focus: 'focus:ring-2 focus:ring-sky-300 focus:border-sky-300',
     error: '!border-red-600 !focus:border-red-600 !focus:ring-red-600',
     disabled: 'opacity-50 cursor-not-allowed bg-gray-100',
