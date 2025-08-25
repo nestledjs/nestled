@@ -85,8 +85,8 @@ export class ApiCoreDataAccessService
       const terms = trimmedSearch.includes(' ')
         ? trimmedSearch.split(' ')
         : [trimmedSearch].filter(Boolean)
-      const searchFilters = terms.map(term => ({
-        OR: searchFields.map(field => ({
+      const searchFilters = terms.map((term) => ({
+        OR: searchFields.map((field) => ({
           [field]: { contains: term, mode: Prisma.QueryMode.insensitive },
         })),
       }))
