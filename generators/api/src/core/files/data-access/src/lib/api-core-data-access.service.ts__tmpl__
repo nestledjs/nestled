@@ -1,7 +1,7 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { Prisma, PrismaClient } from '@<%= npmScope %>/api/prisma'
 import { CorePagingInput } from './dto/core-paging.input'
-import { withOptimize } from '@prisma/extension-optimize'
+
 
 @Injectable()
 export class ApiCoreDataAccessService
@@ -29,6 +29,7 @@ export class ApiCoreDataAccessService
         console.warn('Not Running Prisma Optimize - No API Key Set')
       }
 
+      const { withOptimize } = require('@prisma/extension-optimize')
       const extendedClient = new PrismaClient(config).$extends(withOptimize({ apiKey }))
       Object.assign(this, extendedClient)
     }
@@ -85,8 +86,8 @@ export class ApiCoreDataAccessService
       const terms = trimmedSearch.includes(' ')
         ? trimmedSearch.split(' ')
         : [trimmedSearch].filter(Boolean)
-      const searchFilters = terms.map((term) => ({
-        OR: searchFields.map((field) => ({
+      const searchFilters = terms.map(term => ({
+        OR: searchFields.map(field => ({
           [field]: { contains: term, mode: Prisma.QueryMode.insensitive },
         })),
       }))
@@ -103,3 +104,4 @@ export class ApiCoreDataAccessService
     }
   }
 }
+
