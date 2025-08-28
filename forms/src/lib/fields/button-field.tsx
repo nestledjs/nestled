@@ -1,6 +1,6 @@
 import React from 'react'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
-import { Button } from './button'
+import { Button, ButtonProps } from './button'
 
 export function ButtonField({
   field,
@@ -13,16 +13,18 @@ export function ButtonField({
       await field.options.onClick?.()
     } : undefined
 
+  const buttonProps: ButtonProps = {
+    variant: field.options.variant,
+    loading: field.options.loading,
+    disabled: field.options.disabled,
+    type: field.options.type ?? 'button',
+    fullWidth: field.options.fullWidth,
+    className: field.options.className,
+    ...(handleClick && { onClick: handleClick })
+  }
+
   return (
-    <Button
-      variant={field.options.variant}
-      loading={field.options.loading}
-      disabled={field.options.disabled}
-      type={field.options.type ?? 'button'}
-      fullWidth={field.options.fullWidth}
-      className={field.options.className}
-      onClick={handleClick}
-    >
+    <Button {...buttonProps}>
       {field.options.text ?? field.options.label ?? 'Button'}
     </Button>
   )
