@@ -30,4 +30,10 @@ export const configuration = () => ({
     user: process.env['SMTP_USER'],
     pass: process.env['SMTP_PASS'],
   },
+  prisma: {
+    optimize: {
+      enabled: process.env['OPTIMIZE_ENABLED'] === 'true',
+      apiKey: process.env['OPTIMIZE_API_KEY'],
+    },
+  },
 })
