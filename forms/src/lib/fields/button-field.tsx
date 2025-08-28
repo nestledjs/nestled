@@ -13,16 +13,22 @@ export function ButtonField({
       await field.options.onClick?.()
     } : undefined
 
+  const buttonProps: any = {
+    variant: field.options.variant,
+    loading: field.options.loading,
+    disabled: field.options.disabled,
+    type: field.options.type ?? 'button',
+    fullWidth: field.options.fullWidth,
+    className: field.options.className,
+  }
+
+  // Only add onClick if it's defined
+  if (handleClick) {
+    buttonProps.onClick = handleClick
+  }
+
   return (
-    <Button
-      variant={field.options.variant}
-      loading={field.options.loading}
-      disabled={field.options.disabled}
-      type={field.options.type ?? 'button'}
-      fullWidth={field.options.fullWidth}
-      className={field.options.className}
-      onClick={handleClick}
-    >
+    <Button {...buttonProps}>
       {field.options.text ?? field.options.label ?? 'Button'}
     </Button>
   )
