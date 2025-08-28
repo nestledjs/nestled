@@ -35,10 +35,8 @@ export class ApiCoreDataAccessService
         withOptimize({ apiKey: optimizeApiKey })
       )
       Object.assign(this, extendedClient)
-    } else {
-      if (optimizeEnabled && !optimizeApiKey) {
+    } else if (optimizeEnabled && !optimizeApiKey) {
         console.warn('⚠️  OPTIMIZE_ENABLED is true but OPTIMIZE_API_KEY is not set')
-      }
     }
   }
 
