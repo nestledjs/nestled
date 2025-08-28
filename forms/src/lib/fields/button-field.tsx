@@ -9,10 +9,12 @@ export function ButtonField({
 }: FormFieldProps<Extract<FormField, { type: FormFieldType.Button }>>) {
 
   const handleClick = field?.options?.onClick ?
-    async () => {
+    async (e: React.MouseEvent<HTMLButtonElement>) => {
       await field.options.onClick?.()
     } : undefined
 
+  // Only add onClick if there's a custom handler AND it's not a submit button
+  // For submit buttons without custom onClick, we want NO onClick handler at all
   const buttonProps: ButtonProps = {
     variant: field.options.variant,
     loading: field.options.loading,
@@ -20,7 +22,12 @@ export function ButtonField({
     type: field.options.type ?? 'button',
     fullWidth: field.options.fullWidth,
     className: field.options.className,
-    ...(handleClick && { onClick: handleClick })
+  }
+
+  // Only add onClick if it exists (custom handler)
+  // Don't add any onClick for submit buttons without custom handlers
+  if (handleClick) {
+    buttonProps.onClick = handleClick
   }
 
   return (

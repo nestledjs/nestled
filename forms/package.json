@@ -39,6 +39,11 @@
     "react-dom": ">=18.0.0",
     "@mdxeditor/editor": "^3.39.1"
   },
+  "peerDependenciesMeta": {
+    "@mdxeditor/editor": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "date-fns": "^4.1.0",
     "zod": "^3.0.0",
