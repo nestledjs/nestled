@@ -1,14 +1,14 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { Prisma, PrismaClient } from '@<%= npmScope %>/api/prisma'
+import { ConfigService } from '@<%= npmScope %>/api/config'
 import { CorePagingInput } from './dto/core-paging.input'
-
 
 @Injectable()
 export class ApiCoreDataAccessService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor() {
+  constructor(private readonly configService: ConfigService) {
     const config: Prisma.PrismaClientOptions = {
       datasources: {
         db: { url: `${process.env['DATABASE_URL']}?connection_limit=30` },
@@ -19,26 +19,27 @@ export class ApiCoreDataAccessService
           ? [{ emit: 'event', level: 'query' }]
           : [{ emit: 'event', level: 'warn' }],
     }
+
+    // Must call super first before accessing this
     super(config)
     this.queryCount = 0
 
-    // Only add Prisma Optimize extension in development
-    if (process.env['OPTIMIZE_API_KEY'] && process.env['USE_OPTIMIZE'] === 'true') {
-      const apiKey = process.env['OPTIMIZE_API_KEY']
-      if (!apiKey) {
-        console.warn('Not Running Prisma Optimize - No API Key Set')
-      }
+    // Check for Prisma Optimize setup using config service
+    const optimizeEnabled = configService.prismaOptimizeEnabled
+    const optimizeApiKey = configService.prismaOptimizeApiKey
 
+    if (optimizeEnabled && optimizeApiKey) {
+      console.log('🚀 Prisma Optimize enabled with API key')
       const { withOptimize } = require('@prisma/extension-optimize')
-      const extendedClient = new PrismaClient(config).$extends(withOptimize({ apiKey }))
+      const extendedClient = new PrismaClient(config).$extends(
+        withOptimize({ apiKey: optimizeApiKey })
+      )
       Object.assign(this, extendedClient)
-      try {
-        const { withOptimize } = require('@prisma/extension-optimize')
-        const extendedClient = new PrismaClient(config).$extends(withOptimize({ apiKey }))
-        Object.assign(this, extendedClient)
-      } catch (err) {
-        console.warn('Not Running Prisma Optimize - @prisma/extension-optimize not installed or failed to load:', err)
+    } else {
+      if (optimizeEnabled && !optimizeApiKey) {
+        console.warn('⚠️  OPTIMIZE_ENABLED is true but OPTIMIZE_API_KEY is not set')
       }
+    }
   }
 
   public queryCount: number
