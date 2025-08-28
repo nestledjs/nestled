@@ -10,7 +10,7 @@ export function ButtonField({
 
   const handleClick = field.options.onClick ? 
     async () => {
-      await field.options.onClick!()
+      await field.options.onClick()
     } : undefined
 
   return (
