@@ -8,9 +8,9 @@ export function ButtonField({
   hasError,
 }: FormFieldProps<Extract<FormField, { type: FormFieldType.Button }>>) {
 
-  const handleClick = field.options.onClick ? 
+  const handleClick = field?.options?.onClick ?
     async () => {
-      await field.options.onClick()
+      await field.options.onClick?.()
     } : undefined
 
   return (
@@ -26,4 +26,4 @@ export function ButtonField({
       {field.options.text ?? field.options.label ?? 'Button'}
     </Button>
   )
-} 
+}
