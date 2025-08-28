@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Submit Button</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="module">
+        // This is a test HTML file to verify submit button behavior
+        // To properly test, you should run this through your build system
+        
+        console.log(`
+Testing Submit Button Fix:
+==========================
+
+The issue was in ButtonField component:
+- Previously: onClick handler was ALWAYS attached, even for submit buttons without custom onClick
+- This prevented default form submission behavior
+- Fixed: Only attach onClick if field.options.onClick is provided
+
+How to use submit buttons correctly:
+
+1. RECOMMENDED - Direct Button child:
+   <Form submit={(values) => console.log(values)}>
+     <Button type="submit">Submit</Button>
+   </Form>
+
+2. Using ButtonField in fields array (now fixed):
+   fields={[
+     FormFieldClass.button('submit', {
+       type: 'submit',
+       text: 'Submit'
+     })
+   ]}
+
+3. With custom onClick (will prevent default submission):
+   FormFieldClass.button('submit', {
+     type: 'submit',
+     onClick: async () => {
+       // Custom logic
+       // Note: This will prevent form submission
+       // You need to manually trigger form.submit() if needed
+     }
+   })
+
+The fix ensures that submit buttons without onClick handlers
+will properly trigger form submission.
+        `);
+    </script>
+</body>
+</html>
