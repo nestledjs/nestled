@@ -13,8 +13,6 @@ export function ButtonField({
       await field.options.onClick?.()
     } : undefined
 
-  // Only add onClick if there's a custom handler AND it's not a submit button
-  // For submit buttons without custom onClick, we want NO onClick handler at all
   const buttonProps: ButtonProps = {
     variant: field.options.variant,
     loading: field.options.loading,
@@ -24,8 +22,7 @@ export function ButtonField({
     className: field.options.className,
   }
 
-  // Only add onClick if it exists (custom handler)
-  // Don't add any onClick for submit buttons without custom handlers
+  // Only add onClick if a custom handler exists
   if (handleClick) {
     buttonProps.onClick = handleClick
   }
