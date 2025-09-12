@@ -316,10 +316,11 @@ FormFieldClass.datePicker('field', { label: 'Date' })
 FormFieldClass.dateTimePicker('field', { label: 'Date & Time' })
 FormFieldClass.timePicker('field', { label: 'Time' })
 
-// Search and select fields
+// Search and select fields (v0.4.17+ with enhanced clear functionality)
 FormFieldClass.searchSelect('field', { 
   label: 'Search Select',
-  options: [{ value: 'a', label: 'Option A' }]
+  options: [{ value: 'a', label: 'Option A' }],
+  placeholder: 'Search or select...'
 })
 FormFieldClass.searchSelectApollo('field', { 
   label: 'Apollo Search Select',
@@ -415,6 +416,7 @@ FormFieldClass.searchSelectMultiApollo('selectedUsers', {
 - **Debounced Search**: 500ms delay to reduce API calls
 - **Loading States**: Built-in loading indicators
 - **Type Safety**: Full TypeScript support with generic data types
+- **Enhanced Clear Functionality** (v0.4.17+): Multiple ways to clear selections
 
 ### GraphQL Requirements
 
@@ -435,6 +437,45 @@ query SearchUsers($input: SearchInput) {
     firstName
     lastName
     email
+  }
+}
+```
+
+### 🔄 Search Select Clear Functionality (v0.4.17+)
+
+All search select components now include comprehensive clear functionality with three intuitive methods:
+
+#### 1. Clear Button
+- **Visual X icon** appears when a value is selected
+- Located between the input field and dropdown arrow
+- Single click to instantly clear the selection
+
+#### 2. Manual Text Deletion
+- Focus the field and delete all text
+- When you blur (click away), the selection automatically clears
+- Works naturally like users expect from modern forms
+
+#### 3. Backspace on Empty Input
+- Press backspace when the input is already empty to clear the selection
+- Backspacing through search text doesn't affect the selection until the input is empty
+
+#### Apollo Search Improvements
+The Apollo-powered search selects now properly refresh data when cleared:
+- Clearing the search input refetches with empty search parameters
+- Shows the full unfiltered dataset instead of stale results
+- No need for page refresh to see all options
+
+#### Theme Customization
+Customize the clear button appearance with new theme properties:
+
+```tsx
+const customTheme = {
+  searchSelectField: {
+    input: 'your-input-classes',
+    inputWithClear: 'pr-20', // Extra padding when clear button is shown
+    clearButton: 'absolute inset-y-0 right-10 flex items-center pr-2',
+    clearIcon: 'h-5 w-5 text-gray-400 hover:text-gray-600',
+    // ... other properties
   }
 }
 ```
@@ -1085,3 +1126,24 @@ function TypedForm() {
 ## 📄 License
 
 MIT License - see LICENSE file for details.
+
+## 📝 Changelog
+
+### v0.4.17 (Latest)
+- ✨ **Enhanced Search Select Clear Functionality**
+  - Added clear button (X icon) for single select fields
+  - Implemented manual text deletion to clear selections
+  - Added backspace-to-clear on empty input
+  - Fixed Apollo search to properly refetch when cleared
+- 🐛 **Bug Fixes**
+  - Apollo search selects now refresh data correctly when search is cleared
+  - Form state properly updates when selections are cleared
+- 🎨 **Theme Improvements**
+  - Added `inputWithClear`, `clearButton`, and `clearIcon` theme properties
+  - Improved type safety with proper null handling
+
+### v0.4.16
+- Initial clear functionality implementation
+
+### v0.4.15
+- Bug fixes and performance improvements
