@@ -267,7 +267,10 @@ export const tailwindTheme = FormThemeSchema.parse({
   searchSelectField: {
     wrapper: '',
     container: 'relative',
-    input: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-10',
+    inputContainer: 'relative',
+    input: 'w-full bg-white border border-gray-300 rounded-md shadow-sm py-2 pl-3 pr-20',
+    clearButton: 'absolute inset-y-0 right-8 flex items-center pr-2',
+    clearIcon: 'h-5 w-5 text-gray-400 hover:text-gray-600',
     button: 'absolute inset-y-0 right-0 flex items-center pr-2',
     buttonIcon: 'h-5 w-5 text-gray-400',
     dropdown:
