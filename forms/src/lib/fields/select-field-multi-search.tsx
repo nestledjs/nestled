@@ -36,7 +36,8 @@ export function SelectFieldMultiSearch({
       searchDebounceMs={field.options.searchDebounceMs}
       value={value}
       onChange={(items) => {
-        form.setValue(field.key, items)
+        // Multi-select should use empty array instead of null
+        form.setValue(field.key, items || [])
         // Trigger form validation/dirty state
         if (form.trigger) {
           form.trigger(field.key)

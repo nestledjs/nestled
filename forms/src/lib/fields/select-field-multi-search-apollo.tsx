@@ -171,13 +171,16 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
 
   // Custom onChange handler that updates the cache for newly selected items
   const handleChange = useCallback(
-    (items: SearchSelectOption[]) => {
+    (items: SearchSelectOption[] | null) => {
+      // Multi-select should use empty array instead of null
+      const itemsArray = items || []
+      
       // Update cache with any new selections
       setSelectedOptionsCache((prevCache) => {
         let hasChanges = false
         const newCache = new Map(prevCache)
 
-        items.forEach((item) => {
+        itemsArray.forEach((item) => {
           if (!newCache.has(item.value)) {
             newCache.set(item.value, item)
             hasChanges = true
@@ -189,7 +192,7 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
       })
 
       // Store full option objects in form (like regular multi-search) instead of just IDs
-      form.setValue(field.key, items)
+      form.setValue(field.key, itemsArray)
       // Trigger form validation/dirty state
       if (form.trigger) {
         form.trigger(field.key)
