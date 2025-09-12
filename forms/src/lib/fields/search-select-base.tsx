@@ -163,7 +163,7 @@ export function SearchSelectBase<TValue>({
     }
   }, [isOpen, onClose])
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation in dropdown
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
       if (!isOpen) {
@@ -204,6 +204,20 @@ export function SearchSelectBase<TValue>({
       }
     },
     [isOpen, highlightedIndex, filteredOptions, onClose],
+  )
+
+  // Handle keyboard input in search field
+  const handleInputKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      // Handle backspace to clear when empty for single select
+      if (!multiple && event.key === 'Backspace' && !searchTerm && value) {
+        event.preventDefault()
+        onChange(null as TValue)
+      } else {
+        handleKeyDown(event)
+      }
+    },
+    [multiple, searchTerm, value, onChange, handleKeyDown],
   )
 
   // Handle option selection
@@ -256,7 +270,7 @@ export function SearchSelectBase<TValue>({
               <input
                 ref={inputRef}
                 type="text"
-                className={theme.input}
+                className={clsx(theme.input, !multiple && value && theme.inputWithClear)}
                 value={getInputValue(fieldValue)}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onFocus={handleInputFocus}
@@ -270,15 +284,7 @@ export function SearchSelectBase<TValue>({
                     }
                   }, 100)
                 }}
-                onKeyDown={(e) => {
-                  // Handle backspace to clear when empty for single select
-                  if (!multiple && e.key === 'Backspace' && !searchTerm && value) {
-                    e.preventDefault()
-                    onChange(null as TValue)
-                  } else {
-                    handleKeyDown(e)
-                  }
-                }}
+                onKeyDown={handleInputKeyDown}
                 placeholder={getInputPlaceholder(fieldValue)}
                 disabled={isDisabled}
                 aria-expanded={isOpen}
@@ -292,7 +298,7 @@ export function SearchSelectBase<TValue>({
               {!multiple && value && (
                 <button
                   type="button"
-                  className={theme.clearButton || theme.button}
+                  className={theme.clearButton || (theme.button ? `${theme.button} opacity-70` : 'absolute inset-y-0 right-10 flex items-center pr-2 opacity-70')}
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange(null as TValue)
