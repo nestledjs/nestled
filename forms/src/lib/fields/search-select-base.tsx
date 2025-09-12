@@ -232,6 +232,10 @@ export function SearchSelectBase<TValue>({
   // Handle input focus
   const handleInputFocus = () => {
     setIsOpen(true)
+    // Clear the search term when focusing to allow typing
+    if (!multiple && value) {
+      setSearchTerm('')
+    }
   }
 
   // Handle dropdown toggle
@@ -280,6 +284,15 @@ export function SearchSelectBase<TValue>({
                     if (!containerRef.current?.contains(document.activeElement)) {
                       setIsOpen(false)
                       setHighlightedIndex(-1)
+                      
+                      // Clear selection if input is empty when blurring (user cleared it)
+                      const currentInputValue = (e.target as HTMLInputElement).value
+                      if (!multiple && value && currentInputValue === '') {
+                        onChange(null as TValue)
+                      }
+                      
+                      // Reset search term
+                      setSearchTerm('')
                       onBlur()
                     }
                   }, 100)
