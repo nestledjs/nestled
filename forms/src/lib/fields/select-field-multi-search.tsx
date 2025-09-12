@@ -35,7 +35,13 @@ export function SelectFieldMultiSearch({
       onSearchChange={field.options.onSearchChange}
       searchDebounceMs={field.options.searchDebounceMs}
       value={value}
-      onChange={(items) => form.setValue(field.key, items)}
+      onChange={(items) => {
+        form.setValue(field.key, items)
+        // Trigger form validation/dirty state
+        if (form.trigger) {
+          form.trigger(field.key)
+        }
+      }}
       displayValue={multiSelectDisplayValue}
       multiple={true}
       themeKey="searchSelectMultiField"
