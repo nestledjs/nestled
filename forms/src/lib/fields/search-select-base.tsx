@@ -256,7 +256,7 @@ export function SearchSelectBase<TValue>({
               <input
                 ref={inputRef}
                 type="text"
-                className={theme.input}
+                className={clsx(theme.input, !multiple && value && theme.inputWithClear)}
                 value={getInputValue(fieldValue)}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 onFocus={handleInputFocus}
@@ -292,7 +292,7 @@ export function SearchSelectBase<TValue>({
               {!multiple && value && (
                 <button
                   type="button"
-                  className={theme.clearButton || theme.button}
+                  className={theme.clearButton || `${theme.button} opacity-70`}
                   onClick={(e) => {
                     e.stopPropagation()
                     onChange(null as TValue)
