@@ -27,7 +27,13 @@ export function SelectFieldSearch({
       onSearchChange={field.options.onSearchChange}
       searchDebounceMs={field.options.searchDebounceMs}
       value={selectedOption}
-      onChange={(option) => form.setValue(field.key, option?.value || null)}
+      onChange={(option) => {
+        form.setValue(field.key, option?.value || null)
+        // Trigger form validation/dirty state
+        if (form.trigger) {
+          form.trigger(field.key)
+        }
+      }}
       displayValue={singleSelectDisplayValue}
       themeKey="searchSelectField"
     />

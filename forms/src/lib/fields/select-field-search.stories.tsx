@@ -504,6 +504,56 @@ export const SearchAndClear: Story = {
 }
 
 /**
+ * Test the clear button functionality when a value is selected.
+ */
+export const ClearButton: Story = {
+  args: {
+    label: 'Clear Button Test',
+    optionSet: 'technologies',
+    defaultValue: 'react',
+    placeholder: 'Search technologies...',
+    helpText: 'Test the clear button by selecting a value',
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement)
+    const user = userEvent.setup()
+    
+    await step('Verify initial value is selected', async () => {
+      const input = canvas.getByRole('combobox')
+      expect(input).toHaveDisplayValue('React')
+    })
+    
+    await step('Click clear button to remove selection', async () => {
+      // Find and click the clear button
+      const clearButton = canvas.getByLabelText('Clear selection')
+      await user.click(clearButton)
+      
+      // Verify the value is cleared
+      const input = canvas.getByRole('combobox')
+      expect(input).toHaveDisplayValue('')
+    })
+    
+    await step('Select a new value and clear with backspace', async () => {
+      const input = canvas.getByRole('combobox')
+      await user.click(input)
+      await user.type(input, 'vue')
+      
+      const vueOption = canvas.getByText('Vue.js')
+      await user.click(vueOption)
+      expect(input).toHaveDisplayValue('Vue.js')
+      
+      // Clear the input content first
+      await user.click(input)
+      await user.clear(input)
+      
+      // Now press backspace on empty input to clear selection
+      await user.keyboard('{Backspace}')
+      expect(input).toHaveDisplayValue('')
+    })
+  },
+}
+
+/**
  * Test keyboard navigation in search results.
  */
 export const KeyboardNavigation: Story = {

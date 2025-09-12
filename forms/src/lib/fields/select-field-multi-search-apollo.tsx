@@ -190,6 +190,10 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
 
       // Store full option objects in form (like regular multi-search) instead of just IDs
       form.setValue(field.key, items)
+      // Trigger form validation/dirty state
+      if (form.trigger) {
+        form.trigger(field.key)
+      }
     },
     [form, field.key],
   )

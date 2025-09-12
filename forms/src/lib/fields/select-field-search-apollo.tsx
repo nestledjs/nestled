@@ -92,6 +92,10 @@ export function SelectFieldSearchApollo<
         // Store the full option object (like multi-search) instead of just the ID
         // Submit transformation will convert back to ID for API submission
         form.setValue(field.key, option || null)
+        // Trigger form validation/dirty state
+        if (form.trigger) {
+          form.trigger(field.key)
+        }
       }}
       displayValue={singleSelectDisplayValue}
       themeKey="searchSelectField"

@@ -247,7 +247,7 @@ export function SearchSelectBase<TValue>({
           <div ref={containerRef} className={theme.container}>
             <div
               className={clsx(
-                theme.inputContainer || theme.container,
+                theme.inputContainer || 'relative',
                 hasError && theme.error,
                 isDisabled && theme.disabled,
               )}
@@ -270,7 +270,15 @@ export function SearchSelectBase<TValue>({
                     }
                   }, 100)
                 }}
-                onKeyDown={handleKeyDown}
+                onKeyDown={(e) => {
+                  // Handle backspace to clear when empty for single select
+                  if (!multiple && e.key === 'Backspace' && !searchTerm && value) {
+                    e.preventDefault()
+                    onChange(null as TValue)
+                  } else {
+                    handleKeyDown(e)
+                  }
+                }}
                 placeholder={getInputPlaceholder(fieldValue)}
                 disabled={isDisabled}
                 aria-expanded={isOpen}
@@ -280,27 +288,55 @@ export function SearchSelectBase<TValue>({
                 aria-activedescendant={highlightedIndex >= 0 ? `${field.name}-option-${highlightedIndex}` : undefined}
                 role="combobox"
               />
-            </div>
-            <button
-              type="button"
-              className={theme.button}
-              onClick={handleToggleDropdown}
-              disabled={isDisabled}
-              aria-label="Toggle dropdown"
-            >
-              <svg
-                className={theme.buttonIcon}
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
+              {/* Clear button for single select */}
+              {!multiple && value && (
+                <button
+                  type="button"
+                  className={theme.clearButton || theme.button}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onChange(null as TValue)
+                    setSearchTerm('')
+                    inputRef.current?.focus()
+                  }}
+                  disabled={isDisabled}
+                  aria-label="Clear selection"
+                >
+                  <svg
+                    className={theme.clearIcon || theme.buttonIcon}
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              )}
+              <button
+                type="button"
+                className={theme.button}
+                onClick={handleToggleDropdown}
+                disabled={isDisabled}
+                aria-label="Toggle dropdown"
               >
-                <path
-                  fillRule="evenodd"
-                  d="M10 3a.75.75 0 01.53.22l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 6.53 8.28a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.72 9.28a.75.75 0 011.06 0L10 15.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4a.75.75 0 01-1.06 0l-4-4a.75.75 0 010-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </button>
+                <svg
+                  className={theme.buttonIcon}
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 3a.75.75 0 01.53.22l3.5 3.5a.75.75 0 01-1.06 1.06L10 4.81 6.53 8.28a.75.75 0 01-1.06-1.06l3.5-3.5A.75.75 0 0110 3zm-3.72 9.28a.75.75 0 011.06 0L10 15.19l3.47-3.47a.75.75 0 111.06 1.06l-4 4a.75.75 0 01-1.06 0l-4-4a.75.75 0 010-1.06z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            </div>
 
             {isOpen && (
               <div 

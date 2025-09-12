@@ -261,9 +261,12 @@ export const FormThemeSchema = z.object({
     .object({
       wrapper: z.string().default(''),
       container: z.string().default(''),
+      inputContainer: z.string().default(''),
       input: z.string().default(''),
       button: z.string().default(''),
       buttonIcon: z.string().default(''),
+      clearButton: z.string().default(''),
+      clearIcon: z.string().default(''),
       dropdown: z.string().default(''),
       option: z.string().default(''),
       optionActive: z.string().default(''),

@@ -493,6 +493,21 @@ export const SearchAndMultiSelect: Story = {
 }
 
 /**
+ * Test clearing all selected items.
+ * Note: This test validates that individual remove buttons work correctly
+ * for clearing selected items in multi-select fields.
+ */
+export const ClearAllSelections: Story = {
+  args: {
+    label: 'Clear All Test',
+    optionSet: 'countries',
+    defaultValue: ['US', 'CA', 'UK'],
+    helpText: 'Click the X buttons to remove selected items. The onChange event fires for each removal.',
+    showState: true,
+  },
+}
+
+/**
  * Test removing selected items while searching.
  */
 export const SearchWithRemoval: Story = {
