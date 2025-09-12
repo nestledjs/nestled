@@ -58,12 +58,16 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
         return
       }
       
-      // When search is cleared, reset to initial Apollo data merged with initial options
-      if (data) {
-        setOptions(processData(data[dataType] ?? []))
+      // When search is cleared, refetch with empty search to get all results
+      const input: { search: string; searchFields?: string[] } = { search: '' }
+      if (searchFields && searchFields.length > 0) {
+        input.searchFields = searchFields
       }
+      refetch({ input }).then((res) => {
+        setOptions(processData(res.data?.[dataType] ?? []))
+      })
     },
-    [refetch, searchFields, dataType, processData, data],
+    [refetch, searchFields, dataType, processData],
   )
 
   return {
