@@ -20,7 +20,7 @@ export interface SearchSelectBaseProps<TValue> {
 
   // Value handling
   value: TValue
-  onChange: (value: TValue) => void
+  onChange: (value: TValue | null) => void
   displayValue: (value: TValue) => string
 
   // Combobox configuration
@@ -212,7 +212,7 @@ export function SearchSelectBase<TValue>({
       // Handle backspace to clear when empty for single select
       if (!multiple && event.key === 'Backspace' && !searchTerm && value) {
         event.preventDefault()
-        onChange(null as TValue)
+        onChange(null)
       } else {
         handleKeyDown(event)
       }
@@ -232,6 +232,10 @@ export function SearchSelectBase<TValue>({
   // Handle input focus
   const handleInputFocus = () => {
     setIsOpen(true)
+    // Clear the search term when focusing to allow typing
+    if (!multiple && value) {
+      setSearchTerm('')
+    }
   }
 
   // Handle dropdown toggle
@@ -280,6 +284,15 @@ export function SearchSelectBase<TValue>({
                     if (!containerRef.current?.contains(document.activeElement)) {
                       setIsOpen(false)
                       setHighlightedIndex(-1)
+                      
+                      // Clear selection if input is empty when blurring (user cleared it)
+                      const currentInputValue = (e.target as HTMLInputElement).value
+                      if (!multiple && value && currentInputValue === '') {
+                        onChange(null)
+                      }
+                      
+                      // Reset search term
+                      setSearchTerm('')
                       onBlur()
                     }
                   }, 100)
@@ -301,7 +314,7 @@ export function SearchSelectBase<TValue>({
                   className={theme.clearButton || (theme.button ? `${theme.button} opacity-70` : 'absolute inset-y-0 right-10 flex items-center pr-2 opacity-70')}
                   onClick={(e) => {
                     e.stopPropagation()
-                    onChange(null as TValue)
+                    onChange(null)
                     setSearchTerm('')
                     inputRef.current?.focus()
                   }}
