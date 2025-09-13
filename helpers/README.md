@@ -1,11 +1,29 @@
-# helpers
+# @nestledjs/helpers - DEPRECATED
 
-This library was generated with [Nx](https://nx.dev).
+> ⚠️ **This package has been deprecated and is no longer maintained.**
 
-## Building
+## Migration Guide
 
-Run `nx build helpers` to build the library.
+The functionality from this package has been moved to other packages:
 
-## Running unit tests
+### DeepPartial Type
+- **Previously:** `import { DeepPartial } from '@nestledjs/helpers'`
+- **Now:** Available directly in `@nestledjs/forms` (if you're using the forms library)
 
-Run `nx test helpers` to execute the unit tests via [Vitest](https://vitest.dev/).
+### getPluralName Function
+- **Previously:** `import { getPluralName } from '@nestledjs/helpers'`
+- **Now:** `import { getPluralName } from '@nestledjs/utils'`
+
+## For Forms Users
+Simply update to the latest version of `@nestledjs/forms` (v0.4.17+) and remove the `@nestledjs/helpers` dependency:
+
+```bash
+npm uninstall @nestledjs/helpers
+npm install @nestledjs/forms@latest
+```
+
+## For Generator Users
+The `getPluralName` function is available in `@nestledjs/utils` which is already a dependency of the generator packages.
+
+## Questions?
+Please open an issue in the [main Nestled repository](https://github.com/nestledjs/nestled).

@@ -2,7 +2,7 @@ import { merge } from 'lodash-es'
 import clsx from 'clsx'
 import { FormTheme, FormThemeSchema } from '../form-theme'
 import { tailwindTheme } from '../themes/tailwind'
-import { DeepPartial } from '@nestledjs/helpers'
+import { DeepPartial } from '../types/deep-partial'
 
 /**
  * Creates the final, fully resolved theme for the entire form. This is the
