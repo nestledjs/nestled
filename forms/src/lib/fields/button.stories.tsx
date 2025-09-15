@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import { Button, ButtonProps } from './button'
 import { ThemeContext } from '../theme-context'
 import { createFinalTheme } from '../utils/resolve-theme'

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo } from 'react'
 import { useForm, UseFormProps, FieldValues } from 'react-hook-form'
-import { FormField } from './form-types'
+import { FormField, FormFieldType, InputFieldOptions } from './form-types'
 import clsx from 'clsx'
 import { FormContext } from './form-context'
 import { RenderFormField } from './render-form-field' // Import the new renderer
@@ -8,6 +8,8 @@ import { ThemeContext } from './theme-context'
 import { FormTheme } from './form-theme'
 import { FormConfigContext, FormConfig } from './form-config-context'
 import { createFinalTheme } from './utils/resolve-theme'
+import { createFormResolver } from './utils/validation'
+import { ZodTypeAny } from 'zod'
 
 export interface FormProps<T extends FieldValues = Record<string, unknown>> extends UseFormProps<T> {
   id: string
@@ -33,6 +35,66 @@ export interface FormProps<T extends FieldValues = Record<string, unknown>> exte
    * - 'none': Hides all labels.
    */
   labelDisplay?: 'all' | 'default' | 'none'
+
+  /**
+   * Optional Zod schema for form-level validation.
+   * When provided, this schema will validate the entire form's data structure.
+   * Can be used alongside field-level schemas for comprehensive validation.
+   *
+   * @example
+   * ```tsx
+   * import { z } from 'zod'
+   *
+   * const schema = z.object({
+   *   username: z.string().min(3),
+   *   email: z.string().email(),
+   *   age: z.number().min(18)
+   * })
+   *
+   * <Form
+   *   id="user-form"
+   *   schema={schema}
+   *   fields={[...]}
+   *   submit={handleSubmit}
+   * />
+   * ```
+   */
+  schema?: ZodTypeAny
+
+  /**
+   * Current validation group to validate.
+   * When specified, only fields belonging to this group will be validated.
+   * Useful for multi-step forms where you want to validate only the current step.
+   *
+   * @example
+   * ```tsx
+   * // Validate only step 1 fields
+   * <Form
+   *   id="multi-step-form"
+   *   validationGroup="step-1"
+   *   fields={[...]}
+   *   submit={handleSubmit}
+   * />
+   * ```
+   */
+  validationGroup?: string
+
+  /**
+   * All possible validation groups in this form.
+   * Used for validation group management and step-by-step validation.
+   *
+   * @example
+   * ```tsx
+   * <Form
+   *   id="multi-step-form"
+   *   validationGroups={['personal-info', 'contact-info', 'preferences']}
+   *   validationGroup={currentStep}
+   *   fields={[...]}
+   *   submit={handleSubmit}
+   * />
+   * ```
+   */
+  validationGroups?: string[]
 }
 
 /**
@@ -94,8 +156,41 @@ export function Form<T extends FieldValues = Record<string, unknown>>({
   readOnlyStyle = 'value',
   theme: userTheme = {},
   labelDisplay = 'default',
+  schema,
+  validationGroup,
+  validationGroups,
 }: Readonly<FormProps<T>>) {
-  const form = useForm<T>({ defaultValues })
+  // Create resolver for validation if needed
+  const resolver = useMemo(() => {
+    // Check if any field needs validation that requires a resolver (excluding buttons)
+    const needsResolver = schema || fields?.some(f => {
+      if (f?.type === FormFieldType.Button) return false // Never validate buttons
+      const opts = f?.options as InputFieldOptions
+      return opts?.schema || opts?.validateWithForm || opts?.validate
+    })
+
+    if (needsResolver) {
+      return createFormResolver<T>(
+        schema,
+        fields?.filter((f): f is FormField => f !== null)
+          .filter(f => f.type !== FormFieldType.Button) // Never validate button fields
+          .map(f => ({
+            key: f.key,
+            options: f.options as InputFieldOptions
+          })),
+        validationGroup,
+        validationGroups
+      )
+    }
+    return undefined
+  }, [schema, fields, validationGroup, validationGroups])
+
+  const form = useForm<T>({
+    defaultValues,
+    resolver,
+    mode: 'onBlur', // Try onBlur to see if validation triggers
+    reValidateMode: 'onChange' // Re-validate on every change
+  })
 
   useEffect(() => {
     if (defaultValues && typeof defaultValues !== 'function') {
@@ -110,16 +205,29 @@ export function Form<T extends FieldValues = Record<string, unknown>>({
   // Create a wrapper function that applies field transformations before submission
   const handleSubmitWithTransform = useMemo(() => {
     return (values: T) => {
+      // First, filter out button fields from the values
+      const filteredValues: Record<string, unknown> = {}
+      for (const [key, value] of Object.entries(values as Record<string, unknown>)) {
+        // Check if this key belongs to a button field
+        const isButtonField = fields?.some(f =>
+          f && f.key === key && f.type === FormFieldType.Button
+        )
+        if (!isButtonField) {
+          filteredValues[key] = value
+        }
+      }
+
       if (!fields) {
-        // No fields to transform, call submit directly
-        return submit(values)
+        // No fields to transform, call submit directly with filtered values
+        return submit(filteredValues as T)
       }
 
       // Apply submitTransform functions to each field that has one
-      const transformedValues: Record<string, unknown> = { ...values }
-      
+      const transformedValues: Record<string, unknown> = { ...filteredValues }
+
       fields
         .filter((field): field is FormField => field !== null)
+        .filter(field => field.type !== FormFieldType.Button) // Skip button fields
         .forEach((field) => {
           if (field.options.submitTransform && field.key in transformedValues) {
             transformedValues[field.key] = field.options.submitTransform(transformedValues[field.key])

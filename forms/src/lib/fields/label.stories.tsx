@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 import { FormLabel } from './label'
 import { ThemeContext } from '../theme-context'
 import { createFinalTheme } from '../utils/resolve-theme'

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Validation Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        .error { color: red; font-size: 12px; margin-top: 4px; }
+        input { display: block; margin: 10px 0; padding: 5px; }
+        button { margin-top: 10px; padding: 5px 10px; }
+        .debug { background: #f0f0f0; padding: 10px; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // Import React Hook Form from CDN
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/react-hook-form@7.52.0/dist/index.umd.production.min.js';
+        document.head.appendChild(script);
+
+        script.onload = () => {
+            const { useForm } = window.ReactHookForm;
+
+            function TestForm() {
+                const { register, handleSubmit, formState: { errors }, watch } = useForm({
+                    mode: 'onChange',
+                    reValidateMode: 'onChange'
+                });
+
+                const watchPassword = watch('password');
+                const watchConfirm = watch('confirmPassword');
+
+                const onSubmit = (data) => {
+                    console.log('Form submitted:', data);
+                    alert('Form submitted successfully!');
+                };
+
+                return (
+                    <div>
+                        <h1>Simple Validation Test</h1>
+                        <form onSubmit={handleSubmit(onSubmit)}>
+                            <div>
+                                <label>Password:</label>
+                                <input
+                                    type="password"
+                                    {...register('password', {
+                                        required: 'Password is required',
+                                        minLength: {
+                                            value: 8,
+                                            message: 'Password must be at least 8 characters'
+                                        }
+                                    })}
+                                />
+                                {errors.password && <div className="error">{errors.password.message}</div>}
+                            </div>
+
+                            <div>
+                                <label>Confirm Password:</label>
+                                <input
+                                    type="password"
+                                    {...register('confirmPassword', {
+                                        required: 'Please confirm your password',
+                                        validate: (value) => {
+                                            console.log('Validating confirmPassword:', { value, password: watchPassword });
+                                            if (value !== watchPassword) {
+                                                return 'Passwords must match';
+                                            }
+                                            return true;
+                                        }
+                                    })}
+                                />
+                                {errors.confirmPassword && <div className="error">{errors.confirmPassword.message}</div>}
+                            </div>
+
+                            <button type="submit">Submit</button>
+                        </form>
+
+                        <div className="debug">
+                            <h3>Debug Info:</h3>
+                            <p>Password: {watchPassword}</p>
+                            <p>Confirm: {watchConfirm}</p>
+                            <p>Errors: {JSON.stringify(errors)}</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<TestForm />);
+        };
+    </script>
+</body>
+</html>

@@ -11,7 +11,17 @@ export { RenderFormField } from './lib/render-form-field'
 export { useFormContext } from './lib/form-context'
 export { useFormConfig } from './lib/form-config-context'
 export { useFormTheme } from './lib/theme-context'
+export { useFieldValidation } from './lib/hooks/use-field-validation'
 export { createFinalTheme } from './lib/utils/resolve-theme'
+export {
+  createFieldValidation,
+  createFormResolver,
+  validateGroup,
+  getValidationGroups,
+  getFieldsInGroup,
+  shouldValidateField,
+  type InferSchemaType
+} from './lib/utils/validation'
 
 // Export key types for library consumers
 export type { 
