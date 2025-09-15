@@ -18,8 +18,6 @@ export function createFieldValidation(
 ): RegisterOptions {
   const rules: RegisterOptions = {}
 
-
-
   // Add required validation
   if (isRequired) {
     rules.required = field.errorMessages?.required || 'This field is required'
@@ -136,7 +134,6 @@ export function createFieldValidation(
       return true
     }
   }
-
 
   return rules
 }
