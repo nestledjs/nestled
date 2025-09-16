@@ -49,8 +49,9 @@ export const DirectReactHookForm: Story = {
           <h2 className="text-lg font-bold mb-4">Direct React Hook Form Test</h2>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm font-medium mb-1">Password</label>
               <input
+                id="password"
                 type="password"
                 className="w-full px-3 py-2 border rounded"
                 {...form.register('password', {
@@ -67,8 +68,9 @@ export const DirectReactHookForm: Story = {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Confirm Password</label>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium mb-1">Confirm Password</label>
               <input
+                id="confirmPassword"
                 type="password"
                 className="w-full px-3 py-2 border rounded"
                 {...form.register('confirmPassword', {
@@ -114,10 +116,11 @@ export const DirectReactHookForm: Story = {
 export const OurFormLibrary: Story = {
   name: 'Our Form Library',
   render: () => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
-    const [formState, setFormState] = React.useState<any>({})
+    const OurFormTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
+      const [formState, setFormState] = React.useState<any>({})
 
-    return (
+      return (
       <div className="p-4 max-w-md">
         <h2 className="text-lg font-bold mb-4">Our Form Library Test</h2>
         <Form
@@ -168,6 +171,9 @@ export const OurFormLibrary: Story = {
           <pre className="text-xs">{JSON.stringify(formState, null, 2)}</pre>
         </div>
       </div>
-    )
+      )
+    }
+
+    return <OurFormTest />
   }
 }

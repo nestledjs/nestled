@@ -1,7 +1,7 @@
 import { DocumentNode, TypedDocumentNode } from '@apollo/client'
 import { JSX, ReactNode } from 'react'
 import { UseFormReturn } from 'react-hook-form'
-import { ZodSchema, ZodTypeAny } from 'zod'
+import { ZodTypeAny } from 'zod'
 
 // The single enum for all field types, combining the best of both libraries
 export enum FormFieldType {

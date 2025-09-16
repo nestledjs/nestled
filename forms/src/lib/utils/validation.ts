@@ -30,7 +30,7 @@ export function createFieldValidation(
     // Add Zod validation - always accepts formValues even if not used
     const zodValidate = async (value: any, formValues?: any) => {
       try {
-        await field.schema!.parseAsync(value)
+        await field.schema.parseAsync(value)
         return true
       } catch (error) {
         if (error instanceof ZodError) {
@@ -73,7 +73,7 @@ export function createFieldValidation(
         if (zodResult !== true) return zodResult
 
         // Then run custom validation - only pass value since validate expects one param
-        return field.validate!(value)
+        return field.validate(value)
       }
     }
   }
@@ -96,7 +96,7 @@ export function createFieldValidation(
         if (existingResult !== true) return existingResult
 
         // Then run cross-field validation with both parameters
-        return field.validateWithForm!(value, formValues)
+        return field.validateWithForm(value, formValues)
       }
     }
   }
@@ -122,7 +122,7 @@ export function createFieldValidation(
         return originalValidate(value, formValues)
       } else if (typeof originalValidate === 'object') {
         // Run all validators in the object
-        for (const [key, validator] of Object.entries(originalValidate)) {
+        for (const [, validator] of Object.entries(originalValidate)) {
           if (typeof validator === 'function') {
             const result = await validator(value, formValues)
             if (result !== true) return result
@@ -149,8 +149,7 @@ export function createFieldValidation(
 export function createFormResolver<TFieldValues extends FieldValues = FieldValues>(
   schema?: ZodTypeAny,
   fields?: Array<{ key: string; options: InputFieldOptions }>,
-  currentValidationGroup?: string,
-  validationGroups?: string[]
+  currentValidationGroup?: string
 ): Resolver<TFieldValues> | undefined {
   // If we have a form-level Zod schema, use the zodResolver
   if (schema) {

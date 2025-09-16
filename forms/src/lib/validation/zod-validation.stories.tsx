@@ -96,10 +96,11 @@ const meta: Meta<ZodValidationStoryArgs> = {
     hasError: false,
   },
   render: (args) => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
-    const [formState, setFormState] = React.useState<any>({})
+    const ZodDemo = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
+      const [formState, setFormState] = React.useState<any>({})
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4">Zod Validation Demo</h3>
         <Form
@@ -146,7 +147,10 @@ const meta: Meta<ZodValidationStoryArgs> = {
           </div>
         )}
       </div>
-    )
+      )
+    }
+
+    return <ZodDemo />
   },
 }
 
@@ -156,10 +160,11 @@ type Story = StoryObj<typeof meta>
 export const BasicZodValidation: Story = {
   name: 'Basic Zod Schema',
   render: () => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
-    const [formState, setFormState] = React.useState<any>({})
+    const BasicZodTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
+      const [formState, setFormState] = React.useState<any>({})
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4">Basic Zod Validation</h3>
         <Form
@@ -200,17 +205,21 @@ export const BasicZodValidation: Story = {
           <pre className="text-xs">{JSON.stringify(formState, null, 2)}</pre>
         </div>
       </div>
-    )
+      )
+    }
+
+    return <BasicZodTest />
   },
 }
 
 export const EmailValidation: Story = {
   name: 'Email Schema Validation',
   render: () => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
-    const [formState, setFormState] = React.useState<any>({})
+    const EmailTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
+      const [formState, setFormState] = React.useState<any>({})
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4">Email Validation</h3>
         <Form
@@ -249,17 +258,21 @@ export const EmailValidation: Story = {
           <pre className="text-xs">{JSON.stringify(formState, null, 2)}</pre>
         </div>
       </div>
-    )
+      )
+    }
+
+    return <EmailTest />
   },
 }
 
 export const CustomErrorMessages: Story = {
   name: 'Custom Error Messages',
   render: () => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
-    const [formState, setFormState] = React.useState<any>({})
+    const CustomErrorTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
+      const [formState, setFormState] = React.useState<any>({})
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4">Custom Error Messages</h3>
         <Form
@@ -301,17 +314,21 @@ export const CustomErrorMessages: Story = {
           <pre className="text-xs">{JSON.stringify(formState, null, 2)}</pre>
         </div>
       </div>
-    )
+      )
+    }
+
+    return <CustomErrorTest />
   },
 }
 
 export const OptionalFieldValidation: Story = {
   name: 'Optional Field with Validation',
   render: () => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
-    const [formState, setFormState] = React.useState<any>({})
+    const OptionalFieldTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
+      const [formState, setFormState] = React.useState<any>({})
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <h3 className="text-lg font-semibold mb-4">Optional Field with Validation</h3>
         <Form
@@ -355,6 +372,9 @@ export const OptionalFieldValidation: Story = {
           <p>If you do enter something, it must be a valid URL.</p>
         </div>
       </div>
-    )
+      )
+    }
+
+    return <OptionalFieldTest />
   },
 }
