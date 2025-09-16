@@ -178,8 +178,7 @@ export function Form<T extends FieldValues = Record<string, unknown>>({
             key: f.key,
             options: f.options as InputFieldOptions
           })),
-        validationGroup,
-        validationGroups
+        validationGroup
       )
     }
     return undefined

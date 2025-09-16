@@ -3,6 +3,94 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { FieldValues, RegisterOptions, Resolver } from 'react-hook-form'
 import { BaseFieldOptions, InputFieldOptions } from '../form-types'
 
+// Helper function to create Zod validator
+function createZodValidator(schema: ZodTypeAny, errorMessages?: Record<string, string | undefined>) {
+  return async (value: any) => {
+    try {
+      await schema.parseAsync(value)
+      return true
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const firstError = error.errors[0]
+        const errorKey = firstError.code
+        return errorMessages?.[errorKey] ?? firstError.message
+      }
+      return 'Invalid value'
+    }
+  }
+}
+
+// Helper function to combine validators
+function combineValidators(existing: any, newValidator: any) {
+  return async (value: any, formValues: any) => {
+    const existingResult = await existing(value, formValues)
+    if (existingResult !== true) return existingResult
+    return newValidator(value, formValues)
+  }
+}
+
+// Helper function to validate a single field
+async function validateField(
+  field: { key: string; options: InputFieldOptions },
+  value: any,
+  values: any
+): Promise<{ type: string; message: string } | null> {
+  const { options: fieldOptions } = field
+
+  // Skip validation if conditions not met
+  if (fieldOptions.validateWhen && !fieldOptions.validateWhen(values)) {
+    return null
+  }
+
+  // Check required validation
+  const isRequired = fieldOptions.required || fieldOptions.requiredWhen?.(values)
+  if (isRequired && !value) {
+    return {
+      type: 'required',
+      message: fieldOptions.errorMessages?.required || 'This field is required'
+    }
+  }
+
+  // Run Zod schema validation
+  if (fieldOptions.schema) {
+    try {
+      await fieldOptions.schema.parseAsync(value)
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const firstError = error.errors[0]
+        return {
+          type: firstError.code,
+          message: fieldOptions.errorMessages?.[firstError.code] || firstError.message
+        }
+      }
+    }
+  }
+
+  // Run custom validate function
+  if (fieldOptions.validate) {
+    const result = await fieldOptions.validate(value)
+    if (result !== true) {
+      return {
+        type: 'validate',
+        message: result as string
+      }
+    }
+  }
+
+  // Run validateWithForm function
+  if (fieldOptions.validateWithForm) {
+    const result = await fieldOptions.validateWithForm(value, values)
+    if (result !== true) {
+      return {
+        type: 'validateWithForm',
+        message: result as string
+      }
+    }
+  }
+
+  return null
+}
+
 /**
  * Creates validation rules for a field that combine Zod schema validation
  * with traditional validation functions.
@@ -25,32 +113,11 @@ export function createFieldValidation(
 
   // Add Zod schema validation if present
   if (field.schema) {
-    rules.validate = rules.validate || {}
+    const zodValidate = createZodValidator(field.schema, field.errorMessages)
 
-    // Add Zod validation - always accepts formValues even if not used
-    const zodValidate = async (value: any, formValues?: any) => {
-      try {
-        await field.schema.parseAsync(value)
-        return true
-      } catch (error) {
-        if (error instanceof ZodError) {
-          // Get the first error message
-          const firstError = error.errors[0]
-          const errorKey = firstError.code
-
-          // Check for custom error message
-          if (field.errorMessages?.[errorKey]) {
-            return field.errorMessages[errorKey] as string
-          }
-
-          // Return Zod's error message
-          return firstError.message
-        }
-        return 'Invalid value'
-      }
-    }
-
-    if (typeof rules.validate === 'object') {
+    if (!rules.validate) {
+      rules.validate = zodValidate
+    } else if (typeof rules.validate === 'object') {
       rules.validate.schema = zodValidate
     } else {
       rules.validate = zodValidate
@@ -62,42 +129,21 @@ export function createFieldValidation(
     if (!rules.validate) {
       rules.validate = field.validate
     } else if (typeof rules.validate === 'object') {
-      // Combine with Zod validation
       rules.validate.custom = field.validate
     } else {
-      // Create a combined validator
-      const zodValidate = rules.validate
-      rules.validate = async (value: any, formValues: any) => {
-        // Run Zod validation first - pass both parameters
-        const zodResult = await zodValidate(value, formValues)
-        if (zodResult !== true) return zodResult
-
-        // Then run custom validation - only pass value since validate expects one param
-        return field.validate(value)
-      }
+      const validator = field.validate
+      rules.validate = combineValidators(rules.validate, (value: any) => validator(value))
     }
   }
 
   // Add cross-field validation if present
-  // Note: react-hook-form's validate function signature is (value, formValues)
-  // where formValues is automatically provided by react-hook-form
   if (field.validateWithForm) {
     if (!rules.validate) {
       rules.validate = field.validateWithForm
     } else if (typeof rules.validate === 'object') {
-      // Add to object validators
       rules.validate.crossField = field.validateWithForm
     } else {
-      // Combine with existing validation
-      const existingValidate = rules.validate
-      rules.validate = async (value: any, formValues: any) => {
-        // Run existing validation first - pass both parameters
-        const existingResult = await existingValidate(value, formValues)
-        if (existingResult !== true) return existingResult
-
-        // Then run cross-field validation with both parameters
-        return field.validateWithForm(value, formValues)
-      }
+      rules.validate = combineValidators(rules.validate, field.validateWithForm)
     }
   }
 
@@ -171,65 +217,10 @@ export function createFormResolver<TFieldValues extends FieldValues = FieldValue
 
     for (const field of fieldsNeedingValidation) {
       const value = values[field.key as keyof TFieldValues]
-      const fieldOptions = field.options
+      const error = await validateField(field, value, values)
 
-      // Check if this field should be validated based on conditions
-      if (fieldOptions.validateWhen && !fieldOptions.validateWhen(values)) {
-        // Skip validation if validateWhen returns false
-        continue
-      }
-
-      // Check if field is required (either statically or conditionally)
-      const isRequired = fieldOptions.required ||
-        (fieldOptions.requiredWhen && fieldOptions.requiredWhen(values))
-
-      if (isRequired && !value) {
-        errors[field.key] = {
-          type: 'required',
-          message: fieldOptions.errorMessages?.required || 'This field is required'
-        }
-        continue
-      }
-
-      // Run Zod schema validation
-      if (fieldOptions.schema) {
-        try {
-          await fieldOptions.schema.parseAsync(value)
-        } catch (error) {
-          if (error instanceof ZodError) {
-            const firstError = error.errors[0]
-            const errorKey = firstError.code
-
-            errors[field.key] = {
-              type: errorKey,
-              message: fieldOptions.errorMessages?.[errorKey] || firstError.message
-            }
-            continue
-          }
-        }
-      }
-
-      // Run validate function
-      if (fieldOptions.validate) {
-        const result = await fieldOptions.validate(value)
-        if (result !== true) {
-          errors[field.key] = {
-            type: 'validate',
-            message: result as string
-          }
-          continue
-        }
-      }
-
-      // Run validateWithForm function
-      if (fieldOptions.validateWithForm) {
-        const result = await fieldOptions.validateWithForm(value, values)
-        if (result !== true) {
-          errors[field.key] = {
-            type: 'validateWithForm',
-            message: result as string
-          }
-        }
+      if (error) {
+        errors[field.key] = error
       }
     }
 
@@ -282,7 +273,7 @@ export function getValidationGroups(
     }
   })
 
-  return Array.from(groups).sort()
+  return Array.from(groups).sort((a, b) => a.localeCompare(b))
 }
 
 /**
