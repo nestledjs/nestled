@@ -67,7 +67,7 @@ function renderComponent(
       )
     case FormFieldType.MarkdownEditor:
       return (
-        <React.Suspense fallback={<div>Loading editor...</div>}>
+        <React.Suspense fallback={<div aria-live="polite">Loading markdown editor...</div>}>
           <MarkdownEditor
             form={form}
             field={field}

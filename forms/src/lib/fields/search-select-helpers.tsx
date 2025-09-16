@@ -11,7 +11,7 @@ export function SelectedItems({
   theme: any
 }) {
   // Defensive check for undefined or null values
-  const items = value || []
+  const items = value ?? []
 
   return (
     <>
