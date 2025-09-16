@@ -11,9 +11,13 @@ function FormStateWatcher({ onStateChange }: { onStateChange: (state: any) => vo
   const form = useFormContext()
   const values = form.watch()
 
+  // Use useCallback to memoize the callback and avoid infinite loops
+  const stableCallback = React.useCallback(onStateChange, [])
+
   React.useEffect(() => {
-    onStateChange(values)
-  }, [values, onStateChange])
+    stableCallback(values)
+    // Only run when values actually change (by stringifying for comparison)
+  }, [JSON.stringify(values), stableCallback])
 
   return null
 }
