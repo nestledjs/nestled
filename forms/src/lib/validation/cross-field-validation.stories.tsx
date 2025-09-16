@@ -22,7 +22,7 @@ function FormStateWatcher({ onStateChange }: { onStateChange: (state: any) => vo
 
   React.useEffect(() => {
     callbackRef.current(values)
-  }, [valuesString, values])
+  }, [valuesString])  // Only depend on stringified values to avoid object reference issues
 
   return null
 }
