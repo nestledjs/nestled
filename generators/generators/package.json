@@ -1,7 +1,7 @@
 {
   "name": "@nestledjs/generators",
   "version": "0.1.27",
-  "type": "module",
+  "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
   "description": "Complete collection of all Nestled generators - installs all generator packages for scaffolding API, web, config, and shared code",
