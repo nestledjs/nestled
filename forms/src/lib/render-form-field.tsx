@@ -6,7 +6,10 @@ import { useFormConfig } from './form-config-context'
 
 import { TextField } from './fields/text-field'
 import { TextAreaField } from './fields/textarea-field'
-import { MarkdownEditor } from './fields/markdown-editor'
+// Lazy load MarkdownEditor to avoid SSR issues with MDX Editor dependencies
+const MarkdownEditor = React.lazy(() =>
+  import('./fields/markdown-editor').then(m => ({ default: m.MarkdownEditor }))
+)
 import { EmailField } from './fields/email-field'
 import { PasswordField } from './fields/password-field'
 import { UrlField } from './fields/url-field'
@@ -64,13 +67,15 @@ function renderComponent(
       )
     case FormFieldType.MarkdownEditor:
       return (
-        <MarkdownEditor
-          form={form}
-          field={field}
-          hasError={hasError}
-          formReadOnly={formReadOnly}
-          formReadOnlyStyle={formReadOnlyStyle}
-        />
+        <React.Suspense fallback={<div>Loading editor...</div>}>
+          <MarkdownEditor
+            form={form}
+            field={field}
+            hasError={hasError}
+            formReadOnly={formReadOnly}
+            formReadOnlyStyle={formReadOnlyStyle}
+          />
+        </React.Suspense>
       )
     case FormFieldType.Email:
       return (
