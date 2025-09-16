@@ -326,7 +326,7 @@ export function getPopularCurrencyOptions() {
  */
 function groupThousands(intPart: string, separator: string): string {
   const isNegative = intPart.startsWith('-')
-  let digits = isNegative ? intPart.slice(1) : intPart
+  const digits = isNegative ? intPart.slice(1) : intPart
   if (digits.length <= 3 || separator === '') {
     return isNegative ? '-' + digits : digits
   }

@@ -50,10 +50,11 @@ export const PasswordConfirmation: Story = {
     showState: true,
   },
   render: (args) => {
-    const [formState, setFormState] = React.useState<any>({})
-    const [submitted, setSubmitted] = React.useState(false)
+    const PasswordConfirmationTest = () => {
+      const [formState, setFormState] = React.useState<any>({})
+      const [submitted, setSubmitted] = React.useState(false)
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <Form
           id="password-confirmation-test"
@@ -116,7 +117,10 @@ export const PasswordConfirmation: Story = {
           </div>
         )}
       </div>
-    )
+      )
+    }
+
+    return <PasswordConfirmationTest />
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
@@ -163,9 +167,10 @@ export const ConditionalValidation: Story = {
     showState: true,
   },
   render: (args) => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
+    const ConditionalValidationTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <Form
           id="conditional-validation-test"
@@ -232,7 +237,10 @@ export const ConditionalValidation: Story = {
           </div>
         )}
       </div>
-    )
+      )
+    }
+
+    return <ConditionalValidationTest />
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
@@ -290,16 +298,17 @@ export const AsyncValidation: Story = {
     showState: true,
   },
   render: (args) => {
-    const [submitted, setSubmitted] = React.useState<any>(null)
+    const AsyncValidationTest = () => {
+      const [submitted, setSubmitted] = React.useState<any>(null)
 
-    // Mock async validation function
-    const checkUsernameAvailability = async (username: string): Promise<boolean> => {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      const takenUsernames = ['admin', 'test', 'user']
-      return !takenUsernames.includes(username.toLowerCase())
-    }
+      // Mock async validation function
+      const checkUsernameAvailability = async (username: string): Promise<boolean> => {
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        const takenUsernames = ['admin', 'test', 'user']
+        return !takenUsernames.includes(username.toLowerCase())
+      }
 
-    return (
+      return (
       <div className="max-w-md p-4 bg-white rounded-lg shadow">
         <Form
           id="async-validation-test"
@@ -347,7 +356,10 @@ export const AsyncValidation: Story = {
           </div>
         )}
       </div>
-    )
+      )
+    }
+
+    return <AsyncValidationTest />
   },
   play: async ({ canvasElement, step }) => {
     const canvas = within(canvasElement)
