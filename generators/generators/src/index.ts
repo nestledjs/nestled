@@ -1,1 +1,1 @@
-export * from './lib/generators'
+export * from './lib/generators.js'
