@@ -10,15 +10,18 @@ export function SelectedItems({
   onChange: (items: SearchSelectOption[]) => void
   theme: any
 }) {
+  // Defensive check for undefined or null values
+  const items = value ?? []
+
   return (
     <>
-      {value.map((item: SearchSelectOption) => (
+      {items.map((item: SearchSelectOption) => (
         <span key={item.value} className={theme.selectedItem}>
           <span className={theme.selectedItemLabel}>{item.label}</span>
           <button
             type="button"
             className={theme.selectedItemRemoveButton}
-            onClick={() => onChange(value.filter((v: SearchSelectOption) => v.value !== item.value))}
+            onClick={() => onChange(items.filter((v: SearchSelectOption) => v.value !== item.value))}
           >
             <svg
               className={theme.selectedItemRemoveIcon}
