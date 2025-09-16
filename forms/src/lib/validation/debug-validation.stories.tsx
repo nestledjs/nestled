@@ -10,13 +10,18 @@ function FormStateWatcher({ onStateChange }: { onStateChange: (state: any) => vo
   const form = useFormContext()
   const values = form.watch()
 
-  // Use useCallback to memoize the callback and avoid infinite loops
-  const stableCallback = React.useCallback(onStateChange, [])
+  // Use ref to maintain stable reference while always calling latest callback
+  const callbackRef = React.useRef(onStateChange)
+  React.useLayoutEffect(() => {
+    callbackRef.current = onStateChange
+  })
+
+  // Memoize stringified values to avoid recreating on every render
+  const valuesString = React.useMemo(() => JSON.stringify(values), [values])
 
   React.useEffect(() => {
-    stableCallback(values)
-    // Only run when values actually change (by stringifying for comparison)
-  }, [JSON.stringify(values), stableCallback])
+    callbackRef.current(values)
+  }, [valuesString, values])
 
   return null
 }
