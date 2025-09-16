@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react'
-import type { Decorator, Preview } from '@storybook/react'
+import type { Decorator, Preview } from '@storybook/react-vite'
 
 // --- Theme Injection Setup (Your existing code) ---
 import { tailwindTheme } from '@nestledjs/forms'
@@ -99,6 +99,13 @@ const withTheme: Decorator = (StoryFn, context) => {
 const preview: Preview = {
   parameters: {
     tags: ['autodocs'],
+
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: 'todo',
+    },
   },
   // The order matters: the CSS toggle should run first to set up the environment,
   // then the theme injector runs. Decorators are applied from last to first.

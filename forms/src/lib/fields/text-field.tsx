@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useFormTheme } from '../theme-context'
+import { useFieldValidation } from '../hooks/use-field-validation'
 import React from 'react'
 
 export function TextField({
@@ -18,6 +19,12 @@ export function TextField({
   const isReadOnly = field.options.readOnly ?? formReadOnly
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
   const value = form.getValues(field.key) ?? ''
+
+  // Get validation rules including Zod schema and cross-field validation
+  const validationRules = useFieldValidation(
+    field,
+    form
+  )
 
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
@@ -61,7 +68,7 @@ export function TextField({
         placeholder={field.options.placeholder}
         defaultValue={field.options.defaultValue}
         required={field.options.required}
-        {...form.register(field.key, { required: field.options.required })}
+        {...form.register(field.key, validationRules)}
         className={clsx(
           theme.textField.input,
           field.options.disabled && theme.textField.disabled,

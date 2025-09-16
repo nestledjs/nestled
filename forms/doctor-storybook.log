@@ -1,0 +1,25 @@
+🩺 The doctor is checking the health of your Storybook..
+╭ Package storybook not found ───────────────────────────────────────────────────────────╮
+│                                                                                        │
+│   The storybook package was not found in your package.json.                            │
+│   Installing storybook as a direct dev dependency in your package.json is required.    │
+│                                                                                        │
+╰────────────────────────────────────────────────────────────────────────────────────────╯
+╭ Incompatible packages found ────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│                                                                                                                                     │
+│   The following packages are incompatible with Storybook 9.0.15 as they depend on different major versions of Storybook packages:   │
+│   - @storybook/test@8.6.14 (9.0.15 available!)                                                                                      │
+│    Repo: https://github.com/storybookjs/storybook/tree/next/code/lib/test                                                           │
+│                                                                                                                                     │
+│                                                                                                                                     │
+│   Please consider updating your packages or contacting the maintainers for compatibility details.                                   │
+│   For more on Storybook 8 compatibility, see the linked GitHub issue:                                                               │
+│   https://github.com/storybookjs/storybook/issues/26031                                                                             │
+│                                                                                                                                     │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+You can always recheck the health of your project by running:
+npx storybook doctor
+
+Full logs are available in /Users/justinhandley/IdeaProjects/nestled/forms/doctor-storybook.log
+

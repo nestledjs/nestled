@@ -31,9 +31,9 @@
     "@nestjs/platform-express": "^10.0.2",
     "@nx/devkit": "21.3.11",
     "@prisma/internals": "^6.11.0",
-    "@storybook/addon-a11y": "^9.0.15",
-    "@storybook/addon-docs": "^9.0.15",
-    "@storybook/addon-vitest": "^9.0.15",
+    "@storybook/addon-a11y": "^9.1.6",
+    "@storybook/addon-docs": "^9.1.6",
+    "@storybook/addon-vitest": "^9.1.6",
     "@tailwindcss/postcss": "^4.1.11",
     "@tailwindcss/vite": "^4.1.11",
     "@types/js-yaml": "^4.0.9",
@@ -79,8 +79,7 @@
     "@nx/webpack": "21.3.11",
     "@nx/workspace": "21.3.11",
     "@prisma/client": "^6.11.0",
-    "@storybook/react": "9.0.15",
-    "@storybook/react-vite": "9.0.15",
+    "@storybook/react-vite": "9.1.6",
     "@swc-node/register": "~1.9.1",
     "@swc/cli": "0.6.0",
     "@swc/core": "~1.5.7",
@@ -118,7 +117,7 @@
     "pg": "^8.13.0",
     "playwright": "^1.53.1",
     "prettier": "^2.6.2",
-    "storybook": "9.0.15",
+    "storybook": "9.1.6",
     "tailwindcss": "^4.0.0",
     "ts-jest": "29.4.1",
     "ts-node": "10.9.1",
@@ -130,7 +129,8 @@
     "vite-plugin-dts": "~4.5.0",
     "vitest": "^3.2.4",
     "yargs": "^17.7.2",
-    "jest-util": "~30.0.0"
+    "jest-util": "~30.0.0",
+    "eslint-plugin-storybook": "9.1.6"
   },
   "nx": {
     "includedScripts": []

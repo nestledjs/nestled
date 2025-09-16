@@ -13,7 +13,9 @@ permissions:
 jobs:
   main:
     runs-on: ubuntu-latest
-
+    env:
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_AUTH_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:

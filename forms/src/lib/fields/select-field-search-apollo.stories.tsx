@@ -1,4 +1,4 @@
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from '@storybook/react-vite'
 
 /**
  * The SelectFieldSearchApollo component provides a searchable dropdown with Apollo GraphQL integration.

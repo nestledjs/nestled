@@ -1,6 +1,7 @@
 import { DocumentNode, TypedDocumentNode } from '@apollo/client'
 import { JSX, ReactNode } from 'react'
 import { UseFormReturn } from 'react-hook-form'
+import { ZodTypeAny } from 'zod'
 
 // The single enum for all field types, combining the best of both libraries
 export enum FormFieldType {
@@ -103,10 +104,10 @@ export interface BaseFieldOptions {
   /**
    * Function that determines if this field should be disabled based on current form values.
    * This dynamically overrides the static 'disabled' property.
-   * 
+   *
    * @param formValues - Current values of all form fields
    * @returns true if field should be disabled, false otherwise
-   * 
+   *
    * @example
    * ```tsx
    * FormFieldClass.text('personalEmail', {
@@ -116,6 +117,143 @@ export interface BaseFieldOptions {
    * ```
    */
   disabledWhen?: (formValues: any) => boolean
+
+  /**
+   * Zod schema for field-level validation.
+   * This provides type-safe, composable validation with excellent error messages.
+   * Can be used alongside or instead of the validate function.
+   *
+   * @example
+   * ```tsx
+   * import { z } from 'zod'
+   *
+   * FormFieldClass.text('username', {
+   *   label: 'Username',
+   *   schema: z.string().min(3, 'Username must be at least 3 characters').max(20)
+   * })
+   *
+   * FormFieldClass.email('email', {
+   *   label: 'Email',
+   *   schema: z.string().email('Please enter a valid email address')
+   * })
+   * ```
+   */
+  schema?: ZodTypeAny
+
+  /**
+   * Custom error messages for validation.
+   * These override the default messages from Zod schemas or validation functions.
+   *
+   * @example
+   * ```tsx
+   * FormFieldClass.text('username', {
+   *   label: 'Username',
+   *   required: true,
+   *   schema: z.string().min(3),
+   *   errorMessages: {
+   *     required: 'Username is required',
+   *     too_small: 'Username must be at least 3 characters long'
+   *   }
+   * })
+   * ```
+   */
+  errorMessages?: {
+    required?: string
+    invalid?: string
+    [key: string]: string | undefined
+  }
+
+  /**
+   * Cross-field validation function that has access to all form values.
+   * This is useful for validation that depends on multiple fields.
+   *
+   * @param value - The current field's value
+   * @param formValues - All form field values
+   * @returns true if valid, error message string if invalid, or Promise for async validation
+   *
+   * @example
+   * ```tsx
+   * FormFieldClass.password('confirmPassword', {
+   *   label: 'Confirm Password',
+   *   validateWithForm: (value, formValues) => {
+   *     if (value !== formValues.password) {
+   *       return 'Passwords must match'
+   *     }
+   *     return true
+   *   }
+   * })
+   *
+   * // Async cross-field validation
+   * FormFieldClass.text('username', {
+   *   label: 'Username',
+   *   validateWithForm: async (value, formValues) => {
+   *     if (formValues.accountType === 'premium' && value.length < 5) {
+   *       return 'Premium accounts require usernames with at least 5 characters'
+   *     }
+   *     const isAvailable = await checkUsernameAvailability(value)
+   *     return isAvailable || 'Username is already taken'
+   *   }
+   * })
+   * ```
+   */
+  validateWithForm?: (value: any, formValues: any) => string | boolean | Promise<string | boolean>
+
+  /**
+   * Array of field names this validation depends on.
+   * When specified, this field will only re-validate when these specific fields change,
+   * improving performance for complex forms.
+   *
+   * @example
+   * ```tsx
+   * FormFieldClass.text('confirmPassword', {
+   *   label: 'Confirm Password',
+   *   validateWithForm: (value, formValues) => value === formValues.password || 'Passwords must match',
+   *   validationDependencies: ['password'] // Only re-validate when password changes
+   * })
+   * ```
+   */
+  validationDependencies?: string[]
+
+  /**
+   * Validation group this field belongs to.
+   * Useful for multi-step forms where different groups validate at different times.
+   *
+   * @example
+   * ```tsx
+   * // Step 1 fields
+   * FormFieldClass.text('firstName', {
+   *   label: 'First Name',
+   *   validationGroup: 'personal-info',
+   *   required: true
+   * })
+   *
+   * // Step 2 fields
+   * FormFieldClass.email('email', {
+   *   label: 'Email',
+   *   validationGroup: 'contact-info',
+   *   required: true
+   * })
+   * ```
+   */
+  validationGroup?: string
+
+  /**
+   * Function that determines when this field should be validated.
+   * If this returns false, validation is skipped entirely.
+   *
+   * @param formValues - Current form values
+   * @returns true if field should be validated, false to skip validation
+   *
+   * @example
+   * ```tsx
+   * FormFieldClass.text('companyName', {
+   *   label: 'Company Name',
+   *   required: true,
+   *   validateWhen: (formValues) => formValues.accountType === 'business'
+   * })
+   * ```
+   */
+  validateWhen?: (formValues: any) => boolean
 }
 
 // Specific options interfaces that extend the base
