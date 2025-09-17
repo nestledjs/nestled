@@ -5,10 +5,6 @@
     ".": {
       "import": "./index.js",
       "types": "./index.d.ts"
-    },
-    "./markdown": {
-      "import": "./markdown.js",
-      "types": "./markdown.d.ts"
     }
   },
   "main": "./index.js",

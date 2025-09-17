@@ -39,8 +39,7 @@ export type { FieldValues } from 'react-hook-form'
 // Field Components
 export { TextField } from './lib/fields/text-field'
 export { TextAreaField } from './lib/fields/textarea-field'
-// MarkdownEditor removed from main exports to avoid SSR issues
-// Import from '@nestledjs/forms/markdown' when needed
+export { MarkdownEditor } from './lib/fields/markdown-editor'
 export { EmailField } from './lib/fields/email-field'
 export { PasswordField } from './lib/fields/password-field'
 export { UrlField } from './lib/fields/url-field'
