@@ -173,6 +173,7 @@ function renderComponent(
           form={form}
           field={field}
           hasError={hasError}
+          errorMessage={hasError ? (form.formState.errors[field.key]?.message as string) ?? 'This field is required' : undefined}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
         />
@@ -504,7 +505,7 @@ export function RenderFormField({
         {layout === 'horizontal' && labelComponent}
         <div className={clsx(layout === 'horizontal' && 'flex-1')}>
           {component}
-          {error && <span className="text-red-700 text-sm">{errorMessage}</span>}
+          {error && field.type !== FormFieldType.Checkbox && <span className="text-red-700 text-sm">{errorMessage}</span>}
         </div>
       </div>
     </>
