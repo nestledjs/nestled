@@ -19,7 +19,7 @@ export function ButtonField({
       
       // Call custom onClick if provided
       if (field.options.onClick) {
-        await field.options.onClick()
+        await field?.options?.onClick?.()
       }
     } : undefined
 
