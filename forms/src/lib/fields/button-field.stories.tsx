@@ -168,4 +168,28 @@ export const FullWidth: Story = {
     await expect(buttonElement).toBeInTheDocument()
     // You may want to add a visual regression test here if you use one
   },
+}
+
+export const DisabledSubmitButton: Story = {
+  args: {
+    type: 'submit',
+    disabled: true,
+    text: 'Disabled Submit',
+    variant: 'primary',
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement)
+    const buttonElement = canvas.getByRole('button', { name: 'Disabled Submit' })
+    
+    // Verify button exists and is disabled
+    await expect(buttonElement).toBeInTheDocument()
+    await expect(buttonElement).toBeDisabled()
+    await expect(buttonElement).toHaveAttribute('type', 'submit')
+    
+    // Try to click the disabled button - should not cause any issues
+    await userEvent.click(buttonElement)
+    
+    // Button should still be disabled after click attempt
+    await expect(buttonElement).toBeDisabled()
+  },
 } 
