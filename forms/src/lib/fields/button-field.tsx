@@ -8,7 +8,7 @@ export function ButtonField({
   hasError,
 }: FormFieldProps<Extract<FormField, { type: FormFieldType.Button }>>) {
 
-  const handleClick = field?.options?.onClick || (field.options.type === 'submit' && field.options.disabled) ?
+  const handleClick = field?.options?.onClick || (field?.options?.type === 'submit' && field?.options?.disabled) ?
     async (e: React.MouseEvent<HTMLButtonElement>) => {
       // Prevent form submission if button is disabled
       if (field.options.disabled) {
