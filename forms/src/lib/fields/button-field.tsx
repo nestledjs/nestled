@@ -11,7 +11,7 @@ export function ButtonField({
   const handleClick = field?.options?.onClick || (field?.options?.type === 'submit' && field?.options?.disabled) ?
     async (e: React.MouseEvent<HTMLButtonElement>) => {
       // Prevent form submission if button is disabled
-      if (field.options.disabled) {
+      if (field?.options?.disabled) {
         e.preventDefault()
         e.stopPropagation()
         return
