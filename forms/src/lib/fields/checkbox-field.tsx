@@ -3,6 +3,7 @@ import React from 'react'
 import { useFormTheme } from '../theme-context'
 import { Controller } from 'react-hook-form'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { DEFAULT_REQUIRED_ERROR_MESSAGE } from '../constants'
 
 type CheckboxFieldType = Extract<FormField, { type: FormFieldType.Checkbox }>
 
@@ -94,7 +95,7 @@ function renderControlledInput(props: CheckboxFieldProps, theme: any, inputRef: 
       name={field.key}
       control={form.control}
       defaultValue={options.defaultValue}
-      rules={{ required: options.required ? 'This field is required' : false }}
+      rules={{ required: options.required ? DEFAULT_REQUIRED_ERROR_MESSAGE : false }}
       render={({ field: controllerField }) => (
         <input
           id={field.key}
@@ -134,7 +135,7 @@ function renderStandardLayout(props: CheckboxFieldProps, inputNode: React.ReactN
       </div>
       {helpTextNode}
       {hasError && errorMessage && (
-        <div className="text-red-700 text-sm mt-1">{errorMessage}</div>
+        <div className={clsx(theme.errorMessage || 'text-red-700 text-sm mt-1')}>{errorMessage}</div>
       )}
     </div>
   )
