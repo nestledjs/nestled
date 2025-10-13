@@ -3,11 +3,13 @@ import React from 'react'
 import { useFormTheme } from '../theme-context'
 import { Controller } from 'react-hook-form'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
+import { DEFAULT_REQUIRED_ERROR_MESSAGE } from '../constants'
 
 type CheckboxFieldType = Extract<FormField, { type: FormFieldType.Checkbox }>
 
 interface CheckboxFieldProps extends Omit<FormFieldProps<CheckboxFieldType>, 'hasError'> {
   hasError?: boolean
+  errorMessage?: string
   formReadOnly?: boolean
   formReadOnlyStyle?: 'value' | 'disabled'
 }
@@ -93,7 +95,7 @@ function renderControlledInput(props: CheckboxFieldProps, theme: any, inputRef: 
       name={field.key}
       control={form.control}
       defaultValue={options.defaultValue}
-      rules={{ required: options.required }}
+      rules={{ required: options.required ? DEFAULT_REQUIRED_ERROR_MESSAGE : false }}
       render={({ field: controllerField }) => (
         <input
           id={field.key}
@@ -120,7 +122,7 @@ function renderControlledInput(props: CheckboxFieldProps, theme: any, inputRef: 
 }
 
 function renderStandardLayout(props: CheckboxFieldProps, inputNode: React.ReactNode, theme: any) {
-  const { field } = props
+  const { field, hasError, errorMessage } = props
   const options = field.options
   const labelNode = renderLabel(field, options, theme)
   const helpTextNode = renderHelpText(options, theme)
@@ -132,6 +134,9 @@ function renderStandardLayout(props: CheckboxFieldProps, inputNode: React.ReactN
         {labelNode}
       </div>
       {helpTextNode}
+      {hasError && errorMessage && (
+        <div className={clsx(theme.errorMessage || 'text-red-700 text-sm mt-1')}>{errorMessage}</div>
+      )}
     </div>
   )
 }

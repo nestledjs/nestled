@@ -3,6 +3,7 @@ import clsx from 'clsx'
 import { FormField, FormFieldType } from './form-types'
 import { useFormContext } from './form-context'
 import { useFormConfig } from './form-config-context'
+import { DEFAULT_REQUIRED_ERROR_MESSAGE } from './constants'
 
 import { TextField } from './fields/text-field'
 import { TextAreaField } from './fields/textarea-field'
@@ -173,6 +174,7 @@ function renderComponent(
           form={form}
           field={field}
           hasError={hasError}
+          errorMessage={hasError ? (form.formState.errors[field.key]?.message as string) ?? DEFAULT_REQUIRED_ERROR_MESSAGE : undefined}
           formReadOnly={formReadOnly}
           formReadOnlyStyle={formReadOnlyStyle}
         />
@@ -436,7 +438,7 @@ export function RenderFormField({
       try {
         // Update field registration with new required state
         form.register(field.key, { 
-          required: currentRequired ? 'This field is required' : false 
+          required: currentRequired ? DEFAULT_REQUIRED_ERROR_MESSAGE : false 
         })
       } catch (error) {
         console.warn(`Error updating field registration for ${field.key}:`, error)
@@ -450,7 +452,7 @@ export function RenderFormField({
   }
 
   const error = form.formState.errors[field.key]
-  const errorMessage = (error?.message as string) ?? (error ? 'This field is required' : null)
+  const errorMessage = (error?.message as string) ?? (error ? DEFAULT_REQUIRED_ERROR_MESSAGE : null)
 
   // --- CONFIGURABLE LABEL LOGIC ---
   const hasLabelProp = !!field.options.label
@@ -504,7 +506,7 @@ export function RenderFormField({
         {layout === 'horizontal' && labelComponent}
         <div className={clsx(layout === 'horizontal' && 'flex-1')}>
           {component}
-          {error && <span className="text-red-700 text-sm">{errorMessage}</span>}
+          {error && field.type !== FormFieldType.Checkbox && <span className="text-red-700 text-sm">{errorMessage}</span>}
         </div>
       </div>
     </>
