@@ -72,7 +72,7 @@ describe('sdk generator', () => {
       typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('__admin')
     );
     const adminCall = calls.find(([_, __, modelDir, context]) =>
-      typeof modelDir === 'string' && modelDir.includes('__admin') && context && context.adminPrefix === '__Admin'
+      typeof modelDir === 'string' && modelDir.includes('__admin') && context?.adminPrefix === '__Admin'
     );
     expect(userCall).toBeTruthy();
     expect(adminCall).toBeTruthy();
