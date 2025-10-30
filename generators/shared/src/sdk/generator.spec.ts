@@ -69,15 +69,15 @@ describe('sdk generator', () => {
     const calls = vi.mocked(mockDependencies.generateFiles).mock.calls;
     // There should be at least one call for user and one for admin
     const userCall = calls.find(([_, __, modelDir, context]) =>
-      typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('admin-graphql')
+      typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('__admin')
     );
     const adminCall = calls.find(([_, __, modelDir, context]) =>
-      typeof modelDir === 'string' && modelDir.includes('admin-graphql') && context && context.adminPrefix === 'Admin'
+      typeof modelDir === 'string' && modelDir.includes('__admin') && context && context.adminPrefix === '__Admin'
     );
     expect(userCall).toBeTruthy();
     expect(adminCall).toBeTruthy();
-    // Check that adminPrefix is empty string for user SDK and 'Admin' for admin SDK
+    // Check that adminPrefix is empty string for user SDK and '__Admin' for admin SDK
     expect(userCall[3].adminPrefix).toBe('');
-    expect(adminCall[3].adminPrefix).toBe('Admin');
+    expect(adminCall[3].adminPrefix).toBe('__Admin');
   });
 }); 
