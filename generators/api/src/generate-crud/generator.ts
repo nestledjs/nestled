@@ -127,6 +127,8 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
   const countMethodName = `${model.pluralModelPropertyName}Count`
   const readOneMethodName = model.modelPropertyName
 
+  // Handle BigInt ID fields: use GraphQLBigInt scalar from graphql-scalars
+  // to properly serialize/deserialize bigint values in GraphQL
   const idTsType = model.idFieldType === 'BigInt' ? 'bigint' : 'string'
   const idArgsType = model.idFieldType === 'BigInt' ? ", { type: () => GraphQLBigInt }" : ''
   const graphqlScalarImport = model.idFieldType === 'BigInt' ? "\nimport { GraphQLBigInt } from 'graphql-scalars'" : ''
