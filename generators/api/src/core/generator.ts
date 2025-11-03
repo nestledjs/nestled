@@ -11,12 +11,12 @@ export default async function generateLibraries(
 
   const dependencies = {
     'graphql-type-json': '^0.3.2',
-    '@nestjs/graphql': '^12.0.0',
+    '@nestjs/graphql': '^13.2.0',
     '@nestjs/common': '^10.0.0',
     '@nestjs/passport': '^10.0.0',
     '@nestjs/axios': '^3.0.0',
     '@prisma/client': '^6.11.0',
-    '@apollo/server': '^4.9.0',
+    '@apollo/server': '^5.1.0',
     'graphql-fields': '^2.0.3',
   }
 

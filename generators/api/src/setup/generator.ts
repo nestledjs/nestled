@@ -12,12 +12,13 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
   addDependenciesToPackageJson(
     tree,
     {
-      '@nestjs/apollo': '^13.1.0',
+      '@nestjs/apollo': '^13.2.1',
       '@nestjs/axios': '^4.0.0',
       '@nestjs/common': '^11.1.3',
       '@nestjs/config': '^4.0.2',
       '@nestjs/core': '^11.1.3',
-      '@nestjs/graphql': '^13.1.0',
+      '@nestjs/graphql': '^13.2.0',
+      '@as-integrations/express5': '^1.1.2',
       '@nestjs/jwt': '^11.0.0',
       '@nestjs/passport': '^11.0.5',
       '@nestjs/platform-express': '^11.1.3',
