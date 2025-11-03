@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/plugins",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "generators": "./generators.json",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -20,6 +20,6 @@
     "@nx/js": "22.0.2"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.2.2"
+    "@nestledjs/utils": "0.2.3"
   }
 }
