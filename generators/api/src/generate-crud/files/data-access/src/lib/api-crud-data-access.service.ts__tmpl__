@@ -192,26 +192,26 @@ export class ApiCrudDataAccessService {
     }
   }
 
-  async <%= model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: string) {
+  async <%= model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: <%= model.idFieldType === 'BigInt' ? 'bigint' : 'string' %>) {
     return this.data['<%= model.modelPropertyName %>'].findUnique({
-      where: { id: <%= model.idFieldType === 'BigInt' ? 'BigInt(id)' : 'id' %> },
+      where: { id },
       select: createSelect(info),
     });
   }
 
-  async update<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: string, input: dto.Update<%= model.modelName %>Input) {
+  async update<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: <%= model.idFieldType === 'BigInt' ? 'bigint' : 'string' %>, input: dto.Update<%= model.modelName %>Input) {
 <%- generateRelationHandling(model, 'update') %>
 
     return this.data['<%= model.modelPropertyName %>'].update({
-      where: { id: <%= model.idFieldType === 'BigInt' ? 'BigInt(id)' : 'id' %> },
+      where: { id },
       data,
       select: createSelect(info),
     });
   }
 
-  async delete<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(id: string) {
+  async delete<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(id: <%= model.idFieldType === 'BigInt' ? 'bigint' : 'string' %>) {
     return this.data['<%= model.modelPropertyName %>'].delete({
-      where: { id: <%= model.idFieldType === 'BigInt' ? 'BigInt(id)' : 'id' %> }
+      where: { id }
     });
   }
 <% } %>

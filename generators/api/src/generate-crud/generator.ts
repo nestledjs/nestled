@@ -127,6 +127,10 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
   const countMethodName = `${model.pluralModelPropertyName}Count`
   const readOneMethodName = model.modelPropertyName
 
+  const idTsType = model.idFieldType === 'BigInt' ? 'bigint' : 'string'
+  const idArgsType = model.idFieldType === 'BigInt' ? ", { type: () => GraphQLBigInt }" : ''
+  const graphqlScalarImport = model.idFieldType === 'BigInt' ? "\nimport { GraphQLBigInt } from 'graphql-scalars'" : ''
+
   return `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
 import { UseGuards } from '@nestjs/common'
 import type { GraphQLResolveInfo } from 'graphql'
@@ -137,7 +141,7 @@ import {
     Create${model.modelName}Input,
     List${model.modelName}Input,
     Update${model.modelName}Input
-    } from '@${npmScope}/api/generated-crud/data-access'
+    } from '@${npmScope}/api/generated-crud/data-access'${graphqlScalarImport}
 ${guardImports}
 
 @Resolver(() => ${model.modelName})
@@ -169,7 +173,7 @@ export class Generated${model.modelName}Resolver {
   ${readOneGuardDecorator ? `@UseGuards(${readOneGuardDecorator})` : ''}
   ${readOneMethodName}(
     @Info() info: GraphQLResolveInfo,
-    @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string
+    @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType}
   ) {
     return this.generatedService.${readOneMethodName}(info, ${model.modelPropertyName}Id)
   }
@@ -187,7 +191,7 @@ export class Generated${model.modelName}Resolver {
   ${updateGuardDecorator ? `@UseGuards(${updateGuardDecorator})` : ''}
   update${model.modelName}(
     @Info() info: GraphQLResolveInfo,
-    @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
+    @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType},
     @Args('input') input: Update${model.modelName}Input,
   ) {
     return this.generatedService.update${model.modelName}(info, ${model.modelPropertyName}Id, input)
@@ -196,7 +200,7 @@ export class Generated${model.modelName}Resolver {
   @Mutation(() => ${model.modelName}, { nullable: true })
   ${deleteGuardDecorator ? `@UseGuards(${deleteGuardDecorator})` : ''}
   delete${model.modelName}(
-    @Args('${model.modelPropertyName}Id') ${model.modelPropertyName}Id: string,
+    @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType},
   ) {
     return this.generatedService.delete${model.modelName}(${model.modelPropertyName}Id)
   }
