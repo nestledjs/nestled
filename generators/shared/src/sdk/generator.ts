@@ -162,6 +162,10 @@ export async function sdkGeneratorLogic(
       .map((f: any) => f.name)
       .join('\n  ')
 
+    // Get ID field type for GraphQL type definitions
+    const idField = model.fields.find((f: any) => f.isId)
+    const idGraphQLType = idField?.type || 'String'
+
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
       className,
       propertyName,
@@ -170,6 +174,7 @@ export async function sdkGeneratorLogic(
       fragmentFields,
       kebabName,
       adminPrefix: '',
+      idGraphQLType,
       tmpl: '',
     })
     ;['fragments', 'mutations', 'queries'].forEach((type) => {
@@ -197,6 +202,10 @@ export async function sdkGeneratorLogic(
     const fragmentFields = getAdminFragmentFields(model, allModels)
     const adminPrefix = '__Admin'
 
+    // Get ID field type for GraphQL type definitions
+    const idField = model.fields.find((f: any) => f.isId)
+    const idGraphQLType = idField?.type || 'String'
+
     console.log('Generating admin files for', modelName, 'at', modelDir);
 
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
@@ -207,6 +216,7 @@ export async function sdkGeneratorLogic(
       fragmentFields,
       kebabName,
       adminPrefix,
+      idGraphQLType,
       tmpl: '',
     })
     ;['fragments', 'mutations', 'queries'].forEach((type) => {

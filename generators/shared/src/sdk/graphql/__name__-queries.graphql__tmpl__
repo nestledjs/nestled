@@ -1,4 +1,4 @@
-query <%= adminPrefix ? adminPrefix : '' %><%= className %>($<%= propertyName %>Id: String!) {
+query <%= adminPrefix ? adminPrefix : '' %><%= className %>($<%= propertyName %>Id: <%= idGraphQLType %>!) {
   <%= propertyName %>(<%= propertyName %>Id: $<%= propertyName %>Id) {
     ...<%= adminPrefix ? adminPrefix : '' %><%= className %>Details
   }
