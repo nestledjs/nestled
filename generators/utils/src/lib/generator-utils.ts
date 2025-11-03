@@ -874,6 +874,7 @@ export interface DatabaseModel {
     update?: string
     delete?: string
   }
+  idFieldType?: string
 }
 
 export const DATABASE_MODELS: DatabaseModel[] = ${JSON.stringify(models, null, 2)}
