@@ -60,7 +60,6 @@
   },
   "release": {
     "projectsRelationship": "independent",
-    "releaseTagPattern": "{projectName}@{version}",
     "changelog": {
       "projectChangelogs": {
         "createRelease": "github"
@@ -81,6 +80,9 @@
         "tag": true,
         "tagMessage": "Release {projectName} v{version}"
       }
+    },
+    "releaseTag": {
+      "pattern": "{projectName}@{version}"
     }
   },
   "plugins": [

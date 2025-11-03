@@ -4,15 +4,23 @@ documents:
   - 'libs/shared/sdk/src/graphql/**/*.graphql'
   - 'libs/shared/sdk/src/__admin/**/*.graphql'
 generates:
+  # Legacy hooks for existing code
   libs/shared/sdk/src/generated/graphql.ts:
-    config:
-      withComponent: false
-      withHOC: false
-      withHooks: true
     plugins:
-      - 'typescript'
-      - 'typescript-operations'
-      - 'typescript-react-apollo'
+      - typescript
+      - typescript-operations
+      - typescript-react-apollo
+    config:
+      withHooks: true
+      useTypedDocumentNode: true
+      gqlImport: '@apollo/client#gql'
+      preResolveTypes: true
+      apolloReactHooksImportFrom: '@apollo/client/react'
+  # Client preset for new code (Apollo Client 4 compatible)
+  libs/shared/sdk/src/generated/client/:
+    preset: client
+    config:
+      useTypeImports: true
 
 hooks:
   afterAllFileWrite:
