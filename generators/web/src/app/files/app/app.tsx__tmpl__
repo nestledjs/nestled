@@ -3,7 +3,7 @@ import type { UptimeQuery } from '@<%= npmScope %>/shared/sdk'
 import { UptimeDocument } from '@<%= npmScope %>/shared/sdk'
 import { apolloLoader } from './apollo-loader'
 import { useLoaderData } from 'react-router'
-import { useReadQuery } from '@apollo/client'
+import { useReadQuery } from '@apollo/client/react'
 
 export const loader = apolloLoader()(({ preloadQuery }) => {
   const uptimeQueryRef = preloadQuery(UptimeDocument)
