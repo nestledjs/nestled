@@ -230,16 +230,6 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       const isFieldRequired = isRelation ? false : field.isRequired
       // const isRequired = field.isRequired // Natively supported by DMMF
 
-      // ALWAYS LOG: Print every field processed for debugging
-      console.log('*** FIELD DEBUG ***', {
-        model: model.name,
-        field: field.name,
-        kind: field.kind,
-        type: field.type,
-        isList: field.isList,
-        isRequired: field.isRequired,
-      })
-
       let tsType = originalType
 
       if (field.kind === 'scalar') {
@@ -322,15 +312,6 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
       if (isRelation) {
         // For relations, always use Partial<Type> (for both single and list)
         finalTsType = `Partial<${tsType}>`
-        // DEBUG: Log relation fields
-        console.log('DEBUG: Relation field detected:', {
-          model: model.name,
-          field: field.name,
-          kind: field.kind,
-          type: field.type,
-          isList: field.isList,
-          isRequired: field.isRequired,
-        })
       }
 
       // Add null union type only for non-required fields
