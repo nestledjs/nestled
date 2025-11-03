@@ -16,11 +16,15 @@ generates:
       gqlImport: '@apollo/client#gql'
       preResolveTypes: true
       apolloReactHooksImportFrom: '@apollo/client/react'
+      scalars:
+        BigInt: bigint
   # Client preset for new code (Apollo Client 4 compatible)
   libs/shared/sdk/src/generated/client/:
     preset: client
     config:
       useTypeImports: true
+      scalars:
+        BigInt: bigint
 
 hooks:
   afterAllFileWrite:
