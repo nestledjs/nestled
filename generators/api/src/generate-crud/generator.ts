@@ -239,6 +239,8 @@ export async function generateCrudLogic(
         const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
         const pluralPropertyName = getPluralName(singularPropertyName)
         const authConfig = getCrudAuthForModel(prismaSchema, model.name)
+        const idField = model.fields.find((f) => f.isId)
+        const idFieldType = idField ? idField.type : 'String'
         return {
           name: model.name,
           pluralName: getPluralName(model.name),
@@ -268,6 +270,7 @@ export async function generateCrudLogic(
           pluralModelName: getPluralName(model.name),
           pluralModelPropertyName: pluralPropertyName,
           auth: authConfig,
+          idFieldType,
         }
       })
     } catch (error) {

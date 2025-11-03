@@ -102,6 +102,7 @@ export class Create<%= model.modelName %>Input {
     let tsType;
     if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
+    else if (field.type === 'BigInt') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
@@ -145,6 +146,7 @@ export class Update<%= model.modelName %>Input {
     let tsType;
     if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
+    else if (field.type === 'BigInt') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
@@ -181,6 +183,7 @@ export class List<%= model.modelName %>Input extends CorePagingInput {
     let tsType;
     if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
+    else if (field.type === 'BigInt') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }

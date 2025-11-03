@@ -194,7 +194,7 @@ export class ApiCrudDataAccessService {
 
   async <%= model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: string) {
     return this.data['<%= model.modelPropertyName %>'].findUnique({
-      where: { id },
+      where: { id: <%= model.idFieldType === 'BigInt' ? 'BigInt(id)' : 'id' %> },
       select: createSelect(info),
     });
   }
@@ -203,7 +203,7 @@ export class ApiCrudDataAccessService {
 <%- generateRelationHandling(model, 'update') %>
 
     return this.data['<%= model.modelPropertyName %>'].update({
-      where: { id },
+      where: { id: <%= model.idFieldType === 'BigInt' ? 'BigInt(id)' : 'id' %> },
       data,
       select: createSelect(info),
     });
@@ -211,7 +211,7 @@ export class ApiCrudDataAccessService {
 
   async delete<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(id: string) {
     return this.data['<%= model.modelPropertyName %>'].delete({
-      where: { id }
+      where: { id: <%= model.idFieldType === 'BigInt' ? 'BigInt(id)' : 'id' %> }
     });
   }
 <% } %>

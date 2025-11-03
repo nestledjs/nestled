@@ -400,6 +400,10 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
       // Extract auth configuration from model documentation
       const authConfig = model.documentation ? parseCrudAuth(model.documentation) : null
 
+      // Get the ID field type
+      const idField = model.fields.find((f) => f.isId)
+      const idFieldType = idField ? idField.type : 'String'
+
       return {
         name: model.name,
         pluralName: pluralize(model.name),
@@ -410,6 +414,7 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
         pluralModelName: pluralize(model.name),
         pluralModelPropertyName: pluralPropertyName,
         auth: authConfig || undefined,
+        idFieldType,
       }
     })
   } catch (error) {
