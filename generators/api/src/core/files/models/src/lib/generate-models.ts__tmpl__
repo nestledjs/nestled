@@ -280,6 +280,8 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         if (originalType === 'Int') listItemGraphQLType = 'Int'
         else if (originalType === 'Float') listItemGraphQLType = 'Float'
         else if (originalType === 'Decimal') listItemGraphQLType = 'GraphQLDecimal'
+        // IMPORTANT: Use GraphQLBigInt from graphql-scalars for BigInt fields
+        // Never use raw 'BigInt' as it's not a valid GraphQL type
         else if (originalType === 'BigInt') listItemGraphQLType = 'GraphQLBigInt'
         else if (originalType === 'Json') listItemGraphQLType = 'GraphQLJSONObject'
         else if (isEnum || isRelation)
@@ -297,6 +299,8 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         if (originalType === 'Int') decoratorType = '() => Int'
         else if (originalType === 'Float') decoratorType = '() => Float'
         else if (originalType === 'Decimal') decoratorType = '() => GraphQLDecimal'
+        // IMPORTANT: Use GraphQLBigInt from graphql-scalars for BigInt fields
+        // Never use raw 'BigInt' as it's not a valid GraphQL type
         else if (originalType === 'BigInt') decoratorType = '() => GraphQLBigInt'
         else if (originalType === 'Json') decoratorType = '() => GraphQLJSONObject'
         else if (isEnum || isRelation) decoratorType = `() => ${originalType}`
