@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/api",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
@@ -25,6 +25,6 @@
     "pg": "^8.13.0"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.2.4"
+    "@nestledjs/utils": "0.2.5"
   }
 }
