@@ -193,6 +193,10 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
   const usesFloat = models.some(model =>
     model.fields.some((field: { type: string }) => field.type === 'Float'),
   )
+  // Check if any model field uses BigInt
+  const usesBigInt = models.some(model =>
+    model.fields.some((field: { type: string }) => field.type === 'BigInt'),
+  )
   let output = `import { Field, ObjectType${usesFloat ? ', Float' : ''}, Int } from '@nestjs/graphql';\n`
   output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`
 
@@ -203,6 +207,9 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
   if (usesDecimal) {
     output += `import { Decimal } from '@prisma/client/runtime/library';\n`
     output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
+  }
+  if (usesBigInt) {
+    output += `import { GraphQLBigInt } from 'graphql-scalars';\n`
   }
   // Ensure Prisma and enums are imported correctly
   const enumNames = enums.map(e => e.name)
@@ -273,6 +280,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         if (originalType === 'Int') listItemGraphQLType = 'Int'
         else if (originalType === 'Float') listItemGraphQLType = 'Float'
         else if (originalType === 'Decimal') listItemGraphQLType = 'GraphQLDecimal'
+        else if (originalType === 'BigInt') listItemGraphQLType = 'GraphQLBigInt'
         else if (originalType === 'Json') listItemGraphQLType = 'GraphQLJSONObject'
         else if (isEnum || isRelation)
           listItemGraphQLType = originalType // Assumes enum/type is registered with GraphQL
@@ -289,6 +297,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
         if (originalType === 'Int') decoratorType = '() => Int'
         else if (originalType === 'Float') decoratorType = '() => Float'
         else if (originalType === 'Decimal') decoratorType = '() => GraphQLDecimal'
+        else if (originalType === 'BigInt') decoratorType = '() => GraphQLBigInt'
         else if (originalType === 'Json') decoratorType = '() => GraphQLJSONObject'
         else if (isEnum || isRelation) decoratorType = `() => ${originalType}`
         else if (originalType === 'DateTime') decoratorType = '() => Date'

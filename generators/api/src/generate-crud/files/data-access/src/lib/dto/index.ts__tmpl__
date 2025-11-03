@@ -2,6 +2,7 @@
 <%
 let gqlImports = new Set(['Field', 'InputType'])
 let usesGraphQLJSON = false
+let usesGraphQLBigInt = false
 let usesInt = false
 let usesFloat = false
 let usesID = false
@@ -70,6 +71,7 @@ for (const model of models) {
         if (field.type === 'Int') usesInt = true
         if (field.type === 'Float' || field.type === 'Decimal') usesFloat = true
         if (field.type === 'Json') usesGraphQLJSON = true
+        if (field.type === 'BigInt') usesGraphQLBigInt = true
         if (field.type === 'ID') usesID = true
         if (field.kind === 'enum') {
             enumNames.add(field.type)
@@ -85,6 +87,7 @@ usesPartialType = models.length > 0 // If we generate any Update input, we need 
 import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
 <% if (enumNames.size > 0) { %>import { <%= Array.from(enumNames).join(', ') %> } from '@<%= npmScope %>/api/core/models'
 <% } %><% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
+<% if (usesGraphQLBigInt) { %>import { GraphQLBigInt } from 'graphql-scalars'<% } %>
 import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
 
 <% for (const model of models) { %>
@@ -102,7 +105,7 @@ export class Create<%= model.modelName %>Input {
     let tsType;
     if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
-    else if (field.type === 'BigInt') { baseGqlType = 'String'; tsType = 'string'; }
+    else if (field.type === 'BigInt') { baseGqlType = 'GraphQLBigInt'; tsType = 'bigint'; }
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
@@ -146,7 +149,7 @@ export class Update<%= model.modelName %>Input {
     let tsType;
     if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
-    else if (field.type === 'BigInt') { baseGqlType = 'String'; tsType = 'string'; }
+    else if (field.type === 'BigInt') { baseGqlType = 'GraphQLBigInt'; tsType = 'bigint'; }
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
@@ -183,7 +186,7 @@ export class List<%= model.modelName %>Input extends CorePagingInput {
     let tsType;
     if (field.type === 'String') { baseGqlType = 'String'; tsType = 'string'; }
     else if (field.type === 'Int') { baseGqlType = 'Int'; tsType = 'number'; }
-    else if (field.type === 'BigInt') { baseGqlType = 'String'; tsType = 'string'; }
+    else if (field.type === 'BigInt') { baseGqlType = 'GraphQLBigInt'; tsType = 'bigint'; }
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
