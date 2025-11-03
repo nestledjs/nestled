@@ -10,10 +10,16 @@ import { useFormContext } from '../form-context'
 function FormStateWatcher({ onStateChange }: { onStateChange: (state: any) => void }) {
   const form = useFormContext()
   const values = form.watch()
+  const valuesRef = React.useRef(values)
 
   React.useEffect(() => {
-    onStateChange(values)
-  }, [values, onStateChange])
+    // Only call onStateChange if values actually changed (deep comparison of keys)
+    const hasChanged = JSON.stringify(valuesRef.current) !== JSON.stringify(values)
+    if (hasChanged) {
+      valuesRef.current = values
+      onStateChange(values)
+    }
+  }, [values])
 
   return null
 }

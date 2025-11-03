@@ -43,6 +43,7 @@
     "dayjs": "^1.11.13",
     "dompurify": "^3.2.6",
     "enquirer": "^2.4.1",
+    "graphql": "^16.11.0",
     "graphql-type-json": "^0.3.2",
     "js-yaml": "^4.1.0",
     "lodash-es": "^4.17.21",

@@ -161,10 +161,13 @@ export const Required: Story = {
   render: renderMarkdownEditor,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement)
-    
+
+    // Wait for the editor to finish loading
+    await canvas.findByText('This field is required. Please provide some content.', {}, { timeout: 5000 })
+
     // Test help text
     await expect(canvas.getByText('This field is required. Please provide some content.')).toBeInTheDocument()
-    
+
     // Verify the required field label shows the required indicator (if your theme includes it)
     await expectLabelToBePresent(canvas, 'Required Content')
   },

@@ -1,4 +1,4 @@
-import { useQuery } from '@apollo/client'
+import { useQuery } from '@apollo/client/react'
 import { useEffect, useState, useCallback } from 'react'
 import { SearchSelectOption, SearchSelectApolloOptions } from '../form-types'
 import { defaultOptionsMap } from './search-select-helpers'
@@ -20,20 +20,20 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
       if (filter) {
         processedList = filter(processedList)
       }
-      
+
       const apolloOptions = selectOptionsFunction
         ? selectOptionsFunction(processedList)
         : defaultOptionsMap(processedList)
-      
+
       // Merge initial options with Apollo results, avoiding duplicates
       if (initialOptions && initialOptions.length > 0) {
         const apolloValues = new Set(apolloOptions.map(opt => opt.value))
         const uniqueInitialOptions = initialOptions.filter(opt => !apolloValues.has(opt.value))
-        
+
         // Put initial options first, then Apollo options
         return [...uniqueInitialOptions, ...apolloOptions]
       }
-      
+
       return apolloOptions
     },
     [filter, selectOptionsFunction, initialOptions],
@@ -57,7 +57,7 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
         })
         return
       }
-      
+
       // When search is cleared, refetch with empty search to get all results
       const input: { search: string; searchFields?: string[] } = { search: '' }
       if (searchFields && searchFields.length > 0) {
@@ -75,4 +75,4 @@ export function useApolloSearch<TDataItem extends RequiredItemShape>(
     loading: apolloLoading,
     handleSearchChange,
   }
-} 
+}

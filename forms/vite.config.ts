@@ -55,5 +55,10 @@ export default defineConfig({
       reportsDirectory: '../coverage/forms',
       provider: 'v8' as const,
     },
+    server: {
+      deps: {
+        inline: ['react', 'react-dom'],
+      },
+    },
   },
 })
