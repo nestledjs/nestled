@@ -41,6 +41,7 @@ export interface ModelType {
   pluralModelName: string
   pluralModelPropertyName: string
   auth?: CrudAuthConfig
+  idFieldType?: string
 }
 
 export interface GenerateTemplateOptions {
