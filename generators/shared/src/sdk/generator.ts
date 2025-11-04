@@ -241,12 +241,13 @@ export async function sdkGeneratorLogic(
     tree,
     {},
     {
-      '@graphql-codegen/cli': '^5.0.7',
-      '@graphql-codegen/typescript': '^4.1.6',
+      '@graphql-codegen/cli': '^5.0.8',
+      '@graphql-codegen/typescript': '^4.2.0',
       '@graphql-codegen/introspection': '^4.0.3',
-      '@graphql-codegen/typescript-document-nodes': '^4.0.16',
-      '@graphql-codegen/typescript-operations': '^4.6.1',
-      '@graphql-codegen/typescript-react-apollo': '^4.3.3',
+      '@graphql-codegen/typescript-document-nodes': '^4.0.19',
+      '@graphql-codegen/typescript-operations': '^4.7.0',
+      '@graphql-codegen/typescript-react-apollo': '^4.4.0',
+      '@graphql-codegen/client-preset': '^4.5.0',
     },
   )
 
