@@ -42,6 +42,9 @@
           }
         ]
       }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
     }
   }
 }

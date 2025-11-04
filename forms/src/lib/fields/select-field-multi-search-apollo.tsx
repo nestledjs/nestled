@@ -73,7 +73,7 @@ export function SelectFieldMultiSearchApollo<TDataItem extends RequiredItemShape
   
   // Ensure the field has submit transformation for form submission
   // The Form component looks for field.options.submitTransform during submission
-  // eslint-disable-next-line no-param-reassign
+   
   field.options.submitTransform ??= multiSelectSubmitTransform
   
   const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)

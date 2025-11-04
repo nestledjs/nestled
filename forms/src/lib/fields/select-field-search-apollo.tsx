@@ -32,7 +32,7 @@ export function SelectFieldSearchApollo<
 >({ form, field, hasError, formReadOnly = false, formReadOnlyStyle = 'value' }: FormFieldProps<Extract<FormField, { type: FormFieldType.SearchSelectApollo }>> & { formReadOnly?: boolean, formReadOnlyStyle?: 'value' | 'disabled' }) {
   // Ensure the field has submit transformation for form submission
   // The Form component looks for field.options.submitTransform during submission
-  // eslint-disable-next-line no-param-reassign
+   
   field.options.submitTransform ??= singleSelectSubmitTransform
   
   const { options, loading: apolloLoading, handleSearchChange } = useApolloSearch<TDataItem>(field.options)

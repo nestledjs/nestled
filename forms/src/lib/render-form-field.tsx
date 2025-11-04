@@ -7,10 +7,6 @@ import { DEFAULT_REQUIRED_ERROR_MESSAGE } from './constants'
 
 import { TextField } from './fields/text-field'
 import { TextAreaField } from './fields/textarea-field'
-// Lazy load MarkdownEditor to avoid SSR issues with MDX Editor dependencies
-const MarkdownEditor = React.lazy(() =>
-  import('./fields/markdown-editor').then(m => ({ default: m.MarkdownEditor }))
-)
 import { EmailField } from './fields/email-field'
 import { PasswordField } from './fields/password-field'
 import { UrlField } from './fields/url-field'
@@ -35,6 +31,10 @@ import { SelectFieldMultiSearchApollo } from './fields/select-field-multi-search
 import { CustomField } from './fields/custom-field'
 import { CustomCheckboxField } from './fields/custom-checkbox-field'
 import { FormLabel } from './fields/label'
+// Lazy load MarkdownEditor to avoid SSR issues with MDX Editor dependencies
+const MarkdownEditor = React.lazy(() =>
+  import('./fields/markdown-editor').then(m => ({ default: m.MarkdownEditor }))
+)
 
 // This function remains internal to the renderer
 function renderComponent(
