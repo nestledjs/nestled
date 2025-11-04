@@ -329,8 +329,7 @@ function generateEnums(enums: readonly any[]): string {
 
   if (enums.length > 0) {
     const enumNames = enums.map(e => e.name).join(', ')
-    output += `import { ${enumNames} } from '${prismaImportPath}';\n\n`
-    output += `export { ${enumNames} };\n\n`
+    output += `export { ${enumNames} } from '${prismaImportPath}';\n\n`
 
     enums.forEach(enumType => {
       output += `registerEnumType(${enumType.name}, { name: '${enumType.name}' });\n\n`

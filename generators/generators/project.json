@@ -22,6 +22,9 @@
         "tsConfig": "generators/generators/tsconfig.lib.json",
         "assets": ["generators/generators/*.md"]
       }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
     }
   }
 }
