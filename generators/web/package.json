@@ -21,6 +21,6 @@
     "@nx/js": "22.0.2"
   },
   "peerDependencies": {
-    "@nestledjs/utils": "0.2.6"
+    "@nestledjs/utils": "0.2.7"
   }
 }
