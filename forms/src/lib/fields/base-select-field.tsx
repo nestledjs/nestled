@@ -1,3 +1,5 @@
+'use client'
+
 import { ReactElement, JSXElementConstructor } from 'react'
 import { Controller } from 'react-hook-form'
 import clsx from 'clsx'

@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect, useMemo } from 'react'
 import { useForm, UseFormProps, FieldValues } from 'react-hook-form'
 import { FormField, FormFieldType, InputFieldOptions } from './form-types'

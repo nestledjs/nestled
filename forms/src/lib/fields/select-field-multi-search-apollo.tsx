@@ -1,3 +1,5 @@
+'use client'
+
 import { FormField, FormFieldProps, FormFieldType, SearchSelectOption } from '../form-types'
 import { SearchSelectBase } from './search-select-base'
 import { multiSelectDisplayValue, SelectedItems } from './search-select-helpers'

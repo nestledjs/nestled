@@ -1,3 +1,5 @@
+'use client'
+
 import { isPossiblePhoneNumber } from 'react-phone-number-input'
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
