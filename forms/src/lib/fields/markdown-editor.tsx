@@ -1,3 +1,5 @@
+'use client'
+
 import React, { lazy, Suspense, useCallback, useEffect } from 'react'
 import { Controller } from 'react-hook-form'
 import clsx from 'clsx'

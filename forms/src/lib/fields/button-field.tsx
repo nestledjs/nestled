@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { Button, ButtonProps } from './button'

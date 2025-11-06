@@ -1,3 +1,5 @@
+'use client'
+
 import { SearchSelectOption } from '../form-types'
 
 // Selected items component for multi-select

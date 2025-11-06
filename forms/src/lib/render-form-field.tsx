@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useMemo, useEffect, useRef } from 'react'
 import clsx from 'clsx'
 import { FormField, FormFieldType } from './form-types'
