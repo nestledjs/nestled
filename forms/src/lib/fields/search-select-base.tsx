@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, ReactNode, useRef, useEffect, useCallback } from 'react'
 import clsx from 'clsx'
 import { SearchSelectOption } from '../form-types'

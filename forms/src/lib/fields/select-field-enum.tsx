@@ -1,3 +1,5 @@
+'use client'
+
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { SelectField } from './select-field'
 

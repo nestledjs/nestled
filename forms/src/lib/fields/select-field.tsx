@@ -1,3 +1,5 @@
+'use client'
+
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType, SelectOption } from '../form-types'
 import { BaseSelectField } from './base-select-field'

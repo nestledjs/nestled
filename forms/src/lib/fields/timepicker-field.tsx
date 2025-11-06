@@ -1,3 +1,5 @@
+'use client'
+
 import clsx from 'clsx'
 import { FormFieldProps, FormFieldType, BaseFieldOptions } from '../form-types'
 import { useFormTheme } from '../theme-context'

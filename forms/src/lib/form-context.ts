@@ -1,3 +1,5 @@
+'use client'
+
 import { createContext, useContext } from 'react'
 import { UseFormReturn, FieldValues } from 'react-hook-form'
 

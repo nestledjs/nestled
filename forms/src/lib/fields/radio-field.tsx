@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useState } from 'react'
 import { FormFieldProps, FormField, FormFieldType, RadioOption, RadioFormFieldOptions } from '../form-types'
 import { Controller } from 'react-hook-form'

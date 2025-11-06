@@ -1,3 +1,5 @@
+'use client'
+
 import { useMemo } from 'react'
 import { UseFormReturn, FieldValues } from 'react-hook-form'
 import { createFieldValidation } from '../utils/validation'

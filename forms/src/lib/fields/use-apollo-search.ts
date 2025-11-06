@@ -1,3 +1,5 @@
+'use client'
+
 import { useQuery } from '@apollo/client/react'
 import { useEffect, useState, useCallback } from 'react'
 import { SearchSelectOption, SearchSelectApolloOptions } from '../form-types'

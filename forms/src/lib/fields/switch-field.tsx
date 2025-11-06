@@ -1,3 +1,5 @@
+'use client'
+
 import clsx from 'clsx'
 import { Controller } from 'react-hook-form'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'

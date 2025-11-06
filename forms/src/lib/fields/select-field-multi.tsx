@@ -1,3 +1,5 @@
+'use client'
+
 import { FormFieldProps, FormField, FormFieldType } from '../form-types'
 import { SearchSelectBase } from './search-select-base'
 import { SelectedItems } from './search-select-helpers'

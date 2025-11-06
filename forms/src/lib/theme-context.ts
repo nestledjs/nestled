@@ -1,3 +1,5 @@
+'use client'
+
 import { createContext, useContext } from 'react'
 import { FormTheme, FormThemeSchema } from './form-theme'
 
