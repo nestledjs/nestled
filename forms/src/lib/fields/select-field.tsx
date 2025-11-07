@@ -57,8 +57,8 @@ export function SelectField({
                 {field.options.placeholder || 'Select an option...'}
               </option>
               {options.map((option) => (
-                <option 
-                  key={option.value} 
+                <option
+                  key={option.value}
                   value={option.value}
                   className={theme.option}
                 >
@@ -66,6 +66,32 @@ export function SelectField({
                 </option>
               ))}
             </select>
+            {/* Clear button */}
+            {fieldValue && (
+              <button
+                type="button"
+                className={theme.clearButton || (theme.button ? `${theme.button} opacity-70` : 'absolute inset-y-0 right-10 flex items-center pr-2 opacity-70')}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onChange('')
+                }}
+                disabled={isDisabled}
+                aria-label="Clear selection"
+              >
+                <svg
+                  className={theme.clearIcon || theme.buttonIcon || 'h-5 w-5'}
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            )}
             <div className={theme.arrow}>
               <svg className={theme.arrowIcon} viewBox="0 0 20 20" fill="currentColor">
                 <path
