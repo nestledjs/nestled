@@ -70,7 +70,7 @@ export function SelectField({
             {fieldValue && (
               <button
                 type="button"
-                className={theme.clearButton || (theme.button ? `${theme.button} opacity-70` : 'absolute inset-y-0 right-10 flex items-center pr-2 opacity-70')}
+                className={theme.clearButton || 'absolute inset-y-0 right-10 flex items-center pr-2 opacity-70'}
                 onClick={(e) => {
                   e.stopPropagation()
                   onChange('')
@@ -79,7 +79,7 @@ export function SelectField({
                 aria-label="Clear selection"
               >
                 <svg
-                  className={theme.clearIcon || theme.buttonIcon || 'h-5 w-5'}
+                  className={theme.clearIcon || 'h-5 w-5'}
                   xmlns="http://www.w3.org/2000/svg"
                   viewBox="0 0 20 20"
                   fill="currentColor"
