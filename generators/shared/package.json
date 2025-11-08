@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/shared",
-  "version": "0.3.8",
+  "version": "0.3.9",
   "generators": "./generators.json",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
