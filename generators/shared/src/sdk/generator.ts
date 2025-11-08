@@ -9,7 +9,15 @@ import {
 } from '@nx/devkit'
 import * as path from 'path'
 import * as fs from 'fs'
-import { addScriptToPackageJson, getPluralName, getAllPrismaModels, generateDatabaseModelContent, deleteFiles, deleteDirectory, getPrismaSchemaPath } from '@nestledjs/utils'
+import {
+  addScriptToPackageJson,
+  deleteDirectory,
+  deleteFiles,
+  generateDatabaseModelContent,
+  getAllPrismaModels,
+  getPluralName,
+  getPrismaSchemaPath,
+} from '@nestledjs/utils'
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { getDMMF } from '@prisma/internals'
@@ -25,9 +33,7 @@ function kebabCase(str: string): string {
 
 // Helper to get the default field for a model from DMMF
 function getDefaultField(model: any): string | undefined {
-  return model.fields.find(
-    (f: any) => f?.documentation?.includes('@defaultField')
-  )?.name
+  return model.fields.find((f: any) => f?.documentation?.includes('@defaultField'))?.name
 }
 
 // Helper to get admin fragment fields for a model
@@ -42,12 +48,12 @@ function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>): stri
           const relatedModel = allModels.find((m: any) => m.name === f.type)
           const defaultField = relatedModel ? getDefaultField(relatedModel) : null
           // Refactored to avoid nested template literals
-          let relationFields = 'id';
+          let relationFields = 'id'
           if (defaultField) {
-            relationFields += `\n    ${defaultField}`;
+            relationFields += `\n    ${defaultField}`
           }
-          return `${f.name} {\n    ${relationFields}\n  }`;
-        })
+          return `${f.name} {\n    ${relationFields}\n  }`
+        }),
     )
     .join('\n  ')
 }
@@ -69,10 +75,7 @@ async function ensureSdkLibrary(tree: Tree, dependencies: SdkGeneratorDependenci
     })
 
     // Clean up default generated files that we don't need
-    deleteFiles(tree, [
-      'libs/shared/sdk/src/lib/sdk.ts',
-      'libs/shared/sdk/src/lib/sdk.spec.ts'
-    ])
+    deleteFiles(tree, ['libs/shared/sdk/src/lib/sdk.ts', 'libs/shared/sdk/src/lib/sdk.spec.ts'])
   }
 }
 
@@ -153,11 +156,7 @@ export async function sdkGeneratorLogic(
     const fragmentFields = model.fields
       .filter(
         (f: any) =>
-          !f.isList &&
-          !f.relationName &&
-          f.name !== 'id' &&
-          !f.name.endsWith('Id') &&
-          SCALAR_TYPES.includes(f.type)
+          !f.isList && !f.relationName && f.name !== 'id' && !f.name.endsWith('Id') && SCALAR_TYPES.includes(f.type),
       )
       .map((f: any) => f.name)
       .join('\n  ')
@@ -188,8 +187,11 @@ export async function sdkGeneratorLogic(
 
   // 6. For each model, generate admin files (always overwrite)
   // Clean up the __admin directory before generating new files
-  deleteDirectory(tree, 'libs/shared/sdk/src/__admin');
-  console.log('Generating admin files for models:', allModels.map((m: any) => m.name));
+  deleteDirectory(tree, 'libs/shared/sdk/src/__admin')
+  console.log(
+    'Generating admin files for models:',
+    allModels.map((m: any) => m.name),
+  )
   for (const model of allModels) {
     const modelName = model.name
     const kebabName = kebabCase(modelName)
@@ -206,7 +208,7 @@ export async function sdkGeneratorLogic(
     const idField = model.fields.find((f: any) => f.isId)
     const idGraphQLType = idField?.type || 'String'
 
-    console.log('Generating admin files for', modelName, 'at', modelDir);
+    console.log('Generating admin files for', modelName, 'at', modelDir)
 
     dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
       className,
@@ -241,13 +243,13 @@ export async function sdkGeneratorLogic(
     tree,
     {},
     {
-      '@graphql-codegen/cli': '^5.0.8',
-      '@graphql-codegen/typescript': '^4.2.0',
-      '@graphql-codegen/introspection': '^4.0.3',
-      '@graphql-codegen/typescript-document-nodes': '^4.0.19',
-      '@graphql-codegen/typescript-operations': '^4.7.0',
-      '@graphql-codegen/typescript-react-apollo': '^4.4.0',
-      '@graphql-codegen/client-preset': '^4.5.0',
+      '@graphql-codegen/cli': '^6.0.1',
+      '@graphql-codegen/client-preset': '^5.1.1',
+      '@graphql-codegen/introspection': '^5.0.0',
+      '@graphql-codegen/typescript': '^5.0.2',
+      '@graphql-codegen/typescript-document-nodes': '^5.0.2',
+      '@graphql-codegen/typescript-operations': '^5.0.2',
+      '@graphql-codegen/typescript-react-apollo': '^4.3.3',
     },
   )
 
