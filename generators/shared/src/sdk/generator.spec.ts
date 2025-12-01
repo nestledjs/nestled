@@ -103,7 +103,7 @@ describe('sdk generator', () => {
     it('preserves existing codegen.yml by default', async () => {
       const existingContent = 'overwrite: true\nschema: "./api-schema.graphql"';
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json' || path !== 'libs/shared/sdk';
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
       });
       tree.read = vi.fn().mockImplementation((path: string) => {
         if (path === 'libs/shared/sdk/src/codegen.yml') {
@@ -121,7 +121,7 @@ describe('sdk generator', () => {
 
     it('forces regeneration when forceCodegen is true', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json' || path !== 'libs/shared/sdk';
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
       });
       tree.write = vi.fn();
 
@@ -139,7 +139,7 @@ describe('sdk generator', () => {
 
     it('handles null return from tree.read gracefully', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json' || path !== 'libs/shared/sdk';
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
       });
       tree.read = vi.fn().mockReturnValue(null);
       tree.write = vi.fn();
