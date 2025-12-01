@@ -24,6 +24,8 @@ describe('sdk generator', () => {
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace();
+    // Add a package.json to the root for getNpmScope to work
+    tree.write('package.json', JSON.stringify({ name: '@test/workspace' }));
     mockDependencies = {
       formatFiles: vi.fn(),
       installPackagesTask: vi.fn(),
@@ -34,6 +36,7 @@ describe('sdk generator', () => {
       addScriptToPackageJson: vi.fn(),
       getPluralName: vi.fn((name: string) => name + 's'),
       libraryGenerator: vi.fn(),
+      getNpmScope: vi.fn().mockReturnValue('test'),
       join: vi.fn((...args: string[]) => args.join('/')),
       existsSync: vi.fn().mockReturnValue(true),
       statSync: vi.fn().mockReturnValue({ isDirectory: () => false }),
@@ -100,7 +103,7 @@ describe('sdk generator', () => {
     it('preserves existing codegen.yml by default', async () => {
       const existingContent = 'overwrite: true\nschema: "./api-schema.graphql"';
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json' || path !== 'libs/shared/sdk';
       });
       tree.read = vi.fn().mockImplementation((path: string) => {
         if (path === 'libs/shared/sdk/src/codegen.yml') {
@@ -118,7 +121,7 @@ describe('sdk generator', () => {
 
     it('forces regeneration when forceCodegen is true', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json' || path !== 'libs/shared/sdk';
       });
       tree.write = vi.fn();
 
@@ -136,7 +139,7 @@ describe('sdk generator', () => {
 
     it('handles null return from tree.read gracefully', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json' || path !== 'libs/shared/sdk';
       });
       tree.read = vi.fn().mockReturnValue(null);
       tree.write = vi.fn();
