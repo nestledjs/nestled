@@ -133,8 +133,8 @@ describe('sdk generator', () => {
         'libs/shared/sdk/src',
         { tmpl: '' }
       );
-      // Should not restore the existing content
-      expect(tree.write).not.toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', expect.any(String));
+      // Should not preserve existing content when force regenerating
+      expect(tree.read).not.toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', 'utf-8');
     });
 
     it('handles null return from tree.read gracefully', async () => {
