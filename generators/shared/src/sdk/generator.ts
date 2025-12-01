@@ -24,6 +24,10 @@ import { getDMMF } from '@prisma/internals'
 
 const SCALAR_TYPES = ['String', 'Int', 'Boolean', 'Float', 'DateTime', 'Json', 'BigInt', 'Decimal', 'Bytes']
 
+interface SdkGeneratorSchema {
+  forceCodegen?: boolean
+}
+
 function kebabCase(str: string): string {
   return str
     .replace(/([a-z])([A-Z])/g, '$1-$2')
@@ -116,7 +120,7 @@ export type SdkGeneratorDependencies = typeof defaultDependencies
 
 export async function sdkGeneratorLogic(
   tree: Tree,
-  schema: unknown,
+  schema: SdkGeneratorSchema,
   dependencies: SdkGeneratorDependencies = defaultDependencies,
 ) {
   // 1. Resolve prisma schema path using shared utility (config-aware), fallback to package.json
@@ -230,9 +234,34 @@ export async function sdkGeneratorLogic(
     })
   }
 
-  // 7. Always write codegen.yml and index.ts
+  // 7. Handle codegen.yml generation with existence check
   const sdkSrcDir = 'libs/shared/sdk/src'
+  const codegenPath = 'libs/shared/sdk/src/codegen.yml'
+  
+  // Check if codegen.yml exists before generation
+  const codegenExists = tree.exists(codegenPath)
+  const shouldPreserveCodegen = codegenExists && !schema.forceCodegen
+  let existingCodegenContent: string | null = null
+  
+  if (shouldPreserveCodegen) {
+    // Backup existing codegen.yml content
+    existingCodegenContent = tree.read(codegenPath, 'utf-8')
+    console.log('⚠️  codegen.yml already exists. Preserving existing configuration.')
+    console.log('   Use --forceCodegen=true to regenerate codegen.yml.')
+  } else if (codegenExists && schema.forceCodegen) {
+    console.log('🔄 Forcing regeneration of codegen.yml as requested.')
+  }
+  
+  // Generate all files from template
   dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files'), sdkSrcDir, { tmpl: '' })
+  
+  // Restore existing codegen.yml if it existed and we should preserve it
+  if (shouldPreserveCodegen && existingCodegenContent) {
+    tree.write(codegenPath, existingCodegenContent)
+    console.log('✅ Existing codegen.yml configuration has been preserved.')
+  } else {
+    console.log('⚙️  Generated codegen.yml file.')
+  }
 
   // 8. Add scripts to package.json
   dependencies.addScriptToPackageJson(tree, 'sdk', 'graphql-codegen --config libs/shared/sdk/src/codegen.yml')
@@ -259,6 +288,6 @@ export async function sdkGeneratorLogic(
   }
 }
 
-export default async function (tree: Tree, schema: unknown) {
+export default async function (tree: Tree, schema: SdkGeneratorSchema) {
   return sdkGeneratorLogic(tree, schema)
 }
