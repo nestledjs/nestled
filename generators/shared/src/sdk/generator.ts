@@ -288,6 +288,6 @@ export async function sdkGeneratorLogic(
   }
 }
 
-export default async function (tree: Tree, schema: SdkGeneratorSchema) {
+export default async function sdkGenerator(tree: Tree, schema: SdkGeneratorSchema) {
   return sdkGeneratorLogic(tree, schema)
 }
