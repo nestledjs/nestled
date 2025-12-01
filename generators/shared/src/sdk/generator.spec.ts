@@ -80,4 +80,65 @@ describe('sdk generator', () => {
     expect(userCall[3].adminPrefix).toBe('');
     expect(adminCall[3].adminPrefix).toBe('__Admin');
   });
+
+  describe('codegen.yml handling', () => {
+    it('generates new codegen.yml when file does not exist', async () => {
+      tree.exists = vi.fn().mockImplementation((path: string) => {
+        return path !== 'libs/shared/sdk/src/codegen.yml';
+      });
+
+      await sdkGeneratorLogic(tree, {}, mockDependencies);
+
+      expect(mockDependencies.generateFiles).toHaveBeenCalledWith(
+        tree,
+        expect.stringContaining('./files'),
+        'libs/shared/sdk/src',
+        { tmpl: '' }
+      );
+    });
+
+    it('preserves existing codegen.yml by default', async () => {
+      const existingContent = 'existing config content';
+      tree.exists = vi.fn().mockImplementation((path: string) => {
+        return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
+      });
+      tree.read = vi.fn().mockReturnValue(existingContent);
+      tree.write = vi.fn();
+
+      await sdkGeneratorLogic(tree, {}, mockDependencies);
+
+      expect(tree.read).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', 'utf-8');
+      expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', existingContent);
+    });
+
+    it('forces regeneration when forceCodegen is true', async () => {
+      tree.exists = vi.fn().mockImplementation((path: string) => {
+        return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
+      });
+      tree.write = vi.fn();
+
+      await sdkGeneratorLogic(tree, { forceCodegen: true }, mockDependencies);
+
+      expect(mockDependencies.generateFiles).toHaveBeenCalledWith(
+        tree,
+        expect.stringContaining('./files'),
+        'libs/shared/sdk/src',
+        { tmpl: '' }
+      );
+      // Should not restore the existing content
+      expect(tree.write).not.toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', expect.any(String));
+    });
+
+    it('handles null return from tree.read gracefully', async () => {
+      tree.exists = vi.fn().mockImplementation((path: string) => {
+        return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
+      });
+      tree.read = vi.fn().mockReturnValue(null);
+      tree.write = vi.fn();
+
+      await sdkGeneratorLogic(tree, {}, mockDependencies);
+
+      expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', '');
+    });
+  });
 }); 
