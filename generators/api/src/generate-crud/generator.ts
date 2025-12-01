@@ -70,7 +70,7 @@ export function getCrudAuthForModel(schema: string, modelName: string): CrudAuth
     ) {
       foundModel = true
       break
-    } else if (trimmedLine.startsWith('model ')) {
+    } else if (trimmedLine.startsWith('model ') && !foundModel) {
       modelDoc = []
     } else if (trimmedLine.startsWith('///') && !foundModel) {
       modelDoc.push(trimmedLine)

@@ -175,7 +175,7 @@ export function readPrismaSchema(tree: Tree, prismaPath: string) {
 
   if (isDirectory) {
     // If it's a directory, read all .prisma files and concatenate them
-    console.log(`Reading Prisma schema from directory: ${prismaPath}`)
+    // Reading Prisma schema from directory: ${prismaPath}
     const schemaFiles = tree.children(prismaPath).filter((file) => file.endsWith('.prisma'))
 
     if (schemaFiles.length === 0) {
@@ -499,9 +499,7 @@ export function pnpmInstallCallback(): GeneratorCallback {
 }
 
 export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, importPath }: AddToModulesOptions) {
-  console.log(
-    `[addToModules] Called with modulePath=${modulePath}, moduleArrayName=${moduleArrayName}, moduleToAdd=${moduleToAdd}, importPath=${importPath}`,
-  )
+  // Adding module: ${moduleToAdd} to ${moduleArrayName}
   if (!tree.exists(modulePath)) {
     console.error(`[addToModules] Can't find ${modulePath}`)
     return
@@ -527,12 +525,12 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
     if (!importedModules.includes(moduleToAdd)) {
       const newImport = `import { ${[...importedModules, moduleToAdd].join(', ')} } from '${barrelImportPath}';`
       fileContent = fileContent.replace(importRegex, newImport)
-      console.log(`[addToModules] Updated import from barrel: ${barrelImportPath}`)
+      // Updated import from barrel
     }
   } else {
     const importStatement = `import { ${moduleToAdd} } from '${barrelImportPath}';\n`
     fileContent = importStatement + fileContent
-    console.log(`[addToModules] Added new import from barrel: ${barrelImportPath}`)
+    // Added new import from barrel
   }
 
   // Robustly add the module to the array, regardless of formatting/comments
@@ -540,17 +538,17 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
   const match = fileContent.match(arrayRegex)
   if (match) {
     const arrayContent = match[1]
-    console.log(`[addToModules] Found array content for ${moduleArrayName}:\n${arrayContent}`)
+    // Found array content for module array
     // Split by lines, filter out comments and whitespace, and remove trailing commas
     const lines = arrayContent
       .split(/\n|,/)
       .map((line) => line.trim())
       .filter((line) => line && !line.startsWith('//'))
       .map((line) => line.replace(/,$/, ''))
-    console.log(`[addToModules] Parsed lines:`, lines)
+    // Parsed array lines
     // Only add if not already present (ignore comments)
     if (!lines.includes(moduleToAdd)) {
-      console.log(`[addToModules] Module ${moduleToAdd} not found in array, adding it.`)
+      // Module not found in array, adding it
       // Find the position of the closing bracket
       if (typeof match.index === 'number') {
         const arrayEnd = match.index + match[0].lastIndexOf(']')
@@ -565,10 +563,10 @@ export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, i
         }
         const insert = `  ${moduleToAdd},\n`
         fileContent = before.replace(/(\s*\n)*$/, '') + '\n' + insert + after
-        console.log(`[addToModules] Inserted ${moduleToAdd} into ${moduleArrayName}`)
+        // Inserted module into array
       }
     } else {
-      console.log(`[addToModules] Module ${moduleToAdd} already present in ${moduleArrayName}`)
+      // Module already present in array
     }
   } else {
     console.error(`[addToModules] Could not find array export for ${moduleArrayName}`)
@@ -643,12 +641,7 @@ function generateTemplatesIfAvailable<T extends { name: string }>(
   } else {
     finalTemplatePath = templateRootPath
   }
-  try {
-    const parentDir = path.dirname(finalTemplatePath)
-    console.log('[apiLibraryGenerator] Contents of parent directory:', parentDir, fs.readdirSync(parentDir))
-  } catch (e) {
-    console.warn('[apiLibraryGenerator] Could not read parent directory:', e)
-  }
+  // Debug logging removed for cleaner output
   if (templateRootPath && fs.existsSync(finalTemplatePath)) {
     generateTemplateFiles<T>({
       tree,
@@ -658,7 +651,7 @@ function generateTemplatesIfAvailable<T extends { name: string }>(
       npmScope,
     })
   } else {
-    console.warn(`[apiLibraryGenerator] Template path does not exist on disk: ${finalTemplatePath}`)
+    // Template path does not exist, skipping generation for: ${finalTemplatePath}
   }
 }
 
