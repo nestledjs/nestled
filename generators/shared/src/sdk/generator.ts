@@ -245,7 +245,7 @@ export async function sdkGeneratorLogic(
   
   if (shouldPreserveCodegen) {
     // Backup existing codegen.yml content
-    existingCodegenContent = tree.read(codegenPath, 'utf-8')
+    existingCodegenContent = tree.read(codegenPath, 'utf-8') || ''
     console.log('⚠️  codegen.yml already exists. Preserving existing configuration.')
     console.log('   Use --forceCodegen=true to regenerate codegen.yml.')
   } else if (codegenExists && schema.forceCodegen) {
@@ -256,11 +256,13 @@ export async function sdkGeneratorLogic(
   dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files'), sdkSrcDir, { tmpl: '' })
   
   // Restore existing codegen.yml if it existed and we should preserve it
-  if (shouldPreserveCodegen && existingCodegenContent) {
+  if (shouldPreserveCodegen) {
     tree.write(codegenPath, existingCodegenContent)
     console.log('✅ Existing codegen.yml configuration has been preserved.')
-  } else {
-    console.log('⚙️  Generated codegen.yml file.')
+  } else if (!codegenExists) {
+    console.log('⚙️  Generated new codegen.yml file.')
+  } else if (codegenExists && schema.forceCodegen) {
+    console.log('⚙️  Force-regenerated codegen.yml file.')
   }
 
   // 8. Add scripts to package.json
