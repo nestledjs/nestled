@@ -175,7 +175,7 @@ export function readPrismaSchema(tree: Tree, prismaPath: string) {
 
   if (isDirectory) {
     // If it's a directory, read all .prisma files and concatenate them
-    // Reading Prisma schema from directory: ${prismaPath}
+    // Reading Prisma schema from directory
     const schemaFiles = tree.children(prismaPath).filter((file) => file.endsWith('.prisma'))
 
     if (schemaFiles.length === 0) {
@@ -499,7 +499,7 @@ export function pnpmInstallCallback(): GeneratorCallback {
 }
 
 export function addToModules({ tree, modulePath, moduleArrayName, moduleToAdd, importPath }: AddToModulesOptions) {
-  // Adding module: ${moduleToAdd} to ${moduleArrayName}
+  // Adding module to array
   if (!tree.exists(modulePath)) {
     console.error(`[addToModules] Can't find ${modulePath}`)
     return
@@ -651,7 +651,7 @@ function generateTemplatesIfAvailable<T extends { name: string }>(
       npmScope,
     })
   } else {
-    // Template path does not exist, skipping generation for: ${finalTemplatePath}
+    // Template path does not exist, skipping generation
   }
 }
 

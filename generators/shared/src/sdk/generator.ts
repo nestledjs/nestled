@@ -242,7 +242,7 @@ export async function sdkGeneratorLogic(
   // Check if codegen.yml exists before generation
   const codegenExists = tree.exists(codegenPath)
   const shouldPreserveCodegen = codegenExists && !schema.forceCodegen
-  let existingCodegenContent: string | null = null
+  let existingCodegenContent = ''
   
   if (shouldPreserveCodegen) {
     // Backup existing codegen.yml content
