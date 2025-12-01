@@ -64,7 +64,7 @@ function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>): stri
 
 async function ensureSdkLibrary(tree: Tree, dependencies: SdkGeneratorDependencies) {
   const sdkPath = 'libs/shared/sdk'
-  const npmScope = getNpmScope(tree)
+  const npmScope = dependencies.getNpmScope(tree)
   if (!tree.exists(sdkPath)) {
     // Create the sdk library if it doesn't exist
     await dependencies.libraryGenerator(tree, {
@@ -109,6 +109,7 @@ const defaultDependencies = {
   getPluralName,
   libraryGenerator,
   getPrismaSchemaPath,
+  getNpmScope,
   // Specific functions from path and fs
   join: path.join,
   existsSync: fs.existsSync,
