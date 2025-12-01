@@ -3,6 +3,12 @@
   "id": "sdk-generator",
   "title": "SDK GraphQL Files Generator",
   "type": "object",
-  "properties": {},
+  "properties": {
+    "forceCodegen": {
+      "type": "boolean",
+      "description": "Force regeneration of codegen.yml even if it already exists",
+      "default": false
+    }
+  },
   "required": []
 } 
