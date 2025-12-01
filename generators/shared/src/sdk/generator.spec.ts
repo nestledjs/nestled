@@ -98,11 +98,16 @@ describe('sdk generator', () => {
     });
 
     it('preserves existing codegen.yml by default', async () => {
-      const existingContent = 'existing config content';
+      const existingContent = 'overwrite: true\nschema: "./api-schema.graphql"';
       tree.exists = vi.fn().mockImplementation((path: string) => {
         return path === 'libs/shared/sdk/src/codegen.yml' || path !== 'libs/shared/sdk';
       });
-      tree.read = vi.fn().mockReturnValue(existingContent);
+      tree.read = vi.fn().mockImplementation((path: string) => {
+        if (path === 'libs/shared/sdk/src/codegen.yml') {
+          return existingContent;
+        }
+        return null;
+      });
       tree.write = vi.fn();
 
       await sdkGeneratorLogic(tree, {}, mockDependencies);
