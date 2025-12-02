@@ -123,6 +123,7 @@ describe('sdk generator', () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
         return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
       });
+      tree.read = vi.fn();
       tree.write = vi.fn();
 
       await sdkGeneratorLogic(tree, { forceCodegen: true }, mockDependencies);
