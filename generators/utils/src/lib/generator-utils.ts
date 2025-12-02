@@ -831,6 +831,7 @@ export function generateDatabaseModelContent(models: ModelType[]): string {
 
 export interface DatabaseField {
   name: string
+  kind?: string
   type: string
   isOptional?: boolean
   isId?: boolean
