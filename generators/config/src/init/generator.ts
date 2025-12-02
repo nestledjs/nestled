@@ -46,6 +46,7 @@ function handleDockerFilesAndScripts(tree: Tree) {
       ...packageJsonContent.scripts,
       'docker:build': `docker build -f .dev/Dockerfile -t ${npmScope} .`,
       'docker:down': `docker compose -f .dev/docker-compose.yml -p ${npmScope} down`,
+      'docker:logs': `docker compose -f .dev/docker-compose.yml -p ${npmScope} logs --tail 50`,
       'docker:push': `docker push ${npmScope}`,
       'docker:run': `docker run -it -p 8000:3000 ${npmScope}`,
       'docker:up': `docker compose -f .dev/docker-compose.yml -p ${npmScope} up -d`,

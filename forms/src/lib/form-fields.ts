@@ -29,19 +29,19 @@ import {
 /**
  * Factory class for creating form field definitions.
  * Provides a fluent API for building strongly-typed form fields.
- * 
+ *
  * This is the main imperative API for creating form fields that can be used
  * with both declarative (`fields` prop) and imperative (`children`) patterns.
- * 
+ *
  * @example
  * ```tsx
  * // Basic field creation
- * const usernameField = FormFieldClass.text('username', { 
- *   label: 'Username', 
+ * const usernameField = FormFieldClass.text('username', {
+ *   label: 'Username',
  *   required: true,
  *   placeholder: 'Enter your username'
  * })
- * 
+ *
  * // Complex field with validation
  * const emailField = FormFieldClass.email('email', {
  *   label: 'Email Address',
@@ -51,7 +51,7 @@ import {
  *     return true
  *   }
  * })
- * 
+ *
  * // Custom field with advanced options
  * const phoneField = FormFieldClass.phone('phone', {
  *   label: 'Phone Number',
@@ -64,7 +64,7 @@ import {
 export class FormFieldClass {
   /**
    * Creates a generic form field. Usually you'll want to use specific methods like text(), email(), etc.
-   * 
+   *
    * @param type - The field type from FormFieldType enum
    * @param key - Unique identifier for the field (used as form field name)
    * @param options - Configuration options for the field
@@ -76,15 +76,15 @@ export class FormFieldClass {
 
   /**
    * Creates a text input field.
-   * 
+   *
    * @param key - Unique identifier for the field
    * @param options - Configuration options including label, placeholder, validation, etc.
    * @returns A text field definition
-   * 
+   *
    * @example
    * ```tsx
-   * FormFieldClass.text('firstName', { 
-   *   label: 'First Name', 
+   * FormFieldClass.text('firstName', {
+   *   label: 'First Name',
    *   required: true,
    *   placeholder: 'Enter your first name'
    * })
@@ -96,15 +96,15 @@ export class FormFieldClass {
 
   /**
    * Creates a textarea field for multi-line text input.
-   * 
+   *
    * @param key - Unique identifier for the field
    * @param options - Configuration options including label, placeholder, rows, etc.
    * @returns A textarea field definition
-   * 
+   *
    * @example
    * ```tsx
-   * FormFieldClass.textArea('description', { 
-   *   label: 'Description', 
+   * FormFieldClass.textArea('description', {
+   *   label: 'Description',
    *   placeholder: 'Enter a detailed description',
    *   rows: 4
    * })
@@ -116,33 +116,33 @@ export class FormFieldClass {
 
   /**
    * Creates a markdown editor field with rich text editing capabilities.
-   * 
+   *
    * @param key - Unique identifier for the field
    * @param options - Configuration options including label, height, preview, toolbar, etc.
    * @returns A markdown editor field definition
-   * 
+   *
    * @example
    * ```tsx
-   * FormFieldClass.markdownEditor('content', { 
-   *   label: 'Content', 
+   * FormFieldClass.markdownEditor('content', {
+   *   label: 'Content',
    *   height: 400,
    *   preview: true,
    *   toolbar: ['bold', 'italic', 'link', 'quote', 'code']
    * })
    * ```
-   * 
+   *
    * @example Dual format output
    * ```tsx
-   * FormFieldClass.markdownEditor('content', { 
+   * FormFieldClass.markdownEditor('content', {
    *   label: 'Content',
    *   outputFormat: 'both', // Outputs both markdown and HTML
    *   onHtmlChange: (html) => console.log('HTML:', html)
    * })
    * ```
-   * 
+   *
    * @example Modal-on-modal fix
    * ```tsx
-   * FormFieldClass.markdownEditor('content', { 
+   * FormFieldClass.markdownEditor('content', {
    *   label: 'Content',
    *   // Fix for when MarkdownEditor is inside a modal
    *   overlayContainer: document.getElementById('modal-container'),
@@ -190,15 +190,15 @@ export class FormFieldClass {
 
   /**
    * Creates an email input field with built-in email validation.
-   * 
+   *
    * @param key - Unique identifier for the field
    * @param options - Configuration options including label, placeholder, validation, etc.
    * @returns An email field definition
-   * 
+   *
    * @example
    * ```tsx
-   * FormFieldClass.email('email', { 
-   *   label: 'Email Address', 
+   * FormFieldClass.email('email', {
+   *   label: 'Email Address',
    *   required: true,
    *   placeholder: 'user@example.com'
    * })
@@ -210,21 +210,21 @@ export class FormFieldClass {
 
   /**
    * Creates a password input field.
-   * 
+   *
    * @param key - Unique identifier for the field
    * @param options - Configuration options including label, placeholder, validation, etc.
    * @returns A password field definition
-   * 
+   *
    * @example
    * ```tsx
-   * FormFieldClass.password('password', { 
-   *   label: 'Password', 
+   * FormFieldClass.password('password', {
+   *   label: 'Password',
    *   required: true,
    *   validate: (value) => value.length >= 8 || 'Password must be at least 8 characters'
    * })
    * ```
    */
-  static password(key: string, options: PasswordFieldOptions = {}): FormField {
+  password(key: string, options: PasswordFieldOptions = {}): FormField {
     return this.field(FormFieldType.Password, key, options)
   }
 
@@ -250,15 +250,15 @@ export class FormFieldClass {
 
   /**
    * Creates a checkbox group field with multiple selectable options.
-   * 
+   *
    * @param key - Unique identifier for the field
    * @param options - Configuration options including checkboxOptions array, layout, etc.
    * @returns A checkbox group field definition
-   * 
+   *
    * @example
    * ```tsx
-   * FormFieldClass.checkboxGroup('interests', { 
-   *   label: 'Interests', 
+   * FormFieldClass.checkboxGroup('interests', {
+   *   label: 'Interests',
    *   checkboxOptions: [
    *     { key: 'sports', value: 'sports', label: 'Sports' },
    *     { key: 'music', value: 'music', label: 'Music' },
