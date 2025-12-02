@@ -224,7 +224,7 @@ export class FormFieldClass {
    * })
    * ```
    */
-  password(key: string, options: PasswordFieldOptions = {}): FormField {
+  static password(key: string, options: PasswordFieldOptions = {}): FormField {
     return this.field(FormFieldType.Password, key, options)
   }
 
