@@ -379,6 +379,7 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
       // Create a properly typed fields array
       const fields = model.fields.map((field) => ({
         name: field.name,
+        kind: field.kind,
         type: field.type,
         isOptional: !field.isRequired,
         isId: field.isId,
