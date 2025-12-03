@@ -244,7 +244,7 @@ Example Usage (Frontend)
 
 After generation, frontend can use:
 
-const { data } = useQuery(__AdminUserDocument, {
+const { data } = useQuery(AdminUser, {
 variables: { userId: "123" }
 })
 
