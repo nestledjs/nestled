@@ -281,7 +281,6 @@ export async function sdkGeneratorLogic(
       '@graphql-codegen/typescript': '^5.0.2',
       '@graphql-codegen/typescript-document-nodes': '^5.0.2',
       '@graphql-codegen/typescript-operations': '^5.0.2',
-      '@graphql-codegen/typescript-react-apollo': '^4.3.3',
     },
   )
 
