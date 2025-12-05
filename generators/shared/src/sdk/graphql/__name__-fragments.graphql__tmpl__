@@ -1,8 +1,8 @@
-fragment <%= adminPrefix ? adminPrefix : '' %><%= className %>List on <%= className %> {
+fragment <%= adminPrefix ? adminPrefix : '' %><%= className %>Summary on <%= className %> {
   id
   <%= fragmentFields %>
 }
 
 fragment <%= adminPrefix ? adminPrefix : '' %><%= className %>Details on <%= className %> {
-  ...<%= adminPrefix ? adminPrefix : '' %><%= className %>List
+  ...<%= adminPrefix ? adminPrefix : '' %><%= className %>Summary
 }
