@@ -36,7 +36,7 @@
     "@nestledjs/api": "1.0.14",
     "@nestledjs/config": "0.1.14",
     "@nestledjs/plugins": "0.1.14",
-    "@nestledjs/shared": "0.3.13",
+    "@nestledjs/shared": "0.3.14",
     "@nestledjs/utils": "0.2.9",
     "@nestledjs/web": "0.1.14"
   }
