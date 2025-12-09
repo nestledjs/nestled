@@ -392,8 +392,8 @@ importers:
         specifier: 0.1.14
         version: 0.1.14(1c976fbf43f825f5baba746ddb97a4f0)
       '@nestledjs/shared':
-        specifier: 0.3.13
-        version: 0.3.13(7e7aa301f610eb3bf6feb99ffc22eacf)
+        specifier: 0.3.14
+        version: 0.3.14(7e7aa301f610eb3bf6feb99ffc22eacf)
       '@nestledjs/utils':
         specifier: 0.2.9
         version: 0.2.9(@babel/traverse@7.28.5)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.17))(@swc/types@0.1.25)(typescript@5.9.3))(@swc/core@1.5.29(@swc/helpers@0.5.17))(@types/node@20.19.24)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(esbuild-register@3.6.0(esbuild@0.25.12))(eslint@9.39.1(jiti@2.4.2))(magicast@0.3.5)(nx@22.0.2(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.17))(@swc/types@0.1.25)(typescript@5.9.3))(@swc/core@1.5.29(@swc/helpers@0.5.17)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.17))(@types/node@20.19.24)(typescript@5.7.3))(typescript@5.9.3)(verdaccio@6.2.1(encoding@0.1.13)(typanion@3.14.0))
@@ -2876,8 +2876,8 @@ packages:
     peerDependencies:
       '@nestledjs/utils': 0.2.9
 
-  '@nestledjs/shared@0.3.13':
-    resolution: {integrity: sha512-wOoWN0lr42RJvV2jkRX89j27DPR68+e+0ARl9dLX5jSZJHpdgADFQ71NehOXScWlKdiApXVCciZEGfULFn7Azw==}
+  '@nestledjs/shared@0.3.14':
+    resolution: {integrity: sha512-+XwPm/3bSecd4q7LIxVxPEMJS1R/3cSnN3u8Qc90Xy7Cr6zPr+AV90DP4+D4IZeJxG/ar8ihXOv44QVDugxLvA==}
     peerDependencies:
       '@nestledjs/utils': 0.2.9
 
@@ -15588,7 +15588,7 @@ snapshots:
       - supports-color
       - verdaccio
 
-  '@nestledjs/shared@0.3.13(7e7aa301f610eb3bf6feb99ffc22eacf)':
+  '@nestledjs/shared@0.3.14(7e7aa301f610eb3bf6feb99ffc22eacf)':
     dependencies:
       '@nestledjs/utils': 0.2.9(@babel/traverse@7.28.5)(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.17))(@swc/types@0.1.25)(typescript@5.9.3))(@swc/core@1.5.29(@swc/helpers@0.5.17))(@types/node@20.19.24)(@zkochan/js-yaml@0.0.7)(babel-plugin-macros@3.1.0)(esbuild-register@3.6.0(esbuild@0.25.12))(eslint@9.39.1(jiti@2.4.2))(magicast@0.3.5)(nx@22.0.2(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.17))(@swc/types@0.1.25)(typescript@5.9.3))(@swc/core@1.5.29(@swc/helpers@0.5.17)))(ts-node@10.9.1(@swc/core@1.5.29(@swc/helpers@0.5.17))(@types/node@20.19.24)(typescript@5.7.3))(typescript@5.9.3)(verdaccio@6.2.1(encoding@0.1.13)(typanion@3.14.0))
       '@nx/devkit': 22.0.2(nx@22.0.2(@swc-node/register@1.9.2(@swc/core@1.5.29(@swc/helpers@0.5.17))(@swc/types@0.1.25)(typescript@5.9.3))(@swc/core@1.5.29(@swc/helpers@0.5.17)))
