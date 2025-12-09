@@ -47,10 +47,10 @@ function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>, enumN
     .filter((f: any) => {
       // Skip id fields and relations
       if (f.isId || f.relationName) return false
-      // Include non-list scalar fields
-      if (!f.isList) return true
+      // Include non-list scalar types and single-select enums
+      if (!f.isList && (SCALAR_TYPES.includes(f.type) || enumNames.has(f.type))) return true
       // Include list fields only if they are enums (multi-select enums)
-      return enumNames.has(f.type)
+      return f.isList && enumNames.has(f.type)
     })
     .map((f: any) => f.name)
 
