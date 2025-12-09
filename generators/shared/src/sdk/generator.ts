@@ -41,25 +41,34 @@ function getDefaultField(model: any): string | undefined {
 }
 
 // Helper to get admin fragment fields for a model
-function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>): string {
-  return model.fields
-    .filter((f: any) => !f.isList && !f.relationName && !f.isId)
+function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>, enumNames: Set<string>): string {
+  // Include scalar fields (non-list, non-relation, non-id) and enum fields (including multi-select enum arrays)
+  const scalarAndEnumFields = model.fields
+    .filter((f: any) => {
+      // Skip id fields and relations
+      if (f.isId || f.relationName) return false
+      // Include non-list scalar fields
+      if (!f.isList) return true
+      // Include list fields only if they are enums (multi-select enums)
+      return enumNames.has(f.type)
+    })
     .map((f: any) => f.name)
-    .concat(
-      model.fields
-        .filter((f: any) => f.relationName && !f.isList)
-        .map((f: any) => {
-          const relatedModel = allModels.find((m: any) => m.name === f.type)
-          const defaultField = relatedModel ? getDefaultField(relatedModel) : null
-          // Refactored to avoid nested template literals
-          let relationFields = 'id'
-          if (defaultField) {
-            relationFields += `\n    ${defaultField}`
-          }
-          return `${f.name} {\n    ${relationFields}\n  }`
-        }),
-    )
-    .join('\n  ')
+
+  // Include relation fields (non-list only, with nested id and defaultField)
+  const relationFields = model.fields
+    .filter((f: any) => f.relationName && !f.isList)
+    .map((f: any) => {
+      const relatedModel = allModels.find((m: any) => m.name === f.type)
+      const defaultField = relatedModel ? getDefaultField(relatedModel) : null
+      // Refactored to avoid nested template literals
+      let relationFieldsStr = 'id'
+      if (defaultField) {
+        relationFieldsStr += `\n    ${defaultField}`
+      }
+      return `${f.name} {\n    ${relationFieldsStr}\n  }`
+    })
+
+  return scalarAndEnumFields.concat(relationFields).join('\n  ')
 }
 
 async function ensureSdkLibrary(tree: Tree, dependencies: SdkGeneratorDependencies) {
@@ -138,6 +147,7 @@ export async function sdkGeneratorLogic(
   // 2. Parse models using Prisma DMMF for doc comments
   const dmmf = await getDMMF({ datamodel: schemaContent })
   const allModels = dmmf.datamodel.models
+  const enumNames = new Set(dmmf.datamodel.enums.map((e: any) => e.name))
 
   // 3. Ensure sdk library exists
   await ensureSdkLibrary(tree, dependencies)
@@ -159,10 +169,14 @@ export async function sdkGeneratorLogic(
     const pluralClassName = dependencies.getPluralName(className)
     const pluralPropertyName = dependencies.getPluralName(propertyName)
     const fragmentFields = model.fields
-      .filter(
-        (f: any) =>
-          !f.isList && !f.relationName && f.name !== 'id' && !f.name.endsWith('Id') && SCALAR_TYPES.includes(f.type),
-      )
+      .filter((f: any) => {
+        // Exclude id fields and relations
+        if (f.name === 'id' || f.name.endsWith('Id') || f.relationName) return false
+        // Include scalar types (non-list)
+        if (!f.isList && SCALAR_TYPES.includes(f.type)) return true
+        // Include enum types (both single and multi-select)
+        return enumNames.has(f.type)
+      })
       .map((f: any) => f.name)
       .join('\n  ')
 
@@ -206,7 +220,7 @@ export async function sdkGeneratorLogic(
     const propertyName = modelName.charAt(0).toLowerCase() + modelName.slice(1)
     const pluralClassName = dependencies.getPluralName(className)
     const pluralPropertyName = dependencies.getPluralName(propertyName)
-    const fragmentFields = getAdminFragmentFields(model, allModels)
+    const fragmentFields = getAdminFragmentFields(model, allModels, enumNames)
     const adminPrefix = '__Admin'
 
     // Get ID field type for GraphQL type definitions
