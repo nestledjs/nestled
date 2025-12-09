@@ -18,6 +18,36 @@ model User {
 }
 `;
 
+const prismaSchemaWithEnums = `
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+  GUEST
+}
+
+enum Permission {
+  READ
+  WRITE
+  DELETE
+}
+
+model User {
+  id          Int          @id @default(autoincrement())
+  name        String
+  role        Role
+  permissions Permission[]
+}
+`;
+
 describe('sdk generator', () => {
   let tree: Tree;
   let mockDependencies: SdkGeneratorDependencies;
@@ -82,6 +112,45 @@ describe('sdk generator', () => {
     // Check that adminPrefix is empty string for user SDK and '__Admin' for admin SDK
     expect(userCall[3].adminPrefix).toBe('');
     expect(adminCall[3].adminPrefix).toBe('__Admin');
+  });
+
+  describe('enum field handling', () => {
+    it('includes single-select and multi-select enum fields in fragment fields', async () => {
+      mockDependencies.readFileSync = vi.fn().mockReturnValue(prismaSchemaWithEnums);
+
+      await sdkGeneratorLogic(tree, {}, mockDependencies);
+
+      const calls = vi.mocked(mockDependencies.generateFiles).mock.calls;
+
+      // Find the admin SDK call for User model
+      const adminCall = calls.find(
+        ([_, __, modelDir, context]) =>
+          typeof modelDir === 'string' && modelDir.includes('__admin/user') && context?.adminPrefix === '__Admin',
+      );
+      expect(adminCall).toBeTruthy();
+
+      // Check that fragmentFields includes both the single enum (role) and multi-select enum (permissions)
+      const fragmentFields = adminCall![3].fragmentFields as string;
+      expect(fragmentFields).toContain('name');
+      expect(fragmentFields).toContain('role'); // Single-select enum
+      expect(fragmentFields).toContain('permissions'); // Multi-select enum
+
+      // Find the client SDK call for User model
+      const clientCall = calls.find(
+        ([_, __, modelDir, context]) =>
+          typeof modelDir === 'string' &&
+          modelDir.includes('graphql/user') &&
+          !modelDir.includes('__admin') &&
+          context?.adminPrefix === '',
+      );
+      expect(clientCall).toBeTruthy();
+
+      // Check that client fragmentFields also includes enum fields
+      const clientFragmentFields = clientCall![3].fragmentFields as string;
+      expect(clientFragmentFields).toContain('name');
+      expect(clientFragmentFields).toContain('role'); // Single-select enum
+      expect(clientFragmentFields).toContain('permissions'); // Multi-select enum
+    });
   });
 
   describe('codegen.yml handling', () => {
