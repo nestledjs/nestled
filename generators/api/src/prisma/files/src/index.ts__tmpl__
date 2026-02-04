@@ -1,1 +1,5 @@
-export * from './lib/prisma-generated'
+// Export all types and client from Prisma v7 generated files
+export * from './lib/prisma-generated/client'
+
+// Explicitly export Prisma namespace for better CI compatibility
+export { Prisma } from './lib/prisma-generated/client'
