@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/helpers",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
