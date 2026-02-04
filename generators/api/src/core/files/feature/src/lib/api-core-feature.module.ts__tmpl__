@@ -57,9 +57,13 @@ const redisPubSubProvider = {
           },
         },
       },
+      csrfPrevention: {
+        requestHeaders: ['apollo-require-preflight'],
+      },
       context: ({ req, res, connectionParams }: { req: Partial<Request>; res: Response; connectionParams: ConnectionParameters }) => {
         if (connectionParams) {
-          req = { headers: connectionParams.headers }
+          // Preserve existing req properties (user, organizationContext, etc.) while adding connection headers
+          req = { ...req, headers: connectionParams.headers }
         }
         return { req, res }
       },

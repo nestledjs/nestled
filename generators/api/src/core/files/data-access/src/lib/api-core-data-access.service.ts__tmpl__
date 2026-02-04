@@ -11,7 +11,10 @@ export class ApiCoreDataAccessService
 {
   constructor(private readonly configService: ConfigService) {
     // Create the PostgreSQL adapter with the connection string
-    const connectionString = `${process.env['DATABASE_URL']}?connection_limit=30`
+    // For PgBouncer deployments, add: pgbouncer=true&connection_limit=5&pool_timeout=10
+    const baseUrl = process.env['DATABASE_URL'] || ''
+    const separator = baseUrl.includes('?') ? '&' : '?'
+    const connectionString = `${baseUrl}${separator}connection_limit=30`
     const adapter = new PrismaPg({ connectionString })
 
     const config: Prisma.PrismaClientOptions = {
