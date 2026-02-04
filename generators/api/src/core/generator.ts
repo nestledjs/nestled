@@ -15,9 +15,11 @@ export default async function generateLibraries(
     '@nestjs/common': '^10.0.0',
     '@nestjs/passport': '^10.0.0',
     '@nestjs/axios': '^3.0.0',
-    '@prisma/client': '^6.11.0',
+    '@prisma/client': '^7.3.0',
     '@apollo/server': '^5.1.0',
     'graphql-fields': '^2.0.3',
+    'decimal.js': '^10.4.3',
+    'prisma-graphql-type-decimal': '^3.0.0',
   }
 
   const devDependencies = {

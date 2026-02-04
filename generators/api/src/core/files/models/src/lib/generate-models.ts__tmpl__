@@ -205,7 +205,7 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
     model.fields.some((field: { type: string }) => field.type === 'Decimal'),
   )
   if (usesDecimal) {
-    output += `import { Decimal } from '@prisma/client/runtime/library';\n`
+    output += `import Decimal from 'decimal.js';\n`
     output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
   }
   if (usesBigInt) {
