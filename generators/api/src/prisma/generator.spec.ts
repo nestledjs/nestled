@@ -36,12 +36,12 @@ describe('prisma generator', () => {
 
     const packageJson = JSON.parse(tree.read('package.json', 'utf-8'))
 
-    // prisma.schema is deprecated and should not be set
+    // prisma.schema is deprecated and should not be set (now in prisma.config.ts)
     expect(packageJson.prisma?.schema).toBeUndefined()
-    // seed script still allowed on package.json.prisma for compatibility
-    expect(packageJson.prisma?.seed).toBe(
-      'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts',
-    )
+    // prisma.seed is deprecated and should not be set (now in prisma.config.ts)
+    expect(packageJson.prisma?.seed).toBeUndefined()
+    // prisma object should be removed entirely when empty
+    expect(packageJson.prisma).toBeUndefined()
 
     // prisma.config.ts should be generated
     expect(tree.exists('prisma.config.ts')).toBe(true)

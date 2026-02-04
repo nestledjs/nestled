@@ -15,16 +15,19 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
     }
   }
 
-  // Update package.json scripts (remove deprecated prisma.schema field if present)
+  // Update package.json scripts (remove deprecated prisma fields for v7 - now configured in prisma.config.ts)
   updateJson(tree, 'package.json', (json) => {
+    // Remove deprecated prisma.schema field (now in prisma.config.ts)
     if (json.prisma?.schema) {
       delete json.prisma.schema
     }
-    if (!json.prisma) {
-      json.prisma = {}
+    // Remove deprecated prisma.seed field (now in prisma.config.ts)
+    if (json.prisma?.seed) {
+      delete json.prisma.seed
     }
-    if (!json.prisma.seed) {
-      json.prisma.seed = 'ts-node --project libs/api/prisma/tsconfig.lib.json libs/api/prisma/src/lib/seed/seed.ts'
+    // Remove empty prisma object if no other properties
+    if (json.prisma && Object.keys(json.prisma).length === 0) {
+      delete json.prisma
     }
     // Add GraphQL model generation script for the 'core' library
     if (!json.scripts) {
