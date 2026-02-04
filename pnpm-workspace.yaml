@@ -5,6 +5,7 @@ onlyBuiltDependencies:
   - '@apollo/protobufjs'
   - '@nestjs/core'
   - '@parcel/watcher'
+  - '@prisma/adapter-pg'
   - '@prisma/client'
   - '@prisma/engines'
   - '@prisma/extension-optimize'

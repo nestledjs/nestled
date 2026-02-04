@@ -1,13 +1,10 @@
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = []
-  binaryTargets   = ["native"]
-  output          = "../prisma-generated"
+  provider = "prisma-client"
+  output   = "../prisma-generated"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // Models (Alphabetical Order)

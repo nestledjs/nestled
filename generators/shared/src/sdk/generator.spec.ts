@@ -5,12 +5,11 @@ import { Tree } from '@nx/devkit';
 
 const prismaSchema = `
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
 }
 
 model User {
@@ -20,12 +19,11 @@ model User {
 
 const prismaSchemaWithEnums = `
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
