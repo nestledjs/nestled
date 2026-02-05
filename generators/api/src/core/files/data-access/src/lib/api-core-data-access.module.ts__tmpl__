@@ -1,11 +1,9 @@
-import { Global, Module } from '@nestjs/common'
-import { ConfigModule } from '@<%= npmScope %>/api/config'
+import { Module, Global } from '@nestjs/common'
 
 import { ApiCoreDataAccessService } from './api-core-data-access.service'
 
 @Global()
 @Module({
-  imports: [ConfigModule],
   providers: [ApiCoreDataAccessService],
   exports: [ApiCoreDataAccessService],
 })

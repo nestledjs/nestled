@@ -1,6 +1,5 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common'
 import { Prisma, PrismaClient } from '@<%= npmScope %>/api/prisma'
-import { ConfigService } from '@<%= npmScope %>/api/config'
 import { CorePagingInput } from './dto/core-paging.input'
 import { PrismaPg } from '@prisma/adapter-pg'
 
@@ -20,8 +19,9 @@ export class ApiCoreDataAccessService
   extends PrismaClient
   implements OnModuleInit, OnModuleDestroy
 {
-  constructor(private readonly configService: ConfigService) {
+  constructor() {
     const adapter = createAdapter()
+
     const config: Prisma.PrismaClientOptions = {
       adapter,
       log:
@@ -31,23 +31,19 @@ export class ApiCoreDataAccessService
           : [{ emit: 'event', level: 'warn' }],
     }
 
-    // Must call super first before accessing this
     super(config)
     this.queryCount = 0
 
-    // Check for Prisma Optimize setup using config service
-    const optimizeEnabled = configService.prismaOptimizeEnabled
-    const optimizeApiKey = configService.prismaOptimizeApiKey
+    // Only add Prisma Optimize extension in development
+    if (process.env['OPTIMIZE_API_KEY'] && process.env['USE_OPTIMIZE'] === 'true') {
+      const apiKey = process.env['OPTIMIZE_API_KEY']
+      if (!apiKey) {
+        console.warn('Not Running Prisma Optimize - No API Key Set')
+      }
 
-    if (optimizeEnabled && optimizeApiKey) {
-      console.log('🚀 Prisma Optimize enabled with API key')
       const { withOptimize } = require('@prisma/extension-optimize')
-      const extendedClient = new PrismaClient(config).$extends(
-        withOptimize({ apiKey: optimizeApiKey })
-      )
+      const extendedClient = new PrismaClient(config).$extends(withOptimize({ apiKey }))
       Object.assign(this, extendedClient)
-    } else if (optimizeEnabled && !optimizeApiKey) {
-        console.warn('⚠️  OPTIMIZE_ENABLED is true but OPTIMIZE_API_KEY is not set')
     }
   }
 

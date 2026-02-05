@@ -24,6 +24,9 @@ const redisPubSubProvider = {
     GraphQLModule.forRoot<ApolloDriverConfig>({
       driver: ApolloDriver,
       autoSchemaFile: join(process.cwd(), 'api-schema.graphql'),
+      csrfPrevention: {
+        requestHeaders: ['apollo-require-preflight'],
+      },
       subscriptions: {
         'graphql-ws': {
           onConnect: async (context: Context<Record<string, unknown> | undefined>) => {
@@ -57,9 +60,6 @@ const redisPubSubProvider = {
           },
         },
       },
-      csrfPrevention: {
-        requestHeaders: ['apollo-require-preflight'],
-      },
       context: ({ req, res, connectionParams }: { req: Partial<Request>; res: Response; connectionParams: ConnectionParameters }) => {
         if (connectionParams) {
           // Preserve existing req properties (user, organizationContext, etc.) while adding connection headers
@@ -69,10 +69,8 @@ const redisPubSubProvider = {
       },
       sortSchema: true,
       buildSchemaOptions: {
-        dateScalarMode: 'isoDate', // Better interoperability (ISO strings, not JS Dates)
-        numberScalarMode: 'float', // Default is fine; override to 'integer' if you hate floats
-        scalarsMap: [], // Optional for custom scalar mappings if you use them
-        skipCheck: true, // Skip extra metadata validation — speeds up build
+        dateScalarMode: 'timestamp',
+        numberScalarMode: 'float',
       },
     }),
   ],

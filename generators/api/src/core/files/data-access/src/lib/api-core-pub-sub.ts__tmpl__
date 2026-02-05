@@ -1,16 +1,23 @@
 import { Logger } from '@nestjs/common'
-import { PubSub } from 'graphql-subscriptions'
 import { RedisPubSub } from 'graphql-redis-subscriptions'
+import { PubSub } from 'graphql-subscriptions'
 import Redis from 'ioredis'
 
-// Support multiple Redis URL environment variables (Railway, Heroku, etc.)
+// Railway provides REDIS_URL (private) and REDIS_PASSWORD separately
+// REDIS_PUBLIC_URL is for external access, REDIS_URL is internal
 const REDIS_URL = process.env['REDIS_URL'] ?? process.env['REDIS_PRIVATE_URL'] ?? process.env['REDIS_TLS_URL'] ?? ''
-// Some PaaS providers (like Railway) provide password separately
 const REDIS_PASSWORD = process.env['REDIS_PASSWORD'] ?? ''
+
+// Check if we have a valid Redis URL to connect to
+const hasValidRedisUrl = REDIS_URL && !REDIS_URL.includes('localhost') && REDIS_URL.length > 10
+
 const secure = REDIS_URL ? /rediss:/.test(REDIS_URL) : false
 
-// Only attempt Redis connection if we have a valid URL
-const hasValidRedisUrl = REDIS_URL && !REDIS_URL.includes('localhost') && REDIS_URL.length > 10
+if (hasValidRedisUrl) {
+  Logger.log(`🔴 Redis: Connecting to ${REDIS_URL.replace(/:[^:@]+@/, ':****@')} (password: ${REDIS_PASSWORD ? 'provided' : 'none'})`)
+} else {
+  Logger.warn('🔴 Redis: No valid URL provided. Using in-memory PubSub (subscriptions will not work across instances).')
+}
 
 const dateReviver = (_key: unknown, value: string | Date): Date => {
   const isISO8601Z = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2}(?:\.\d*)?)Z$/
@@ -24,26 +31,33 @@ const dateReviver = (_key: unknown, value: string | Date): Date => {
   return new Date(value)
 }
 
-function createPubSub(): RedisPubSub | PubSub {
+function createRedisPubSub(): RedisPubSub | PubSub {
   if (!hasValidRedisUrl) {
-    Logger.warn('No valid Redis URL provided. Using in-memory PubSub (not suitable for production with multiple instances).')
+    // Fall back to in-memory PubSub when Redis is not available
     return new PubSub()
   }
 
-  Logger.verbose(`Connecting to Redis: ${REDIS_URL.replace(/:[^:@]+@/, ':****@')}`)
-
-  const options: Redis.RedisOptions = {
+  const options = {
+    // Add password if provided separately (Railway sometimes does this)
     ...(REDIS_PASSWORD && { password: REDIS_PASSWORD }),
-    ...(secure && { tls: { rejectUnauthorized: false } }),
+    // TLS settings for secure connections
+    ...(secure && {
+      tls: {
+        rejectUnauthorized: false,
+      },
+    }),
+    // Retry strategy to handle temporary connection issues
     retryStrategy: (times: number) => {
       if (times > 3) {
-        Logger.warn('Redis connection failed after 3 retries. Falling back to in-memory PubSub.')
+        Logger.error(`🔴 Redis: Failed to connect after ${times} attempts. Giving up.`)
         return null // Stop retrying
       }
-      return Math.min(times * 1000, 3000)
+      const delay = Math.min(times * 1000, 3000)
+      Logger.warn(`🔴 Redis: Connection attempt ${times} failed. Retrying in ${delay}ms...`)
+      return delay
     },
     maxRetriesPerRequest: 3,
-    lazyConnect: true,
+    lazyConnect: true, // Don't connect immediately, wait for first command
   }
 
   try {
@@ -52,10 +66,16 @@ function createPubSub(): RedisPubSub | PubSub {
 
     // Handle connection errors gracefully
     publisher.on('error', (err) => {
-      Logger.error(`Redis publisher error: ${err.message}`)
+      Logger.error(`🔴 Redis publisher error: ${err.message}`)
     })
     subscriber.on('error', (err) => {
-      Logger.error(`Redis subscriber error: ${err.message}`)
+      Logger.error(`🔴 Redis subscriber error: ${err.message}`)
+    })
+    publisher.on('connect', () => {
+      Logger.log('🔴 Redis publisher connected')
+    })
+    subscriber.on('connect', () => {
+      Logger.log('🔴 Redis subscriber connected')
     })
 
     return new RedisPubSub({
@@ -64,9 +84,10 @@ function createPubSub(): RedisPubSub | PubSub {
       reviver: dateReviver,
     })
   } catch (error) {
-    Logger.error(`Failed to create Redis PubSub: ${error}. Using in-memory fallback.`)
+    Logger.error(`🔴 Redis: Failed to create PubSub: ${error}`)
+    Logger.warn('🔴 Redis: Falling back to in-memory PubSub')
     return new PubSub()
   }
 }
 
-export const apiCorePubSub = createPubSub()
+export const apiCorePubSub = createRedisPubSub()
