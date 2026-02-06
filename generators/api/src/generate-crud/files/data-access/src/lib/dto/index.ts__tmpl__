@@ -3,6 +3,7 @@
 let gqlImports = new Set(['Field', 'InputType'])
 let usesGraphQLJSON = false
 let usesGraphQLBigInt = false
+let usesDateTime = false
 let usesInt = false
 let usesFloat = false
 let usesID = false
@@ -72,6 +73,7 @@ for (const model of models) {
         if (field.type === 'Float' || field.type === 'Decimal') usesFloat = true
         if (field.type === 'Json') usesGraphQLJSON = true
         if (field.type === 'BigInt') usesGraphQLBigInt = true
+        if (field.type === 'DateTime') usesDateTime = true
         if (field.type === 'ID') usesID = true
         if (field.kind === 'enum') {
             enumNames.add(field.type)
@@ -82,6 +84,7 @@ for (const model of models) {
 if (usesInt) gqlImports.add('Int')
 if (usesFloat) gqlImports.add('Float')
 if (usesID) gqlImports.add('ID')
+if (usesDateTime) gqlImports.add('GraphQLISODateTime')
 usesPartialType = models.length > 0 // If we generate any Update input, we need PartialType
 %>
 import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
@@ -109,7 +112,7 @@ export class Create<%= model.modelName %>Input {
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
-    else if (field.type === 'DateTime') { baseGqlType = 'Date'; tsType = 'Date'; }
+    else if (field.type === 'DateTime') { baseGqlType = 'GraphQLISODateTime'; tsType = 'Date'; }
     else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
     else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
     else if (field.kind === 'enum') {
@@ -153,7 +156,7 @@ export class Update<%= model.modelName %>Input {
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
-    else if (field.type === 'DateTime') { baseGqlType = 'Date'; tsType = 'Date'; }
+    else if (field.type === 'DateTime') { baseGqlType = 'GraphQLISODateTime'; tsType = 'Date'; }
     else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
     else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
     else if (field.kind === 'enum') {
@@ -190,7 +193,7 @@ export class List<%= model.modelName %>Input extends CorePagingInput {
     else if (field.type === 'Float') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Decimal') { baseGqlType = 'Float'; tsType = 'number'; }
     else if (field.type === 'Boolean') { baseGqlType = 'Boolean'; tsType = 'boolean'; }
-    else if (field.type === 'DateTime') { baseGqlType = 'Date'; tsType = 'Date'; }
+    else if (field.type === 'DateTime') { baseGqlType = 'GraphQLISODateTime'; tsType = 'Date'; }
     else if (field.type === 'Json') { baseGqlType = 'GraphQLJSON'; tsType = 'typeof GraphQLJSON'; }
     else if (field.type === 'ID') { baseGqlType = 'ID'; tsType = 'string'; }
     else if (field.kind === 'enum') {
