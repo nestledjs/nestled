@@ -40,7 +40,7 @@ const redisPubSubProvider = {
                     const cookies = rawHeaders[i + 1].split(';')
                     for (const cookie of cookies) {
                       const [name, value] = cookie.trim().split('=')
-                      if (name === '__session') {
+                      if (name === '<%= cookieName %>') {
                         token = value
                         break
                       }

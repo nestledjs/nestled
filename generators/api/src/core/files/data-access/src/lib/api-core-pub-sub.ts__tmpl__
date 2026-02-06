@@ -46,6 +46,8 @@ function createRedisPubSub(): RedisPubSub | PubSub {
         rejectUnauthorized: false,
       },
     }),
+    // Force IPv6 for Railway private networking
+    family: 6,
     // Retry strategy to handle temporary connection issues
     retryStrategy: (times: number) => {
       if (times > 3) {
