@@ -215,9 +215,9 @@ function generateModels(models: readonly any[], enums: readonly any[]): string {
   if (usesBigInt) {
     output += `import { GraphQLBigInt } from 'graphql-scalars';\n`
   }
-  // Import JsonValue type if any model uses Json fields
+  // Import JsonValue type directly from Prisma v7 runtime (where it now lives)
   if (usesJson) {
-    output += `import type { JsonValue } from '${prismaImportPath}';\n`
+    output += `import type { JsonValue } from '@prisma/client/runtime/client';\n`
   }
   // Ensure enums are imported correctly
   const enumNames = enums.map(e => e.name)
