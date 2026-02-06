@@ -70,7 +70,7 @@ const redisPubSubProvider = {
       },
       sortSchema: true,
       buildSchemaOptions: {
-        dateScalarMode: 'timestamp',
+        dateScalarMode: 'isoDate',
         numberScalarMode: 'float',
       },
     }),
