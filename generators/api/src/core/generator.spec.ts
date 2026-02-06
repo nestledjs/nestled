@@ -40,6 +40,7 @@ describe('core generator', () => {
       { name: 'core', overwrite: false },
       expect.any(String),
       'data-access',
+      true,
     )
     expect(apiLibraryGenerator).toHaveBeenCalledWith(
       tree,
@@ -73,6 +74,7 @@ describe('core generator', () => {
       { name: 'core', overwrite: true },
       expect.any(String),
       'data-access',
+      true,
     )
     expect(apiLibraryGenerator).toHaveBeenCalledWith(
       tree,
