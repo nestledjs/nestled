@@ -29,7 +29,7 @@ export default async function generateLibraries(
 
   await installPlugins(tree, dependencies, devDependencies)
 
-  await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'data-access')
+  await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'data-access', true)
   await apiLibraryGenerator(tree, { name: 'core', overwrite, cookieName }, templateRootPath, 'feature', true)
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'models')
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'helpers')
