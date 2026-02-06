@@ -23,12 +23,9 @@ module.exports = {
       {
         test: /\.ts$/,
         use: 'ts-loader',
-        exclude: [
-          /node_modules/,
-          path.resolve(__dirname, '../../libs/api/prisma/src/lib/prisma-generated')
-        ],
+        // Prisma v7 generates TypeScript files that need to be compiled
+        exclude: /node_modules/,
       },
-
     ],
   },
   externals: [
@@ -36,19 +33,23 @@ module.exports = {
       allowlist: [
         /^@<%= npmScope %>\/api/, // allow your own libs
       ],
-      // Manually exclude Prisma internals if needed
-      function ({ request }, callback) {
-        if (request && request.includes('@prisma/client')) {
-          return callback(null, 'commonjs @prisma/client')
-        }
-        if (request && request.includes('.prisma/client')) {
-          return callback(null, 'commonjs .prisma/client')
-        }
-        if (request && request === '@<%= npmScope %>/api/prisma') {
-          return callback(null, 'commonjs @<%= npmScope %>/api/prisma')
-        }
-        callback()
+    }),
+    // Externalize Prisma packages for v7 compatibility
+    function ({ request }, callback) {
+      if (request && request.includes('@prisma/client')) {
+        return callback(null, 'commonjs ' + request)
       }
-    })
+      if (request && request.includes('.prisma/client')) {
+        return callback(null, 'commonjs ' + request)
+      }
+      // Externalize Prisma adapter for v7 compatibility
+      if (request && (request === '@prisma/adapter-pg' || request.startsWith('@prisma/adapter-pg/'))) {
+        return callback(null, 'commonjs ' + request)
+      }
+      if (request && request === '@<%= npmScope %>/api/prisma') {
+        return callback(null, 'commonjs ' + request)
+      }
+      callback()
+    }
   ]
 };

@@ -20,7 +20,7 @@ export default async function generateLibraries(
     '@apollo/server': '^5.1.0',
     'graphql-fields': '^2.0.3',
     'decimal.js': '^10.4.3',
-    'prisma-graphql-type-decimal': '^3.0.0',
+    'prisma-graphql-type-decimal': '^4.0.2',
   }
 
   const devDependencies = {

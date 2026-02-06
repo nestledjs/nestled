@@ -75,7 +75,7 @@ export async function apiSetupGenerator(tree: Tree): Promise<GeneratorCallback> 
       'webpack-cli': '^6.0.1',
       'webpack-node-externals': '^3.0.0',
       'tsconfig-paths-webpack-plugin': '^4.2.0',
-      'prisma-graphql-type-decimal': '^3.0.1',
+      'prisma-graphql-type-decimal': '^4.0.2',
       'graphql-type-json': '^0.3.2',
     },
   )

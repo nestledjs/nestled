@@ -43,7 +43,7 @@ describe('core generator', () => {
     )
     expect(apiLibraryGenerator).toHaveBeenCalledWith(
       tree,
-      { name: 'core', overwrite: false },
+      { name: 'core', overwrite: false, cookieName: '__session' },
       expect.any(String),
       'feature',
       true,
@@ -53,6 +53,12 @@ describe('core generator', () => {
       { name: 'core', overwrite: false },
       expect.any(String),
       'models',
+    )
+    expect(apiLibraryGenerator).toHaveBeenCalledWith(
+      tree,
+      { name: 'core', overwrite: false },
+      expect.any(String),
+      'helpers',
     )
     expect(formatFiles).toHaveBeenCalledWith(tree)
     expect(installPackagesTask).toHaveBeenCalledWith(tree)
@@ -70,7 +76,7 @@ describe('core generator', () => {
     )
     expect(apiLibraryGenerator).toHaveBeenCalledWith(
       tree,
-      { name: 'core', overwrite: true },
+      { name: 'core', overwrite: true, cookieName: '__session' },
       expect.any(String),
       'feature',
       true,
@@ -80,6 +86,12 @@ describe('core generator', () => {
       { name: 'core', overwrite: true },
       expect.any(String),
       'models',
+    )
+    expect(apiLibraryGenerator).toHaveBeenCalledWith(
+      tree,
+      { name: 'core', overwrite: true },
+      expect.any(String),
+      'helpers',
     )
   })
 })
