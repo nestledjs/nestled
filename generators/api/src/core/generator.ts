@@ -8,6 +8,7 @@ export default async function generateLibraries(
 ): Promise<GeneratorCallback> {
   const templateRootPath = joinPathFragments(__dirname, './files')
   const overwrite = options.overwrite === true
+  const cookieName = options.cookieName || '__session'
 
   const dependencies = {
     'graphql-type-json': '^0.3.2',
@@ -29,7 +30,7 @@ export default async function generateLibraries(
   await installPlugins(tree, dependencies, devDependencies)
 
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'data-access')
-  await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'feature', true)
+  await apiLibraryGenerator(tree, { name: 'core', overwrite, cookieName }, templateRootPath, 'feature', true)
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'models')
   await apiLibraryGenerator(tree, { name: 'core', overwrite }, templateRootPath, 'helpers')
 
