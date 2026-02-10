@@ -4,14 +4,25 @@ import { CorePagingInput } from './dto/core-paging.input'
 import { PrismaPg } from '@prisma/adapter-pg'
 
 function createAdapter() {
-  const baseUrl = process.env['DATABASE_URL'] || ''
-  const separator = baseUrl.includes('?') ? '&' : '?'
+  const connectionString = process.env['DATABASE_URL'] || ''
+
+  // Auto-detect SSL for cloud databases (Heroku, Railway, AWS RDS)
+  const requireSsl =
+    connectionString.includes('amazonaws.com') ||
+    connectionString.includes('.railway.app') ||
+    connectionString.includes('heroku') ||
+    process.env['DATABASE_SSL'] === 'true'
+
   const usePgBouncer = process.env['PGBOUNCER_ENABLED'] === 'true'
-  const connectionParams = usePgBouncer
-    ? 'pgbouncer=true&connection_limit=5&pool_timeout=10'
-    : 'connection_limit=30'
-  const connectionString = `${baseUrl}${separator}${connectionParams}`
-  return new PrismaPg({ connectionString })
+
+  // Pass PoolConfig to PrismaPg - it manages its own Pool internally
+  // This avoids connection management conflicts that can cause ECONNREFUSED errors
+  return new PrismaPg({
+    connectionString,
+    ssl: requireSsl ? { rejectUnauthorized: false } : undefined,
+    max: usePgBouncer ? 5 : 30,
+    idleTimeoutMillis: usePgBouncer ? 10000 : 30000,
+  })
 }
 
 @Injectable()

@@ -5,7 +5,23 @@ import { countries } from './seed-data/iso-3166-countries'
 import { seedUsers } from './seed-data/seed-users'
 import { hashSync } from 'bcryptjs'
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+function createAdapter() {
+  const connectionString = process.env.DATABASE_URL || ''
+
+  // Auto-detect SSL for cloud databases (Heroku, Railway, AWS RDS)
+  const requireSsl =
+    connectionString.includes('amazonaws.com') ||
+    connectionString.includes('.railway.app') ||
+    connectionString.includes('heroku') ||
+    process.env.DATABASE_SSL === 'true'
+
+  return new PrismaPg({
+    connectionString,
+    ssl: requireSsl ? { rejectUnauthorized: false } : undefined,
+  })
+}
+
+const adapter = createAdapter()
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
