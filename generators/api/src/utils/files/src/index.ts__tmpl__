@@ -2,3 +2,6 @@ export * from './lib/guards/gql-auth.guard'
 export * from './lib/guards/gql-auth-admin.guard'
 export * from './lib/decorators/ctx-user.decorator'
 export * from './lib/types/nest-context-type'
+
+// Explicitly export types for webpack compatibility
+export type { NestContextType } from './lib/types/nest-context-type'
