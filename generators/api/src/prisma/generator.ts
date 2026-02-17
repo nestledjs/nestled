@@ -1,8 +1,9 @@
 import { formatFiles, generateFiles, installPackagesTask, joinPathFragments, Tree, updateJson } from '@nx/devkit'
-import { apiLibraryGenerator } from '@nestledjs/utils'
+import { apiLibraryGenerator, getNpmScope } from '@nestledjs/utils'
 import { ApiPrismaGeneratorSchema } from './schema'
 
 export default async function generateLibraries(tree: Tree, options: ApiPrismaGeneratorSchema = {}) {
+  const npmScope = getNpmScope(tree)
   const templateRootPath = joinPathFragments(__dirname, './files')
   const overwrite = options.overwrite === true
 
@@ -67,7 +68,7 @@ export default async function generateLibraries(tree: Tree, options: ApiPrismaGe
     // Add db-update convenience script to regenerate CRUD, models, custom, and SDK
     if (!json.scripts['db-update']) {
       json.scripts['db-update'] =
-        'nx g @nestledjs/api:generate-crud && pnpm generate:models && nx g @nestledjs/api:custom && nx g @nestledjs/shared:sdk'
+        `pnpm prisma:generate && nx g @${npmScope}/api:generate-crud && pnpm generate:models && nx g @${npmScope}/api:custom && nx g @${npmScope}/shared:sdk`
     }
     return json
   })
