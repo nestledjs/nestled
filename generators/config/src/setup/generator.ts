@@ -3,6 +3,17 @@ import { pnpmInstallCallback, removeWorkspacesFromPackageJson, updatePnpmWorkspa
 import * as fs from 'fs'
 import * as path from 'path'
 
+/**
+ * Formats JSON with 2-space indentation, keeping single-element arrays on one line
+ * and ensuring a trailing newline (POSIX convention).
+ */
+function formatJson(obj: unknown): string {
+  const json = JSON.stringify(obj, null, 2)
+  // Collapse single-element arrays to one line: [\n    "value"\n  ] -> ["value"]
+  const collapsed = json.replace(/\[\n\s+("[^"]*")\n\s+\]/g, '[$1]')
+  return collapsed + '\n'
+}
+
 function updateTypeScriptConfig(tree: Tree): void {
   const tsConfigPath = 'tsconfig.base.json'
   if (tree.exists(tsConfigPath)) {
@@ -46,7 +57,7 @@ function updateTypeScriptConfig(tree: Tree): void {
       }
 
       // Write back the updated configuration
-      tree.write(tsConfigPath, JSON.stringify(tsConfig, null, 2))
+      tree.write(tsConfigPath, formatJson(tsConfig))
     }
   }
 }
