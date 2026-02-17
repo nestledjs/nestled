@@ -1,0 +1,232 @@
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { Redis } from 'ioredis'
+import { OrganizationContext } from '../types/nest-context-type'
+
+const SESSION_TTL = 15 * 60 // 15 minutes
+const MEMBERSHIP_TTL = 10 * 60 // 10 minutes
+const USER_ORG_TTL = 10 * 60 // 10 minutes
+
+export interface CachedSession {
+  userId: string
+  email: string
+  isSuperAdmin: boolean
+  activeOrganizationId?: string
+}
+
+export interface CachedMembership {
+  organizationId: string
+  userId: string
+  roleId: string
+  roleName: string
+  permissions: Array<{ subject: string; action: string }>
+}
+
+@Injectable()
+export class AuthCacheService implements OnModuleInit {
+  private readonly logger = new Logger(AuthCacheService.name)
+  private redis: Redis | null = null
+  private isConnected = false
+
+  async onModuleInit() {
+    const redisUrl = process.env['REDIS_URL']
+    if (!redisUrl) {
+      this.logger.warn('REDIS_URL not configured - auth caching disabled')
+      return
+    }
+
+    try {
+      this.redis = new Redis(redisUrl, {
+        maxRetriesPerRequest: 3,
+        retryDelayOnFailover: 100,
+        lazyConnect: true,
+      })
+
+      this.redis.on('connect', () => {
+        this.isConnected = true
+        this.logger.log('Redis connected for auth caching')
+      })
+
+      this.redis.on('error', (err) => {
+        this.isConnected = false
+        this.logger.warn(`Redis error: ${err.message}`)
+      })
+
+      this.redis.on('close', () => {
+        this.isConnected = false
+      })
+
+      await this.redis.connect()
+    } catch (error) {
+      this.logger.warn(`Failed to connect to Redis: ${error}`)
+      this.redis = null
+    }
+  }
+
+  private get available(): boolean {
+    return this.redis !== null && this.isConnected
+  }
+
+  // Session caching
+  private sessionKey(userId: string): string {
+    return `auth:session:${userId}`
+  }
+
+  async getSession(userId: string): Promise<CachedSession | null> {
+    if (!this.available) return null
+
+    try {
+      const data = await this.redis!.get(this.sessionKey(userId))
+      return data ? JSON.parse(data) : null
+    } catch (error) {
+      this.logger.debug(`Cache miss for session ${userId}: ${error}`)
+      return null
+    }
+  }
+
+  async setSession(userId: string, session: CachedSession): Promise<void> {
+    if (!this.available) return
+
+    try {
+      await this.redis!.setex(
+        this.sessionKey(userId),
+        SESSION_TTL,
+        JSON.stringify(session)
+      )
+    } catch (error) {
+      this.logger.debug(`Failed to cache session: ${error}`)
+    }
+  }
+
+  async invalidateSession(userId: string): Promise<void> {
+    if (!this.available) return
+
+    try {
+      await this.redis!.del(this.sessionKey(userId))
+    } catch (error) {
+      this.logger.debug(`Failed to invalidate session: ${error}`)
+    }
+  }
+
+  // Membership context caching
+  private membershipKey(userId: string, organizationId: string): string {
+    return `auth:membership:${userId}:${organizationId}`
+  }
+
+  async getMembershipContext(
+    userId: string,
+    organizationId: string
+  ): Promise<OrganizationContext | null> {
+    if (!this.available) return null
+
+    try {
+      const data = await this.redis!.get(this.membershipKey(userId, organizationId))
+      return data ? JSON.parse(data) : null
+    } catch (error) {
+      this.logger.debug(`Cache miss for membership ${userId}:${organizationId}: ${error}`)
+      return null
+    }
+  }
+
+  async setMembershipContext(
+    userId: string,
+    organizationId: string,
+    context: OrganizationContext
+  ): Promise<void> {
+    if (!this.available) return
+
+    try {
+      await this.redis!.setex(
+        this.membershipKey(userId, organizationId),
+        MEMBERSHIP_TTL,
+        JSON.stringify(context)
+      )
+    } catch (error) {
+      this.logger.debug(`Failed to cache membership context: ${error}`)
+    }
+  }
+
+  async invalidateMembership(userId: string, organizationId: string): Promise<void> {
+    if (!this.available) return
+
+    try {
+      await this.redis!.del(this.membershipKey(userId, organizationId))
+    } catch (error) {
+      this.logger.debug(`Failed to invalidate membership: ${error}`)
+    }
+  }
+
+  async invalidateAllMembershipsForUser(userId: string): Promise<void> {
+    if (!this.available) return
+
+    try {
+      const pattern = `auth:membership:${userId}:*`
+      const keys = await this.redis!.keys(pattern)
+      if (keys.length > 0) {
+        await this.redis!.del(...keys)
+      }
+    } catch (error) {
+      this.logger.debug(`Failed to invalidate all memberships for user: ${error}`)
+    }
+  }
+
+  async invalidateAllMembershipsForOrganization(organizationId: string): Promise<void> {
+    if (!this.available) return
+
+    try {
+      const pattern = `auth:membership:*:${organizationId}`
+      const keys = await this.redis!.keys(pattern)
+      if (keys.length > 0) {
+        await this.redis!.del(...keys)
+      }
+    } catch (error) {
+      this.logger.debug(`Failed to invalidate all memberships for org: ${error}`)
+    }
+  }
+
+  // User active organization caching
+  private userOrgKey(userId: string): string {
+    return `auth:user-org:${userId}`
+  }
+
+  async getUserActiveOrganization(userId: string): Promise<string | null> {
+    if (!this.available) return null
+
+    try {
+      return await this.redis!.get(this.userOrgKey(userId))
+    } catch (error) {
+      this.logger.debug(`Cache miss for user org ${userId}: ${error}`)
+      return null
+    }
+  }
+
+  async setUserActiveOrganization(userId: string, organizationId: string): Promise<void> {
+    if (!this.available) return
+
+    try {
+      await this.redis!.setex(this.userOrgKey(userId), USER_ORG_TTL, organizationId)
+    } catch (error) {
+      this.logger.debug(`Failed to cache user org: ${error}`)
+    }
+  }
+
+  async invalidateUserActiveOrganization(userId: string): Promise<void> {
+    if (!this.available) return
+
+    try {
+      await this.redis!.del(this.userOrgKey(userId))
+    } catch (error) {
+      this.logger.debug(`Failed to invalidate user org: ${error}`)
+    }
+  }
+
+  // Role change invalidation
+  async onRolePermissionsChanged(roleId: string, organizationId: string): Promise<void> {
+    // When role permissions change, invalidate all memberships for that organization
+    await this.invalidateAllMembershipsForOrganization(organizationId)
+  }
+
+  async onUserRoleChanged(userId: string, organizationId: string): Promise<void> {
+    // When a user's role changes, invalidate their membership context
+    await this.invalidateMembership(userId, organizationId)
+  }
+}
