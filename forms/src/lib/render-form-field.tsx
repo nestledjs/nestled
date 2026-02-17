@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useEffect, useRef } from 'react'
+import React, { useMemo } from 'react'
 import clsx from 'clsx'
 import { FormField, FormFieldType } from './form-types'
 import { useFormContext } from './form-context'
@@ -426,27 +426,12 @@ export function RenderFormField({
     }
   }, [formValues, field.options, field.key])
 
-  // Track previous required state to avoid infinite loops
-  const previousRequiredRef = useRef<boolean | undefined>(undefined)
-  
-  // Update validation rules when conditional required changes
-  useEffect(() => {
-    const currentRequired = field.options.required || conditionalState.isDynamicallyRequired
-    
-    // Only update if the required state has actually changed
-    if (previousRequiredRef.current !== currentRequired) {
-      previousRequiredRef.current = currentRequired
-      
-      try {
-        // Update field registration with new required state
-        form.register(field.key, { 
-          required: currentRequired ? DEFAULT_REQUIRED_ERROR_MESSAGE : false 
-        })
-      } catch (error) {
-        console.warn(`Error updating field registration for ${field.key}:`, error)
-      }
-    }
-  }, [conditionalState.isDynamicallyRequired, field.options.required, field.key, form])
+  // Note: We intentionally do NOT re-register fields here to update required state.
+  // In react-hook-form v7, calling register() again replaces all validation rules,
+  // which would strip any validate/schema rules set by individual field components.
+  // Instead, we pass the resolved required state through modifiedField (below),
+  // so each field component registers with the correct required state in its own
+  // render-phase register() call.
 
   // Early return if field should be hidden
   if (!conditionalState.isVisible) {

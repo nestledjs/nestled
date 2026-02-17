@@ -3,6 +3,7 @@
 import clsx from 'clsx'
 import { FormField, FormFieldProps, FormFieldType } from '../form-types'
 import { useFormTheme } from '../theme-context'
+import { useFieldValidation } from '../hooks/use-field-validation'
 
 export function NumberField({
   form,
@@ -18,6 +19,9 @@ export function NumberField({
   const isReadOnly = field.options.readOnly ?? formReadOnly
   const readOnlyStyle = field.options.readOnlyStyle ?? formReadOnlyStyle
   const value = form.getValues(field.key) ?? ''
+
+  // Use the same validation pipeline as TextField, EmailField, etc.
+  const validationRules = useFieldValidation(field, form)
 
   if (isReadOnly) {
     if (readOnlyStyle === 'disabled') {
@@ -63,10 +67,14 @@ export function NumberField({
         max={field.options.max}
         step={field.options.step}
         defaultValue={field.options.defaultValue}
-        {...form.register(field.key, { required: field.options.required, valueAsNumber: true })}
+        {...form.register(field.key, {
+          required: validationRules.required,
+          validate: validationRules.validate,
+          valueAsNumber: true,
+        })}
       />
-      {(field.options as any).helpText && (
-        <div className="text-xs text-gray-500">{(field.options as any).helpText}</div>
+      {field.options.helpText && (
+        <div className="text-xs text-gray-500">{field.options.helpText}</div>
       )}
     </div>
   )
