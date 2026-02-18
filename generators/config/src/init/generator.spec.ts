@@ -1,21 +1,29 @@
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { readJson, Tree } from '@nx/devkit'
-import { execSync } from 'child_process'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as yaml from 'yaml'
+import * as utils from '@nestledjs/utils'
 
 import { initConfigGenerator } from './generator'
 
-vi.mock('child_process')
+vi.mock('@nestledjs/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@nestledjs/utils')>()
+  return {
+    ...actual,
+    pnpmInstallCallback: vi.fn(),
+  }
+})
 
 describe('init-config generator', () => {
   let tree: Tree
-  // @ts-expect-error Intellij vitest namespace issue
-  const mockedExecSync = execSync as vi.MockedFunction<typeof execSync>
+  const mockedPnpmInstallCallback = vi.mocked(utils.pnpmInstallCallback)
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
-    mockedExecSync.mockClear()
+    mockedPnpmInstallCallback.mockClear()
+    mockedPnpmInstallCallback.mockReturnValue(() => {
+      // Default mock implementation - successful pnpm install
+    })
   })
 
   it('should remove workspaces from package.json', async () => {
@@ -52,26 +60,21 @@ describe('init-config generator', () => {
     const callback = await initConfigGenerator(tree)
     callback()
 
-    expect(mockedExecSync).toHaveBeenCalledWith('pnpm install', {
-      stdio: 'inherit',
-    })
+    expect(mockedPnpmInstallCallback).toHaveBeenCalled()
   })
 
   it('should handle error during pnpm install', async () => {
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {
       // Mock implementation
     })
-    mockedExecSync.mockImplementation(() => {
+    mockedPnpmInstallCallback.mockReturnValue(() => {
       throw new Error('pnpm failed')
     })
 
     const callback = await initConfigGenerator(tree)
-    callback()
 
-    expect(mockedExecSync).toHaveBeenCalledWith('pnpm install', {
-      stdio: 'inherit',
-    })
-    expect(consoleErrorSpy).toHaveBeenCalledWith('Failed to run pnpm install:', expect.any(Error))
+    expect(() => callback()).toThrow('pnpm failed')
+    expect(mockedPnpmInstallCallback).toHaveBeenCalled()
     consoleErrorSpy.mockRestore()
   })
 

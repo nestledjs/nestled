@@ -43,13 +43,4 @@ afterEach(() => {
 // Mock CSS modules to prevent issues with imports
 vi.mock('*.css', () => ({ default: {} }))
 
-// Fix for CSS requests in Vitest
-vi.mock('vitest/node', async (importOriginal) => {
-  const mod = await importOriginal()
-  return {
-    ...mod,
-    // Add a mock implementation of isCSSRequest
-    isCSSRequest: (id: string) => id.endsWith('.css') || id.includes('?css'),
-  }
-})
 console.log('Test setup complete!')

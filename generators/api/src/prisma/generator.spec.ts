@@ -27,7 +27,7 @@ describe('prisma generator', () => {
 
   beforeEach(() => {
     tree = createTreeWithEmptyWorkspace()
-    tree.write('package.json', JSON.stringify({ name: 'test' }))
+    tree.write('package.json', JSON.stringify({ name: '@test/test' }))
   })
 
   it('should run successfully', async () => {
@@ -56,7 +56,7 @@ describe('prisma generator', () => {
   })
 
   it('should pass overwrite flag to apiLibraryGenerator when overwrite is true', async () => {
-    tree.write('package.json', JSON.stringify({ name: 'test' }))
+    tree.write('package.json', JSON.stringify({ name: '@test/test' }))
     const callback = await generator(tree, { overwrite: true })
     callback()
 

@@ -11,7 +11,7 @@
     "target": "es2015",
     "module": "nodeNext",
     "esModuleInterop": true,
-    "lib": ["es2020", "dom"],
+    "lib": ["es2021", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
     "baseUrl": ".",
