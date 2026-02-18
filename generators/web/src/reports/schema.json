@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "cli": "nx",
+  "$id": "WebReportsGenerator",
+  "title": "Web Reports Generator",
+  "type": "object",
+  "properties": {},
+  "required": []
+}

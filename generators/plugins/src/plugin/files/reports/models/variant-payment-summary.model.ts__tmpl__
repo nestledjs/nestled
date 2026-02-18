@@ -1,0 +1,19 @@
+import { Field, Float, Int, ObjectType } from '@nestjs/graphql'
+
+@ObjectType()
+export class VariantPaymentSummary {
+  @Field()
+  variantId: string
+
+  @Field()
+  variantName: string
+
+  @Field(() => Float)
+  totalPaid: number
+
+  @Field(() => Float)
+  totalDue: number
+
+  @Field(() => Int)
+  participantCount: number
+}

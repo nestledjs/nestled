@@ -9,6 +9,11 @@
       "factory": "./src/app/generator.js",
       "schema": "./src/app/schema.json",
       "description": "Set up web app using react-router"
+    },
+    "reports": {
+      "factory": "./src/reports/generator.js",
+      "schema": "./src/reports/schema.json",
+      "description": "Generate report components (dropdown, modal, payment summary by variant)"
     }
   }
 }

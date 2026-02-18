@@ -1,0 +1,47 @@
+import { Injectable } from '@nestjs/common'
+import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
+import { VariantPaymentSummary } from './models'
+
+@Injectable()
+export class ReportsService {
+  constructor(private readonly data: ApiCoreDataAccessService) {}
+
+  async getProgramPaymentSummaryByVariant(programId: string): Promise<VariantPaymentSummary[]> {
+    const variants = await this.data.variant.findMany({
+      where: { programId },
+    })
+
+    const results: VariantPaymentSummary[] = await Promise.all(
+      variants.map(async (variant) => {
+        const participantCount = await this.data.participant.count({
+          where: { variantId: variant.id },
+        })
+
+        const payments = await this.data.paymentTransaction.aggregate({
+          where: {
+            participant: { variantId: variant.id },
+          },
+          _sum: { amount: true },
+        })
+
+        const enrollments = await this.data.participant.aggregate({
+          where: { variantId: variant.id },
+          _sum: { totalDue: true },
+        })
+
+        const totalPaid = Number(payments._sum?.amount ?? 0)
+        const totalDue = Number(enrollments._sum?.totalDue ?? 0) - totalPaid
+
+        return {
+          variantId: variant.id,
+          variantName: variant.name,
+          totalPaid,
+          totalDue,
+          participantCount,
+        }
+      }),
+    )
+
+    return results
+  }
+}

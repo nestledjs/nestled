@@ -2,14 +2,17 @@ import { formatFiles, generateFiles, joinPathFragments, Tree } from '@nx/devkit'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { addToModules } from '@nestledjs/utils'
 
+type PluginName = 'auth' | 'reports'
+const SUPPORTED_PLUGINS: PluginName[] = ['auth', 'reports']
+
 interface Schema {
-  name: 'auth'; // Only 'auth' is allowed for now
+  name: PluginName;
 }
 
 export default async function generator(tree: Tree, schema: Schema) {
   const { name } = schema;
-  if (name !== 'auth') {
-    throw new Error("Currently, only 'auth' is supported as a plugin name.");
+  if (!SUPPORTED_PLUGINS.includes(name)) {
+    throw new Error(`Unsupported plugin name '${name}'. Supported plugins: ${SUPPORTED_PLUGINS.join(', ')}`);
   }
   const directory = 'api/custom/src/lib/plugins';
   const npmScope = getNpmScope(tree);

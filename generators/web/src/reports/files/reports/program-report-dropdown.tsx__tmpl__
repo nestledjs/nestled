@@ -1,0 +1,81 @@
+import { useState, useRef, useEffect } from 'react'
+
+export type ReportOption = {
+  id: string
+  label: string
+  description?: string
+}
+
+const reportOptions: ReportOption[] = [
+  {
+    id: 'payment-transactions',
+    label: 'Payment Transactions',
+    description: 'Individual payment transactions for this program',
+  },
+  {
+    id: 'payment-summary-by-variant',
+    label: 'Payment Summary by Variant',
+    description: 'Total paid and due amounts grouped by variant',
+  },
+]
+
+interface ProgramReportDropdownProps {
+  programId: string
+  onSelectReport: (reportId: string) => void
+}
+
+export function ProgramReportDropdown({ programId, onSelectReport }: ProgramReportDropdownProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  return (
+    <div className="relative inline-block text-left" ref={dropdownRef}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-x-1.5 rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        Reports
+        <svg className="-mr-1 h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+          <path
+            fillRule="evenodd"
+            d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z"
+            clipRule="evenodd"
+          />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-10 mt-2 w-72 origin-top-right rounded-md bg-white shadow-lg ring-1 ring-black/5 focus:outline-none">
+          <div className="py-1">
+            {reportOptions.map((option) => (
+              <button
+                key={option.id}
+                className="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                onClick={() => {
+                  onSelectReport(option.id)
+                  setIsOpen(false)
+                }}
+              >
+                <span className="font-medium">{option.label}</span>
+                {option.description && (
+                  <span className="block text-xs text-gray-500 mt-0.5">{option.description}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

@@ -1,0 +1,18 @@
+import { Args, Query, Resolver } from '@nestjs/graphql'
+import { UseGuards } from '@nestjs/common'
+import { GqlAuthGuard } from '@<%= npmScope %>/api/utils'
+import { ReportsService } from './reports.service'
+import { VariantPaymentSummary } from './models'
+
+@Resolver()
+export class ReportsResolver {
+  constructor(private readonly service: ReportsService) {}
+
+  @Query(() => [VariantPaymentSummary])
+  @UseGuards(GqlAuthGuard)
+  async programPaymentSummaryByVariant(
+    @Args('programId') programId: string,
+  ) {
+    return this.service.getProgramPaymentSummaryByVariant(programId)
+  }
+}

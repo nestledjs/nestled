@@ -1,0 +1,11 @@
+import { ApiCoreDataAccessModule } from '@<%= npmScope %>/api/core/data-access'
+import { Module } from '@nestjs/common'
+import { ReportsService } from './reports.service'
+import { ReportsResolver } from './reports.resolver'
+
+@Module({
+  imports: [ApiCoreDataAccessModule],
+  exports: [ReportsService],
+  providers: [ReportsService, ReportsResolver],
+})
+export class ReportsModule {}

@@ -1,0 +1,46 @@
+import { useState } from 'react'
+import { ProgramReportDropdown } from './program-report-dropdown'
+import { ReportModal } from './report-modal'
+import { PaymentSummaryByVariantReport } from './payment-summary-by-variant-report'
+
+const reportTitles: Record<string, string> = {
+  'payment-transactions': 'Payment Transactions Report',
+  'payment-summary-by-variant': 'Payment Summary by Variant',
+}
+
+interface ProgramReportsProps {
+  programId: string
+  /** Optional render prop for the existing payment transactions report */
+  renderPaymentTransactionsReport?: (programId: string) => React.ReactNode
+}
+
+export function ProgramReports({ programId, renderPaymentTransactionsReport }: ProgramReportsProps) {
+  const [selectedReport, setSelectedReport] = useState<string | null>(null)
+
+  return (
+    <>
+      <ProgramReportDropdown
+        programId={programId}
+        onSelectReport={(reportId) => setSelectedReport(reportId)}
+      />
+
+      <ReportModal
+        isOpen={!!selectedReport}
+        onClose={() => setSelectedReport(null)}
+        title={selectedReport ? reportTitles[selectedReport] ?? 'Report' : ''}
+      >
+        {selectedReport === 'payment-summary-by-variant' && (
+          <PaymentSummaryByVariantReport programId={programId} />
+        )}
+        {selectedReport === 'payment-transactions' && renderPaymentTransactionsReport && (
+          renderPaymentTransactionsReport(programId)
+        )}
+        {selectedReport === 'payment-transactions' && !renderPaymentTransactionsReport && (
+          <div className="p-4 text-center text-gray-500">
+            Payment transactions report not configured.
+          </div>
+        )}
+      </ReportModal>
+    </>
+  )
+}

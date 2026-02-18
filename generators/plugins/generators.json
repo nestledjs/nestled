@@ -5,6 +5,11 @@
       "schema": "./src/plugin/schema.json",
       "description": "Generate a plugin by copying files and replacing with provided namespace."
     },
+    "reports": {
+      "factory": "./src/plugin/generator.js",
+      "schema": "./src/plugin/schema.json",
+      "description": "Generate the reports plugin with payment summary by variant report."
+    },
     "integration": {
       "factory": "./src/integration/generator.js",
       "schema": "./src/integration/schema.json",

@@ -1,0 +1,116 @@
+import { useQuery, gql } from '@apollo/client'
+
+const PROGRAM_PAYMENT_SUMMARY_QUERY = gql`
+  query ProgramPaymentSummaryByVariant($programId: String!) {
+    programPaymentSummaryByVariant(programId: $programId) {
+      variantId
+      variantName
+      totalPaid
+      totalDue
+      participantCount
+    }
+  }
+`
+
+interface VariantPaymentSummary {
+  variantId: string
+  variantName: string
+  totalPaid: number
+  totalDue: number
+  participantCount: number
+}
+
+interface PaymentSummaryByVariantReportProps {
+  programId: string
+}
+
+function formatCurrency(amount: number): string {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+  }).format(amount)
+}
+
+export function PaymentSummaryByVariantReport({ programId }: PaymentSummaryByVariantReportProps) {
+  const { data, loading, error } = useQuery<{
+    programPaymentSummaryByVariant: VariantPaymentSummary[]
+  }>(PROGRAM_PAYMENT_SUMMARY_QUERY, {
+    variables: { programId },
+  })
+
+  if (loading) {
+    return <div className="p-4 text-center text-gray-500">Loading report...</div>
+  }
+
+  if (error) {
+    return <div className="p-4 text-center text-red-500">Error loading report: {error.message}</div>
+  }
+
+  const summaries = data?.programPaymentSummaryByVariant ?? []
+
+  if (summaries.length === 0) {
+    return <div className="p-4 text-center text-gray-500">No variants found for this program.</div>
+  }
+
+  const totals = summaries.reduce(
+    (acc, s) => ({
+      totalPaid: acc.totalPaid + s.totalPaid,
+      totalDue: acc.totalDue + s.totalDue,
+      participantCount: acc.participantCount + s.participantCount,
+    }),
+    { totalPaid: 0, totalDue: 0, participantCount: 0 },
+  )
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="min-w-full divide-y divide-gray-300">
+        <thead>
+          <tr>
+            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900">
+              Variant
+            </th>
+            <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+              Participants
+            </th>
+            <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+              Total Paid
+            </th>
+            <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-900">
+              Total Due
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-200">
+          {summaries.map((summary) => (
+            <tr key={summary.variantId}>
+              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-900">{summary.variantName}</td>
+              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+                {summary.participantCount}
+              </td>
+              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+                {formatCurrency(summary.totalPaid)}
+              </td>
+              <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500 text-right">
+                {formatCurrency(summary.totalDue)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+        <tfoot>
+          <tr className="border-t-2 border-gray-900">
+            <td className="px-3 py-3.5 text-sm font-semibold text-gray-900">Total</td>
+            <td className="px-3 py-3.5 text-sm font-semibold text-gray-900 text-right">
+              {totals.participantCount}
+            </td>
+            <td className="px-3 py-3.5 text-sm font-semibold text-gray-900 text-right">
+              {formatCurrency(totals.totalPaid)}
+            </td>
+            <td className="px-3 py-3.5 text-sm font-semibold text-gray-900 text-right">
+              {formatCurrency(totals.totalDue)}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  )
+}
