@@ -1,6 +1,6 @@
 import { execSync } from 'child_process'
-import { existsSync, readFileSync, writeFileSync } from 'fs'
-import { basename } from 'path'
+import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs'
+import { basename, join } from 'path'
 import { Client } from 'pg'
 import { workspaceRoot } from '@nx/devkit'
 
@@ -11,6 +11,42 @@ export const DOCKER_COMPOSE_FILE = '.dev/docker-compose.yml'
 
 export function log(...msg) {
   console.log(`[${WORKSPACE_NAME}]`, ...msg)
+}
+
+const TEMPLATE_NAME = 'nestled-template'
+const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'tmp', '.nx', 'coverage', '.idea', '.vscode'])
+
+export function renameProject(name: string) {
+  const files = getAllFiles(workspaceRoot)
+  let filesUpdated = 0
+
+  for (const filePath of files) {
+    try {
+      const content = readFileSync(filePath, 'utf-8')
+      if (content.includes(TEMPLATE_NAME)) {
+        writeFileSync(filePath, content.replaceAll(TEMPLATE_NAME, name))
+        filesUpdated++
+      }
+    } catch {
+      // Skip binary files or unreadable files
+    }
+  }
+
+  log(`Renamed "${TEMPLATE_NAME}" to "${name}" in ${filesUpdated} file(s)`)
+}
+
+function getAllFiles(dir: string): string[] {
+  const files: string[] = []
+  for (const entry of readdirSync(dir)) {
+    if (IGNORED_DIRS.has(entry)) continue
+    const fullPath = join(dir, entry)
+    if (statSync(fullPath).isDirectory()) {
+      files.push(...getAllFiles(fullPath))
+    } else {
+      files.push(fullPath)
+    }
+  }
+  return files
 }
 
 export async function connectToPostgres(url: string): Promise<Client> {

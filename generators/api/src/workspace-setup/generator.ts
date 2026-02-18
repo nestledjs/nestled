@@ -5,14 +5,19 @@ import {
   ensureDockerIsRunning,
   ensureDotEnv,
   log,
+  renameProject,
   runGraphQLTypeGeneration,
   runPrismaSeed,
   runPrismaSetup,
   sleep,
 } from './lib/helpers'
+import { WorkspaceSetupGeneratorSchema } from './schema'
 
-export default async function () {
+export default async function (_tree: unknown, schema: WorkspaceSetupGeneratorSchema) {
   log('Setting up workspace')
+
+  log(`Renaming project to "${schema.name}"...`)
+  renameProject(schema.name)
 
   ensureDotEnv()
   require('dotenv').config()
