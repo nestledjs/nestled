@@ -1,64 +1,89 @@
+<!-- TODO: Add logo here -->
+<!-- <p align="center"><img src="./assets/logo.png" alt="NestledJS" width="400" /></p> -->
+
 # NestledJS
 
-NestledJS is a powerful monorepo built on [Nx](https://nx.dev) that provides a collection of libraries and tools to accelerate full-stack application development. It simplifies setting up new projects by providing code generators, reusable form components, and helper utilities.
+> If you are here because you want to rapidly deploy a site using NestledJS, please go to [nestledjs.com](https://nestledjs.com) and read the official docs.
 
-## Core Libraries
+**This README is for developers contributing to the NestledJS generator framework.**
 
-The NestledJS monorepo includes three primary libraries:
+## Overview
 
-- **`@nestledjs/generators`**: A set of Nx generators to scaffold a complete full-stack application, including API, web frontend, and shared libraries. **(Under Development)**
-- **`@nestledjs/forms`**: A robust library for building, validating, and managing forms in your applications. **(Ready for Use)**
-- **`@nestledjs/helpers`**: A collection of helper functions and utilities to support development across the monorepo.
+NestledJS has shifted from whole-site generation to **starter templates** paired with generators for ongoing development tasks. Rather than scaffolding an entire project from scratch, developers clone a starter template and use generators to keep their codebase in sync with their Prisma schema.
+
+### The Generative API Philosophy
+
+The core of NestledJS is `db-update` — a single command that regenerates your API layer from your Prisma schema:
+
+```sh
+pnpm db-update
+```
+
+This runs:
+
+```json
+"db-update": "nx g @nestledjs/api:generate-crud && pnpm generate:models && nx g @nestledjs/shared:sdk && nx g @nestledjs/api:custom"
+```
+
+1. **`generate-crud`** — Generates CRUD resolvers and services from your Prisma models
+2. **`generate:models`** — Generates GraphQL model types
+3. **`shared:sdk`** — Generates the GraphQL client SDK (fragments, mutations, queries)
+4. **`api:custom`** — Generates custom library wrappers for your models
+
+When you first clone a starter template, `workspace-setup` handles the initial environment — spinning up Docker, running migrations, and seeding the database.
+
+## Generators
+
+### Active Generators
+
+These are the generators actively maintained for use in our starter templates:
+
+| Generator | Description |
+|---|---|
+| `@nestledjs/api:generate-crud` | Generate CRUD resolvers/services from Prisma models |
+| `@nestledjs/api:custom` | Generate custom library wrappers for models |
+| `@nestledjs/shared:sdk` | Generate the GraphQL client SDK |
+| `@nestledjs/api:workspace-setup` | Set up the workspace environment (Docker, migrations, seeds) |
+| `@nestledjs/api:plugin` | Generate a blank plugin module (module, service, resolver) |
+| `@nestledjs/plugins:integration` | Generate a new integration library |
+
+### Legacy / Internal Generators
+
+These generators were used to build the starter templates themselves. They are not needed for day-to-day development but serve as useful educational examples of Nx code generation:
+
+| Generator | Description |
+|---|---|
+| `@nestledjs/config:setup` | Install workspace dependencies |
+| `@nestledjs/config:init` | Initialize workspace config, Docker, env files |
+| `@nestledjs/api:setup` | Set up API dependencies (NestJS, GraphQL, Prisma) |
+| `@nestledjs/api:app` | Create the main NestJS application |
+| `@nestledjs/api:prisma` | Create the Prisma library |
+| `@nestledjs/api:config` | Create the API config library |
+| `@nestledjs/api:account` | Create the account feature library |
+| `@nestledjs/api:user` | Create the user feature library |
+| `@nestledjs/api:core` | Create the core GraphQL/auth infrastructure |
+| `@nestledjs/api:smtp-mailer` | Create the SMTP mailer integration |
+| `@nestledjs/api:utils` | Create the auth utilities library |
+| `@nestledjs/api:integrations` | Create the integrations library |
+| `@nestledjs/plugins:auth` | Generate auth plugin |
+| `@nestledjs/shared:styles` | Generate shared styles with Tailwind CSS |
+| `@nestledjs/shared:apollo` | Generate Apollo client config |
+| `@nestledjs/web:setup` | Set up web dependencies (React Router, Apollo) |
+| `@nestledjs/web:app` | Create the web application |
 
 ## Local Development with YALC
 
-To test the NestledJS libraries in your local projects, you can use [YALC](https://github.com/wclr/yalc). YALC acts as a local package repository, allowing you to "publish" your packages locally and link them to other projects.
+To test the NestledJS generator packages in your local projects, you can use [YALC](https://github.com/wclr/yalc). YALC acts as a local package repository, allowing you to publish packages locally and link them to other projects.
 
-1.  **Publish a package locally:**
+1. **Publish a package locally:**
 
     ```sh
     yalc publish
     ```
 
-2.  **In your consumer project, link the package:**
+2. **In your consumer project, link the package:**
 
     ```sh
-    yalc add @nestledjs/forms
+    yalc add @nestledjs/generators
     pnpm install
     ```
-
-## Generators
-
-The `@nestledjs/generators` library is designed to quickly scaffold a full-stack application. While it is still under development, it provides a solid foundation for new projects.
-
-### Full Stack Generation
-
-To generate a complete project, run the following commands in order:
-
-```sh
-nx g @nestledjs/config:setup
-nx g @nestledjs/config:init
-nx g @nestledjs/api:setup
-nx g @nestledjs/api:app
-nx g @nestledjs/api:prisma
-nx g @nestledjs/api:config
-nx g @nestledjs/api:core
-nx g @nestledjs/api:custom
-nx g @nestledjs/api:smtp-mailer
-nx g @nestledjs/api:generate-crud
-nx g @nestledjs/api:utils
-nx g @nestledjs/api:custom
-nx g @nestledjs/shared:sdk
-nx g @nestledjs/shared:styles
-nx g @nestledjs/plugins:auth
-nx g @nestledjs/api:workspace-setup
-nx g @nestledjs/web:setup
-nx g @nestledjs/web:app
-nx g @nestledjs/shared:apollo
-```
-
-## Forms
-
-The `@nestledjs/forms` library is stable and ready for production use. It provides a comprehensive solution for form creation and management.
-
-For detailed documentation on how to use the forms library, please see its dedicated [README.md](./forms/README.md).
