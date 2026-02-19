@@ -7,5 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #140 | 3:18 PM | 🔵 | Forms Package Uses ESM Module Type | ~257 |
+| #150 | 3:20 PM | ⚖️ | Prisma v7 Migration Strategy for Nestled Generator Framework | ~584 |
+| #79 | 2:26 PM | 🔵 | Utils Package Provides Shared Prisma Utilities | ~299 |
 </claude-mem-context>

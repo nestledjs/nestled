@@ -4,10 +4,9 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-NestledJS is a monorepo built on Nx that provides a collection of libraries and generators to accelerate full-stack application development. The core focus is on three primary libraries:
+NestledJS is a monorepo built on Nx that provides a collection of libraries and generators to accelerate full-stack application development. The core libraries are:
 
-- **`@nestledjs/generators`**: Nx generators to scaffold complete full-stack applications (Under Development)
-- **`@nestledjs/forms`**: Production-ready React form library supporting both declarative and imperative patterns
+- **`@nestledjs/generators`**: Nx generators to scaffold complete full-stack applications
 - **`@nestledjs/helpers`**: Collection of helper functions and utilities
 
 ## Development Commands
@@ -72,7 +71,7 @@ pnpm push-all
 pnpm publish-all
 
 # In consumer project
-yalc add @nestledjs/forms
+yalc add @nestledjs/generators
 pnpm install
 ```
 
@@ -91,7 +90,6 @@ nx release publish
 ### Monorepo Organization
 The repository follows Nx workspace conventions with these main directories:
 
-- **`/forms/`** - Production-ready React form library with TypeScript, supporting dual declarative/imperative APIs
 - **`/helpers/`** - Utility functions and shared helpers
 - **`/generators/`** - Nx generator packages organized by domain:
   - `api/` - NestJS API generators (setup, app, prisma, core, CRUD, etc.)
@@ -109,15 +107,6 @@ Each generator follows a strict structure (enforced by `.cursors` rules):
 
 **Important**: Generators are meant for external use only and should not be run within this project.
 
-### Forms Library Architecture
-The forms library (`@nestledjs/forms`) provides:
-- **Dual API**: Declarative (field arrays) and imperative (individual components) usage
-- **20+ Field Types**: Text, email, select, date pickers, markdown editor, money, phone, etc.
-- **Conditional Logic**: Dynamic show/hide, required, and disabled behaviors
-- **TypeScript First**: Full type safety throughout
-- **Themeable**: Customizable styling system
-- **Markdown Support**: Rich text editing via `@mdxeditor/editor` (optional peer dependency)
-
 ### Key Dependencies
 - **Nx 21.3.11**: Monorepo management and build system
 - **React 19.1.0**: UI library for forms
@@ -133,13 +122,7 @@ The forms library (`@nestledjs/forms`) provides:
 - All generators must include the four required files: `schema.json`, `schema.d.ts`, `generator.ts`, `generator.spec.ts`
 - Never create `project.json` or `tsconfig.json` in individual generator directories (workspace-level only)
 - Test generators externally, not within this project
-- Follow dependency order when publishing: helpers → utils → shared → plugins → config → web → api → forms
-
-### Forms Development
-- When using MarkdownEditor, ensure `@mdxeditor/editor` is installed and CSS is imported
-- Support both declarative and imperative usage patterns
-- Maintain TypeScript type safety across all field types
-- Test both usage patterns in stories/tests
+- Follow dependency order when publishing: helpers → utils → shared → plugins → config → web → api
 
 ### Build & Release
 - Use PNPM as package manager
