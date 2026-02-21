@@ -68,7 +68,7 @@
     },
     "conventionalCommits": true,
     "version": {
-      "preVersionCommand": "nx affected --target=test --base=develop",
+      "preVersionCommand": "pnpm sync-tags && nx affected --target=test --base=develop",
       "currentVersionResolver": "registry",
       "fallbackCurrentVersionResolver": "disk",
       "versionActionsOptions": {
