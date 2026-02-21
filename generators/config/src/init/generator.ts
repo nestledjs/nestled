@@ -1,7 +1,6 @@
 import { addDependenciesToPackageJson, generateFiles, GeneratorCallback, logger, Tree } from '@nx/devkit'
 import {
   addScriptToPackageJson,
-  getNpmScope,
   pnpmInstallCallback,
   removeWorkspacesFromPackageJson,
   updatePnpmWorkspaceConfig,
@@ -31,11 +30,13 @@ function handleEnvExample(tree: Tree) {
 }
 
 function handleDockerFilesAndScripts(tree: Tree) {
-  const npmScope = getNpmScope(tree)
+  // Use nestled-template as placeholder - workspace-setup will rename to actual project name
+  const projectPlaceholder = 'nestled-template'
+
   // Generate Docker files in .dev directory
   const filesDir = path.join(__dirname, 'files', '.dev')
 
-  generateFiles(tree, filesDir, '.dev', { dot: '.', tmpl: '', npmScope })
+  generateFiles(tree, filesDir, '.dev', { dot: '.', tmpl: '' })
   logger.info('✅ Generated Dockerfile and docker-compose.yml in .dev directory')
 
   // Add only Docker-related scripts to package.json
@@ -44,12 +45,12 @@ function handleDockerFilesAndScripts(tree: Tree) {
     const packageJsonContent = JSON.parse(tree.read(packageJsonPath, 'utf-8') || '{}')
     packageJsonContent.scripts = {
       ...packageJsonContent.scripts,
-      'docker:build': `docker build -f .dev/Dockerfile -t ${npmScope} .`,
-      'docker:down': `docker compose -f .dev/docker-compose.yml -p ${npmScope} down`,
-      'docker:logs': `docker compose -f .dev/docker-compose.yml -p ${npmScope} logs --tail 50`,
-      'docker:push': `docker push ${npmScope}`,
-      'docker:run': `docker run -it -p 8000:3000 ${npmScope}`,
-      'docker:up': `docker compose -f .dev/docker-compose.yml -p ${npmScope} up -d`,
+      'docker:build': `docker build -f .dev/Dockerfile -t ${projectPlaceholder} .`,
+      'docker:down': `docker compose -f .dev/docker-compose.yml -p ${projectPlaceholder} down`,
+      'docker:logs': `docker compose -f .dev/docker-compose.yml -p ${projectPlaceholder} logs --tail 50`,
+      'docker:push': `docker push ${projectPlaceholder}`,
+      'docker:run': `docker run -it -p 8000:3000 ${projectPlaceholder}`,
+      'docker:up': `docker compose -f .dev/docker-compose.yml -p ${projectPlaceholder} up -d`,
     }
     tree.write(packageJsonPath, JSON.stringify(packageJsonContent, null, 2))
     logger.info('✅ Added Docker scripts to package.json')
