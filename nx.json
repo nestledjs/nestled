@@ -66,10 +66,11 @@
       },
       "workspaceChangelog": false
     },
+    "conventionalCommits": true,
     "version": {
       "preVersionCommand": "nx affected --target=test --base=develop",
+      "currentVersionResolver": "registry",
       "fallbackCurrentVersionResolver": "disk",
-      "conventionalCommits": true,
       "versionActionsOptions": {
         "skipLockFileUpdate": true,
         "installIgnoreScripts": true
