@@ -180,6 +180,7 @@ describe('PhoneField validation survives RenderFormField lifecycle', () => {
 
   it('should retain phone validation even with requiredWhen conditional', async () => {
     // Tests that phone validation survives dynamic required state changes
+    // by toggling the trigger value and verifying validation still works
     const handleSubmit = vi.fn()
 
     render(
@@ -188,7 +189,7 @@ describe('PhoneField validation survives RenderFormField lifecycle', () => {
         fields={[
           FormFieldClass.text('trigger', {
             label: 'Trigger',
-            defaultValue: 'yes',
+            defaultValue: 'no',
           }),
           FormFieldClass.phone('phone', {
             label: 'Phone',
@@ -207,7 +208,17 @@ describe('PhoneField validation survives RenderFormField lifecycle', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
     })
 
-    // Submit should fail due to phone validation (not just required)
+    // Change trigger from 'no' to 'yes' - this transitions requiredWhen from false to true
+    const triggerInput = screen.getByLabelText('Trigger')
+    fireEvent.change(triggerInput, { target: { value: 'yes' } })
+
+    // Wait for re-render after trigger change
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50))
+    })
+
+    // Submit should fail due to phone validation (the invalid '123' value)
+    // This verifies that phone validation survives the requiredWhen state transition
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
 
     await waitFor(() => {
