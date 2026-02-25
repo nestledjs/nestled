@@ -30,6 +30,8 @@ export function PhoneField({
 
   // Build a field config that includes phone validation as the default validate
   // if no custom validate was provided by the consumer.
+  // Using field.options.validate as dependency to avoid unnecessary recalculations
+  // when parent re-renders with a new field object reference.
   const fieldWithPhoneValidation = useMemo(() => {
     if (field.options.validate) {
       return field
@@ -41,7 +43,7 @@ export function PhoneField({
         validate: validatePhone,
       },
     }
-  }, [field])
+  }, [field, field.options.validate])
 
   // Use the same validation pipeline as TextField, EmailField, etc.
   const validationRules = useFieldValidation(fieldWithPhoneValidation, form)
