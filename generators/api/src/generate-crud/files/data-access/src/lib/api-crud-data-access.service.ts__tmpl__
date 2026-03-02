@@ -142,7 +142,14 @@ function generateRelationHandling(model, operation) {
   code += '          // Single relationship - always use connect\n';
   code += '          data[relationName] = { connect: { id: config.ids } };\n';
   code += '        }\n';
-  code += '      }\n';
+  if (operation === 'update') {
+    code += '      } else if (config.ids === null && !config.isList) {\n';
+    code += '        // Explicitly null - disconnect the single relationship\n';
+    code += '        data[relationName] = { disconnect: true };\n';
+    code += '      }\n';
+  } else {
+    code += '      }\n';
+  }
   code += '    }\n';
 
   return code;
