@@ -112,12 +112,12 @@ function generateRelationHandling(model, operation) {
   
   // Add virtual relation fields to the mapping
   virtualRelationFields.forEach(field => {
-    code += `      ${field.relatedField}: { ids: ${field.name}, isVirtual: true, isList: ${field.isList} },\n`;
+    code += `      ${field.relatedField}: { ids: ${field.name}, isVirtual: true, isList: ${field.isList}, isRequired: false },\n`;
   });
-  
+
   // Add foreign key fields to the mapping
   foreignKeyFields.forEach(field => {
-    code += `      ${field.relationName}: { ids: ${field.fieldName}, isVirtual: false, isList: ${field.isList || false} },\n`;
+    code += `      ${field.relationName}: { ids: ${field.fieldName}, isVirtual: false, isList: ${field.isList || false}, isRequired: ${field.isRequired} },\n`;
   });
   
   code += '    };\n\n';
@@ -147,8 +147,8 @@ function generateRelationHandling(model, operation) {
   code += '          data[relationName] = { connect: { id: config.ids } };\n';
   code += '        }\n';
   if (operation === 'update') {
-    code += '      } else if (config.ids === null && !config.isList) {\n';
-    code += '        // Explicitly null - disconnect the single relationship\n';
+    code += '      } else if (config.ids === null && !config.isList && !config.isRequired) {\n';
+    code += '        // Explicitly null - disconnect the optional single relationship\n';
     code += '        data[relationName] = { disconnect: true };\n';
     code += '      }\n';
   } else {
