@@ -139,7 +139,11 @@ function generateRelationHandling(model, operation) {
   
   code += '          data[relationName] = { [relationOperation]: ids };\n';
   code += '        } else {\n';
-  code += '          // Single relationship - always use connect\n';
+  if (operation === 'update') {
+    code += '          // Single relationship - connect when an id is provided; disconnect when null on update\n';
+  } else {
+    code += '          // Single relationship - always use connect\n';
+  }
   code += '          data[relationName] = { connect: { id: config.ids } };\n';
   code += '        }\n';
   if (operation === 'update') {
