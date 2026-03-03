@@ -72,7 +72,7 @@ export function getVirtualRelationFields(model: ModelLike): VirtualRelationField
             isList: true,
             isOptional: true,
             isVirtual: true,
-            relationName: relationField.relationName!,
+            relationName: relationField.relationName,
             relatedField: relationField.name,
           })
         }
@@ -88,7 +88,7 @@ export function getVirtualRelationFields(model: ModelLike): VirtualRelationField
             isList: false,
             isOptional: true,
             isVirtual: true,
-            relationName: relationField.relationName!,
+            relationName: relationField.relationName,
             relatedField: relationField.name,
           })
         }
