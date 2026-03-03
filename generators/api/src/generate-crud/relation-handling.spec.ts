@@ -69,6 +69,24 @@ const modelWithMixedRelations: ModelLike = {
   ],
 }
 
+// Model with a required single FK relation (Post -> Author via authorId, non-optional)
+const modelWithRequiredSingleRelation: ModelLike = {
+  fields: [
+    { name: 'id', type: 'String', isId: true, isList: false, isOptional: false, hasDefaultValue: true },
+    { name: 'title', type: 'String', isList: false, isOptional: false },
+    { name: 'authorId', type: 'String', isList: false, isOptional: false },
+    {
+      name: 'author',
+      type: 'User',
+      kind: 'object',
+      isList: false,
+      isOptional: false,
+      relationName: 'PostToUser',
+      relationFromFields: ['authorId'],
+    },
+  ],
+}
+
 // Model with no relations
 const modelWithNoRelations: ModelLike = {
   fields: [
@@ -131,9 +149,9 @@ describe('relation-handling', () => {
     })
 
     describe('update operation - single FK relation', () => {
-      it('includes disconnect branch for explicit null on single relation', () => {
+      it('includes disconnect branch for explicit null on optional single relation', () => {
         const result = generateRelationHandling(modelWithOptionalSingleRelation, 'update')
-        expect(result).toContain('} else if (config.ids === null && !config.isList) {')
+        expect(result).toContain('} else if (config.ids === null && !config.isList && !config.isRequired) {')
         expect(result).toContain('data[relationName] = { disconnect: true }')
       })
 
@@ -166,12 +184,12 @@ describe('relation-handling', () => {
     })
 
     describe('update operation - virtual list relation', () => {
-      it('guards disconnect branch with !config.isList so it cannot fire for list relations', () => {
+      it('guards disconnect branch so it cannot fire for list relations', () => {
         const result = generateRelationHandling(modelWithVirtualListRelation, 'update')
-        // The disconnect branch is present in the generated code but guarded by !config.isList
-        expect(result).toContain('config.ids === null && !config.isList')
+        // The disconnect branch is present but guarded by !config.isList && !config.isRequired
+        expect(result).toContain('config.ids === null && !config.isList && !config.isRequired')
         // The relation mapping sets isList: true, so the guard prevents disconnect at runtime
-        expect(result).toContain('tags: { ids: tagsIds, isVirtual: true, isList: true }')
+        expect(result).toContain('tags: { ids: tagsIds, isVirtual: true, isList: true, isRequired: false }')
       })
 
       it('uses set operation for virtual list relations on update', () => {
@@ -181,10 +199,10 @@ describe('relation-handling', () => {
     })
 
     describe('mixed relations (single FK + virtual list)', () => {
-      it('includes disconnect branch only for single relations on update', () => {
+      it('includes disconnect branch only for optional single relations on update', () => {
         const result = generateRelationHandling(modelWithMixedRelations, 'update')
-        // Disconnect branch is present (for the single FK relation)
-        expect(result).toContain('} else if (config.ids === null && !config.isList) {')
+        // Disconnect branch is present but guarded by isRequired check
+        expect(result).toContain('} else if (config.ids === null && !config.isList && !config.isRequired) {')
         expect(result).toContain('data[relationName] = { disconnect: true }')
       })
 
@@ -193,10 +211,25 @@ describe('relation-handling', () => {
         expect(result).toContain('tagsIds, locationId, ...regularFields')
       })
 
-      it('creates relation mappings for both relation types', () => {
+      it('creates relation mappings for both relation types with isRequired metadata', () => {
         const result = generateRelationHandling(modelWithMixedRelations, 'update')
-        expect(result).toContain('tags: { ids: tagsIds, isVirtual: true, isList: true }')
-        expect(result).toContain('location: { ids: locationId, isVirtual: false, isList: false }')
+        expect(result).toContain('tags: { ids: tagsIds, isVirtual: true, isList: true, isRequired: false }')
+        expect(result).toContain('location: { ids: locationId, isVirtual: false, isList: false, isRequired: false }')
+      })
+    })
+
+    describe('update operation - required single FK relation', () => {
+      it('does not allow disconnect for required relations at runtime', () => {
+        const result = generateRelationHandling(modelWithRequiredSingleRelation, 'update')
+        // The mapping marks the relation as isRequired: true
+        expect(result).toContain('author: { ids: authorId, isVirtual: false, isList: false, isRequired: true }')
+        // The disconnect guard includes !config.isRequired, so required relations cannot disconnect
+        expect(result).toContain('!config.isRequired')
+      })
+
+      it('still allows connect for required relations', () => {
+        const result = generateRelationHandling(modelWithRequiredSingleRelation, 'update')
+        expect(result).toContain('data[relationName] = { connect: { id: config.ids } }')
       })
     })
   })
