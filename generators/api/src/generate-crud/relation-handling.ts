@@ -180,8 +180,8 @@ export function generateRelationHandling(model: ModelLike, operation: 'create' |
   code += '          data[relationName] = { connect: { id: config.ids } };\n'
   code += '        }\n'
   if (operation === 'update') {
-    code += '      } else if (config.ids === null && !config.isList && !config.isRequired) {\n'
-    code += '        // Explicitly null - disconnect the optional single relationship\n'
+    code += '      } else if (config.ids === null && !config.isList && !config.isRequired && !config.isVirtual) {\n'
+    code += '        // Explicitly null - disconnect the optional single relationship (only when this model owns the FK)\n'
     code += '        data[relationName] = { disconnect: true };\n'
     code += '      }\n'
   } else {
