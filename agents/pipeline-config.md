@@ -3,6 +3,7 @@
 ## Repo
 | Field | Value |
 |---|---|
+| `repo_name` | `nestled` |
 | `framework` | `nestled` |
 | `github_slug` | `nestledjs/nestled` |
 | `base_branch` | `develop` |
