@@ -93,6 +93,17 @@ export function getGuardForAuthLevel(level: string): string | null {
   return `GqlAuth${pascalCase}Guard`
 }
 
+function isSkipCrudModel(model: { documentation?: string }): boolean {
+  return Boolean(model.documentation?.includes('@skipCrud'))
+}
+
+function filterSkippedRelationFields<T extends { kind: string; type: string }>(
+  fields: readonly T[],
+  skippedModelNames: Set<string>,
+): T[] {
+  return fields.filter(f => !(f.kind === 'object' && skippedModelNames.has(f.type)))
+}
+
 function toKebabCase(str: string): string {
   return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
@@ -241,7 +252,8 @@ export async function generateCrudLogic(
     }
     try {
       const dmmf = await dependencies.getDMMF({ datamodel: prismaSchema })
-      return dmmf.datamodel.models.map((model) => {
+      const skippedModelNames = new Set(dmmf.datamodel.models.filter(isSkipCrudModel).map(m => m.name))
+      return dmmf.datamodel.models.filter(model => !skippedModelNames.has(model.name)).map((model) => {
         const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
         const pluralPropertyName = getPluralName(singularPropertyName)
         const authConfig = getCrudAuthForModel(prismaSchema, model.name)
@@ -250,7 +262,7 @@ export async function generateCrudLogic(
         return {
           name: model.name,
           pluralName: getPluralName(model.name),
-          fields: model.fields.map((field) => ({
+          fields: filterSkippedRelationFields(model.fields, skippedModelNames).map((field) => ({
             name: field.name,
             kind: field.kind,
             type: field.type,
@@ -318,6 +330,21 @@ export async function generateCrudLogic(
       dependencies.joinPathFragments(dataAccessLibraryRoot, 'src/lib/database-models.ts'),
       databaseModelContent,
     )
+
+    // Delete stale resolver files for models that now have @skipCrud
+    const allDmmfModels = await dependencies.getDMMF({
+      datamodel: dependencies.readPrismaSchema(tree, dependencies.getPrismaSchemaPath(tree))!,
+    })
+    const skippedModelNames = new Set(
+      allDmmfModels.datamodel.models.filter(isSkipCrudModel).map(m => m.name)
+    )
+    for (const skippedName of skippedModelNames) {
+      const stalePath = dependencies.joinPathFragments(
+        featureLibraryRoot,
+        `src/lib/${toKebabCase(skippedName)}.resolver.ts`,
+      )
+      if (tree.exists(stalePath)) tree.delete(stalePath)
+    }
 
     // Generate resolvers
     for (const model of models) {

@@ -356,6 +356,17 @@ export function updateTsConfigPaths(tree: Tree, importPath: string, libraryRoot:
   }
 }
 
+function isSkipCrudModel(model: { documentation?: string }): boolean {
+  return Boolean(model.documentation?.includes('@skipCrud'))
+}
+
+function filterSkippedRelationFields<T extends { kind: string; type: string }>(
+  fields: readonly T[],
+  skippedModelNames: Set<string>,
+): T[] {
+  return fields.filter(f => !(f.kind === 'object' && skippedModelNames.has(f.type)))
+}
+
 export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
   const prismaModule = await import('@prisma/internals')
   const getDMMF = prismaModule.default.getDMMF || prismaModule.getDMMF
@@ -372,12 +383,13 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
   try {
     const dmmf = await getDMMF({ datamodel: prismaSchema })
 
-    return dmmf.datamodel.models.map((model) => {
+    const skippedModelNames = new Set(dmmf.datamodel.models.filter(isSkipCrudModel).map(m => m.name))
+    return dmmf.datamodel.models.filter(model => !skippedModelNames.has(model.name)).map((model) => {
       const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
       const pluralPropertyName = pluralize(singularPropertyName)
 
       // Create a properly typed fields array
-      const fields = model.fields.map((field) => ({
+      const fields = filterSkippedRelationFields(model.fields, skippedModelNames).map((field) => ({
         name: field.name,
         kind: field.kind,
         type: field.type,

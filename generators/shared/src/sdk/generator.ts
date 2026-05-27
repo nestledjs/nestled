@@ -128,6 +128,28 @@ const defaultDependencies = {
 }
 export type SdkGeneratorDependencies = typeof defaultDependencies
 
+function isSkipCrudModel(model: { documentation?: string }): boolean {
+  return Boolean(model.documentation?.includes('@skipCrud'))
+}
+
+function filterSkippedRelationFields<T extends { kind: string; type: string }>(
+  fields: readonly T[],
+  skippedModelNames: Set<string>,
+): T[] {
+  return fields.filter(f => !(f.kind === 'object' && skippedModelNames.has(f.type)))
+}
+
+function getSdkModels(models: ReadonlyArray<any>): {
+  skippedModelNames: Set<string>
+  visibleModels: any[]
+} {
+  const skippedModelNames = new Set(models.filter(isSkipCrudModel).map(m => m.name))
+  const visibleModels = models
+    .filter(m => !skippedModelNames.has(m.name))
+    .map(m => ({ ...m, fields: filterSkippedRelationFields(m.fields, skippedModelNames) }))
+  return { skippedModelNames, visibleModels }
+}
+
 export async function sdkGeneratorLogic(
   tree: Tree,
   schema: SdkGeneratorSchema,
@@ -147,6 +169,7 @@ export async function sdkGeneratorLogic(
   // 2. Parse models using Prisma DMMF for doc comments
   const dmmf = await getDMMF({ datamodel: schemaContent })
   const allModels = dmmf.datamodel.models
+  const { skippedModelNames, visibleModels } = getSdkModels(allModels)
   const enumNames = new Set(dmmf.datamodel.enums.map((e: any) => e.name))
 
   // 3. Ensure sdk library exists
@@ -157,8 +180,12 @@ export async function sdkGeneratorLogic(
   const databaseModelContent = generateDatabaseModelContent(allModelsForDb)
   tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
 
+  for (const skippedName of skippedModelNames) {
+    deleteDirectory(tree, `libs/shared/sdk/src/graphql/${kebabCase(skippedName)}`)
+  }
+
   // 5. For each model, generate client files (existing logic)
-  for (const model of allModels) {
+  for (const model of visibleModels) {
     const modelName = model.name
     const kebabName = kebabCase(modelName)
     const modelDir = `libs/shared/sdk/src/graphql/${kebabName}`
@@ -209,9 +236,9 @@ export async function sdkGeneratorLogic(
   deleteDirectory(tree, 'libs/shared/sdk/src/__admin')
   console.log(
     'Generating admin files for models:',
-    allModels.map((m: any) => m.name),
+    visibleModels.map((m: any) => m.name),
   )
-  for (const model of allModels) {
+  for (const model of visibleModels) {
     const modelName = model.name
     const kebabName = kebabCase(modelName)
     const modelDir = `libs/shared/sdk/src/__admin/${kebabName}`
@@ -220,7 +247,7 @@ export async function sdkGeneratorLogic(
     const propertyName = modelName.charAt(0).toLowerCase() + modelName.slice(1)
     const pluralClassName = dependencies.getPluralName(className)
     const pluralPropertyName = dependencies.getPluralName(propertyName)
-    const fragmentFields = getAdminFragmentFields(model, allModels, enumNames)
+    const fragmentFields = getAdminFragmentFields(model, visibleModels, enumNames)
     const adminPrefix = '__Admin'
 
     // Get ID field type for GraphQL type definitions

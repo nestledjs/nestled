@@ -34,6 +34,17 @@ interface ModelType {
   pluralModelPropertyName: string
 }
 
+function isSkipCrudModel(model: { documentation?: string }): boolean {
+  return Boolean(model.documentation?.includes('@skipCrud'))
+}
+
+function filterSkippedRelationFields<T extends { kind: string; type: string }>(
+  fields: readonly T[],
+  skippedModelNames: Set<string>,
+): T[] {
+  return fields.filter(f => !(f.kind === 'object' && skippedModelNames.has(f.type)))
+}
+
 async function getAllPrismaModels(tree: Tree, dependencies: CustomGeneratorDependencies): Promise<ModelType[]> {
   const prismaPath = dependencies.getPrismaSchemaPath(tree)
   const prismaSchema = dependencies.readPrismaSchema(tree, prismaPath)
@@ -44,12 +55,13 @@ async function getAllPrismaModels(tree: Tree, dependencies: CustomGeneratorDepen
 
   try {
     const dmmf = await dependencies.getDMMF({ datamodel: prismaSchema })
-    return dmmf.datamodel.models.map((model) => {
+    const skippedModelNames = new Set(dmmf.datamodel.models.filter(isSkipCrudModel).map(m => m.name))
+    return dmmf.datamodel.models.filter(model => !skippedModelNames.has(model.name)).map((model) => {
       const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
       const pluralPropertyName = dependencies.pluralize(singularPropertyName)
 
       // Create a properly typed fields array
-      const fields = model.fields.map((field) => ({
+      const fields = filterSkippedRelationFields(model.fields, skippedModelNames).map((field) => ({
         name: field.name,
         type: field.type,
         isId: field.isId,
@@ -102,9 +114,13 @@ function updateIndexFileAdditively(
   tree: Tree,
   indexPath: string,
   newExports: string[],
+  removedExports: string[] = [],
 ) {
   const existingContent = tree.exists(indexPath) ? tree.read(indexPath)?.toString() || '' : ''
-  const existingLines = existingContent.split('\n').filter(line => line.trim() !== '')
+  const removedExportSet = new Set(removedExports)
+  const existingLines = existingContent
+    .split('\n')
+    .filter(line => line.trim() !== '' && !removedExportSet.has(line))
   const existingExports = new Set(existingLines)
   
   // Add new exports that don't already exist
@@ -121,12 +137,23 @@ function updateIndexFileAdditively(
   tree.write(indexPath, updatedContent)
 }
 
+function removeSkippedModulesFromAppModule(tree: Tree, skippedModelNames: Set<string>) {
+  const modulePath = 'apps/api/src/app.module.ts'
+  if (!tree.exists(modulePath)) return
+  let content = tree.read(modulePath, 'utf-8') || ''
+  for (const modelName of skippedModelNames) {
+    content = content.replace(new RegExp(`\\n\\s*${modelName}Module,`, 'g'), '')
+  }
+  tree.write(modulePath, content)
+}
+
 async function generateCustomFiles(
   tree: Tree,
   customLibraryRoot: string,
   models: ModelType[],
   npmScope: string,
   dependencies: CustomGeneratorDependencies,
+  skippedModelNames = new Set<string>(),
 ) {
   const defaultDir = dependencies.join(customLibraryRoot, 'src/lib/default')
   const pluginsDir = dependencies.join(customLibraryRoot, 'src/lib/plugins')
@@ -208,11 +235,24 @@ export class ${model.modelName}Module {}
     })
   }
 
+  // Delete stale default folders for models that now have @skipCrud
+  for (const modelName of skippedModelNames) {
+    const staleFolder = dependencies.join(defaultDir, toKebabCase(modelName))
+    if (tree.exists(staleFolder)) {
+      for (const child of tree.children(staleFolder)) {
+        tree.delete(dependencies.join(staleFolder, child))
+      }
+    }
+  }
+  const skippedModelFolders = Array.from(skippedModelNames).map(toKebabCase)
+  const removedModelExports = skippedModelFolders.map(m => `export * from './${m}/${m}.module'`)
+
   // Update default/index.ts to additively export model modules
   const modelFolders = models.map((m) => toKebabCase(m.modelName))
   const newModelExports = modelFolders.map((m) => `export * from './${m}/${m}.module'`)
   const defaultIndexPath = dependencies.join(defaultDir, 'index.ts')
-  updateIndexFileAdditively(tree, defaultIndexPath, newModelExports)
+  updateIndexFileAdditively(tree, defaultIndexPath, newModelExports, removedModelExports)
+  removeSkippedModulesFromAppModule(tree, skippedModelNames)
 }
 
 export async function customGeneratorLogic(
@@ -256,9 +296,14 @@ export * from './lib/default'
       return
     }
 
+    const skippedModelNames = new Set(
+      (await dependencies.getDMMF({ datamodel: dependencies.readPrismaSchema(tree, dependencies.getPrismaSchemaPath(tree))! }))
+        .datamodel.models.filter(isSkipCrudModel).map(m => m.name)
+    )
+
     // Generate custom files per model
     const npmScope = `@${dependencies.getNpmScope(tree)}`
-    await generateCustomFiles(tree, customLibraryRoot, models, npmScope, dependencies)
+    await generateCustomFiles(tree, customLibraryRoot, models, npmScope, dependencies, skippedModelNames)
 
     // Format files
     await dependencies.formatFiles(tree)
