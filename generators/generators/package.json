@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/generators",
-  "version": "0.2.29",
+  "version": "0.2.30",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -33,11 +33,11 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nestledjs/api": "2.9.4",
-    "@nestledjs/config": "0.2.2",
-    "@nestledjs/plugins": "0.1.16",
-    "@nestledjs/shared": "1.0.1",
-    "@nestledjs/utils": "1.0.1",
-    "@nestledjs/web": "0.1.16"
+    "@nestledjs/api": "2.9.5",
+    "@nestledjs/config": "0.2.3",
+    "@nestledjs/plugins": "0.1.17",
+    "@nestledjs/shared": "1.0.2",
+    "@nestledjs/utils": "1.0.2",
+    "@nestledjs/web": "0.1.17"
   }
 }
