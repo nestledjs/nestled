@@ -45,8 +45,9 @@ function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>, enumN
   // Include scalar fields (non-list, non-relation, non-id) and enum fields (including multi-select enum arrays)
   const scalarAndEnumFields = model.fields
     .filter((f: any) => {
-      // Skip id fields and relations
+      // Skip id fields, relations, and @graphqlOmit fields
       if (f.isId || f.relationName) return false
+      if (f.documentation?.includes('@graphqlOmit')) return false
       // Include non-list scalar types and single-select enums
       if (!f.isList && (SCALAR_TYPES.includes(f.type) || enumNames.has(f.type))) return true
       // Include list fields only if they are enums (multi-select enums)
@@ -56,7 +57,7 @@ function getAdminFragmentFields(model: any, allModels: ReadonlyArray<any>, enumN
 
   // Include relation fields (non-list only, with nested id and defaultField)
   const relationFields = model.fields
-    .filter((f: any) => f.relationName && !f.isList)
+    .filter((f: any) => f.relationName && !f.isList && !f.documentation?.includes('@graphqlOmit'))
     .map((f: any) => {
       const relatedModel = allModels.find((m: any) => m.name === f.type)
       const defaultField = relatedModel ? getDefaultField(relatedModel) : null
@@ -177,7 +178,11 @@ export async function sdkGeneratorLogic(
 
   // 4. Generate database models file
   const allModelsForDb = await getAllPrismaModels(tree)
-  const databaseModelContent = generateDatabaseModelContent(allModelsForDb)
+  const allModelsForDbFiltered = allModelsForDb.map((model: any) => ({
+    ...model,
+    fields: model.fields.filter((f: any) => !f.documentation?.includes('@graphqlOmit')),
+  }))
+  const databaseModelContent = generateDatabaseModelContent(allModelsForDbFiltered)
   tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
 
   for (const skippedName of skippedModelNames) {
@@ -197,8 +202,9 @@ export async function sdkGeneratorLogic(
     const pluralPropertyName = dependencies.getPluralName(propertyName)
     const fragmentFields = model.fields
       .filter((f: any) => {
-        // Exclude id fields and relations
+        // Exclude id fields, relations, and @graphqlOmit fields
         if (f.name === 'id' || f.name.endsWith('Id') || f.relationName) return false
+        if (f.documentation?.includes('@graphqlOmit')) return false
         // Include scalar types (non-list)
         if (!f.isList && SCALAR_TYPES.includes(f.type)) return true
         // Include enum types (both single and multi-select)
