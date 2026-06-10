@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/generators",
-  "version": "0.2.31",
+  "version": "0.2.32",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
@@ -33,7 +33,7 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nestledjs/api": "2.10.0",
+    "@nestledjs/api": "2.10.1",
     "@nestledjs/config": "0.2.3",
     "@nestledjs/plugins": "0.1.17",
     "@nestledjs/shared": "1.0.3",
