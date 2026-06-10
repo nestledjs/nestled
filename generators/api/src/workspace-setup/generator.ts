@@ -5,6 +5,7 @@ import {
   ensureDockerIsRunning,
   ensureDotEnv,
   log,
+  removeTemplateTooling,
   renameProject,
   runGraphQLTypeGeneration,
   runPrismaSeed,
@@ -15,6 +16,9 @@ import { WorkspaceSetupGeneratorSchema } from './schema'
 
 export default async function (_tree: unknown, schema: WorkspaceSetupGeneratorSchema) {
   log('Setting up workspace')
+
+  log('Removing template-only tooling...')
+  removeTemplateTooling()
 
   log(`Renaming project to "${schema.name}"...`)
   renameProject(schema.name)

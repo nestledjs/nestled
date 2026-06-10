@@ -1,5 +1,5 @@
 import { execSync } from 'child_process'
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'fs'
+import { existsSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'fs'
 import { basename, join } from 'path'
 import { Client } from 'pg'
 import { workspaceRoot } from '@nx/devkit'
@@ -14,7 +14,25 @@ export function log(...msg) {
 }
 
 const TEMPLATE_NAME = 'nestled-template'
-const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'tmp', '.nx', 'coverage', '.idea', '.vscode'])
+// `.nestled` is excluded from the rename: its upgrade-log must keep pointing at the
+// upstream template (`repo: nestled-template`) after cloning, or the clone records
+// itself as its own template and the nestled-upgrader misidentifies it.
+const IGNORED_DIRS = new Set(['node_modules', '.git', 'dist', 'tmp', '.nx', 'coverage', '.idea', '.vscode', '.nestled'])
+
+// Template-only tooling that must not ship in clones. `.nestled-updates` holds the
+// upgrade-note authoring tooling and upgrader contract — its presence makes a repo
+// look like the template source of truth to agents and to the nestled-upgrader.
+const TEMPLATE_ONLY_PATHS = ['.nestled-updates']
+
+export function removeTemplateTooling() {
+  for (const relativePath of TEMPLATE_ONLY_PATHS) {
+    const fullPath = join(workspaceRoot, relativePath)
+    if (existsSync(fullPath)) {
+      rmSync(fullPath, { recursive: true, force: true })
+      log(`Removed template-only tooling: ${relativePath}`)
+    }
+  }
+}
 
 export function renameProject(name: string) {
   const files = getAllFiles(workspaceRoot)

@@ -6,6 +6,7 @@ const {
   ensureDockerIsRunning,
   ensureDotEnv,
   log,
+  removeTemplateTooling,
   renameProject,
   runPrismaSeed,
   runPrismaSetup,
@@ -18,6 +19,7 @@ const {
     ensureDockerIsRunning: vi.fn(),
     ensureDotEnv: vi.fn(),
     log: vi.fn(),
+    removeTemplateTooling: vi.fn(),
     renameProject: vi.fn(),
     runPrismaSeed: vi.fn(),
     runPrismaSetup: vi.fn(),
@@ -32,6 +34,7 @@ vi.mock('./lib/helpers', () => ({
   ensureDockerIsRunning,
   ensureDotEnv,
   log,
+  removeTemplateTooling,
   renameProject,
   runPrismaSeed,
   runPrismaSetup,
@@ -67,6 +70,16 @@ describe('workspace-setup generator', () => {
     expect(renameProject).toHaveBeenCalledWith('my-cool-app')
     // Rename should be called before other setup steps
     expect(renameProject).toHaveBeenCalledBefore(ensureDotEnv)
+  })
+
+  it('should remove template-only tooling before renaming', async () => {
+    process.env.DATABASE_URL = 'localhost:5432'
+    canConnect.mockResolvedValue(true)
+
+    await generator(null, { name: 'my-cool-app' })
+
+    expect(removeTemplateTooling).toHaveBeenCalled()
+    expect(removeTemplateTooling).toHaveBeenCalledBefore(renameProject)
   })
 
   it('should run setup without docker if already connected', async () => {
