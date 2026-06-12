@@ -4,23 +4,35 @@
 | Field | Value |
 |---|---|
 | `repo_name` | `nestled` |
-| `framework` | `nestled` |
+| `framework` | `nestled-library` |
 | `github_slug` | `nestledjs/nestled` |
 | `base_branch` | `develop` |
-| `repo_path` | `~/IdeaProjects/nestled` |
+| `repo_path` | resolve at runtime with `git rev-parse --show-toplevel` — portable across Mac (`~/IdeaProjects`) and Linux (`~/workspaces`) hosts; never hardcode |
 | `flightdesk_project_id` | `92691b61-d070-4460-98f9-6c3b7ce1ee47` |
-| `sdk_command` | `pnpm sdk` |
+| `sdk_command` | `none` |
 
 ## Deployment
 | Field | Value |
 |---|---|
-| `auto_merge` | `false` |
-| `deploy_command` | `none` |
-| `qa_reviewer_id` | `none` |
+| `auto_merge` | `true` — Justin setting `Approved` in Linear IS the merge + deploy confirmation (dangerous mode) |
+| `deploy_command` | `none` — library — merge only; npm release stays a manual human step |
+| `merge_command` | `gh pr merge <prNumber> --repo nestledjs/nestled --merge --delete-branch` |
 
-## Source System
+## Quality Gates
+No SonarCloud on this repo — quality gates are the Intelligence Check plus canonical checks only.
+
+## Source System — Linear (Pirate & Fox team)
 | Field | Value |
 |---|---|
-| `source_system` | `none` — tasks created manually in Qalatra, no external PM |
+| `source_system` | `linear` |
+| Canonical lifecycle | `https://raw.githubusercontent.com/pirateandfox/qalatra-prompts/develop/linear-pipeline.md` — state IDs, GraphQL patterns, turn-taking, identity |
+| `linear_project_id` | `d6cf9cfc-c916-43c3-a76e-a91fae422e86` (Nestled) |
+| API token | `~/.config/qalatra/secrets.md` → `SHI_LINEAR=` (authors as Shi) |
+| FD task reference | the issue's `FlightDesk` attachment |
 
-No source writes, no closeout action needed.
+This pipeline only processes issues whose Linear project is `d6cf9cfc-c916-43c3-a76e-a91fae422e86`. Never mutate issues
+routed to other repos.
+
+## Closeout
+Approved → merge (= deploy) → archive cloud session → archive FlightDesk task (webhook usually
+handles it) → set Linear `Done` **last**, only after cleanup succeeds.
