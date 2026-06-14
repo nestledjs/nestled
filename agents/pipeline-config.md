@@ -14,7 +14,7 @@
 ## Deployment
 | Field | Value |
 |---|---|
-| `auto_merge` | `true` — Justin setting `Approved` in Linear IS the merge + deploy confirmation (dangerous mode) |
+| `auto_merge` | `true` — the adversarial verifier `MERGE` verdict is the approval — pipeline merges + deploys directly (`In Progress` → merge → `Done`), no `In Review` / human `Approved` gate (dangerous mode); see `linear-pipeline.md` → Merge Policy |
 | `deploy_command` | `none` — library — merge only; npm release stays a manual human step |
 | `merge_command` | `gh pr merge <prNumber> --repo nestledjs/nestled --merge --delete-branch` |
 
