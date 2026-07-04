@@ -1,0 +1,18 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "$id": "GenerateModels",
+  "title": "Generate GraphQL ObjectType models and enums from the Prisma schema",
+  "type": "object",
+  "properties": {
+    "outputPath": {
+      "type": "string",
+      "description": "Directory (relative to the workspace root) where models.ts, enums.ts and index.ts are written.",
+      "default": "libs/api/core/models/src/lib/models"
+    },
+    "prismaImportPath": {
+      "type": "string",
+      "description": "Import path for the generated Prisma client wrapper that re-exports enums. Resolved from tsconfig.base.json when omitted."
+    }
+  },
+  "required": []
+}

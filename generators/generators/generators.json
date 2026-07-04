@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "name": "generators",
+  "version": "1.0.0",
+  "generators": {
+    "crud": {
+      "factory": "./src/crud/generator.js",
+      "schema": "./src/crud/schema.json",
+      "description": "Generate CRUD libraries based on Prisma models"
+    },
+    "custom": {
+      "factory": "./src/custom/generator.js",
+      "schema": "./src/custom/schema.json",
+      "description": "Generate custom API libraries based on Prisma models"
+    },
+    "sdk": {
+      "factory": "./src/sdk/generator.js",
+      "schema": "./src/sdk/schema.json",
+      "description": "Generate the GraphQL SDK"
+    },
+    "models": {
+      "factory": "./src/models/generator.js",
+      "schema": "./src/models/schema.json",
+      "description": "Generate GraphQL ObjectType models and enums from the Prisma schema"
+    }
+  }
+}

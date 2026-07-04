@@ -4,14 +4,7 @@
   "sourceRoot": "generators/generators/src",
   "projectType": "library",
   "tags": [],
-  "implicitDependencies": [
-    "api",
-    "config",
-    "plugins",
-    "shared",
-    "utils",
-    "web"
-  ],
+  "publishable": true,
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -20,7 +13,29 @@
         "outputPath": "dist/generators/generators",
         "main": "generators/generators/src/index.ts",
         "tsConfig": "generators/generators/tsconfig.lib.json",
-        "assets": ["generators/generators/*.md"]
+        "assets": [
+          "generators/generators/*.md",
+          {
+            "input": "./generators/generators/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/generators/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./generators/generators",
+            "glob": "generators.json",
+            "output": "."
+          },
+          {
+            "input": "./generators/generators/src",
+            "glob": "**/files/**/*",
+            "output": "./src"
+          }
+        ]
       }
     },
     "lint": {

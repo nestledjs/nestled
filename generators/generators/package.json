@@ -1,25 +1,22 @@
 {
   "name": "@nestledjs/generators",
-  "version": "0.2.32",
+  "version": "1.0.0",
+  "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
-  "description": "Complete collection of all Nestled generators - installs all generator packages for scaffolding API, web, config, and shared code",
+  "description": "Prisma-driven code generators for Nestled projects (crud, custom, sdk, models)",
   "keywords": [
     "nestled",
     "generators",
     "nx",
     "monorepo",
     "code-generation",
-    "scaffolding",
-    "api",
-    "web",
-    "config",
-    "plugins",
-    "shared",
-    "utils",
+    "prisma",
+    "crud",
+    "graphql",
+    "sdk",
     "nestjs",
-    "react",
     "typescript"
   ],
   "author": "Nestled Contributors",
@@ -33,11 +30,11 @@
   },
   "dependencies": {
     "tslib": "^2.3.0",
-    "@nestledjs/api": "2.10.1",
-    "@nestledjs/config": "0.2.3",
-    "@nestledjs/plugins": "0.1.17",
-    "@nestledjs/shared": "1.0.3",
-    "@nestledjs/utils": "1.0.2",
-    "@nestledjs/web": "0.1.17"
+    "@nx/devkit": "22.0.2",
+    "@nx/js": "22.0.2",
+    "@nx/nest": "22.0.2",
+    "@prisma/internals": "^7.3.0",
+    "pluralize": "^8.0.0",
+    "yaml": "^2.8.0"
   }
 }
