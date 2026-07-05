@@ -2,8 +2,9 @@ import { execSync } from 'child_process'
 import { resolve } from 'path'
 import { existsSync } from 'fs'
 
-// Define dependency order - dependencies first, dependents last
-const DEPENDENCY_ORDER = ['helpers', 'utils', 'shared', 'plugins', 'config', 'web', 'api', 'forms']
+// Single published package after the v1 consolidation. `publish-all` / `push-all`
+// iterate this list; order no longer matters with one package.
+const DEPENDENCY_ORDER = ['generators']
 
 async function main() {
   const [, , action, libName] = process.argv

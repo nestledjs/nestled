@@ -1,8 +1,0 @@
-import { Module } from '@nestjs/common'
-import { ApiUserDataAccessService } from './api-user-data-access.service'
-
-@Module({
-  providers: [ApiUserDataAccessService],
-  exports: [ApiUserDataAccessService],
-})
-export class ApiUserDataAccessModule {}

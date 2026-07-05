@@ -11,8 +11,8 @@ Current Architecture
 - createSelect: libs/api/core/helpers/src/lib/graphql-select.ts - Converts GraphQL query info into Prisma select
 
 3. The Generators (External Packages):
-- @nestledjs/api:generate-crud - Generates resolvers/services
-- @nestledjs/shared:sdk - Generates GraphQL fragments
+- @nestledjs/generators:crud - Generates resolvers/services
+- @nestledjs/generators:sdk - Generates GraphQL fragments
 - These are in node_modules/@nestledjs/ and NOT modifiable in your project
 
 The Challenge
@@ -254,7 +254,7 @@ variables: { userId: "123" }
 Generator Files to Modify
 
 Based on the structure you showed me, you'll likely need to modify:
-- @nestledjs/shared generator package
+- @nestledjs/generators package (sdk generator)
 - Specifically the GraphQL fragment generation logic
 - Look for code that generates *-fragments.graphql files
 

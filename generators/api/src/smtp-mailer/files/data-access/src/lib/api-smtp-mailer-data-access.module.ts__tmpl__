@@ -1,8 +1,0 @@
-import { Module } from '@nestjs/common'
-import { SmtpMailerService } from './api-smtp-mailer-data-access.service'
-
-@Module({
-  providers: [SmtpMailerService],
-  exports: [SmtpMailerService],
-})
-export class SmtpMailerModule {}

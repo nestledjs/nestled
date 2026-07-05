@@ -1,8 +1,0 @@
-{
-  "$schema": "https://json-schema.org/schema",
-  "cli": "nx",
-  "id": "api-setup",
-  "type": "object",
-  "properties": {},
-  "required": []
-}

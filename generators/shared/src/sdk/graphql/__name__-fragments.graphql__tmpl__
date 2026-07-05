@@ -1,8 +1,0 @@
-fragment <%= adminPrefix ? adminPrefix : '' %><%= className %>Summary on <%= className %> {
-  id
-  <%= fragmentFields %>
-}
-
-fragment <%= adminPrefix ? adminPrefix : '' %><%= className %>Details on <%= className %> {
-  ...<%= adminPrefix ? adminPrefix : '' %><%= className %>Summary
-}

@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "license": "MIT",
   "scripts": {
-    "release": "ts-node ./scripts/release.ts",
+    "release": "nx release",
     "sync-tags": "bash tools/scripts/sync-release-tags.sh",
     "sync-tags:dry": "bash tools/scripts/sync-release-tags.sh --dry",
     "serve-docs": "docsify serve ./docs --port 3020",
