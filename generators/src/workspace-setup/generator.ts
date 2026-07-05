@@ -7,6 +7,7 @@ import {
   log,
   renameProject,
   runGraphQLTypeGeneration,
+  runPrismaGenerate,
   runPrismaSeed,
   runPrismaSetup,
   sleep,
@@ -47,6 +48,9 @@ export default async function (_tree: unknown, schema: WorkspaceSetupGeneratorSc
     runPrismaSetup()
 
     await sleep(2000)
+
+    log('Generating Prisma client...')
+    runPrismaGenerate()
 
     log('Generating GraphQL types from Prisma schema...')
     runGraphQLTypeGeneration()

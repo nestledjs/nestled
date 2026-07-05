@@ -153,6 +153,19 @@ export function runPrismaSetup() {
   }
 }
 
+export function runPrismaGenerate() {
+  // Prisma with a prisma.config.ts no longer auto-generates the client after
+  // `db push`, so the client at libs/api/prisma/src/lib/prisma-generated must
+  // be generated explicitly before anything (like the seed) imports it.
+  try {
+    execSync('pnpm prisma:generate', { stdio: 'inherit', cwd: workspaceRoot })
+    log('Prisma Client generation is done')
+    return true
+  } catch (e) {
+    throw new Error(`There was an issue running 'pnpm prisma:generate': ${e.message}`)
+  }
+}
+
 export function runPrismaSeed() {
   try {
     execSync('npx prisma db seed -- --confirm --timeout 0', { stdio: 'inherit' })

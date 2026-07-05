@@ -7,6 +7,7 @@ const {
   ensureDotEnv,
   log,
   renameProject,
+  runPrismaGenerate,
   runPrismaSeed,
   runPrismaSetup,
   runGraphQLTypeGeneration,
@@ -19,6 +20,7 @@ const {
     ensureDotEnv: vi.fn(),
     log: vi.fn(),
     renameProject: vi.fn(),
+    runPrismaGenerate: vi.fn(),
     runPrismaSeed: vi.fn(),
     runPrismaSetup: vi.fn(),
     runGraphQLTypeGeneration: vi.fn(),
@@ -33,6 +35,7 @@ vi.mock('./lib/helpers', () => ({
   ensureDotEnv,
   log,
   renameProject,
+  runPrismaGenerate,
   runPrismaSeed,
   runPrismaSetup,
   runGraphQLTypeGeneration,
@@ -82,6 +85,7 @@ describe('workspace-setup generator', () => {
     expect(ensureDockerIsRunning).toHaveBeenCalled()
     expect(ensureDockerComposeIsRunning).not.toHaveBeenCalled()
     expect(runPrismaSetup).toHaveBeenCalled()
+    expect(runPrismaGenerate).toHaveBeenCalled()
     expect(runGraphQLTypeGeneration).toHaveBeenCalled()
     expect(runPrismaSeed).toHaveBeenCalled()
   })
@@ -98,6 +102,7 @@ describe('workspace-setup generator', () => {
     expect(ensureDockerIsRunning).toHaveBeenCalled()
     expect(ensureDockerComposeIsRunning).toHaveBeenCalled()
     expect(runPrismaSetup).toHaveBeenCalled()
+    expect(runPrismaGenerate).toHaveBeenCalled()
     expect(runGraphQLTypeGeneration).toHaveBeenCalled()
     expect(runPrismaSeed).toHaveBeenCalled()
   })
