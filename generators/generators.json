@@ -22,6 +22,11 @@
       "factory": "./src/models/generator.js",
       "schema": "./src/models/schema.json",
       "description": "Generate GraphQL ObjectType models and enums from the Prisma schema"
+    },
+    "workspace-setup": {
+      "factory": "./src/workspace-setup/generator.js",
+      "schema": "./src/workspace-setup/schema.json",
+      "description": "Set up a freshly cloned workspace: rename the project, ensure .env/Docker, apply Prisma migrations, generate models, and seed"
     }
   }
 }

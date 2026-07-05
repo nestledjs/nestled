@@ -3,12 +3,15 @@
 ## Repository Structure
 
 This is an Nx workspace that publishes a **single package: `@nestledjs/generators`**
-(at `generators/`) — an Nx plugin with four Prisma-driven generators:
+(at `generators/`) — an Nx plugin with five generators (four Prisma-driven codegen
+generators plus a one-time workspace bootstrap):
 
 - `crud` — CRUD resolvers/services from Prisma models
 - `custom` — custom library wrappers for models
 - `sdk` — GraphQL client SDK (fragments, mutations, queries)
 - `models` — GraphQL `@ObjectType` models and enums from Prisma models
+- `workspace-setup` — one-time bootstrap of a freshly cloned workspace (rename the
+  project, ensure `.env`/Docker, apply Prisma migrations, generate models, seed)
 
 The shared engine (schema reading, `@skipCrud` filtering, the Nx library helpers) is
 inlined under `generators/src/lib/engine/`.
@@ -24,7 +27,7 @@ Their source remains in git history prior to the consolidation commit.
 nx build generators          # build the package
 nx test generators           # run the vitest suite
 nx lint generators           # lint
-nx list @nestledjs/generators  # list the four generators
+nx list @nestledjs/generators  # list the five generators
 pnpm push generators         # build + push to the local yalc store (see README)
 ```
 

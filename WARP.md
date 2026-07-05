@@ -5,13 +5,14 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 ## Project Overview
 
 This is an Nx workspace that publishes a **single package: `@nestledjs/generators`** — an
-Nx plugin with four Prisma-driven generators used for ongoing development in NestledJS
-starter templates:
+Nx plugin with five generators — four Prisma-driven codegen generators used for ongoing
+development in NestledJS starter templates, plus a one-time workspace bootstrap:
 
 - `crud` — CRUD resolvers/services from Prisma models
 - `custom` — custom library wrappers for models
 - `sdk` — GraphQL client SDK (fragments, mutations, queries)
 - `models` — GraphQL `@ObjectType` models and enums from Prisma models
+- `workspace-setup` — one-time bootstrap of a freshly cloned workspace (rename, `.env`/Docker, migrate, generate models, seed)
 
 The package lives at `generators/`, with the shared engine inlined under
 `generators/src/lib/engine/`. The former
@@ -54,9 +55,9 @@ npx nx release version <bump> --projects=generators
 ## Architecture & Structure
 
 - **`/generators/`** — the `@nestledjs/generators` package
-  - `src/crud`, `src/custom`, `src/sdk`, `src/models` — the four generators (each with
-    `generator.ts`, `schema.ts`, `schema.json`, `generator.spec.ts`, and `files/` templates
-    where applicable)
+  - `src/crud`, `src/custom`, `src/sdk`, `src/models`, `src/workspace-setup` — the five
+    generators (each with `generator.ts`, `schema.ts`, `schema.json`, `generator.spec.ts`,
+    and `files/` templates or a `lib/` helpers folder where applicable)
   - `src/lib/engine/` — inlined shared engine (Prisma schema reading, `@skipCrud` filtering,
     Nx library/codegen helpers)
 - **`/scripts/`** — repo maintenance scripts (`yalc-publish.ts`, `sync-release-tags.sh`)

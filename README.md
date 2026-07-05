@@ -33,11 +33,11 @@ This runs:
 4. **`generators:sdk`** — Generates the GraphQL client SDK (fragments, mutations, queries)
 5. **`generators:custom`** — Generates custom library wrappers for your models
 
-One-time project scaffolding (Docker, migrations, seeds, the initial NestJS/web apps) lives in the starter templates themselves, not in a published generator.
+Most one-time project scaffolding (the initial NestJS/web apps, library layout) lives in the starter templates themselves. The one exception is `workspace-setup`, the post-clone bootstrap (rename the project, `.env`/Docker, migrate, seed) — it ships in the package because it's run once right after cloning a template.
 
 ## Generators
 
-`@nestledjs/generators` exposes four Prisma-driven generators:
+`@nestledjs/generators` exposes five generators — four Prisma-driven codegen generators plus a one-time workspace bootstrap:
 
 | Generator | Description |
 |---|---|
@@ -45,6 +45,7 @@ One-time project scaffolding (Docker, migrations, seeds, the initial NestJS/web 
 | `@nestledjs/generators:models` | Generate GraphQL `@ObjectType` models and enums from Prisma models |
 | `@nestledjs/generators:sdk` | Generate the GraphQL client SDK (fragments, mutations, queries) |
 | `@nestledjs/generators:custom` | Generate custom library wrappers for models |
+| `@nestledjs/generators:workspace-setup` | One-time bootstrap of a freshly cloned workspace: rename the project, ensure `.env`/Docker, apply Prisma migrations, generate models, and seed |
 
 List them any time with:
 
@@ -58,7 +59,7 @@ Before v1.0.0, the framework published seven packages:
 `@nestledjs/api`, `@nestledjs/shared`, `@nestledjs/utils`, `@nestledjs/config`,
 `@nestledjs/plugins`, `@nestledjs/web`, and `@nestledjs/helpers`.
 
-In practice, only three generators plus a local `generate-models` script were used for ongoing development; the rest were one-time scaffolding that belongs in the starter templates, private engine code (`@nestledjs/utils`), or unused. **v1.0.0 collapses everything into a single package, `@nestledjs/generators`, containing the four generators above** (`crud`, `custom`, `sdk`, `models`) with the shared engine inlined.
+In practice, only three generators plus a local `generate-models` script were used for ongoing development; the rest were one-time scaffolding that belongs in the starter templates, private engine code (`@nestledjs/utils`), or unused. **v1.0.0 collapses everything into a single package, `@nestledjs/generators`, containing the five generators above** (`crud`, `custom`, `sdk`, `models`, `workspace-setup`) with the shared engine inlined.
 
 **The seven old packages are deprecated on npm but not unpublished** — existing installs and lockfiles keep working. To migrate:
 

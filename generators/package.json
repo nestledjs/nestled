@@ -5,7 +5,7 @@
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
-  "description": "Prisma-driven code generators for Nestled projects (crud, custom, sdk, models)",
+  "description": "Prisma-driven code generators for Nestled projects (crud, custom, sdk, models, workspace-setup)",
   "keywords": [
     "nestled",
     "generators",
@@ -34,6 +34,8 @@
     "@nx/js": "22.0.2",
     "@nx/nest": "22.0.2",
     "@prisma/internals": "^7.3.0",
+    "dotenv": "16.4.5",
+    "pg": "^8.13.0",
     "pluralize": "^8.0.0",
     "yaml": "^2.8.0"
   }
