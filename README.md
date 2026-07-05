@@ -55,6 +55,31 @@ nx list @nestledjs/generators
 
 See [`generators/CHANGELOG.md`](./generators/CHANGELOG.md) for release notes.
 
+### Schema annotations
+
+The codegen generators honor two annotations written as Prisma triple-slash (`///`) doc comments, so you control what reaches the generated GraphQL layer directly from `schema.prisma`:
+
+| Annotation | Applies to | Effect |
+|---|---|---|
+| `@skipCrud` | model | Excludes the model from all generated output (`crud`, `sdk`, `models`) and strips inbound relation fields that point at it from other models. Use for types that must never appear in the GraphQL schema. |
+| `@graphqlOmit` | field | Omits the field from the generated `@ObjectType` (`models`), client operations (`sdk`), and CRUD inputs (`crud`). Use for secrets/columns that must never be exposed through the API. |
+
+```prisma
+/// @skipCrud
+model AuditLog {
+  id   String @id
+  data Json
+}
+
+model OAuthAccount {
+  id                   String @id
+  /// @graphqlOmit
+  encryptedAccessToken String
+}
+```
+
+> **Security (fixed in 1.1.3):** before `@nestledjs/generators@1.1.3` the `models` generator ignored `@graphqlOmit`, so annotated fields still received a `@Field()` and stayed queryable on the **server** GraphQL schema (the omit was only applied to generated client operations). Upgrade to ≥ 1.1.3, regenerate models, and redeploy — then audit and rotate any secret that was `@graphqlOmit`-annotated while reachable on a deployed clone.
+
 ### Workspace bootstrap (`workspace-setup`)
 
 Run **once, right after cloning a starter template** to turn a fresh clone into a running project:
