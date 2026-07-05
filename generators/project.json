@@ -1,7 +1,7 @@
 {
   "name": "generators",
-  "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "generators/generators/src",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "generators/src",
   "projectType": "library",
   "tags": [],
   "publishable": true,
@@ -10,28 +10,28 @@
       "executor": "@nx/js:tsc",
       "outputs": ["{options.outputPath}"],
       "options": {
-        "outputPath": "dist/generators/generators",
-        "main": "generators/generators/src/index.ts",
-        "tsConfig": "generators/generators/tsconfig.lib.json",
+        "outputPath": "dist/generators",
+        "main": "generators/src/index.ts",
+        "tsConfig": "generators/tsconfig.lib.json",
         "assets": [
-          "generators/generators/*.md",
+          "generators/*.md",
           {
-            "input": "./generators/generators/src",
+            "input": "./generators/src",
             "glob": "**/!(*.ts)",
             "output": "./src"
           },
           {
-            "input": "./generators/generators/src",
+            "input": "./generators/src",
             "glob": "**/*.d.ts",
             "output": "./src"
           },
           {
-            "input": "./generators/generators",
+            "input": "./generators",
             "glob": "generators.json",
             "output": "."
           },
           {
-            "input": "./generators/generators/src",
+            "input": "./generators/src",
             "glob": "**/files/**/*",
             "output": "./src"
           }

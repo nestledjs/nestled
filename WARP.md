@@ -4,142 +4,72 @@ This file provides guidance to WARP (warp.dev) when working with code in this re
 
 ## Project Overview
 
-NestledJS is a monorepo built on Nx that provides a collection of libraries and generators to accelerate full-stack application development. The core libraries are:
+This is an Nx workspace that publishes a **single package: `@nestledjs/generators`** — an
+Nx plugin with four Prisma-driven generators used for ongoing development in NestledJS
+starter templates:
 
-- **`@nestledjs/generators`**: Nx generators to scaffold complete full-stack applications
-- **`@nestledjs/helpers`**: Collection of helper functions and utilities
+- `crud` — CRUD resolvers/services from Prisma models
+- `custom` — custom library wrappers for models
+- `sdk` — GraphQL client SDK (fragments, mutations, queries)
+- `models` — GraphQL `@ObjectType` models and enums from Prisma models
+
+The package lives at `generators/`, with the shared engine inlined under
+`generators/src/lib/engine/`. The former
+`@nestledjs/api|shared|utils|config|plugins|web|helpers` packages were consolidated into
+`@nestledjs/generators@1.0.0` and deprecated on npm (see `README.md`).
 
 ## Development Commands
 
-### Build System (Nx-based)
 ```bash
-# Build affected projects (based on develop branch)
-pnpm build
+# Build / test / lint the package
+nx build generators
+nx test generators
+nx test generators --coverage
+nx lint generators
 
-# Build all projects
-pnpm build-all
-
-# Build specific project
-nx build <project-name>
-
-# Build with dependencies
-pnpm nx run-many --target=build --projects=<project> --with-deps
-```
-
-### Testing
-```bash
-# Test affected projects
-pnpm test
-
-# Test all projects
-pnpm test-all
-
-# Run single project tests
-nx test <project-name>
-
-# Test with coverage
-nx test <project-name> --coverage
-
-# Full test suite (lint, test, build all projects)
-pnpm test-suite
-```
-
-### Linting
-```bash
-# Lint affected projects
-pnpm lint
-
-# Lint affected projects with fixes
-pnpm lint:fix
-
-# Lint all projects
-pnpm lint-all
-
-# Lint all projects with fixes  
-pnpm lint-all:fix
+# Affected-based (vs develop) and all-projects variants
+pnpm build        # nx affected -t build --base=develop
+pnpm build-all    # nx run-many -t build --all
+pnpm test         # nx affected -t test --base=develop
+pnpm lint         # nx affected -t lint --base=develop
 ```
 
 ### Local Development with YALC
 ```bash
-# Publish specific library locally
-pnpm push <lib-name>
+# Build @nestledjs/generators and push to the local yalc store
+pnpm push generators
 
-# Publish all libraries locally in dependency order
-pnpm push-all
-
-# Standard yalc publish for single library
-pnpm publish-all
-
-# In consumer project
+# In the consumer project
 yalc add @nestledjs/generators
 pnpm install
 ```
 
 ### Release Management
 ```bash
-# Create releases
-pnpm release
-
-# Manual Nx release commands
-nx release version
-nx release publish
+pnpm release                                    # nx release
+npx nx release --projects=generators            # version + changelog + publish
+npx nx release version <bump> --projects=generators
 ```
 
 ## Architecture & Structure
 
-### Monorepo Organization
-The repository follows Nx workspace conventions with these main directories:
-
-- **`/helpers/`** - Utility functions and shared helpers
-- **`/generators/`** - Nx generator packages organized by domain:
-  - `api/` - NestJS API generators (setup, app, prisma, core, CRUD, etc.)
-  - `config/` - Configuration generators 
-  - `plugins/` - Plugin generators for auth and other features
-  - `web/` - Web frontend generators
-  - `shared/` - Shared library generators
-
-### Generator Architecture
-Each generator follows a strict structure (enforced by `.cursors` rules):
-- `schema.json` - JSON Schema defining generator options
-- `schema.d.ts` - TypeScript type definitions for the schema
-- `generator.ts` - Main generator implementation
-- `generator.spec.ts` - Generator tests
-
-**Important**: Generators are meant for external use only and should not be run within this project.
+- **`/generators/`** — the `@nestledjs/generators` package
+  - `src/crud`, `src/custom`, `src/sdk`, `src/models` — the four generators (each with
+    `generator.ts`, `schema.ts`, `schema.json`, `generator.spec.ts`, and `files/` templates
+    where applicable)
+  - `src/lib/engine/` — inlined shared engine (Prisma schema reading, `@skipCrud` filtering,
+    Nx library/codegen helpers)
+- **`/scripts/`** — repo maintenance scripts (`yalc-publish.ts`, `sync-release-tags.sh`)
 
 ### Key Dependencies
-- **Nx 21.3.11**: Monorepo management and build system
-- **React 19.1.0**: UI library for forms
-- **NestJS 10.x**: Backend framework for API generators
-- **Prisma 6.11.0**: Database ORM for generated APIs
-- **TypeScript 5.7.3**: Primary development language
-- **Vite**: Build tool for libraries
-- **Jest/Vitest**: Testing frameworks
+- **Nx 22.x** — workspace + build system, and the generator runtime (`@nx/devkit`, `@nx/js`, `@nx/nest`)
+- **@prisma/internals** — DMMF parsing of the Prisma schema
+- **Vitest** — test runner
+- **TypeScript 5.x**
 
 ## Project-Specific Rules
 
-### Generator Development
-- All generators must include the four required files: `schema.json`, `schema.d.ts`, `generator.ts`, `generator.spec.ts`
-- Never create `project.json` or `tsconfig.json` in individual generator directories (workspace-level only)
-- Test generators externally, not within this project
-- Follow dependency order when publishing: helpers → utils → shared → plugins → config → web → api
-
-### Build & Release
-- Use PNPM as package manager
-- Base branch is `develop` for affected commands
-- Build dependencies before publishing with YALC
-- Follow conventional commits for releases
-- All libraries support independent versioning
-
-### Database & Schema
-- Prisma schema located at `libs/api/core/data-access/src/prisma/schema.prisma`
-- Seed script at `libs/api/core/data-access/scr/prisma/seed/seed.ts` (note: typo in package.json)
-- Generated APIs include full CRUD operations via generators
-
-## Nx Workspace Configuration
-- **Default Base**: develop
-- **Test Runner**: Jest for most projects, Vitest for React libraries  
-- **Build Tool**: Vite for libraries, webpack for some projects
-- **Linting**: ESLint with TypeScript support
-- **Release**: Independent project releases with GitHub integration
-- **Storybook**: Available for component development and documentation
+- Package manager is **pnpm**; base branch for affected commands is **develop**.
+- Generators are meant for external use (run inside a consuming workspace), not within this repo.
+- Follow conventional commits; the only meaningful scope now is `generators` (plus `nx`, `tools`).
+- Versions are resolved from the npm registry (see `nx.json` → `release`).

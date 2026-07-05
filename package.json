@@ -4,8 +4,8 @@
   "license": "MIT",
   "scripts": {
     "release": "nx release",
-    "sync-tags": "bash tools/scripts/sync-release-tags.sh",
-    "sync-tags:dry": "bash tools/scripts/sync-release-tags.sh --dry",
+    "sync-tags": "bash scripts/sync-release-tags.sh",
+    "sync-tags:dry": "bash scripts/sync-release-tags.sh --dry",
     "serve-docs": "docsify serve ./docs --port 3020",
     "publish-all": "ts-node scripts/yalc-publish.ts publish-all",
     "push": "ts-node scripts/yalc-publish.ts push",

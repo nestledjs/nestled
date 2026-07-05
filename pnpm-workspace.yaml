@@ -1,5 +1,5 @@
 packages:
-  - generators/**
+  - generators
 
 onlyBuiltDependencies:
   - '@apollo/protobufjs'

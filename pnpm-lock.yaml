@@ -358,7 +358,7 @@ importers:
         specifier: ^17.7.2
         version: 17.7.2
 
-  generators/generators:
+  generators:
     dependencies:
       '@nx/devkit':
         specifier: 22.0.2
