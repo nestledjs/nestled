@@ -33,7 +33,7 @@ const SCALAR_GQL_TYPE: Record<string, string> = {
   Float: 'Float',
   Decimal: 'GraphQLDecimal',
   BigInt: 'GraphQLBigInt',
-  Json: 'GraphQLJSONObject',
+  Json: 'GraphQLJSON',
   DateTime: 'GraphQLISODateTime',
   Boolean: 'Boolean',
   String: 'String',
@@ -79,7 +79,7 @@ export function generateModels(models: readonly any[], enums: readonly any[]): s
   if (usesType(models, 'DateTime')) gqlImports.push('GraphQLISODateTime')
 
   let output = `import { ${gqlImports.join(', ')} } from '@nestjs/graphql';\n`
-  output += `import { GraphQLJSONObject } from 'graphql-type-json';\n`
+  output += `import { GraphQLJSON } from 'graphql-type-json';\n`
 
   if (usesType(models, 'Decimal')) {
     output += `import Decimal from 'decimal.js';\n`

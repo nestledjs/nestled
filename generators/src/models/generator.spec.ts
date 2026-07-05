@@ -100,7 +100,7 @@ describe('models generator — content', () => {
 
   it('conditionally imports scalar helpers based on usage (Feb-2026 fixes)', () => {
     expect(models).toContain(`import { Field, ObjectType, Int, Float, GraphQLISODateTime } from '@nestjs/graphql';`)
-    expect(models).toContain(`import { GraphQLJSONObject } from 'graphql-type-json';`)
+    expect(models).toContain(`import { GraphQLJSON } from 'graphql-type-json';`)
     expect(models).toContain(`import Decimal from 'decimal.js';`)
     expect(models).toContain(`import { GraphQLDecimal } from 'prisma-graphql-type-decimal';`)
     expect(models).toContain(`import { GraphQLBigInt } from 'graphql-scalars';`)
@@ -113,7 +113,7 @@ describe('models generator — content', () => {
     expect(models).toContain(`price!: Decimal;`)
     expect(models).toContain(`@Field(() => GraphQLBigInt)`)
     expect(models).toContain(`big!: bigint;`)
-    expect(models).toContain(`@Field(() => GraphQLJSONObject)`)
+    expect(models).toContain(`@Field(() => GraphQLJSON)`)
     expect(models).toContain(`meta!: JsonValue;`)
     expect(models).toContain(`data!: Buffer;`)
     expect(models).toContain(`@Field(() => GraphQLISODateTime)`)
