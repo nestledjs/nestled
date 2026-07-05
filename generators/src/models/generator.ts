@@ -73,27 +73,37 @@ function usesType(models: readonly any[], type: string): boolean {
   return models.some(m => m.fields.some((f: { type: string }) => f.type === type))
 }
 
-export function generateModels(models: readonly any[], enums: readonly any[]): string {
+export function generateModels(models: readonly any[], enums: readonly any[], prismaImportPath: string): string {
+  // @graphqlOmit fields must not reach the ObjectType. In code-first NestJS the emitted
+  // @Field() IS the server GraphQL schema, so an omitted field would otherwise stay
+  // queryable in api-schema.graphql. Enforce it here — the same predicate the sdk/crud
+  // generators use — so models.ts is the single authoritative enforcement point. Filtering
+  // up front also keeps the scalar import scans (usesType) from emitting unused imports.
+  const visibleModels = models.map(m => ({
+    ...m,
+    fields: m.fields.filter((f: { documentation?: string }) => !f.documentation?.includes('@graphqlOmit')),
+  }))
+
   const gqlImports = ['Field', 'ObjectType', 'Int']
-  if (usesType(models, 'Float')) gqlImports.push('Float')
-  if (usesType(models, 'DateTime')) gqlImports.push('GraphQLISODateTime')
+  if (usesType(visibleModels, 'Float')) gqlImports.push('Float')
+  if (usesType(visibleModels, 'DateTime')) gqlImports.push('GraphQLISODateTime')
 
   let output = `import { ${gqlImports.join(', ')} } from '@nestjs/graphql';\n`
   output += `import { GraphQLJSON } from 'graphql-type-json';\n`
 
-  if (usesType(models, 'Decimal')) {
+  if (usesType(visibleModels, 'Decimal')) {
     output += `import Decimal from 'decimal.js';\n`
     output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
   }
-  if (usesType(models, 'BigInt')) output += `import { GraphQLBigInt } from 'graphql-scalars';\n`
-  if (usesType(models, 'Json'))
-    output += `import type { JsonValue } from '@prisma/client/runtime/client';\n`
+  if (usesType(visibleModels, 'BigInt')) output += `import { GraphQLBigInt } from 'graphql-scalars';\n`
+  if (usesType(visibleModels, 'Json'))
+    output += `import type { JsonValue } from '${prismaImportPath}';\n`
 
   const enumNames = enums.map((e: { name: string }) => e.name)
   if (enumNames.length > 0) output += `import { ${enumNames.join(', ')} } from './enums';\n`
   output += `\n`
 
-  for (const model of models) {
+  for (const model of visibleModels) {
     output += `@ObjectType({ description: undefined })\nexport class ${model.name} {\n`
     for (const field of model.fields) {
       output += `  ${buildFieldDecorator(field)}\n`
@@ -188,7 +198,7 @@ export async function generateModelsLogic(tree: Tree, schema: GenerateModelsGene
     }))
   const enums = dmmf.datamodel.enums
 
-  tree.write(joinPathFragments(outputPath, 'models.ts'), generateModels(models, enums))
+  tree.write(joinPathFragments(outputPath, 'models.ts'), generateModels(models, enums, prismaImportPath))
   tree.write(joinPathFragments(outputPath, 'enums.ts'), generateEnums(enums, prismaImportPath))
   tree.write(joinPathFragments(outputPath, 'index.ts'), generateIndex())
 

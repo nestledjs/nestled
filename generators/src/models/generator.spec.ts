@@ -37,6 +37,8 @@ model Post {
   big       BigInt
   meta      Json
   data      Bytes
+  /// @graphqlOmit
+  encryptedToken String
   status    Status
   tags      Tag[]
   author    Author?  @relation(fields: [authorId], references: [id])
@@ -94,7 +96,7 @@ describe('models generator — content', () => {
     const visibleModels = allModels
       .filter((m) => !skipped.has(m.name))
       .map((m) => ({ ...m, fields: filterSkippedRelationFields(m.fields, skipped) }))
-    models = generateModels(visibleModels, dmmf.datamodel.enums)
+    models = generateModels(visibleModels, dmmf.datamodel.enums, '@test/api/prisma')
     enums = generateEnums(dmmf.datamodel.enums, '@test/api/prisma')
   })
 
@@ -104,7 +106,7 @@ describe('models generator — content', () => {
     expect(models).toContain(`import Decimal from 'decimal.js';`)
     expect(models).toContain(`import { GraphQLDecimal } from 'prisma-graphql-type-decimal';`)
     expect(models).toContain(`import { GraphQLBigInt } from 'graphql-scalars';`)
-    expect(models).toContain(`import type { JsonValue } from '@prisma/client/runtime/client';`)
+    expect(models).toContain(`import type { JsonValue } from '@test/api/prisma';`)
     expect(models).toContain(`import { Status, Tag } from './enums';`)
   })
 
@@ -132,6 +134,13 @@ describe('models generator — content', () => {
     expect(models).toContain(`author?: Partial<Author> | null;`)
     expect(models).toContain(`@Field(() => [Post], { nullable: true })`)
     expect(models).toContain(`posts?: Partial<Post>[] | null;`)
+  })
+
+  it('omits @graphqlOmit fields from the ObjectType (security — keeps them out of the server schema)', () => {
+    // In code-first NestJS the emitted @Field() IS the GraphQL schema, so an omitted
+    // field must produce neither a @Field decorator nor a class property.
+    expect(models).toContain('export class Post')
+    expect(models).not.toContain('encryptedToken')
   })
 
   it('excludes @skipCrud models and strips inbound relation fields', () => {
@@ -166,6 +175,7 @@ export * from './enums'
     const out = generateModels(
       [{ name: 'Thing', fields: [{ name: 'id', type: 'String', kind: 'scalar', isRequired: true, isList: false }] }],
       [],
+      '@test/api/prisma',
     )
     expect(out).toContain('export class Thing')
     expect(out).toContain('id!: string;')
@@ -193,6 +203,12 @@ describe('models generator — logic + wiring', () => {
     expect(models).toContain('export class Author')
     expect(models).not.toContain('class Secret')
     expect(enums).toContain('@test/api/prisma')
+    // The JsonValue import in models.ts must use the resolved wrapper path, not the
+    // hardcoded @prisma/client/runtime/client (which defeats the wrapper's purpose).
+    expect(models).toContain(`from '@test/api/prisma'`)
+    expect(models).not.toContain('@prisma/client/runtime/client')
+    // @graphqlOmit fields must be absent from the emitted server schema.
+    expect(models).not.toContain('encryptedToken')
   })
 
   it('honors a custom outputPath', async () => {
