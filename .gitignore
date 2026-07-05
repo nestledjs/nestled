@@ -51,3 +51,8 @@ storybook-static
 .ai-cli
 .env
 .claude/**
+
+# Nx generated artifacts (project graph, migrate manifest)
+tmp.html
+/static/
+migrations.json
