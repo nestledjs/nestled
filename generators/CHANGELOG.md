@@ -4,6 +4,32 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 1.1.3
+
+### Fixed
+
+- **`models`: honor `@graphqlOmit` (security).** The `models` generator previously
+  ignored `@graphqlOmit`, which the `sdk` and `crud` generators already respect. In
+  code-first NestJS the emitted `@ObjectType()`/`@Field()` **is** the server GraphQL
+  schema, so an omitted field still landed in `api-schema.graphql` and stayed
+  queryable — the omit was only enforced in generated client operations, not on the
+  server. Fields such as `encryptedAccessToken` / `encryptedRefreshToken` were fully
+  queryable despite being marked `@graphqlOmit`. The generator now drops any field
+  whose documentation includes `@graphqlOmit` (decorator and property), making
+  `models.ts` the single authoritative enforcement point.
+
+  **Migration:** regenerate models in each consumer (`nx g @nestledjs/generators:models`)
+  and redeploy. **Audit:** any `@graphqlOmit` field was server-queryable in deployed
+  clones until this upgrade — treat those as potentially exposed and rotate where the
+  API was reachable.
+
+- **`models`: import `JsonValue` from the project Prisma wrapper.** The generator
+  hard-coded `import type { JsonValue } from '@prisma/client/runtime/client'`, bypassing
+  the workspace's Prisma wrapper and risking the webpack resolution issues that wrapper
+  exists to prevent. It now uses the resolved `prismaImportPath` (the same tsconfig
+  alias already used for enum imports), so the import points at each project's own
+  wrapper. Upgrade-only — regenerate models to pick up the corrected import.
+
 ## 1.1.2
 
 ### Fixed
