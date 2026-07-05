@@ -53,6 +53,20 @@ List them any time with:
 nx list @nestledjs/generators
 ```
 
+See [`generators/CHANGELOG.md`](./generators/CHANGELOG.md) for release notes.
+
+### Workspace bootstrap (`workspace-setup`)
+
+Run **once, right after cloning a starter template** to turn a fresh clone into a running project:
+
+```sh
+nx g @nestledjs/generators:workspace-setup --name=my-project
+```
+
+`--name` must be lowercase-with-dashes (`^[a-z][a-z0-9-]*$`). In order, it: renames the project (`nestled-template` → your name across all files), ensures `.env`, validates that `DATABASE_URL` is local (refusing non-`localhost` DBs), ensures Docker/Compose is up, applies Prisma migrations, generates the Prisma client, generates GraphQL types, and seeds the database.
+
+The rename deliberately **skips `.nestled/` and `.nestled-updates/`** so the Nestled upgrader and CI upgrade/doctor steps keep working. Requires Docker, a local `DATABASE_URL`, and the template's `prisma:apply` / `prisma:generate` / `generate:models` / `docker:*` scripts.
+
 ## Consolidation (v1.0.0)
 
 Before v1.0.0, the framework published seven packages:
