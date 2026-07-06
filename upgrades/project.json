@@ -1,0 +1,35 @@
+{
+  "name": "upgrades",
+  "$schema": "../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "upgrades/src",
+  "projectType": "library",
+  "tags": [],
+  "publishable": true,
+  "targets": {
+    "build": {
+      "executor": "@nx/js:tsc",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/upgrades",
+        "main": "upgrades/src/index.ts",
+        "tsConfig": "upgrades/tsconfig.lib.json",
+        "assets": [
+          "upgrades/*.md",
+          {
+            "input": "./upgrades/src",
+            "glob": "**/!(*.ts)",
+            "output": "./src"
+          },
+          {
+            "input": "./upgrades/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          }
+        ]
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
+    }
+  }
+}

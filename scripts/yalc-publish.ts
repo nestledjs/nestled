@@ -2,9 +2,10 @@ import { execSync } from 'child_process'
 import { resolve } from 'path'
 import { existsSync } from 'fs'
 
-// Single published package after the v1 consolidation. `publish-all` / `push-all`
-// iterate this list; order no longer matters with one package.
-const DEPENDENCY_ORDER = ['generators']
+// Published packages. `publish-all` / `push-all` iterate this list; `upgrades`
+// (the nestled-update consumer) has no dependency on `generators`, so order
+// between them is not significant.
+const DEPENDENCY_ORDER = ['generators', 'upgrades']
 
 async function main() {
   const [, , action, libName] = process.argv
