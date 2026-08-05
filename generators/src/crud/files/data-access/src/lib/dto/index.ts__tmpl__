@@ -92,7 +92,13 @@ import { <%= Array.from(gqlImports).join(', ') %> } from '@nestjs/graphql'
 <% } %><% if (usesGraphQLJSON) { %>import { GraphQLJSON } from 'graphql-type-json'<% } %>
 <% if (usesGraphQLBigInt) { %>import { GraphQLBigInt } from 'graphql-scalars'<% } %>
 import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
-
+<%# Typed filter inputs, built by crud/filter-inputs.ts. These replace the opaque
+    GraphQLJSONObject `filters` blob inherited from CorePagingInput, which reached Prisma's
+    `where` verbatim and let a caller filter on any database column — including ones removed
+    from the GraphQL layer with @graphqlOmit. Read through `locals` so the template still
+    renders for callers that predate these variables. %>
+<% if (locals.filterInputs) { %>
+<%- locals.filterInputs %><% } %>
 <% for (const model of models) { %>
 <%
 // Get all regular fields (non-relation) and virtual relation fields
@@ -183,6 +189,10 @@ export class Update<%= model.modelName %>Input {
 
 @InputType()
 export class List<%= model.modelName %>Input extends CorePagingInput {
+<% if (locals.modelsWithFilterInput && locals.modelsWithFilterInput.includes(model.modelName)) { %>
+  @Field(() => <%= model.modelName %>FilterInput, { nullable: true })
+  filters?: <%= model.modelName %>FilterInput
+<% } %>
 <% for (const field of allFields) { %>
   <%
     let baseGqlType;

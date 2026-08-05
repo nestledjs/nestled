@@ -152,6 +152,59 @@ describe('generate-crud generator', () => {
     expect(progress.auth).toMatchObject({ readOne: 'user', readMany: 'user', delete: 'admin' })
   })
 
+  describe('filter inputs', () => {
+    // Prisma's `where` is built from the database model, so before typed filter inputs any column
+    // was filterable whether or not it was queryable — @graphqlOmit gave no protection, and
+    // credential columns could be read back a character at a time using result presence as an
+    // oracle. The omitted fields are stripped before filter generation, so they cannot be filtered.
+    const sensitiveDmmf = {
+      datamodel: {
+        models: [
+          {
+            name: 'User',
+            fields: [
+              { name: 'id', type: 'String', isId: true, isRequired: true },
+              { name: 'email', type: 'String', isRequired: true },
+              { name: 'passwordResetToken', type: 'String', documentation: '@graphqlOmit' },
+              { name: 'inviteToken', type: 'String', documentation: 'some note @graphqlOmit trailing' },
+            ],
+          },
+        ],
+      },
+    }
+
+    it('never emits a filter for a @graphqlOmit column', async () => {
+      mockDependencies.getDMMF = vi.fn().mockResolvedValue(sensitiveDmmf)
+
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      const { filterInputs } = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1]
+      expect(filterInputs).toContain('email?: StringFilterInput')
+      expect(filterInputs).not.toContain('passwordResetToken')
+      expect(filterInputs).not.toContain('inviteToken')
+    })
+
+    it('passes the filter variables through to the templates', async () => {
+      mockDependencies.getDMMF = vi.fn().mockResolvedValue(sensitiveDmmf)
+
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      const templateSchema = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1]
+      expect(templateSchema.modelsWithFilterInput).toEqual(['User'])
+      expect(templateSchema.filterInputs).toContain('export class UserFilterInput')
+    })
+
+    it('honours a configured filter depth', async () => {
+      mockDependencies.getDMMF = vi.fn().mockResolvedValue(sensitiveDmmf)
+
+      await generateCrudLogic(tree, { name: 'crud', filterDepth: 1 } as any, mockDependencies)
+
+      const { filterInputs } = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1]
+      expect(filterInputs).toContain('export class UserFilterInput')
+      expect(filterInputs).not.toContain('UserFilterInput2')
+    })
+  })
+
   describe('getCrudAuthForModel', () => {
     it('defaults every operation to admin when the model carries no documentation', () => {
       expect(getCrudAuthForModel({})).toEqual({
