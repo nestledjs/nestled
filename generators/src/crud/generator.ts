@@ -78,12 +78,16 @@ export function getCrudAuthForModel(model: { documentation?: string | null }): C
 
 export function getGuardForAuthLevel(level: string): string | null {
   if (!level) return 'GqlAuthAdminGuard'
-  level = level.toLowerCase()
-  if (level === 'public') return null
-  if (level === 'user') return 'GqlAuthGuard'
-  if (level === 'admin') return 'GqlAuthAdminGuard'
-  const pascalCase = level.charAt(0).toUpperCase() + level.slice(1).toLowerCase()
-  return `GqlAuth${pascalCase}Guard`
+  const normalized = level.toLowerCase()
+  if (normalized === 'public') return null
+  if (normalized === 'user') return 'GqlAuthGuard'
+  if (normalized === 'admin') return 'GqlAuthAdminGuard'
+  // Only the first character is normalised. The previous implementation lowercased the whole level
+  // first, so a custom level like "billingAdmin" produced GqlAuthBillingadminGuard — a symbol that
+  // does not exist — and downstream repos had to alias their real guard to the mangled name to make
+  // generated code compile. Preserve the author's casing so "billingAdmin" resolves to
+  // GqlAuthBillingAdminGuard, matching the convention documented in AGENTS.md.
+  return `GqlAuth${level.charAt(0).toUpperCase()}${level.slice(1)}Guard`
 }
 
 function toKebabCase(str: string): string {

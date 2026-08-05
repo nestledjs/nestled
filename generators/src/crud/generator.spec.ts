@@ -2,7 +2,12 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { GenerateCrudGeneratorDependencies, generateCrudLogic, getCrudAuthForModel } from './generator'
+import {
+  GenerateCrudGeneratorDependencies,
+  generateCrudLogic,
+  getCrudAuthForModel,
+  getGuardForAuthLevel,
+} from './generator'
 import { Tree } from '@nx/devkit'
 
 // The mocked DMMF object
@@ -184,6 +189,33 @@ describe('generate-crud generator', () => {
     it('reads the annotation when other doc lines surround it', () => {
       const documentation = 'Some note about the model\n@crudAuth: { "create": "user" }\nAnother note'
       expect(getCrudAuthForModel({ documentation }).create).toBe('user')
+    })
+  })
+
+  describe('getGuardForAuthLevel', () => {
+    it('maps the built-in levels', () => {
+      expect(getGuardForAuthLevel('admin')).toBe('GqlAuthAdminGuard')
+      expect(getGuardForAuthLevel('user')).toBe('GqlAuthGuard')
+      expect(getGuardForAuthLevel('')).toBe('GqlAuthAdminGuard')
+      expect(getGuardForAuthLevel('public')).toBeNull()
+    })
+
+    it('accepts the built-in levels case-insensitively', () => {
+      expect(getGuardForAuthLevel('Admin')).toBe('GqlAuthAdminGuard')
+      expect(getGuardForAuthLevel('USER')).toBe('GqlAuthGuard')
+      expect(getGuardForAuthLevel('Public')).toBeNull()
+    })
+
+    it('preserves interior casing for custom levels', () => {
+      // Regression: the level used to be lowercased in full, yielding
+      // GqlAuthBillingadminGuard, which matches no real class.
+      expect(getGuardForAuthLevel('billingAdmin')).toBe('GqlAuthBillingAdminGuard')
+      expect(getGuardForAuthLevel('organizationOwner')).toBe('GqlAuthOrganizationOwnerGuard')
+    })
+
+    it('still capitalises the first character of a custom level', () => {
+      expect(getGuardForAuthLevel('staff')).toBe('GqlAuthStaffGuard')
+      expect(getGuardForAuthLevel('noaccess')).toBe('GqlAuthNoaccessGuard')
     })
   })
 })
