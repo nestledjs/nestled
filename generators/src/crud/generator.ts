@@ -51,7 +51,18 @@ export function parseCrudAuth(comment: string): CrudAuthConfig | null {
   }
 }
 
-export function getCrudAuthForModel(schema: string, modelName: string): CrudAuthConfig {
+// Read the annotation off the DMMF model rather than re-scanning the raw schema text. The previous
+// implementation searched for a line starting with `model ${modelName}`, which has no word boundary:
+// looking up `User` also matched `model UserSessionProgress`, `model UserAddress`, or any other
+// model whose name merely starts with those characters. It broke on the first such match and
+// returned that unrelated model's @crudAuth block, so a model that should default to admin could
+// silently inherit a "user" or "public" level from a neighbour. Multi-file schema directories made
+// this easy to hit, since the files are concatenated alphabetically and the hijacking model only
+// has to sort earlier.
+//
+// Prisma already associates each `///` doc comment with its own model, so `model.documentation` is
+// unambiguous. This mirrors what getAllPrismaModels in lib/engine/generator-utils.ts already does.
+export function getCrudAuthForModel(model: { documentation?: string | null }): CrudAuthConfig {
   const defaultConfig: CrudAuthConfig = {
     readOne: 'admin',
     readMany: 'admin',
@@ -60,28 +71,8 @@ export function getCrudAuthForModel(schema: string, modelName: string): CrudAuth
     update: 'admin',
     delete: 'admin',
   }
-  const lines = schema.split('\n')
-  let modelDoc: string[] = []
-  let foundModel = false
-  for (const line of lines) {
-    const trimmedLine = line.trim()
-    if (
-      trimmedLine.startsWith(`model ${modelName}`) ||
-      trimmedLine.startsWith(`model ${modelName} `) ||
-      trimmedLine.startsWith(`model ${modelName}{`)
-    ) {
-      foundModel = true
-      break
-    } else if (trimmedLine.startsWith('model ') && !foundModel) {
-      modelDoc = []
-    } else if (trimmedLine.startsWith('///') && !foundModel) {
-      modelDoc.push(trimmedLine)
-    }
-  }
-  if (!foundModel) return defaultConfig
-  const authLine = modelDoc.find((line) => line.includes('@crudAuth:'))
-  if (!authLine) return defaultConfig
-  const config = parseCrudAuth(authLine)
+  if (!model.documentation) return defaultConfig
+  const config = parseCrudAuth(model.documentation)
   return config ? { ...defaultConfig, ...config } : defaultConfig
 }
 
@@ -247,7 +238,7 @@ export async function generateCrudLogic(
       return dmmf.datamodel.models.filter(model => !skippedModelNames.has(model.name)).map((model) => {
         const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
         const pluralPropertyName = getPluralName(singularPropertyName)
-        const authConfig = getCrudAuthForModel(prismaSchema, model.name)
+        const authConfig = getCrudAuthForModel(model)
         const idField = model.fields.find((f) => f.isId)
         const idFieldType = idField ? idField.type : 'String'
         return {
