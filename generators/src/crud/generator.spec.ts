@@ -2,7 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { GenerateCrudGeneratorDependencies, generateCrudLogic } from './generator'
+import { GenerateCrudGeneratorDependencies, generateCrudLogic, getCrudAuthForModel } from './generator'
 import { Tree } from '@nx/devkit'
 
 // The mocked DMMF object
@@ -106,5 +106,84 @@ describe('generate-crud generator', () => {
     expect(modelsArg.pluralName).toBe('DataList')
     expect(modelsArg.pluralModelName).toBe('DataList')
     expect(modelsArg.pluralModelPropertyName).toBe('dataList')
+  })
+
+  it('does not inherit @crudAuth from a model whose name merely starts with this model name', async () => {
+    // Regression: looking up `User` used to match `model UserSessionProgress` because the schema
+    // scan had no word boundary, so User silently inherited the other model's user-level config.
+    const collidingDmmf = {
+      datamodel: {
+        models: [
+          {
+            name: 'UserSessionProgress',
+            documentation:
+              '@crudAuth: { "readOne": "user", "readMany": "user", "count": "user", "create": "user", "update": "user" }',
+            fields: [{ name: 'id', type: 'Int', isId: true }],
+          },
+          {
+            name: 'User',
+            fields: [{ name: 'id', type: 'Int', isId: true }],
+          },
+        ],
+      },
+    }
+    mockDependencies.getDMMF = vi.fn().mockResolvedValue(collidingDmmf)
+
+    await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+    const models = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1].models
+    const user = models.find((model: any) => model.name === 'User')
+    expect(user.auth).toEqual({
+      readOne: 'admin',
+      readMany: 'admin',
+      count: 'admin',
+      create: 'admin',
+      update: 'admin',
+      delete: 'admin',
+    })
+
+    // The annotated model itself must still keep its own configuration.
+    const progress = models.find((model: any) => model.name === 'UserSessionProgress')
+    expect(progress.auth).toMatchObject({ readOne: 'user', readMany: 'user', delete: 'admin' })
+  })
+
+  describe('getCrudAuthForModel', () => {
+    it('defaults every operation to admin when the model carries no documentation', () => {
+      expect(getCrudAuthForModel({})).toEqual({
+        readOne: 'admin',
+        readMany: 'admin',
+        count: 'admin',
+        create: 'admin',
+        update: 'admin',
+        delete: 'admin',
+      })
+    })
+
+    it('merges a partial annotation over the admin defaults', () => {
+      expect(getCrudAuthForModel({ documentation: '@crudAuth: { "readMany": "user" }' })).toEqual({
+        readOne: 'admin',
+        readMany: 'user',
+        count: 'admin',
+        create: 'admin',
+        update: 'admin',
+        delete: 'admin',
+      })
+    })
+
+    it('falls back to admin defaults when the annotation is not valid JSON', () => {
+      expect(getCrudAuthForModel({ documentation: '@crudAuth: { not json }' })).toEqual({
+        readOne: 'admin',
+        readMany: 'admin',
+        count: 'admin',
+        create: 'admin',
+        update: 'admin',
+        delete: 'admin',
+      })
+    })
+
+    it('reads the annotation when other doc lines surround it', () => {
+      const documentation = 'Some note about the model\n@crudAuth: { "create": "user" }\nAnother note'
+      expect(getCrudAuthForModel({ documentation }).create).toBe('user')
+    })
   })
 })
