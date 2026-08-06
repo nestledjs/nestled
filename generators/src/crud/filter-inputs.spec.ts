@@ -50,6 +50,13 @@ function buildModels(): ModelType[] {
   ]
 }
 
+/** Body of one generated class, so assertions cannot bleed into neighbouring classes. */
+function classBody(source: string, className: string): string {
+  const start = source.indexOf(`export class ${className} {`)
+  if (start === -1) return ''
+  return source.slice(start, source.indexOf('\n}', start))
+}
+
 describe('generateFilterInputs', () => {
   describe('scalar operators', () => {
     it('gives string fields only string-appropriate operators', () => {
@@ -171,10 +178,11 @@ describe('generateFilterInputs', () => {
 
       // User -> Post -> User, and the level-3 type carries no relation fields.
       expect(source).toContain('export class UserFilterInput3')
-      const level3 = source.slice(source.indexOf('export class UserFilterInput3'))
+      const level3 = classBody(source, 'UserFilterInput3')
       expect(level3).toContain('email?: StringFilterInput')
       expect(level3).not.toContain('posts?:')
-      expect(level3).not.toContain('FilterInput4')
+      expect(level3).not.toContain('profile?:')
+      expect(source).not.toContain('FilterInput4')
     })
 
     it('emits nothing deeper than the configured depth', () => {
@@ -203,15 +211,69 @@ describe('generateFilterInputs', () => {
     })
   })
 
+  describe('declaration order', () => {
+    // emitDecoratorMetadata evaluates `__metadata("design:type", X)` eagerly when the containing
+    // class is defined, and class declarations are not hoisted. A class that references one
+    // declared later in the file throws "Cannot access X before initialization" on import. The
+    // file typechecks either way, so only a runtime import catches it.
+    it('declares every referenced filter input before the class that references it', () => {
+      const { source } = generateFilterInputs(buildModels())
+
+      const declarationOrder = new Map<string, number>()
+      const classRe = /export class (\w+) \{/g
+      let match: RegExpExecArray | null
+      while ((match = classRe.exec(source)) !== null) {
+        declarationOrder.set(match[1], match.index)
+      }
+      expect(declarationOrder.size).toBeGreaterThan(5)
+
+      for (const [className, position] of declarationOrder) {
+        const body = classBody(source, className)
+        const referenceRe = /@Field\(\(\) => \[?(\w+)\]?,/g
+        let ref: RegExpExecArray | null
+        while ((ref = referenceRe.exec(body)) !== null) {
+          const referenced = ref[1]
+          if (!declarationOrder.has(referenced)) continue // built-in scalar or enum
+          expect(
+            declarationOrder.get(referenced),
+            `${className} references ${referenced}, which is declared later`,
+          ).toBeLessThan(position)
+        }
+      }
+    })
+
+    it('emits the deepest level first', () => {
+      const { source } = generateFilterInputs(buildModels(), 3)
+
+      expect(source.indexOf('export class UserFilterInput3')).toBeLessThan(
+        source.indexOf('export class UserFilterInput2'),
+      )
+      expect(source.indexOf('export class UserFilterInput2')).toBeLessThan(
+        source.indexOf('export class UserFilterInput {'),
+      )
+    })
+  })
+
   describe('empty inputs', () => {
-    it('emits no type for a model with nothing filterable', () => {
-      // An @InputType with zero fields is invalid in GraphQL.
-      const { source, modelsWithFilterInput } = generateFilterInputs([
+    it('falls back to the shared unfilterable input for a model with nothing filterable', () => {
+      // An @InputType with zero fields is invalid in GraphQL, but the model still needs an
+      // explicit override or its list input keeps inheriting the untyped blob.
+      const { source, filterInputNames } = generateFilterInputs([
         model('Blob', [field('payload', 'Json'), field('tags', 'String', { isList: true })]),
       ])
 
-      expect(source).toBe('')
-      expect(modelsWithFilterInput).toEqual([])
+      expect(filterInputNames).toEqual({ Blob: 'UnfilterableInput' })
+      expect(source).toContain('export class UnfilterableInput')
+      expect(source).not.toContain('export class BlobFilterInput')
+      // The placeholder must not let a caller express any column filter.
+      expect(source).not.toContain('payload?:')
+      expect(source).not.toContain('tags?:')
+    })
+
+    it('emits the unfilterable input only when some model needs it', () => {
+      const { source } = generateFilterInputs(buildModels())
+
+      expect(source).not.toContain('UnfilterableInput')
     })
 
     it('does not reference a related model that has no filter input at the next level', () => {
@@ -221,20 +283,32 @@ describe('generateFilterInputs', () => {
         model('Ledger', [relation('entries', 'Entry', { isList: true })]),
         model('Entry', [field('amount', 'Int')]),
       ]
-      const { source, modelsWithFilterInput } = generateFilterInputs(models, 2)
+      const { source, filterInputNames } = generateFilterInputs(models, 2)
 
-      expect(modelsWithFilterInput).toEqual(['Ledger', 'Entry'])
+      expect(filterInputNames).toEqual({ Ledger: 'LedgerFilterInput', Entry: 'EntryFilterInput' })
       expect(source).not.toContain('LedgerFilterInput2')
       expect(source).toContain('EntryFilterInput2')
     })
   })
 
-  describe('reporting which models got a filter input', () => {
-    it('lists exactly the models with a depth-1 type', () => {
+  describe('reporting the filter input per model', () => {
+    it('names a real type for filterable models and the fallback for the rest', () => {
       const models = [...buildModels(), model('Blob', [field('payload', 'Json')])]
-      const { modelsWithFilterInput } = generateFilterInputs(models)
+      const { filterInputNames } = generateFilterInputs(models)
 
-      expect(modelsWithFilterInput).toEqual(['User', 'Post', 'Profile'])
+      expect(filterInputNames).toEqual({
+        User: 'UserFilterInput',
+        Post: 'PostFilterInput',
+        Profile: 'ProfileFilterInput',
+        Blob: 'UnfilterableInput',
+      })
+    })
+
+    it('covers every model, so none can inherit the untyped blob', () => {
+      const models = [...buildModels(), model('Blob', [field('payload', 'Json')])]
+      const { filterInputNames } = generateFilterInputs(models)
+
+      expect(Object.keys(filterInputNames).sort()).toEqual(models.map((m) => m.modelName).sort())
     })
   })
 })
@@ -242,13 +316,13 @@ describe('generateFilterInputs', () => {
 describe('dto template rendering', () => {
   function renderDto(models: ModelType[], depth?: number): string {
     const tree: Tree = createTreeWithEmptyWorkspace()
-    const { source: filterInputs, modelsWithFilterInput } = generateFilterInputs(models, depth as number)
+    const { source: filterInputs, filterInputNames } = generateFilterInputs(models, depth as number)
 
     generateFiles(tree, joinPathFragments(__dirname, 'files/data-access'), 'out', {
       name: 'generated-crud',
       models,
       filterInputs,
-      modelsWithFilterInput,
+      filterInputNames,
       npmScope: 'testscope',
       tmpl: '',
     })
@@ -284,15 +358,14 @@ describe('dto template rendering', () => {
     expect(dto).toContain("import { Role } from '@testscope/api/core/models'")
   })
 
-  it('omits the filters field for a model with nothing filterable', () => {
+  it('always overrides filters, even for a model with nothing filterable', () => {
     const dto = renderDto([model('Blob', [field('id', 'String', { isId: true }), field('payload', 'Json')])])
-
-    // id is filterable here, so Blob does get an input; assert the negative case separately.
     expect(dto).toContain('filters?: BlobFilterInput')
 
+    // Without an explicit override this model would keep inheriting CorePagingInput's blob.
     const unfilterable = renderDto([model('Blob', [field('payload', 'Json')])])
-    expect(unfilterable).not.toContain('filters?:')
-    expect(unfilterable).toContain('export class ListBlobInput extends CorePagingInput {')
+    expect(unfilterable).toContain('@Field(() => UnfilterableInput, { nullable: true })\n  filters?: UnfilterableInput')
+    expect(unfilterable).toContain('export class UnfilterableInput')
   })
 
   it('still renders for callers that do not pass the filter variables', () => {

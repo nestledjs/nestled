@@ -190,7 +190,7 @@ describe('generate-crud generator', () => {
       await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
 
       const templateSchema = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1]
-      expect(templateSchema.modelsWithFilterInput).toEqual(['User'])
+      expect(templateSchema.filterInputNames).toEqual({ User: 'UserFilterInput' })
       expect(templateSchema.filterInputs).toContain('export class UserFilterInput')
     })
 

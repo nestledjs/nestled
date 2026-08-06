@@ -255,8 +255,8 @@ export async function generateCrudLogic(
     // Filter inputs are built here rather than in the DTO template so the logic stays testable
     // and the template keeps to rendering. `models` has already had @skipCrud models and
     // @graphqlOmit fields stripped, so omitted columns cannot become filterable.
-    const { source: filterInputs, modelsWithFilterInput } = generateFilterInputs(models, schema.filterDepth)
-    const templateSchema = { name, models, filterInputs, modelsWithFilterInput }
+    const { source: filterInputs, filterInputNames } = generateFilterInputs(models, schema.filterDepth)
+    const templateSchema = { name, models, filterInputs, filterInputNames }
 
     await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'data-access')
     await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'feature')

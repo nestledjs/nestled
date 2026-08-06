@@ -92,11 +92,26 @@ const SCALAR_FILTERS: Record<string, ScalarFilterDef> = {
   },
 }
 
+/**
+ * Filter input for a model with no filterable column of its own.
+ *
+ * Such a model still needs *something* to override the inherited blob with. An explicit `@Field`
+ * override is the only mechanism that actually removes an inherited field from a code-first
+ * schema — `@HideField()` is a no-op at runtime (it exists to steer the CLI plugin), and leaving
+ * the field alone keeps `filters: JSONObject` on that model, which is the whole vulnerability.
+ * GraphQL rejects an input type with zero fields, so this carries one inert placeholder.
+ */
+export const UNFILTERABLE_INPUT_NAME = 'UnfilterableInput'
+
 export interface FilterInputsResult {
-  /** Source for the generated filter input classes; empty when nothing is filterable. */
+  /** Source for the generated filter input classes; empty only when there are no models. */
   source: string
-  /** Models that have a depth-1 filter input, i.e. whose list input gets a typed `filters` field. */
-  modelsWithFilterInput: string[]
+  /**
+   * Filter input class name per model, for the `filters` override on its list input. Every model
+   * gets an entry — models with nothing filterable map to {@link UNFILTERABLE_INPUT_NAME} — so no
+   * generated list input is left inheriting the untyped blob.
+   */
+  filterInputNames: Record<string, string>
 }
 
 function isRelationField(field: ModelField): boolean {
@@ -165,6 +180,17 @@ const INDEX_SIGNATURE_SHIM = '  [key: string]: unknown\n'
 function renderModelFilterClass(className: string, fields: string[], includeShim: boolean): string {
   const body = (includeShim ? INDEX_SIGNATURE_SHIM + '\n' : '') + fields.join('\n')
   return `@InputType()\nexport class ${className} {\n${body}}\n`
+}
+
+function renderUnfilterableInputClass(): string {
+  const field =
+    `  @Field(() => Boolean, {\n` +
+    `    nullable: true,\n` +
+    `    description: 'This model exposes no filterable columns. Present only because GraphQL ' +\n` +
+    `      'requires an input type to declare at least one field.',\n` +
+    `  })\n` +
+    `  unavailable?: boolean\n`
+  return `@InputType()\nexport class ${UNFILTERABLE_INPUT_NAME} {\n${INDEX_SIGNATURE_SHIM}\n${field}}\n`
 }
 
 interface ScanContext {
@@ -293,10 +319,21 @@ export function generateFilterInputs(
     scanDepth(models, d, ctx)
   }
 
-  const modelsWithFilterInput = models.map((m) => m.modelName).filter((name) => ctx.fieldsByDepth.get(1)?.has(name))
+  // Every model gets an entry. A model with nothing filterable still needs an explicit override,
+  // or its list input silently keeps inheriting the untyped blob.
+  const filterInputNames: Record<string, string> = {}
+  let needsUnfilterableInput = false
+  for (const model of models) {
+    if (ctx.fieldsByDepth.get(1)?.has(model.modelName)) {
+      filterInputNames[model.modelName] = modelFilterInputName(model.modelName, 1)
+    } else {
+      filterInputNames[model.modelName] = UNFILTERABLE_INPUT_NAME
+      needsUnfilterableInput = true
+    }
+  }
 
-  if (modelsWithFilterInput.length === 0) {
-    return { source: '', modelsWithFilterInput: [] }
+  if (models.length === 0) {
+    return { source: '', filterInputNames }
   }
 
   // Operator inputs are shared across every level, so they are emitted once up front.
@@ -304,7 +341,16 @@ export function generateFilterInputs(
     .sort((a, b) => a.className.localeCompare(b.className))
     .map(renderScalarFilterClass)
 
-  const levels = Array.from({ length: depth }, (_, i) => renderDepth(models, i + 1, ctx)).flat()
+  // Deepest level first. `emitDecoratorMetadata` — which NestJS requires — emits
+  // `__metadata("design:type", X)` for every decorated property, and that evaluates the class
+  // reference eagerly when the containing class is defined. Class declarations are not hoisted, so
+  // emitting depth 1 before depth 2 makes importing the generated file throw
+  // `Cannot access 'XFilterInput2' before initialization`. The file typechecks either way, so this
+  // only shows up at runtime. The depth cap makes the reference graph acyclic (a level only ever
+  // points one level deeper), so descending order is a valid topological sort. Within a level,
+  // renderDepth emits the list-relation wrappers before the model inputs that reference them.
+  const levels = Array.from({ length: depth }, (_, i) => renderDepth(models, depth - i, ctx)).flat()
+  const unfilterable = needsUnfilterableInput ? [renderUnfilterableInputClass()] : []
 
-  return { source: [...operatorInputs, ...levels].join('\n'), modelsWithFilterInput }
+  return { source: [...operatorInputs, ...unfilterable, ...levels].join('\n'), filterInputNames }
 }

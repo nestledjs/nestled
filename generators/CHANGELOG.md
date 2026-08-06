@@ -28,6 +28,9 @@ registry (see `nx.json` → `release`).
   field list the CRUD generator already filters with `@graphqlOmit`, so an omitted column
   is unfilterable by construction rather than by a second list that could drift. `Json`
   columns and scalar lists are not filterable, and `AND`/`OR`/`NOT` are not emitted.
+  Every model's list input carries the override — a model with no filterable column maps to
+  a shared `UnfilterableInput` placeholder, since an explicit `@Field` override is the only
+  mechanism that removes an inherited field from a code-first schema.
   Relation nesting is bounded by generating a distinct type per level (default 3,
   configurable with `--filterDepth`); the deepest level carries scalars only, which
   terminates the recursion.

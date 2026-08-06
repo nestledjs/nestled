@@ -189,9 +189,13 @@ export class Update<%= model.modelName %>Input {
 
 @InputType()
 export class List<%= model.modelName %>Input extends CorePagingInput {
-<% if (locals.modelsWithFilterInput && locals.modelsWithFilterInput.includes(model.modelName)) { %>
-  @Field(() => <%= model.modelName %>FilterInput, { nullable: true })
-  filters?: <%= model.modelName %>FilterInput
+<%# Every model overrides `filters`. An explicit @Field is the only thing that actually removes an
+    inherited field from a code-first schema, so a model left without one would keep exposing
+    CorePagingInput's untyped blob. Models with no filterable column map to UnfilterableInput. %>
+<% const filterInputName = locals.filterInputNames && locals.filterInputNames[model.modelName]; %>
+<% if (filterInputName) { %>
+  @Field(() => <%= filterInputName %>, { nullable: true })
+  filters?: <%= filterInputName %>
 <% } %>
 <% for (const field of allFields) { %>
   <%
