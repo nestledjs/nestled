@@ -13,9 +13,12 @@ export const DEFAULT_CRUD_AUTH: Readonly<CrudAuthConfig> = Object.freeze({
   delete: 'admin',
 })
 
+/** Matches the annotation and captures its JSON body. Not global, so it holds no lastIndex state. */
+const CRUD_AUTH_PATTERN = /@crudAuth:\s*(\{.*})/
+
 export function parseCrudAuth(comment: string): CrudAuthConfig | null {
   try {
-    const match = RegExp(/@crudAuth:\s*(\{.*})/).exec(comment)
+    const match = CRUD_AUTH_PATTERN.exec(comment)
     if (!match) return null
     return JSON.parse(match[1])
   } catch (e) {
