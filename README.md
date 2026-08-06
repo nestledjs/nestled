@@ -80,6 +80,28 @@ model OAuthAccount {
 
 > **Security (fixed in 1.1.3):** before `@nestledjs/generators@1.1.3` the `models` generator ignored `@graphqlOmit`, so annotated fields still received a `@Field()` and stayed queryable on the **server** GraphQL schema (the omit was only applied to generated client operations). Upgrade to ≥ 1.1.3, regenerate models, and redeploy — then audit and rotate any secret that was `@graphqlOmit`-annotated while reachable on a deployed clone.
 
+### Access levels (`crud`)
+
+Every generated CRUD operation declares its access level explicitly, resolved from the model's
+`@crudAuth` annotation (all operations default to `admin` when unannotated):
+
+| Level | Emitted |
+|---|---|
+| `admin` | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)` |
+| `user` | `@Authenticated()` + `@UseGuards(GqlAuthGuard)` |
+| `public` | `@Public()`, no guard |
+| custom, e.g. `billingAdmin` | `@Authenticated()` + `@UseGuards(GqlAuthBillingAdminGuard)` |
+
+A custom level's decorator declares only that a level exists — the custom guard remains
+authoritative about what it means, so a `noaccess` guard still denies everyone. The decorators and
+guards come from `@<scope>/api/utils`, and each generated file imports exactly what it uses.
+
+> **⚠️ Upgrade ordering (1.1.6).** Generated output imports `AdminOnly`, `Authenticated`, and
+> `Public` from `@<scope>/api/utils`. Those symbols only exist in a template that has taken the
+> global-guard (`GlobalAuthGuard`) change. Apply that template upgrade **first**, then bump to
+> ≥ 1.1.6 and regenerate. The reverse order produces generated code that does not compile, with an
+> unresolved-import error that says nothing about ordering.
+
 ### Filtering (`crud`)
 
 Each generated list query takes a typed `filters` input built from the model's own columns:
