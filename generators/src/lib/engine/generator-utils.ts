@@ -11,7 +11,8 @@ import {
 } from '@nx/devkit'
 import { execSync } from 'child_process'
 import * as yaml from 'yaml'
-import { AddToModulesOptions, CrudAuthConfig, GenerateTemplateOptions, ModelType } from './generator-types'
+import { AddToModulesOptions, GenerateTemplateOptions, ModelType } from './generator-types'
+import { getCrudAuthForModel } from './crud-auth'
 import { libraryGenerator } from '@nx/nest'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -427,8 +428,11 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
         documentation: field.documentation,
       }))
 
-      // Extract auth configuration from model documentation
-      const authConfig = model.documentation ? parseCrudAuth(model.documentation) : null
+      // Resolve auth through the shared resolver so this loader agrees with the CRUD
+      // generator's. It always returns a complete config, which matters because this model
+      // list is serialised with JSON.stringify — an undefined `auth` would be dropped from
+      // the emitted database-models.ts entirely.
+      const authConfig = getCrudAuthForModel(model)
 
       // Get the ID field type
       const idField = model.fields.find((f) => f.isId)
@@ -443,27 +447,13 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
         modelPropertyName: singularPropertyName,
         pluralModelName: pluralize(model.name),
         pluralModelPropertyName: pluralPropertyName,
-        auth: authConfig || undefined,
+        auth: authConfig,
         idFieldType,
       }
     })
   } catch (error) {
     console.error('Error parsing Prisma schema:', error)
     return []
-  }
-}
-
-function parseCrudAuth(comment: string): CrudAuthConfig | null {
-  try {
-    // Match @crudAuth: { ... } in a single line
-    const match = comment.match(/@crudAuth:\s*(\{.*\})/)
-    if (!match) return null
-
-    // The captured group should be valid JSON
-    return JSON.parse(match[1])
-  } catch (e) {
-    console.error('Error parsing @crudAuth:', e)
-    return null
   }
 }
 

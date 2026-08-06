@@ -112,6 +112,60 @@ describe('sdk generator', () => {
     expect(adminCall[3].adminPrefix).toBe('__Admin');
   });
 
+  describe('database-models.ts auth', () => {
+    // The SDK copy of database-models.ts is written by a different model loader than the api
+    // copy. It used to leave `auth` undefined for unannotated models, and JSON.stringify drops
+    // undefined values, so the key vanished from the emitted file. Consumers that enforce
+    // per-model auth read this copy, so it has to carry a complete config for every model.
+    const schemaWithAuth = `
+model Account {
+  id Int @id
+}
+
+/// @crudAuth: { "readMany": "user" }
+model Session {
+  id Int @id
+}
+`;
+
+    async function generateAndReadDatabaseModels() {
+      tree.write('libs/api/prisma/src/lib/schemas/schema.prisma', schemaWithAuth);
+      await sdkGeneratorLogic(tree, {}, mockDependencies);
+      const content = tree.read('libs/shared/sdk/src/lib/database-models.ts', 'utf-8') as string;
+      const marker = 'export const DATABASE_MODELS: DatabaseModel[] = ';
+      const start = content.indexOf(marker) + marker.length;
+      return JSON.parse(content.slice(start, content.indexOf('\n\nexport const DATABASE_MODELS_BY_NAME')));
+    }
+
+    it('carries a complete auth config for an unannotated model', async () => {
+      const models = await generateAndReadDatabaseModels();
+
+      const account = models.find((m: any) => m.modelName === 'Account');
+      expect(account.auth).toEqual({
+        readOne: 'admin',
+        readMany: 'admin',
+        count: 'admin',
+        create: 'admin',
+        update: 'admin',
+        delete: 'admin',
+      });
+    });
+
+    it('honours a partial annotation and defaults the rest to admin', async () => {
+      const models = await generateAndReadDatabaseModels();
+
+      const session = models.find((m: any) => m.modelName === 'Session');
+      expect(session.auth).toEqual({
+        readOne: 'admin',
+        readMany: 'user',
+        count: 'admin',
+        create: 'admin',
+        update: 'admin',
+        delete: 'admin',
+      });
+    });
+  });
+
   describe('enum field handling', () => {
     it('includes single-select and multi-select enum fields in fragment fields', async () => {
       mockDependencies.readFileSync = vi.fn().mockReturnValue(prismaSchemaWithEnums);

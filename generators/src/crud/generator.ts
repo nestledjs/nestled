@@ -4,6 +4,7 @@ import {
   apiLibraryGenerator,
   filterSkippedRelationFields,
   generateDatabaseModelContent,
+  getCrudAuthForModel,
   getPluralName,
   getPrismaSchemaPath,
   getSkippedModelNames,
@@ -11,17 +12,14 @@ import {
   readPrismaSchema,
 } from '../lib/engine'
 import { GenerateCrudGeneratorSchema } from './schema'
+import { generateFilterInputs } from './filter-inputs'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
 // STEP 1: DEFINE INTERFACES FOR DATA AND DEPENDENCIES
-interface CrudAuthConfig {
-  readOne?: string
-  readMany?: string
-  count?: string
-  create?: string
-  update?: string
-  delete?: string
-}
+
+// `@crudAuth` resolution lives in lib/engine so this generator and getAllPrismaModels cannot
+// drift. Re-exported here because it has always been part of this module's public surface.
+export { getCrudAuthForModel, parseCrudAuth } from '../lib/engine'
 
 // This interface makes the generator logic testable by defining its external dependencies.
 export interface GenerateCrudGeneratorDependencies {
@@ -39,42 +37,6 @@ export interface GenerateCrudGeneratorDependencies {
 
 // STEP 2: DEFINE PURE HELPER & CONTENT GENERATION FUNCTIONS
 // These functions are side-effect-free and can be tested independently.
-
-export function parseCrudAuth(comment: string): CrudAuthConfig | null {
-  try {
-    const match = RegExp(/@crudAuth:\s*(\{.*})/).exec(comment)
-    if (!match) return null
-    return JSON.parse(match[1])
-  } catch (e) {
-    console.error('Error parsing @crudAuth:', e)
-    return null
-  }
-}
-
-// Read the annotation off the DMMF model rather than re-scanning the raw schema text. The previous
-// implementation searched for a line starting with `model ${modelName}`, which has no word boundary:
-// looking up `User` also matched `model UserSessionProgress`, `model UserAddress`, or any other
-// model whose name merely starts with those characters. It broke on the first such match and
-// returned that unrelated model's @crudAuth block, so a model that should default to admin could
-// silently inherit a "user" or "public" level from a neighbour. Multi-file schema directories made
-// this easy to hit, since the files are concatenated alphabetically and the hijacking model only
-// has to sort earlier.
-//
-// Prisma already associates each `///` doc comment with its own model, so `model.documentation` is
-// unambiguous. This mirrors what getAllPrismaModels in lib/engine/generator-utils.ts already does.
-export function getCrudAuthForModel(model: { documentation?: string | null }): CrudAuthConfig {
-  const defaultConfig: CrudAuthConfig = {
-    readOne: 'admin',
-    readMany: 'admin',
-    count: 'admin',
-    create: 'admin',
-    update: 'admin',
-    delete: 'admin',
-  }
-  if (!model.documentation) return defaultConfig
-  const config = parseCrudAuth(model.documentation)
-  return config ? { ...defaultConfig, ...config } : defaultConfig
-}
 
 export function getGuardForAuthLevel(level: string): string | null {
   if (!level) return 'GqlAuthAdminGuard'
@@ -289,8 +251,15 @@ export async function generateCrudLogic(
     const dataAccessLibraryRoot = `libs/api/${name}/data-access`
     const featureLibraryRoot = `libs/api/${name}/feature`
     const templatePath = dependencies.joinPathFragments(__dirname, './files')
-    await dependencies.apiLibraryGenerator(tree, { name, models }, templatePath, 'data-access')
-    await dependencies.apiLibraryGenerator(tree, { name, models }, templatePath, 'feature')
+
+    // Filter inputs are built here rather than in the DTO template so the logic stays testable
+    // and the template keeps to rendering. `models` has already had @skipCrud models and
+    // @graphqlOmit fields stripped, so omitted columns cannot become filterable.
+    const { source: filterInputs, filterInputNames } = generateFilterInputs(models, schema.filterDepth)
+    const templateSchema = { name, models, filterInputs, filterInputNames }
+
+    await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'data-access')
+    await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'feature')
     return { dataAccessLibraryRoot, featureLibraryRoot }
   }
 
