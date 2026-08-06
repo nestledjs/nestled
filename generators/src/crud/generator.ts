@@ -52,35 +52,82 @@ export function getGuardForAuthLevel(level: string): string | null {
   return `GqlAuth${level.charAt(0).toUpperCase()}${level.slice(1)}Guard`
 }
 
+/**
+ * The access-level decorator for a resolved `@crudAuth` level.
+ *
+ * The template registers a global `APP_GUARD` that refuses any operation which has not declared an
+ * access level, because NestJS applies no guard unless one is asked for — so a missing `@UseGuards`
+ * used to be anonymously reachable and indistinguishable from an oversight. Hand-written resolvers
+ * declare themselves with these decorators; generated ones could not, so the template carried an
+ * interim bridge that accepted an attached auth guard as a declaration. Emitting the decorator here
+ * lets that bridge be deleted, so an attached guard no longer substitutes for a declaration.
+ *
+ * It also makes `public` positive rather than absent: `@crudAuth: { "readMany": "public" }` used to
+ * emit no decorator at all, output byte-identical to a dropped decorator or a generator bug.
+ */
+export function getAccessLevelDecoratorForAuthLevel(level: string): string {
+  if (!level) return 'AdminOnly'
+  const normalized = level.toLowerCase()
+  if (normalized === 'public') return 'Public'
+  if (normalized === 'user') return 'Authenticated'
+  if (normalized === 'admin') return 'AdminOnly'
+  // A custom level declares intent; it does not enforce. Only the custom guard knows what the level
+  // means and it stays authoritative — a `noaccess` guard still denies everyone even though the
+  // operation declares @Authenticated(). Deliberately no attempt to infer a stricter level from the
+  // name: guessing would either under-declare (and be wrong) or over-declare (and be misleading).
+  return 'Authenticated'
+}
+
+interface OperationAccess {
+  levelDecorator: string
+  guard: string | null
+}
+
+/** Unannotated operations default to admin, matching {@link getCrudAuthForModel}. */
+function resolveOperationAccess(level: string | undefined): OperationAccess {
+  const effective = level || 'admin'
+  return {
+    levelDecorator: getAccessLevelDecoratorForAuthLevel(effective),
+    guard: getGuardForAuthLevel(effective),
+  }
+}
+
+/** Level decorator first, then the guard when the level has one. `public` gets no guard. */
+function renderAccessDecorators(access: OperationAccess): string {
+  const decorators = [`@${access.levelDecorator}()`]
+  if (access.guard) decorators.push(`@UseGuards(${access.guard})`)
+  return decorators.join('\n  ')
+}
+
 function toKebabCase(str: string): string {
   return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
 export function generateResolverContent(model: ModelType, npmScope: string): string {
-  const usedGuards = new Set<string>()
-  if (model.auth) {
-    Object.values(model.auth).forEach((level) => {
-      if (level === 'public') return
-      const guard = getGuardForAuthLevel(level)
-      if (guard) usedGuards.add(guard)
-    })
-  } else {
-    usedGuards.add('GqlAuthAdminGuard')
+  const access = {
+    readMany: resolveOperationAccess(model.auth?.readMany),
+    count: resolveOperationAccess(model.auth?.count),
+    readOne: resolveOperationAccess(model.auth?.readOne),
+    create: resolveOperationAccess(model.auth?.create),
+    update: resolveOperationAccess(model.auth?.update),
+    delete: resolveOperationAccess(model.auth?.delete),
   }
 
-  const guardImports =
-    usedGuards.size > 0
-      ? `import { ${Array.from(usedGuards)
-          .sort((a, b) => a.localeCompare(b))
-          .join(', ')} } from '@${npmScope}/api/utils'`
-      : ''
+  // Level decorators and guards come from the same barrel, so they share one import. Only what the
+  // file actually uses — a model whose operations are all admin must not import Public.
+  const usedUtils = new Set<string>()
+  for (const operation of Object.values(access)) {
+    usedUtils.add(operation.levelDecorator)
+    if (operation.guard) usedUtils.add(operation.guard)
+  }
+  const utilsImports = `import { ${Array.from(usedUtils)
+    .sort((a, b) => a.localeCompare(b))
+    .join(', ')} } from '@${npmScope}/api/utils'`
 
-  const readManyGuardDecorator = model.auth?.readMany ? getGuardForAuthLevel(model.auth.readMany) : 'GqlAuthAdminGuard'
-  const countGuardDecorator = model.auth?.count ? getGuardForAuthLevel(model.auth.count) : 'GqlAuthAdminGuard'
-  const readOneGuardDecorator = model.auth?.readOne ? getGuardForAuthLevel(model.auth.readOne) : 'GqlAuthAdminGuard'
-  const createGuardDecorator = model.auth?.create ? getGuardForAuthLevel(model.auth.create) : 'GqlAuthAdminGuard'
-  const updateGuardDecorator = model.auth?.update ? getGuardForAuthLevel(model.auth.update) : 'GqlAuthAdminGuard'
-  const deleteGuardDecorator = model.auth?.delete ? getGuardForAuthLevel(model.auth.delete) : 'GqlAuthAdminGuard'
+  // An all-public model attaches no guard, so importing UseGuards would leave an unused import.
+  const nestCommonImports = Object.values(access).some((operation) => operation.guard)
+    ? `\nimport { UseGuards } from '@nestjs/common'`
+    : ''
 
   const readManyMethodName = model.pluralModelPropertyName
   const countMethodName = `${model.pluralModelPropertyName}Count`
@@ -92,8 +139,7 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
   const idArgsType = model.idFieldType === 'BigInt' ? ", { type: () => GraphQLBigInt }" : ''
   const graphqlScalarImport = model.idFieldType === 'BigInt' ? "\nimport { GraphQLBigInt } from 'graphql-scalars'" : ''
 
-  return `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
-import { UseGuards } from '@nestjs/common'
+  return `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'${nestCommonImports}
 import type { GraphQLResolveInfo } from 'graphql'
 import { CorePaging } from '@${npmScope}/api/core/data-access'
 import { ${model.modelName} } from '@${npmScope}/api/core/models'
@@ -103,14 +149,14 @@ import {
     List${model.modelName}Input,
     Update${model.modelName}Input
     } from '@${npmScope}/api/generated-crud/data-access'${graphqlScalarImport}
-${guardImports}
+${utilsImports}
 
 @Resolver(() => ${model.modelName})
 export class Generated${model.modelName}Resolver {
   constructor(private readonly generatedService: ApiCrudDataAccessService) {}
 
   @Query(() => [${model.modelName}], { nullable: true })
-  ${readManyGuardDecorator ? `@UseGuards(${readManyGuardDecorator})` : ''}
+  ${renderAccessDecorators(access.readMany)}
   ${readManyMethodName}(
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
@@ -121,7 +167,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Query(() => CorePaging, { nullable: true })
-  ${countGuardDecorator ? `@UseGuards(${countGuardDecorator})` : ''}
+  ${renderAccessDecorators(access.count)}
   ${countMethodName}(
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${
     model.modelName
@@ -131,7 +177,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
-  ${readOneGuardDecorator ? `@UseGuards(${readOneGuardDecorator})` : ''}
+  ${renderAccessDecorators(access.readOne)}
   ${readOneMethodName}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType}
@@ -140,7 +186,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  ${createGuardDecorator ? `@UseGuards(${createGuardDecorator})` : ''}
+  ${renderAccessDecorators(access.create)}
   create${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: Create${model.modelName}Input,
@@ -149,7 +195,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  ${updateGuardDecorator ? `@UseGuards(${updateGuardDecorator})` : ''}
+  ${renderAccessDecorators(access.update)}
   update${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType},
@@ -159,7 +205,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  ${deleteGuardDecorator ? `@UseGuards(${deleteGuardDecorator})` : ''}
+  ${renderAccessDecorators(access.delete)}
   delete${model.modelName}(
     @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType},
   ) {

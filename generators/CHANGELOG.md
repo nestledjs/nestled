@@ -4,6 +4,47 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 1.1.6
+
+### Added
+
+- **`crud`: emit an explicit access-level decorator on every generated operation.** The template
+  registers a global `APP_GUARD` that refuses any operation which has not declared an access
+  level. NestJS applies no guard unless one is asked for, so before that an operation missing
+  `@UseGuards` was reachable anonymously, and a missing decorator was indistinguishable from an
+  oversight. Hand-written resolvers declare themselves with `@Public()` / `@Authenticated()` /
+  `@AdminOnly()`; generated ones could not, so the template carried an interim bridge that
+  accepted an attached auth guard as a declaration — a loophole any hand-written resolver could
+  lean on too. Generated operations now declare their own level, so that bridge can be deleted.
+
+  Levels map as follows, from the resolved `@crudAuth` config:
+
+  | Level | Emitted |
+  | ----- | ------- |
+  | `admin` (also the default when unannotated) | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)` |
+  | `user` | `@Authenticated()` + `@UseGuards(GqlAuthGuard)` |
+  | `public` | `@Public()`, no guard |
+  | custom, e.g. `billingAdmin` | `@Authenticated()` + `@UseGuards(GqlAuthBillingAdminGuard)` |
+
+  A custom level's decorator declares only that a level exists; the custom guard stays
+  authoritative about what it means, so a `noaccess` guard still denies everyone. No stricter
+  level is inferred from the name.
+
+  This also fixes an older reporting problem: `@crudAuth: { "readMany": "public" }` previously
+  emitted **no decorator at all**, leaving a blank line where the guard would go — output
+  byte-identical to a dropped decorator, a bad merge, or a generator bug. `public` is now
+  positive and auditable, and absence is unambiguously a defect.
+
+  Imports carry exactly the symbols used, so an all-admin model does not import `Public`, and an
+  all-public model imports neither a guard nor `UseGuards`.
+
+  **⚠️ Upgrade ordering — this is a hard dependency.** Generated output imports `AdminOnly`,
+  `Authenticated`, and `Public` from `@<scope>/api/utils`. Those symbols exist only in a template
+  that has taken the global-guard change. So: **first** apply the template upgrade note that adds
+  the access-level decorators and `GlobalAuthGuard`, **then** bump to 1.1.6 and regenerate.
+  Reversing the order produces generated code that does not compile, with an unresolved-import
+  error that says nothing about ordering.
+
 ## 1.1.5
 
 ### Fixed

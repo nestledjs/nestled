@@ -5,6 +5,8 @@ import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import {
   GenerateCrudGeneratorDependencies,
   generateCrudLogic,
+  generateResolverContent,
+  getAccessLevelDecoratorForAuthLevel,
   getCrudAuthForModel,
   getGuardForAuthLevel,
 } from './generator'
@@ -150,6 +152,186 @@ describe('generate-crud generator', () => {
     // The annotated model itself must still keep its own configuration.
     const progress = models.find((model: any) => model.name === 'UserSessionProgress')
     expect(progress.auth).toMatchObject({ readOne: 'user', readMany: 'user', delete: 'admin' })
+  })
+
+  describe('getAccessLevelDecoratorForAuthLevel', () => {
+    it('maps the built-in levels', () => {
+      expect(getAccessLevelDecoratorForAuthLevel('admin')).toBe('AdminOnly')
+      expect(getAccessLevelDecoratorForAuthLevel('user')).toBe('Authenticated')
+      expect(getAccessLevelDecoratorForAuthLevel('public')).toBe('Public')
+    })
+
+    it('is case insensitive, matching the guard resolver', () => {
+      expect(getAccessLevelDecoratorForAuthLevel('PUBLIC')).toBe('Public')
+      expect(getAccessLevelDecoratorForAuthLevel('Admin')).toBe('AdminOnly')
+    })
+
+    it('treats a custom level as authenticated without guessing a stricter level', () => {
+      // The custom guard remains authoritative; the decorator only declares that a level exists.
+      expect(getAccessLevelDecoratorForAuthLevel('billingAdmin')).toBe('Authenticated')
+      expect(getAccessLevelDecoratorForAuthLevel('noaccess')).toBe('Authenticated')
+      expect(getAccessLevelDecoratorForAuthLevel('superAdmin')).toBe('Authenticated')
+    })
+
+    it('falls back to admin for an empty level', () => {
+      expect(getAccessLevelDecoratorForAuthLevel('')).toBe('AdminOnly')
+    })
+  })
+
+  describe('access level decorators', () => {
+    // The template registers a global APP_GUARD that refuses any operation which has not declared
+    // an access level. Generated operations must therefore declare one themselves, so the interim
+    // bridge that accepted an attached guard as a declaration can be deleted.
+    const baseModel: any = {
+      name: 'User',
+      pluralName: 'Users',
+      fields: [],
+      primaryField: 'name',
+      modelName: 'User',
+      modelPropertyName: 'user',
+      pluralModelName: 'Users',
+      pluralModelPropertyName: 'users',
+      idFieldType: 'String',
+    }
+
+    const allLevels = (level: string) => ({
+      readOne: level,
+      readMany: level,
+      count: level,
+      create: level,
+      update: level,
+      delete: level,
+    })
+
+    /** Decorator lines attached to an operation, i.e. between its @Query/@Mutation and its body. */
+    function decoratorsFor(source: string, methodName: string): string[] {
+      const lines = source.split('\n')
+      const methodIndex = lines.findIndex((l) => l.trimStart().startsWith(`${methodName}(`))
+      const decorators: string[] = []
+      for (let i = methodIndex - 1; i >= 0 && lines[i].trimStart().startsWith('@'); i--) {
+        decorators.unshift(lines[i].trim())
+      }
+      return decorators
+    }
+
+    function utilsImport(source: string): string[] {
+      const line = source.split('\n').find((l) => l.includes("/api/utils'")) ?? ''
+      return (/import \{([^}]*)\}/.exec(line)?.[1] ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+    }
+
+    it('maps admin to @AdminOnly() with the admin guard', () => {
+      const source = generateResolverContent({ ...baseModel, auth: allLevels('admin') }, 'scope')
+
+      expect(decoratorsFor(source, 'users')).toEqual([
+        '@Query(() => [User], { nullable: true })',
+        '@AdminOnly()',
+        '@UseGuards(GqlAuthAdminGuard)',
+      ])
+    })
+
+    it('maps user to @Authenticated() with the user guard', () => {
+      const source = generateResolverContent({ ...baseModel, auth: allLevels('user') }, 'scope')
+
+      expect(decoratorsFor(source, 'users')).toEqual([
+        '@Query(() => [User], { nullable: true })',
+        '@Authenticated()',
+        '@UseGuards(GqlAuthGuard)',
+      ])
+    })
+
+    it('maps public to @Public() with no guard', () => {
+      // Previously this emitted no decorator at all — output indistinguishable from a dropped one.
+      const source = generateResolverContent({ ...baseModel, auth: allLevels('public') }, 'scope')
+
+      expect(decoratorsFor(source, 'users')).toEqual([
+        '@Query(() => [User], { nullable: true })',
+        '@Public()',
+      ])
+      expect(source).not.toContain('@UseGuards')
+    })
+
+    it('maps a custom level to @Authenticated() while keeping its own guard', () => {
+      // The decorator declares intent; the custom guard stays authoritative about what it means.
+      const source = generateResolverContent({ ...baseModel, auth: allLevels('billingAdmin') }, 'scope')
+
+      expect(decoratorsFor(source, 'users')).toEqual([
+        '@Query(() => [User], { nullable: true })',
+        '@Authenticated()',
+        '@UseGuards(GqlAuthBillingAdminGuard)',
+      ])
+    })
+
+    it('defaults an unannotated model to @AdminOnly()', () => {
+      const source = generateResolverContent(baseModel, 'scope')
+
+      for (const method of ['users', 'usersCount', 'user', 'createUser', 'updateUser', 'deleteUser']) {
+        expect(decoratorsFor(source, method)).toContain('@AdminOnly()')
+      }
+    })
+
+    it('declares a level on every operation', () => {
+      const source = generateResolverContent(
+        {
+          ...baseModel,
+          auth: { readMany: 'public', count: 'user', readOne: 'admin', create: 'billingAdmin', update: 'admin', delete: 'admin' },
+        },
+        'scope',
+      )
+
+      for (const method of ['users', 'usersCount', 'user', 'createUser', 'updateUser', 'deleteUser']) {
+        const levels = decoratorsFor(source, method).filter((d) =>
+          ['@Public()', '@Authenticated()', '@AdminOnly()'].includes(d),
+        )
+        expect(levels, `${method} must declare exactly one access level`).toHaveLength(1)
+      }
+    })
+
+    describe('imports', () => {
+      it('imports exactly the symbols used and no more', () => {
+        const source = generateResolverContent(
+          {
+            ...baseModel,
+            auth: { readMany: 'public', count: 'user', readOne: 'admin', create: 'admin', update: 'admin', delete: 'admin' },
+          },
+          'scope',
+        )
+
+        expect(utilsImport(source)).toEqual([
+          'AdminOnly',
+          'Authenticated',
+          'GqlAuthAdminGuard',
+          'GqlAuthGuard',
+          'Public',
+        ])
+      })
+
+      it('does not import Public for an all-admin model', () => {
+        const source = generateResolverContent({ ...baseModel, auth: allLevels('admin') }, 'scope')
+
+        expect(utilsImport(source)).toEqual(['AdminOnly', 'GqlAuthAdminGuard'])
+      })
+
+      it('does not import AdminOnly or a guard for an all-public model', () => {
+        const source = generateResolverContent({ ...baseModel, auth: allLevels('public') }, 'scope')
+
+        expect(utilsImport(source)).toEqual(['Public'])
+        // No guard is attached, so importing UseGuards would leave an unused import.
+        expect(source).not.toContain("from '@nestjs/common'")
+      })
+
+      it('imports UseGuards whenever any operation attaches a guard', () => {
+        const source = generateResolverContent(
+          { ...baseModel, auth: { ...allLevels('public'), delete: 'admin' } },
+          'scope',
+        )
+
+        expect(source).toContain("import { UseGuards } from '@nestjs/common'")
+        expect(utilsImport(source)).toEqual(['AdminOnly', 'GqlAuthAdminGuard', 'Public'])
+      })
+    })
   })
 
   describe('filter inputs', () => {
