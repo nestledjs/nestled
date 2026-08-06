@@ -154,6 +154,18 @@ describe('generate-crud generator', () => {
     expect(progress.auth).toMatchObject({ readOne: 'user', readMany: 'user', delete: 'admin' })
   })
 
+  const baseResolverModel: any = {
+    name: 'User',
+    pluralName: 'Users',
+    fields: [],
+    primaryField: 'name',
+    modelName: 'User',
+    modelPropertyName: 'user',
+    pluralModelName: 'Users',
+    pluralModelPropertyName: 'users',
+    idFieldType: 'String',
+  }
+
   describe('getAccessLevelDecoratorForAuthLevel', () => {
     it('maps the built-in levels', () => {
       expect(getAccessLevelDecoratorForAuthLevel('admin')).toBe('AdminOnly')
@@ -176,23 +188,25 @@ describe('generate-crud generator', () => {
     it('falls back to admin for an empty level', () => {
       expect(getAccessLevelDecoratorForAuthLevel('')).toBe('AdminOnly')
     })
+
+    it('treats an empty level the same as an absent one when generating', () => {
+      // resolveOperationAccess uses a default parameter, which only covers undefined — this pins
+      // that a malformed empty level still resolves to admin rather than emitting a bare guard.
+      const emptyLevel: any = { ...baseResolverModel, auth: { readMany: '' } }
+      const absent: any = { ...baseResolverModel }
+
+      const withEmpty = generateResolverContent(emptyLevel, 'scope')
+      const withAbsent = generateResolverContent(absent, 'scope')
+      expect(withEmpty).toBe(withAbsent)
+      expect(withEmpty).toContain('@AdminOnly()')
+    })
   })
 
   describe('access level decorators', () => {
     // The template registers a global APP_GUARD that refuses any operation which has not declared
     // an access level. Generated operations must therefore declare one themselves, so the interim
     // bridge that accepted an attached guard as a declaration can be deleted.
-    const baseModel: any = {
-      name: 'User',
-      pluralName: 'Users',
-      fields: [],
-      primaryField: 'name',
-      modelName: 'User',
-      modelPropertyName: 'user',
-      pluralModelName: 'Users',
-      pluralModelPropertyName: 'users',
-      idFieldType: 'String',
-    }
+    const baseModel = baseResolverModel
 
     const allLevels = (level: string) => ({
       readOne: level,

@@ -83,12 +83,14 @@ interface OperationAccess {
   guard: string | null
 }
 
-/** Unannotated operations default to admin, matching {@link getCrudAuthForModel}. */
-function resolveOperationAccess(level: string | undefined): OperationAccess {
-  const effective = level || 'admin'
+/**
+ * Unannotated operations default to admin, matching {@link getCrudAuthForModel}. The default only
+ * covers `undefined`; both resolvers below already treat any other falsy level as admin too.
+ */
+function resolveOperationAccess(level = 'admin'): OperationAccess {
   return {
-    levelDecorator: getAccessLevelDecoratorForAuthLevel(effective),
-    guard: getGuardForAuthLevel(effective),
+    levelDecorator: getAccessLevelDecoratorForAuthLevel(level),
+    guard: getGuardForAuthLevel(level),
   }
 }
 
