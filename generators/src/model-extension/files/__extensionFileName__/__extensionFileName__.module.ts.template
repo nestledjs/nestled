@@ -1,0 +1,8 @@
+import { Module } from '@nestjs/common'
+import { <%= extensionClassName %>Resolver } from './<%= extensionFileName %>.resolver'
+
+@Module({
+  providers: [<%= extensionClassName %>Resolver],
+  exports: [<%= extensionClassName %>Resolver],
+})
+export class <%= extensionClassName %>Module {}

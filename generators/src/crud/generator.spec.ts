@@ -80,12 +80,41 @@ describe('generate-crud generator', () => {
   it('generates files and calls utilities for valid models', async () => {
     const callback = await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
 
-    expect(mockDependencies.apiLibraryGenerator).toHaveBeenCalled()
+    expect(mockDependencies.apiLibraryGenerator).toHaveBeenNthCalledWith(
+      1,
+      tree,
+      expect.objectContaining({ name: 'crud' }),
+      expect.any(String),
+      'data-access',
+    )
+    expect(mockDependencies.apiLibraryGenerator).toHaveBeenNthCalledWith(
+      2,
+      tree,
+      expect.objectContaining({ name: 'crud' }),
+      expect.any(String),
+      'feature',
+      true,
+    )
     expect(mockDependencies.formatFiles).toHaveBeenCalled()
 
     expect(typeof callback).toBe('function')
     if (callback) callback()
     expect(mockDependencies.installPackagesTask).toHaveBeenCalled()
+  })
+
+  it('writes one canonical populated feature module and removes the legacy duplicate', async () => {
+    const legacyPath = 'libs/api/crud/feature/src/lib/api-admin-crud-feature.module.ts'
+    tree.write(legacyPath, 'legacy module')
+
+    await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+    const canonicalPath = 'libs/api/crud/feature/src/lib/api-generated-crud-feature.module.ts'
+    expect(tree.read(canonicalPath, 'utf-8')).toContain('export class ApiGeneratedCrudFeatureModule')
+    expect(tree.read(canonicalPath, 'utf-8')).toContain('providers: [GeneratedUserResolver]')
+    expect(tree.exists(legacyPath)).toBe(false)
+    expect(tree.read('libs/api/crud/feature/src/index.ts', 'utf-8')).toContain(
+      "export * from './lib/api-generated-crud-feature.module'",
+    )
   })
 
   it('appends "List" to plural when singular and plural forms are the same', async () => {
@@ -260,10 +289,7 @@ describe('generate-crud generator', () => {
       // Previously this emitted no decorator at all — output indistinguishable from a dropped one.
       const source = generateResolverContent({ ...baseModel, auth: allLevels('public') }, 'scope')
 
-      expect(decoratorsFor(source, 'users')).toEqual([
-        '@Query(() => [User], { nullable: true })',
-        '@Public()',
-      ])
+      expect(decoratorsFor(source, 'users')).toEqual(['@Query(() => [User], { nullable: true })', '@Public()'])
       expect(source).not.toContain('@UseGuards')
     })
 
@@ -290,7 +316,14 @@ describe('generate-crud generator', () => {
       const source = generateResolverContent(
         {
           ...baseModel,
-          auth: { readMany: 'public', count: 'user', readOne: 'admin', create: 'billingAdmin', update: 'admin', delete: 'admin' },
+          auth: {
+            readMany: 'public',
+            count: 'user',
+            readOne: 'admin',
+            create: 'billingAdmin',
+            update: 'admin',
+            delete: 'admin',
+          },
         },
         'scope',
       )
@@ -308,7 +341,14 @@ describe('generate-crud generator', () => {
         const source = generateResolverContent(
           {
             ...baseModel,
-            auth: { readMany: 'public', count: 'user', readOne: 'admin', create: 'admin', update: 'admin', delete: 'admin' },
+            auth: {
+              readMany: 'public',
+              count: 'user',
+              readOne: 'admin',
+              create: 'admin',
+              update: 'admin',
+              delete: 'admin',
+            },
           },
           'scope',
         )

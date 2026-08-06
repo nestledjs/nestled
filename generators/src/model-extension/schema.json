@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/schema",
+  "$id": "ModelExtension",
+  "title": "Model API Extension",
+  "type": "object",
+  "properties": {
+    "model": {
+      "type": "string",
+      "description": "Prisma model to target",
+      "$default": {
+        "$source": "argv",
+        "index": 0
+      },
+      "x-prompt": "Which Prisma model should the extension target?"
+    },
+    "name": {
+      "type": "string",
+      "description": "Optional artifact name; defaults to the Prisma model name"
+    }
+  },
+  "required": ["model"],
+  "additionalProperties": false
+}

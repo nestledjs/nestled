@@ -3,7 +3,7 @@
   "extends": "../../node_modules/@nx/devkit/generators.json",
   "properties": {
     "name": {
-      "description": "Name of the custom library to generate",
+      "description": "Name of the custom API library to create or maintain",
       "type": "string",
       "default": "custom"
     },
@@ -12,7 +12,7 @@
       "type": "string"
     },
     "overwrite": {
-      "description": "Whether to overwrite existing files",
+      "description": "Whether to recreate the custom API library",
       "type": "boolean",
       "default": false
     }
