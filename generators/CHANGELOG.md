@@ -4,6 +4,41 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 2.0.0
+
+### Changed
+
+- **`crud`: register generated resolvers through one canonical feature module.** The populated
+  module is now written to `api-generated-crud-feature.module.ts`, imported into the API's
+  `coreModules`, and exported from the generated feature barrel. The legacy
+  `api-admin-crud-feature.module.ts` is deleted during generation. This removes the duplicate
+  `ApiGeneratedCrudFeatureModule` class created by the old scaffold-plus-alternate-file flow.
+- **`custom`: stop generating an inheriting resolver/service/module shell for every Prisma model.**
+  Generated CRUD no longer depends on custom resolver inheritance for registration. The generator
+  now maintains only the custom API library and its stable barrels, preserving every explicit
+  extension already present.
+
+### Added
+
+- **New `model-extension` generator.** Run
+  `nx g @nestledjs/generators:model-extension <Model>` to create an additive model-specific resolver
+  module on demand. The conventional artifact name defaults to the Prisma model, while `--name`
+  supports a more specific feature name without changing the target GraphQL type.
+
+### Migration
+
+This release changes resolver registration and therefore requires a coordinated consumer update:
+
+1. Upgrade the template wiring so `ApiGeneratedCrudFeatureModule` is in `coreModules`.
+2. Remove `extends Generated<Model>Resolver`, generated resolver imports, generated data-access
+   constructor injection, and `super(...)` from custom resolvers.
+3. Delete empty legacy default-model shells; preserve modules that contain real custom behavior.
+4. Run `pnpm db-update`, then verify the GraphQL root fields and authorization guards.
+
+Do not import the generated feature module while leaving inheriting custom resolvers registered:
+Nest scans inherited resolver methods, so that temporarily registers duplicate callbacks for every
+generated GraphQL field.
+
 ## 1.1.6
 
 ### Added
@@ -19,12 +54,12 @@ registry (see `nx.json` → `release`).
 
   Levels map as follows, from the resolved `@crudAuth` config:
 
-  | Level | Emitted |
-  | ----- | ------- |
-  | `admin` (also the default when unannotated) | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)` |
-  | `user` | `@Authenticated()` + `@UseGuards(GqlAuthGuard)` |
-  | `public` | `@Public()`, no guard |
-  | custom, e.g. `billingAdmin` | `@Authenticated()` + `@UseGuards(GqlAuthBillingAdminGuard)` |
+  | Level                                       | Emitted                                                     |
+  | ------------------------------------------- | ----------------------------------------------------------- |
+  | `admin` (also the default when unannotated) | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)`            |
+  | `user`                                      | `@Authenticated()` + `@UseGuards(GqlAuthGuard)`             |
+  | `public`                                    | `@Public()`, no guard                                       |
+  | custom, e.g. `billingAdmin`                 | `@Authenticated()` + `@UseGuards(GqlAuthBillingAdminGuard)` |
 
   A custom level's decorator declares only that a level exists; the custom guard stays
   authoritative about what it means, so a `noaccess` guard still denies everyone. No stricter

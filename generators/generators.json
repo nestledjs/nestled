@@ -11,7 +11,7 @@
     "custom": {
       "factory": "./src/custom/generator.js",
       "schema": "./src/custom/schema.json",
-      "description": "Generate custom API libraries based on Prisma models"
+      "description": "Create or maintain the custom API library shell"
     },
     "sdk": {
       "factory": "./src/sdk/generator.js",
@@ -27,6 +27,11 @@
       "factory": "./src/workspace-setup/generator.js",
       "schema": "./src/workspace-setup/schema.json",
       "description": "Set up a freshly cloned workspace: rename the project, ensure .env/Docker, apply Prisma migrations, generate models, and seed"
+    },
+    "model-extension": {
+      "factory": "./src/model-extension/generator.js",
+      "schema": "./src/model-extension/schema.json",
+      "description": "Scaffold an additive model-specific API resolver module"
     }
   }
 }

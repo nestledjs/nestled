@@ -31,20 +31,22 @@ This runs:
 2. **`generators:crud`** — Generates CRUD resolvers and services from your Prisma models
 3. **`generators:models`** — Generates GraphQL `@ObjectType` models and enums from your Prisma models
 4. **`generators:sdk`** — Generates the GraphQL client SDK (fragments, mutations, queries)
-5. **`generators:custom`** — Generates custom library wrappers for your models
+5. **`generators:custom`** — Creates or maintains the custom API library shell. Model-specific
+   extensions are created explicitly with `model-extension`, not automatically for every model.
 
 Most one-time project scaffolding (the initial NestJS/web apps, library layout) lives in the starter templates themselves. The one exception is `workspace-setup`, the post-clone bootstrap (rename the project, `.env`/Docker, migrate, seed) — it ships in the package because it's run once right after cloning a template.
 
 ## Generators
 
-`@nestledjs/generators` exposes five generators — four Prisma-driven codegen generators plus a one-time workspace bootstrap:
+`@nestledjs/generators` exposes six generators:
 
-| Generator | Description |
-|---|---|
-| `@nestledjs/generators:crud` | Generate CRUD resolvers/services from Prisma models |
-| `@nestledjs/generators:models` | Generate GraphQL `@ObjectType` models and enums from Prisma models |
-| `@nestledjs/generators:sdk` | Generate the GraphQL client SDK (fragments, mutations, queries) |
-| `@nestledjs/generators:custom` | Generate custom library wrappers for models |
+| Generator                               | Description                                                                                                                                    |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@nestledjs/generators:crud`            | Generate CRUD resolvers/services from Prisma models                                                                                            |
+| `@nestledjs/generators:models`          | Generate GraphQL `@ObjectType` models and enums from Prisma models                                                                             |
+| `@nestledjs/generators:sdk`             | Generate the GraphQL client SDK (fragments, mutations, queries)                                                                                |
+| `@nestledjs/generators:custom`          | Create or maintain the custom API library shell                                                                                                |
+| `@nestledjs/generators:model-extension` | Scaffold an additive resolver module for one Prisma model                                                                                      |
 | `@nestledjs/generators:workspace-setup` | One-time bootstrap of a freshly cloned workspace: rename the project, ensure `.env`/Docker, apply Prisma migrations, generate models, and seed |
 
 List them any time with:
@@ -55,14 +57,39 @@ nx list @nestledjs/generators
 
 See [`generators/CHANGELOG.md`](./generators/CHANGELOG.md) for release notes.
 
+### Generated CRUD and model extensions
+
+The `crud` generator writes and registers one populated `ApiGeneratedCrudFeatureModule`. That
+module is the sole owner of generated resolver providers. Custom resolvers compose additional
+queries, mutations, and field resolvers; they do not inherit `Generated<Model>Resolver`.
+
+The `custom` generator remains in `db-update` because it safely creates or maintains the custom
+library barrels. It no longer creates an empty resolver/service/module for every Prisma model.
+Create a model-adjacent extension only when needed:
+
+```sh
+nx g @nestledjs/generators:model-extension User
+```
+
+By convention this creates `libs/api/custom/src/lib/default/user/user.{module,resolver}.ts`, exports
+the module, and registers it in `defaultModules`. A distinct artifact name is supported without
+changing the target GraphQL model:
+
+```sh
+nx g @nestledjs/generators:model-extension User --name=UserProfile
+```
+
+Generated CRUD names remain reserved. Custom operations must use additive names such as
+`myOrganizations`, `userCreateOrganization`, or `currentSubscription`.
+
 ### Schema annotations
 
 The codegen generators honor two annotations written as Prisma triple-slash (`///`) doc comments, so you control what reaches the generated GraphQL layer directly from `schema.prisma`:
 
-| Annotation | Applies to | Effect |
-|---|---|---|
-| `@skipCrud` | model | Excludes the model from all generated output (`crud`, `sdk`, `models`) and strips inbound relation fields that point at it from other models. Use for types that must never appear in the GraphQL schema. |
-| `@graphqlOmit` | field | Omits the field from the generated `@ObjectType` (`models`), client operations (`sdk`), and CRUD inputs (`crud`). Use for secrets/columns that must never be exposed through the API. |
+| Annotation     | Applies to | Effect                                                                                                                                                                                                    |
+| -------------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@skipCrud`    | model      | Excludes the model from all generated output (`crud`, `sdk`, `models`) and strips inbound relation fields that point at it from other models. Use for types that must never appear in the GraphQL schema. |
+| `@graphqlOmit` | field      | Omits the field from the generated `@ObjectType` (`models`), client operations (`sdk`), and CRUD inputs (`crud`). Use for secrets/columns that must never be exposed through the API.                     |
 
 ```prisma
 /// @skipCrud
@@ -85,11 +112,11 @@ model OAuthAccount {
 Every generated CRUD operation declares its access level explicitly, resolved from the model's
 `@crudAuth` annotation (all operations default to `admin` when unannotated):
 
-| Level | Emitted |
-|---|---|
-| `admin` | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)` |
-| `user` | `@Authenticated()` + `@UseGuards(GqlAuthGuard)` |
-| `public` | `@Public()`, no guard |
+| Level                       | Emitted                                                     |
+| --------------------------- | ----------------------------------------------------------- |
+| `admin`                     | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)`            |
+| `user`                      | `@Authenticated()` + `@UseGuards(GqlAuthGuard)`             |
+| `public`                    | `@Public()`, no guard                                       |
 | custom, e.g. `billingAdmin` | `@Authenticated()` + `@UseGuards(GqlAuthBillingAdminGuard)` |
 
 A custom level's decorator declares only that a level exists — the custom guard remains
@@ -142,7 +169,11 @@ Before v1.0.0, the framework published seven packages:
 `@nestledjs/api`, `@nestledjs/shared`, `@nestledjs/utils`, `@nestledjs/config`,
 `@nestledjs/plugins`, `@nestledjs/web`, and `@nestledjs/helpers`.
 
-In practice, only three generators plus a local `generate-models` script were used for ongoing development; the rest were one-time scaffolding that belongs in the starter templates, private engine code (`@nestledjs/utils`), or unused. **v1.0.0 collapses everything into a single package, `@nestledjs/generators`, containing the five generators above** (`crud`, `custom`, `sdk`, `models`, `workspace-setup`) with the shared engine inlined.
+In practice, only three generators plus a local `generate-models` script were used for ongoing
+development; the rest were one-time scaffolding that belongs in the starter templates, private
+engine code (`@nestledjs/utils`), or unused. **v1.0.0 collapsed everything into a single package,
+`@nestledjs/generators`**, with the shared engine inlined. Later releases added `workspace-setup`
+and the explicit `model-extension` scaffolder.
 
 **The seven old packages are deprecated on npm but not unpublished** — existing installs and lockfiles keep working. To migrate:
 
@@ -159,16 +190,16 @@ To test `@nestledjs/generators` in a local project, use [YALC](https://github.co
 
 1. **Publish/push from this repo** (builds `@nestledjs/generators` and pushes to the yalc store):
 
-    ```sh
-    pnpm push generators
-    ```
+   ```sh
+   pnpm push generators
+   ```
 
 2. **In your consumer project, link the package:**
 
-    ```sh
-    yalc add @nestledjs/generators
-    pnpm install
-    ```
+   ```sh
+   yalc add @nestledjs/generators
+   pnpm install
+   ```
 
 Re-run `pnpm push generators` after any change; `yalc push` propagates it to every linked consumer.
 

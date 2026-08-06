@@ -138,7 +138,7 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
   // Handle BigInt ID fields: use GraphQLBigInt scalar from graphql-scalars
   // to properly serialize/deserialize bigint values in GraphQL
   const idTsType = model.idFieldType === 'BigInt' ? 'bigint' : 'string'
-  const idArgsType = model.idFieldType === 'BigInt' ? ", { type: () => GraphQLBigInt }" : ''
+  const idArgsType = model.idFieldType === 'BigInt' ? ', { type: () => GraphQLBigInt }' : ''
   const graphqlScalarImport = model.idFieldType === 'BigInt' ? "\nimport { GraphQLBigInt } from 'graphql-scalars'" : ''
 
   return `import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'${nestCommonImports}
@@ -226,7 +226,7 @@ export function generateFeatureModuleContent(models: ModelType[], npmScope: stri
 }
 
 export function generateFeatureIndexContent(models: ModelType[]): string {
-  return `export * from './lib/api-admin-crud-feature.module'\n${models
+  return `export * from './lib/api-generated-crud-feature.module'\n${models
     .map((model) => `export * from './lib/${toKebabCase(model.modelName)}.resolver'`)
     .join('\n')}\n`
 }
@@ -249,46 +249,48 @@ export async function generateCrudLogic(
     try {
       const dmmf = await dependencies.getDMMF({ datamodel: prismaSchema })
       const skippedModelNames = getSkippedModelNames(dmmf.datamodel.models)
-      return dmmf.datamodel.models.filter(model => !skippedModelNames.has(model.name)).map((model) => {
-        const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
-        const pluralPropertyName = getPluralName(singularPropertyName)
-        const authConfig = getCrudAuthForModel(model)
-        const idField = model.fields.find((f) => f.isId)
-        const idFieldType = idField ? idField.type : 'String'
-        return {
-          name: model.name,
-          pluralName: getPluralName(model.name),
-          fields: filterSkippedRelationFields(model.fields, skippedModelNames)
-            .filter((field) => !field.documentation?.includes('@graphqlOmit'))
-            .map((field) => ({
-              name: field.name,
-              kind: field.kind,
-              type: field.type,
-              isOptional: !field.isRequired,
-              isId: field.isId,
-              isUnique: field.isUnique,
-              isList: field.isList,
-              isReadOnly: field.isReadOnly,
-              hasDefaultValue: field.hasDefaultValue,
-              default: field.default,
-              relationName: field.relationName,
-              relationFromFields: field.relationFromFields ? [...field.relationFromFields] : undefined,
-              relationToFields: field.relationToFields ? [...field.relationToFields] : undefined,
-              relationOnDelete: field.relationOnDelete,
-              relationOnUpdate: field.relationOnUpdate,
-              isGenerated: field.isGenerated,
-              isUpdatedAt: field.isUpdatedAt,
-              documentation: field.documentation,
-            })),
-          primaryField: model.fields.find((f) => !f.isId && f.type === 'String')?.name || 'name',
-          modelName: model.name,
-          modelPropertyName: singularPropertyName,
-          pluralModelName: getPluralName(model.name),
-          pluralModelPropertyName: pluralPropertyName,
-          auth: authConfig,
-          idFieldType,
-        }
-      })
+      return dmmf.datamodel.models
+        .filter((model) => !skippedModelNames.has(model.name))
+        .map((model) => {
+          const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
+          const pluralPropertyName = getPluralName(singularPropertyName)
+          const authConfig = getCrudAuthForModel(model)
+          const idField = model.fields.find((f) => f.isId)
+          const idFieldType = idField ? idField.type : 'String'
+          return {
+            name: model.name,
+            pluralName: getPluralName(model.name),
+            fields: filterSkippedRelationFields(model.fields, skippedModelNames)
+              .filter((field) => !field.documentation?.includes('@graphqlOmit'))
+              .map((field) => ({
+                name: field.name,
+                kind: field.kind,
+                type: field.type,
+                isOptional: !field.isRequired,
+                isId: field.isId,
+                isUnique: field.isUnique,
+                isList: field.isList,
+                isReadOnly: field.isReadOnly,
+                hasDefaultValue: field.hasDefaultValue,
+                default: field.default,
+                relationName: field.relationName,
+                relationFromFields: field.relationFromFields ? [...field.relationFromFields] : undefined,
+                relationToFields: field.relationToFields ? [...field.relationToFields] : undefined,
+                relationOnDelete: field.relationOnDelete,
+                relationOnUpdate: field.relationOnUpdate,
+                isGenerated: field.isGenerated,
+                isUpdatedAt: field.isUpdatedAt,
+                documentation: field.documentation,
+              })),
+            primaryField: model.fields.find((f) => !f.isId && f.type === 'String')?.name || 'name',
+            modelName: model.name,
+            modelPropertyName: singularPropertyName,
+            pluralModelName: getPluralName(model.name),
+            pluralModelPropertyName: pluralPropertyName,
+            auth: authConfig,
+            idFieldType,
+          }
+        })
     } catch (error) {
       console.error('Error parsing Prisma schema:', error)
       return []
@@ -307,7 +309,10 @@ export async function generateCrudLogic(
     const templateSchema = { name, models, filterInputs, filterInputNames }
 
     await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'data-access')
-    await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'feature')
+    // The generated resolver module is the single registration point for generated CRUD. Import
+    // it into the API's core module list instead of relying on custom resolvers to inherit the
+    // generated classes and register their methods indirectly.
+    await dependencies.apiLibraryGenerator(tree, templateSchema, templatePath, 'feature', true)
     return { dataAccessLibraryRoot, featureLibraryRoot }
   }
 
@@ -322,9 +327,17 @@ export async function generateCrudLogic(
     // Generate feature module and resolvers
     const featureModuleContent = generateFeatureModuleContent(models, npmScope)
     tree.write(
-      dependencies.joinPathFragments(featureLibraryRoot, 'src/lib/api-admin-crud-feature.module.ts'),
+      dependencies.joinPathFragments(featureLibraryRoot, 'src/lib/api-generated-crud-feature.module.ts'),
       featureModuleContent,
     )
+
+    // Older releases wrote the populated module beside the empty module scaffolded by @nx/nest.
+    // Remove that alternate file so the library has one canonical module and one exported class.
+    const legacyFeatureModulePath = dependencies.joinPathFragments(
+      featureLibraryRoot,
+      'src/lib/api-admin-crud-feature.module.ts',
+    )
+    if (tree.exists(legacyFeatureModulePath)) tree.delete(legacyFeatureModulePath)
 
     const featureIndexContent = generateFeatureIndexContent(models)
     tree.write(dependencies.joinPathFragments(featureLibraryRoot, 'src/index.ts'), featureIndexContent)

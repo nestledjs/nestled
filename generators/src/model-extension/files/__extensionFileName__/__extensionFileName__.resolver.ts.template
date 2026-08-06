@@ -1,0 +1,9 @@
+import { Injectable } from '@nestjs/common'
+import { Resolver } from '@nestjs/graphql'
+import { <%= modelName %> } from '@<%= npmScope %>/api/core/models'
+
+@Resolver(() => <%= modelName %>)
+@Injectable()
+export class <%= extensionClassName %>Resolver {
+  // Add model-specific queries, mutations, and field resolvers here.
+}
