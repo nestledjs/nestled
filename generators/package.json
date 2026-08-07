@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/generators",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "generators": "./generators.json",
   "type": "commonjs",
   "main": "./src/index.js",
