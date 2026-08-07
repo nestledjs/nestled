@@ -4,6 +4,31 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 3.0.1
+
+### Fixed
+
+- **`crud`: restore bounded Prisma filter composition.** Typed model filters now emit
+  `AND`/`OR`/`NOT`, with every logical operator pointing at the next generated depth instead of
+  self-referencing. Logical composition and relation traversal therefore share the existing
+  `filterDepth` budget, and the deepest input remains scalars-only. Scalar filters also expose
+  `not`, and to-one relation filters expose `is`/`isNot` (including `is: null`) while preserving
+  the direct nested shape generated since 1.1.5. Generated data access normalizes that compatibility
+  shape into Prisma's relation-filter form; mixed direct and non-null `is` predicates are combined
+  with `AND`, while the contradictory `is: null` plus direct-predicate shape fails before Prisma.
+- **`crud`: compile legacy filter overrides with ES2022 class-field semantics.** Generated
+  `List<Model>Input.filters` properties now have an explicit `undefined` initializer. This avoids
+  TS2612 when a consumer regenerates before removing the old `filters` declaration from
+  `CorePagingInput` and has `useDefineForClassFields` enabled. Consumers should still remove the
+  opaque base field; changing their workspace-wide TypeScript setting is not required.
+
+### Migration
+
+Regenerate CRUD and the GraphQL SDK. Audit preserved application documents and runtime-built
+variables that use `AND`/`OR`/`NOT`, scalar `not`, or relation `is`/`isNot`; generator 1.1.5 through
+3.0.0 did not expose those fields, so TypeScript success alone did not prove that GraphQL would
+accept them at runtime.
+
 ## 3.0.0
 
 ### Changed
@@ -277,8 +302,9 @@ generated GraphQL field.
 
 ### Changed
 
-- **Consolidation.** The former `@nestledjs/api | shared | utils | config | plugins |
-  web | helpers` packages were collapsed into this single package containing the
+- **Consolidation.** The former
+  `@nestledjs/api | shared | utils | config | plugins | web | helpers` packages were collapsed into
+  this single package containing the
   `crud`, `custom`, `sdk`, and `models` generators, with the shared engine inlined
   under `src/lib/engine/`. The old packages were deprecated on npm (not unpublished —
   existing installs keep working). See the repository `README.md` → "Consolidation".
