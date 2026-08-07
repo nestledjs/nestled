@@ -139,11 +139,16 @@ query {
 }
 ```
 
-Operators are chosen per scalar type — strings get `equals`/`in`/`contains`/`startsWith`/`endsWith`, numbers and dates get `equals`/`in`/`lt`/`lte`/`gt`/`gte`, booleans and enums get `equals`/`in`. List relations get `some`/`every`/`none` over the related model's filter input, and to-one relations nest that input directly. `@graphqlOmit` columns are absent from the filter inputs entirely, and `Json` columns and scalar lists are not filterable.
+Operators are chosen per scalar type — all scalar filters get `equals`/`in`/`not`, strings also get `contains`/`startsWith`/`endsWith`, and numbers and dates also get `lt`/`lte`/`gt`/`gte`. List relations get `some`/`every`/`none` over the related model's filter input. To-one relations get `is`/`isNot`, including `is: null`, while retaining the direct nested shorthand emitted by 1.1.5. `@graphqlOmit` columns are absent from the filter inputs entirely, and `Json` columns and scalar lists are not filterable.
+
+Generated data access normalizes the direct to-one shorthand into Prisma's `is` form. If a caller
+supplies both styles, direct predicates are combined with a non-null `is` predicate using `AND`;
+combining direct predicates with `is: null` is contradictory and returns `BadRequestException`
+before Prisma executes.
 
 Every model's list input overrides `filters`, including models with no filterable column at all — those map to a shared `UnfilterableInput` placeholder. An explicit override is the only thing that removes an inherited field from a code-first schema, so a model left without one would keep exposing the untyped blob.
 
-Relation nesting is bounded: each level emits its own set of input types (`UserFilterInput` → `PostFilterInput2` → `UserFilterInput3`), and the deepest level carries scalar fields only, which terminates the recursion. The default is 3 levels; pass `--filterDepth` to the `crud` generator to change it. `AND`/`OR`/`NOT` are deliberately not emitted, since they are self-referencing and would reintroduce unbounded nesting.
+All nesting is bounded: each level emits its own set of input types, and a relation or logical operator points only at the next level (`UserFilterInput` → `PostFilterInput2` or `UserFilterInput2` → `UserFilterInput3`). The deepest level carries scalar fields only, which terminates recursion. The default is 3 levels; pass `--filterDepth` to the `crud` generator to change it. `AND`/`OR`/`NOT` therefore remain useful without becoming self-referencing or allowing unbounded input depth.
 
 These filters exist for the admin data browser. Do not accept generated list/filter inputs from a
 user-facing resolver; define only the specific filter fields that workflow supports.
