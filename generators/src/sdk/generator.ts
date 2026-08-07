@@ -175,8 +175,8 @@ export async function sdkGeneratorLogic(
   const databaseModelContent = generateDatabaseModelContent(allModelsForDbFiltered)
   tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
 
-  // 5. For each model, generate admin files (always overwrite). Public operations under
-  // `src/graphql` are application-owned: the generator neither creates nor deletes them.
+  // 5. For each model, generate admin files (always overwrite). Per-model and feature operations
+  // under `src/graphql` are application-owned; the shared core document is still generated below.
   // Clean up the __admin directory before generating new files
   deleteDirectory(tree, 'libs/shared/sdk/src/__admin')
   console.log(

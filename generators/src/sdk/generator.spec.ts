@@ -99,11 +99,8 @@ describe('sdk generator', () => {
     // Model-derived documents belong only to the regenerated admin namespace.
     const calls = vi.mocked(mockDependencies.generateFiles).mock.calls
     const publicModelCall = calls.find(
-      ([_, templateDir, modelDir]) =>
-        typeof templateDir === 'string' &&
-        templateDir.includes('/sdk/graphql') &&
-        typeof modelDir === 'string' &&
-        !modelDir.includes('__admin'),
+      ([_, __, modelDir, context]) =>
+        typeof modelDir === 'string' && !modelDir.includes('__admin') && context?.adminPrefix === '',
     )
     const adminCall = calls.find(
       ([_, __, modelDir, context]) =>
@@ -198,11 +195,8 @@ model Session {
       expect(fragmentFields).toContain('permissions') // Multi-select enum
 
       const publicModelCall = calls.find(
-        ([_, templateDir, modelDir]) =>
-          typeof templateDir === 'string' &&
-          templateDir.includes('/sdk/graphql') &&
-          typeof modelDir === 'string' &&
-          !modelDir.includes('__admin'),
+        ([_, __, modelDir, context]) =>
+          typeof modelDir === 'string' && !modelDir.includes('__admin') && context?.adminPrefix === '',
       )
       expect(publicModelCall).toBeUndefined()
     })
