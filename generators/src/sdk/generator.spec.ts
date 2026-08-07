@@ -86,7 +86,7 @@ describe('sdk generator', () => {
     await expect(sdkGeneratorLogic(tree, {}, mockDependencies)).rejects.toThrow('Prisma schema not found at')
   })
 
-  it('generates files and scripts for models in schema, including admin SDK', async () => {
+  it('generates the admin SDK without scaffolding public CRUD operations', async () => {
     const callback = await sdkGeneratorLogic(tree, {}, mockDependencies)
     expect(mockDependencies.generateFiles).toHaveBeenCalled()
     expect(mockDependencies.addScriptToPackageJson).toHaveBeenCalledWith(tree, 'sdk', expect.any(String))
@@ -96,22 +96,46 @@ describe('sdk generator', () => {
     if (callback) callback()
     expect(mockDependencies.installPackagesTask).toHaveBeenCalledWith(tree)
 
-    // Check that generateFiles is called for both user and admin SDK
+    // Model-derived documents belong only to the regenerated admin namespace.
     const calls = vi.mocked(mockDependencies.generateFiles).mock.calls
-    // There should be at least one call for user and one for admin
-    const userCall = calls.find(
-      ([_, __, modelDir, context]) =>
-        typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('__admin'),
+    const publicModelCall = calls.find(
+      ([_, templateDir, modelDir]) =>
+        typeof templateDir === 'string' &&
+        templateDir.includes('/sdk/graphql') &&
+        typeof modelDir === 'string' &&
+        !modelDir.includes('__admin'),
     )
     const adminCall = calls.find(
       ([_, __, modelDir, context]) =>
         typeof modelDir === 'string' && modelDir.includes('__admin') && context?.adminPrefix === '__Admin',
     )
-    expect(userCall).toBeTruthy()
+    expect(publicModelCall).toBeUndefined()
     expect(adminCall).toBeTruthy()
-    // Check that adminPrefix is empty string for user SDK and '__Admin' for admin SDK
-    expect(userCall[3].adminPrefix).toBe('')
     expect(adminCall[3].adminPrefix).toBe('__Admin')
+  })
+
+  it('preserves hand-written public SDK operations', async () => {
+    mockDependencies.readFileSync = vi.fn().mockReturnValue(`
+generator client {
+  provider = "prisma-client"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+/// @skipCrud
+model PasswordHistory {
+  id Int @id
+}
+`)
+    const publicOperationPath = 'libs/shared/sdk/src/graphql/password-history/account-security.graphql'
+    const publicOperation = 'query MyProfile { me { id } }\n'
+    tree.write(publicOperationPath, publicOperation)
+
+    await sdkGeneratorLogic(tree, {}, mockDependencies)
+
+    expect(tree.read(publicOperationPath, 'utf-8')).toBe(publicOperation)
   })
 
   describe('database-models.ts security metadata', () => {
@@ -173,21 +197,14 @@ model Session {
       expect(fragmentFields).toContain('role') // Single-select enum
       expect(fragmentFields).toContain('permissions') // Multi-select enum
 
-      // Find the client SDK call for User model
-      const clientCall = calls.find(
-        ([_, __, modelDir, context]) =>
+      const publicModelCall = calls.find(
+        ([_, templateDir, modelDir]) =>
+          typeof templateDir === 'string' &&
+          templateDir.includes('/sdk/graphql') &&
           typeof modelDir === 'string' &&
-          modelDir.includes('graphql/user') &&
-          !modelDir.includes('__admin') &&
-          context?.adminPrefix === '',
+          !modelDir.includes('__admin'),
       )
-      expect(clientCall).toBeTruthy()
-
-      // Check that client fragmentFields also includes enum fields
-      const clientFragmentFields = clientCall![3].fragmentFields as string
-      expect(clientFragmentFields).toContain('name')
-      expect(clientFragmentFields).toContain('role') // Single-select enum
-      expect(clientFragmentFields).toContain('permissions') // Multi-select enum
+      expect(publicModelCall).toBeUndefined()
     })
   })
 

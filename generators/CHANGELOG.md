@@ -4,6 +4,24 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 3.0.3
+
+### Fixed
+
+- **`sdk`: stop scaffolding public copies of generated admin CRUD operations.** The SDK generator
+  now recreates only `libs/shared/sdk/src/__admin/<model>` from the Prisma schema. Documents under
+  `libs/shared/sdk/src/graphql` are application-owned and are never created or deleted based on
+  Prisma models. This keeps the client surface aligned with the 3.0 admin-only generated CRUD
+  boundary without disturbing purpose-built user-facing operations.
+
+### Migration
+
+Regenerate the SDK, then audit the preserved `libs/shared/sdk/src/graphql` tree. Delete legacy
+per-model documents that call generated CRUD root fields (`create<Model>`, `update<Model>`,
+`delete<Model>`, `<model>`, `<models>`, and `<models>Count`) and keep purpose-built documents for
+explicit application resolvers. Do not create empty `.graphql` placeholders; organize real public
+operations by feature or model and run `pnpm sdk` after adding them.
+
 ## 3.0.2
 
 ### Fixed

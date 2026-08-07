@@ -30,7 +30,8 @@ This runs:
 1. **`prisma:generate`** — Generates the Prisma client from your schema
 2. **`generators:crud`** — Generates CRUD resolvers and services from your Prisma models
 3. **`generators:models`** — Generates GraphQL `@ObjectType` models and enums from your Prisma models
-4. **`generators:sdk`** — Generates the GraphQL client SDK (fragments, mutations, queries)
+4. **`generators:sdk`** — Regenerates admin CRUD documents and maintains the GraphQL SDK source;
+   user-facing documents remain application-owned and are compiled separately by `pnpm sdk`
 5. **`generators:custom`** — Creates or maintains the custom API library shell. Model-specific
    extensions are created explicitly with `model-extension`, not automatically for every model.
 
@@ -44,7 +45,7 @@ Most one-time project scaffolding (the initial NestJS/web apps, library layout) 
 | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@nestledjs/generators:crud`            | Generate CRUD resolvers/services from Prisma models                                                                                            |
 | `@nestledjs/generators:models`          | Generate GraphQL `@ObjectType` models and enums from Prisma models                                                                             |
-| `@nestledjs/generators:sdk`             | Generate the GraphQL client SDK (fragments, mutations, queries)                                                                                |
+| `@nestledjs/generators:sdk`             | Regenerate admin CRUD documents and maintain SDK source/configuration while preserving application-owned GraphQL documents                     |
 | `@nestledjs/generators:custom`          | Create or maintain the custom API library shell                                                                                                |
 | `@nestledjs/generators:model-extension` | Scaffold an additive resolver module for one Prisma model                                                                                      |
 | `@nestledjs/generators:workspace-setup` | One-time bootstrap of a freshly cloned workspace: rename the project, ensure `.env`/Docker, apply Prisma migrations, generate models, and seed |
@@ -81,6 +82,21 @@ nx g @nestledjs/generators:model-extension User --name=UserProfile
 
 Generated CRUD names remain reserved. Custom operations must use additive names such as
 `myOrganizations`, `userCreateOrganization`, or `currentSubscription`.
+
+### GraphQL SDK ownership
+
+The SDK has two intentionally different source areas:
+
+- `libs/shared/sdk/src/__admin/<model>` is generated from Prisma and replaced on every SDK run. It
+  contains the complete client surface for the admin-only generated CRUD API.
+- `libs/shared/sdk/src/graphql/<feature>` is application-owned. Add purpose-built queries,
+  mutations, and fragments here only after the corresponding explicit resolver exists. The SDK
+  generator preserves this tree and does not seed generic CRUD documents for new models.
+
+The generated `graphql/core/core.graphql` document establishes the public source tree and provides
+the shared paging fragment, so empty per-model directories or placeholder `.graphql` files are not
+needed. Empty GraphQL documents are invalid syntax. Organize real operations by application feature
+or model as appropriate, then run `pnpm sdk` to compile them with the admin documents.
 
 ### Schema annotations
 

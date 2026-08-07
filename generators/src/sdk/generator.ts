@@ -134,15 +134,11 @@ const defaultDependencies = {
 }
 export type SdkGeneratorDependencies = typeof defaultDependencies
 
-function getSdkModels(models: ReadonlyArray<any>): {
-  skippedModelNames: Set<string>
-  visibleModels: any[]
-} {
+function getSdkModels(models: ReadonlyArray<any>): any[] {
   const skippedModelNames = getSkippedModelNames(models)
-  const visibleModels = models
-    .filter(m => !skippedModelNames.has(m.name))
-    .map(m => ({ ...m, fields: filterSkippedRelationFields(m.fields, skippedModelNames) }))
-  return { skippedModelNames, visibleModels }
+  return models
+    .filter((m) => !skippedModelNames.has(m.name))
+    .map((m) => ({ ...m, fields: filterSkippedRelationFields(m.fields, skippedModelNames) }))
 }
 
 export async function sdkGeneratorLogic(
@@ -164,7 +160,7 @@ export async function sdkGeneratorLogic(
   // 2. Parse models using Prisma DMMF for doc comments
   const dmmf = await getDMMF({ datamodel: schemaContent })
   const allModels = dmmf.datamodel.models
-  const { skippedModelNames, visibleModels } = getSdkModels(allModels)
+  const visibleModels = getSdkModels(allModels)
   const enumNames = new Set(dmmf.datamodel.enums.map((e: any) => e.name))
 
   // 3. Ensure sdk library exists
@@ -179,59 +175,8 @@ export async function sdkGeneratorLogic(
   const databaseModelContent = generateDatabaseModelContent(allModelsForDbFiltered)
   tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
 
-  for (const skippedName of skippedModelNames) {
-    deleteDirectory(tree, `libs/shared/sdk/src/graphql/${kebabCase(skippedName)}`)
-  }
-
-  // 5. For each model, generate client files (existing logic)
-  for (const model of visibleModels) {
-    const modelName = model.name
-    const kebabName = kebabCase(modelName)
-    const modelDir = `libs/shared/sdk/src/graphql/${kebabName}`
-    if (tree.exists(modelDir)) continue
-
-    const className = modelName
-    const propertyName = modelName.charAt(0).toLowerCase() + modelName.slice(1)
-    const pluralClassName = dependencies.getPluralName(className)
-    const pluralPropertyName = dependencies.getPluralName(propertyName)
-    const fragmentFields = model.fields
-      .filter((f: any) => {
-        // Exclude id fields, relations, and @graphqlOmit fields
-        if (f.name === 'id' || f.name.endsWith('Id') || f.relationName) return false
-        if (f.documentation?.includes('@graphqlOmit')) return false
-        // Include scalar types (non-list)
-        if (!f.isList && SCALAR_TYPES.includes(f.type)) return true
-        // Include enum types (both single and multi-select)
-        return enumNames.has(f.type)
-      })
-      .map((f: any) => f.name)
-      .join('\n  ')
-
-    // Get ID field type for GraphQL type definitions
-    const idField = model.fields.find((f: any) => f.isId)
-    const idGraphQLType = idField?.type || 'String'
-
-    dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './graphql'), modelDir, {
-      className,
-      propertyName,
-      pluralClassName,
-      pluralPropertyName,
-      fragmentFields,
-      kebabName,
-      adminPrefix: '',
-      idGraphQLType,
-      tmpl: '',
-    })
-    ;['fragments', 'mutations', 'queries'].forEach((type) => {
-      const oldPath = dependencies.join(modelDir, `__name__-${type}.graphql`)
-      const newPath = dependencies.join(modelDir, `${kebabName}-${type}.graphql`)
-      if (tree.exists(oldPath)) {
-        tree.rename(oldPath, newPath)
-      }
-    })
-  }
-
-  // 6. For each model, generate admin files (always overwrite)
+  // 5. For each model, generate admin files (always overwrite). Public operations under
+  // `src/graphql` are application-owned: the generator neither creates nor deletes them.
   // Clean up the __admin directory before generating new files
   deleteDirectory(tree, 'libs/shared/sdk/src/__admin')
   console.log(
@@ -276,15 +221,15 @@ export async function sdkGeneratorLogic(
     })
   }
 
-  // 7. Handle codegen.yml generation with existence check
+  // 6. Handle codegen.yml generation with existence check
   const sdkSrcDir = 'libs/shared/sdk/src'
   const codegenPath = 'libs/shared/sdk/src/codegen.yml'
-  
+
   // Check if codegen.yml exists before generation
   const codegenExists = tree.exists(codegenPath)
   const shouldPreserveCodegen = codegenExists && !schema.forceCodegen
   let existingCodegenContent = ''
-  
+
   if (shouldPreserveCodegen) {
     // Backup existing codegen.yml content
     existingCodegenContent = tree.read(codegenPath, 'utf-8') || ''
@@ -293,10 +238,10 @@ export async function sdkGeneratorLogic(
   } else if (codegenExists && schema.forceCodegen) {
     console.log('🔄 Forcing regeneration of codegen.yml as requested.')
   }
-  
+
   // Generate all files from template
   dependencies.generateFiles(tree, dependencies.joinPathFragments(__dirname, './files'), sdkSrcDir, { tmpl: '' })
-  
+
   // Restore existing codegen.yml if it existed and we should preserve it
   if (shouldPreserveCodegen) {
     tree.write(codegenPath, existingCodegenContent)
@@ -307,11 +252,11 @@ export async function sdkGeneratorLogic(
     console.log('⚙️  Force-regenerated codegen.yml file.')
   }
 
-  // 8. Add scripts to package.json
+  // 7. Add scripts to package.json
   dependencies.addScriptToPackageJson(tree, 'sdk', 'graphql-codegen --config libs/shared/sdk/src/codegen.yml')
   dependencies.addScriptToPackageJson(tree, 'sdk:watch', 'pnpm sdk --watch')
 
-  // 9. Add GraphQL Codegen packages as devDependencies
+  // 8. Add GraphQL Codegen packages as devDependencies
   dependencies.addDependenciesToPackageJson(
     tree,
     {},
