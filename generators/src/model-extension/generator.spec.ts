@@ -2,10 +2,7 @@ import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { Tree } from '@nx/devkit'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import {
-  ModelExtensionGeneratorDependencies,
-  modelExtensionGeneratorLogic,
-} from './generator'
+import { ModelExtensionGeneratorDependencies, modelExtensionGeneratorLogic } from './generator'
 
 describe('model-extension generator', () => {
   let tree: Tree
@@ -74,9 +71,7 @@ export class AppModule {}
 
     expect(tree.exists('libs/api/custom/src/lib/default/user/user.resolver.ts')).toBe(true)
     expect(tree.exists('libs/api/custom/src/lib/default/user/user.module.ts')).toBe(true)
-    expect(tree.read('libs/api/custom/src/lib/default/index.ts', 'utf-8')).toBe(
-      "export * from './user/user.module'\n",
-    )
+    expect(tree.read('libs/api/custom/src/lib/default/index.ts', 'utf-8')).toBe("export * from './user/user.module'\n")
     expect(dependencies.generateFiles).toHaveBeenCalledWith(
       tree,
       expect.stringContaining('/model-extension/files'),
@@ -98,11 +93,7 @@ export class AppModule {}
   })
 
   it('allows a separate artifact name while preserving the target GraphQL model', async () => {
-    await modelExtensionGeneratorLogic(
-      tree,
-      { model: 'User', name: 'UserProfile' },
-      dependencies,
-    )
+    await modelExtensionGeneratorLogic(tree, { model: 'User', name: 'UserProfile' }, dependencies)
 
     expect(dependencies.generateFiles).toHaveBeenCalledWith(
       tree,
@@ -118,23 +109,40 @@ export class AppModule {}
   it('refuses to overwrite an existing extension folder', async () => {
     tree.write('libs/api/custom/src/lib/default/user/user.resolver.ts', 'preserve me')
 
-    await expect(
-      modelExtensionGeneratorLogic(tree, { model: 'User' }, dependencies),
-    ).rejects.toThrow('Model extension folder already exists')
-    expect(tree.read('libs/api/custom/src/lib/default/user/user.resolver.ts', 'utf-8')).toBe(
-      'preserve me',
+    await expect(modelExtensionGeneratorLogic(tree, { model: 'User' }, dependencies)).rejects.toThrow(
+      'Model extension folder already exists',
     )
+    expect(tree.read('libs/api/custom/src/lib/default/user/user.resolver.ts', 'utf-8')).toBe('preserve me')
   })
 
   it('reports unknown models with the available model names', async () => {
-    await expect(
-      modelExtensionGeneratorLogic(tree, { model: 'Account' }, dependencies),
-    ).rejects.toThrow('Available models: PasswordHistory, User')
+    await expect(modelExtensionGeneratorLogic(tree, { model: 'Account' }, dependencies)).rejects.toThrow(
+      'Available models: PasswordHistory, User',
+    )
   })
 
   it('rejects @skipCrud models because their GraphQL model is not generated', async () => {
-    await expect(
-      modelExtensionGeneratorLogic(tree, { model: 'PasswordHistory' }, dependencies),
-    ).rejects.toThrow('uses @skipCrud')
+    await expect(modelExtensionGeneratorLogic(tree, { model: 'PasswordHistory' }, dependencies)).rejects.toThrow(
+      'uses @skipCrud',
+    )
+  })
+
+  it('rejects a workspace that still uses @crudAuth', async () => {
+    dependencies.getDMMF = vi.fn().mockResolvedValue({
+      datamodel: {
+        models: [
+          {
+            name: 'User',
+            documentation: '@crudAuth: { "readMany": "user" }',
+            fields: [],
+          },
+        ],
+      },
+    })
+
+    await expect(modelExtensionGeneratorLogic(tree, { model: 'User' }, dependencies)).rejects.toThrow(
+      /Remove @crudAuth from: User/,
+    )
+    expect(dependencies.generateFiles).not.toHaveBeenCalled()
   })
 })

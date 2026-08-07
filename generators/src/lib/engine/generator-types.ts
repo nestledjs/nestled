@@ -1,14 +1,5 @@
 import { Tree } from '@nx/devkit'
 
-export interface CrudAuthConfig {
-  readOne?: string
-  readMany?: string
-  count?: string
-  create?: string
-  update?: string
-  delete?: string
-}
-
 export interface ModelField {
   name: string
   kind?: string
@@ -40,7 +31,6 @@ export interface ModelType {
   modelPropertyName: string
   pluralModelName: string
   pluralModelPropertyName: string
-  auth?: CrudAuthConfig
   idFieldType?: string
 }
 

@@ -12,7 +12,7 @@ import {
 import { execSync } from 'child_process'
 import * as yaml from 'yaml'
 import { AddToModulesOptions, GenerateTemplateOptions, ModelType } from './generator-types'
-import { getCrudAuthForModel } from './crud-auth'
+import { assertNoCrudAuthAnnotations } from './crud-security'
 import { libraryGenerator } from '@nx/nest'
 import * as fs from 'fs'
 import * as path from 'path'
@@ -376,12 +376,10 @@ export function filterSkippedRelationFields<T extends { kind: string; type: stri
   fields: readonly T[],
   skippedModelNames: Set<string>,
 ): T[] {
-  return fields.filter(f => !(f.kind === 'object' && skippedModelNames.has(f.type)))
+  return fields.filter((f) => !(f.kind === 'object' && skippedModelNames.has(f.type)))
 }
 
-export function getSkippedModelNames(
-  models: ReadonlyArray<{ name: string; documentation?: string }>,
-): Set<string> {
+export function getSkippedModelNames(models: ReadonlyArray<{ name: string; documentation?: string }>): Set<string> {
   return new Set(models.filter(isSkipCrudModel).map((m) => m.name))
 }
 
@@ -398,11 +396,19 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
     return []
   }
 
+  let dmmf: Awaited<ReturnType<typeof getDMMF>>
   try {
-    const dmmf = await getDMMF({ datamodel: prismaSchema })
+    dmmf = await getDMMF({ datamodel: prismaSchema })
+  } catch (error) {
+    console.error('Error parsing Prisma schema:', error)
+    return []
+  }
 
-    const skippedModelNames = new Set(dmmf.datamodel.models.filter(isSkipCrudModel).map(m => m.name))
-    return dmmf.datamodel.models.filter(model => !skippedModelNames.has(model.name)).map((model) => {
+  assertNoCrudAuthAnnotations(dmmf.datamodel.models)
+  const skippedModelNames = new Set(dmmf.datamodel.models.filter(isSkipCrudModel).map((m) => m.name))
+  return dmmf.datamodel.models
+    .filter((model) => !skippedModelNames.has(model.name))
+    .map((model) => {
       const singularPropertyName = model.name.charAt(0).toLowerCase() + model.name.slice(1)
       const pluralPropertyName = pluralize(singularPropertyName)
 
@@ -428,12 +434,6 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
         documentation: field.documentation,
       }))
 
-      // Resolve auth through the shared resolver so this loader agrees with the CRUD
-      // generator's. It always returns a complete config, which matters because this model
-      // list is serialised with JSON.stringify — an undefined `auth` would be dropped from
-      // the emitted database-models.ts entirely.
-      const authConfig = getCrudAuthForModel(model)
-
       // Get the ID field type
       const idField = model.fields.find((f) => f.isId)
       const idFieldType = idField ? idField.type : 'String'
@@ -447,14 +447,9 @@ export async function getAllPrismaModels(tree: Tree): Promise<ModelType[]> {
         modelPropertyName: singularPropertyName,
         pluralModelName: pluralize(model.name),
         pluralModelPropertyName: pluralPropertyName,
-        auth: authConfig,
         idFieldType,
       }
     })
-  } catch (error) {
-    console.error('Error parsing Prisma schema:', error)
-    return []
-  }
 }
 
 export function updatePnpmWorkspaceConfig(
@@ -715,7 +710,11 @@ export async function apiLibraryGenerator<T extends { name: string; overwrite?: 
   type?: string,
   addModuleImport?: boolean,
 ): Promise<() => void> {
-  const { npmScope, API_LIBS_SCOPE, libraryRoot, libraryName, importPath, tags } = getApiLibraryNaming(tree, schema, type)
+  const { npmScope, API_LIBS_SCOPE, libraryRoot, libraryName, importPath, tags } = getApiLibraryNaming(
+    tree,
+    schema,
+    type,
+  )
 
   // Overwrite logic: remove an existing library if requested
   if (schema.overwrite) {
@@ -771,7 +770,7 @@ const UNCOUNTABLE_OVERRIDES = new Set([
   'anger',
   'beauty',
   'courage',
-  'wisdom'
+  'wisdom',
 ])
 
 /**
@@ -880,14 +879,6 @@ export interface DatabaseModel {
   modelPropertyName: string
   pluralModelName: string
   pluralModelPropertyName: string
-  auth?: {
-    readOne?: string
-    readMany?: string
-    count?: string
-    create?: string
-    update?: string
-    delete?: string
-  }
   idFieldType?: string
 }
 
@@ -902,7 +893,7 @@ export const DATABASE_MODELS_BY_NAME: Record<string, DatabaseModel> = DATABASE_M
 )
 
 export const DATABASE_MODEL_NAMES = [
-${models.map(model => `  '${model.modelName}',`).join('\n')}
+${models.map((model) => `  '${model.modelName}',`).join('\n')}
 ] as const
 
 export type DatabaseModelName = typeof DATABASE_MODEL_NAMES[number]

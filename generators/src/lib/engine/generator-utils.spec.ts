@@ -358,20 +358,7 @@ describe('generator-utils', () => {
       ])
     })
 
-    describe('auth resolution', () => {
-      // This loader writes the SDK copy of database-models.ts, while the CRUD generator writes the
-      // api copy. They must agree: consumers enforcing per-model auth read the SDK copy, and it
-      // previously carried no `auth` key at all for unannotated models, because auth was left
-      // undefined and JSON.stringify drops undefined values.
-      const ALL_ADMIN = {
-        readOne: 'admin',
-        readMany: 'admin',
-        count: 'admin',
-        create: 'admin',
-        update: 'admin',
-        delete: 'admin',
-      }
-
+    describe('generated CRUD security boundary', () => {
       async function loadModels(models: unknown[]) {
         tree.write('prisma/schema.prisma', 'model Placeholder {}')
         writeJson(tree, 'package.json', { prisma: { schema: 'prisma/schema.prisma' } })
@@ -379,39 +366,17 @@ describe('generator-utils', () => {
         return getAllPrismaModels(tree)
       }
 
-      it('gives an unannotated model a complete admin-only config', async () => {
+      it('does not emit obsolete per-model auth metadata', async () => {
         const models = await loadModels([{ name: 'User', fields: [] }])
 
-        expect(models[0].auth).toEqual(ALL_ADMIN)
+        expect(models[0]).not.toHaveProperty('auth')
+        expect(generateDatabaseModelContent(models)).not.toContain('auth?:')
       })
 
-      it('fills the unspecified operations of a partial annotation with admin', async () => {
-        const models = await loadModels([
-          { name: 'User', fields: [], documentation: '@crudAuth: { "readMany": "user" }' },
-        ])
-
-        expect(models[0].auth).toEqual({ ...ALL_ADMIN, readMany: 'user' })
-      })
-
-      it('falls back to admin when the annotation is malformed', async () => {
-        const models = await loadModels([{ name: 'User', fields: [], documentation: '@crudAuth: { not json }' }])
-
-        expect(models[0].auth).toEqual(ALL_ADMIN)
-      })
-
-      it('survives serialisation into the generated database-models file', async () => {
-        const models = await loadModels([
-          { name: 'User', fields: [] },
-          { name: 'Post', fields: [], documentation: '@crudAuth: { "readMany": "public" }' },
-        ])
-
-        const content = generateDatabaseModelContent(models)
-        const marker = 'export const DATABASE_MODELS: DatabaseModel[] = '
-        const start = content.indexOf(marker) + marker.length
-        const serialised = JSON.parse(content.slice(start, content.indexOf('\n\nexport const DATABASE_MODELS_BY_NAME')))
-
-        expect(serialised[0].auth).toEqual(ALL_ADMIN)
-        expect(serialised[1].auth).toEqual({ ...ALL_ADMIN, readMany: 'public' })
+      it('rejects legacy @crudAuth instead of silently ignoring it', async () => {
+        await expect(
+          loadModels([{ name: 'User', fields: [], documentation: '@crudAuth: { "readMany": "user" }' }]),
+        ).rejects.toThrow(/Remove @crudAuth from: User/)
       })
     })
   })

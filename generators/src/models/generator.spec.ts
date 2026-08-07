@@ -216,6 +216,21 @@ describe('models generator — logic + wiring', () => {
     await generateModelsLogic(t, { outputPath: 'libs/custom/models' })
     expect(t.exists('libs/custom/models/models.ts')).toBe(true)
   })
+
+  it('rejects a schema that still uses @crudAuth', async () => {
+    const t = setupTree()
+    t.write(
+      `${SCHEMA_DIR}/schema.prisma`,
+      `
+/// @crudAuth: { "readMany": "user" }
+model User {
+  id String @id
+}
+`,
+    )
+
+    await expect(generateModelsLogic(t, {})).rejects.toThrow(/Remove @crudAuth from: User/)
+  })
 })
 
 describe('resolvePrismaImportPath', () => {
