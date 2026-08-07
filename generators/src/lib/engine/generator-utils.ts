@@ -830,7 +830,6 @@ export function addToGitignore(tree: Tree, entry: string) {
     // If logger is available, log info
     try {
       // Dynamically import logger if available
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { logger } = require('@nx/devkit')
       logger.info(`✅ Added '${entry}' to .gitignore`)
     } catch {
