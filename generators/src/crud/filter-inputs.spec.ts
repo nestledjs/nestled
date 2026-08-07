@@ -450,7 +450,9 @@ describe('admin data-access template rendering', () => {
 
     expect(service).toContain('"profile": {\n      "targetModel": "Profile",\n      "isList": false')
     expect(service).toContain("normalizeListInputFilters('User', input)")
-    expect(service).toContain('normalized.is = hasIs')
+    expect(service).toContain("normalized['is'] = hasIs")
+    expect(service).not.toContain('filter.is')
+    expect(service).not.toContain('normalized.is')
     expect(service).toContain("throw new BadRequestException('A to-one relation filter cannot combine is: null")
   })
 })
