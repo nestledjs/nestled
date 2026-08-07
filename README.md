@@ -107,31 +107,29 @@ model OAuthAccount {
 
 > **Security (fixed in 1.1.3):** before `@nestledjs/generators@1.1.3` the `models` generator ignored `@graphqlOmit`, so annotated fields still received a `@Field()` and stayed queryable on the **server** GraphQL schema (the omit was only applied to generated client operations). Upgrade to ≥ 1.1.3, regenerate models, and redeploy — then audit and rotate any secret that was `@graphqlOmit`-annotated while reachable on a deployed clone.
 
-### Access levels (`crud`)
+### Generated CRUD authorization (`crud`)
 
-Every generated CRUD operation declares its access level explicitly, resolved from the model's
-`@crudAuth` annotation (all operations default to `admin` when unannotated):
+As of 3.0.0, generated CRUD is an admin management surface with no model-level authorization
+override. Every generated resolver class receives `@AdminOnly()` and
+`@UseGuards(GqlAuthAdminGuard)` once at class level.
 
-| Level                       | Emitted                                                     |
-| --------------------------- | ----------------------------------------------------------- |
-| `admin`                     | `@AdminOnly()` + `@UseGuards(GqlAuthAdminGuard)`            |
-| `user`                      | `@Authenticated()` + `@UseGuards(GqlAuthGuard)`             |
-| `public`                    | `@Public()`, no guard                                       |
-| custom, e.g. `billingAdmin` | `@Authenticated()` + `@UseGuards(GqlAuthBillingAdminGuard)` |
+`@crudAuth` is no longer supported. Generation fails with the annotated model names and migration
+instructions instead of silently ignoring the old configuration. Remove each annotation and
+replace every formerly lowered operation with an additive custom resolver that:
 
-A custom level's decorator declares only that a level exists — the custom guard remains
-authoritative about what it means, so a `noaccess` guard still denies everyone. The decorators and
-guards come from `@<scope>/api/utils`, and each generated file imports exactly what it uses.
+- uses its own purpose-built GraphQL input rather than generated CRUD/filter inputs;
+- derives user and tenant scope from authenticated context;
+- builds an explicit Prisma `where` and `select`; and
+- exposes a non-colliding operation name such as `myOrganizations` or `userCreateOrganization`.
 
-> **⚠️ Upgrade ordering (1.1.6).** Generated output imports `AdminOnly`, `Authenticated`, and
-> `Public` from `@<scope>/api/utils`. Those symbols only exist in a template that has taken the
-> global-guard (`GlobalAuthGuard`) change. Apply that template upgrade **first**, then bump to
-> ≥ 1.1.6 and regenerate. The reverse order produces generated code that does not compile, with an
-> unresolved-import error that says nothing about ordering.
+Use `nx g @nestledjs/generators:model-extension <Model>` when a model first needs application
+behavior. Generated CRUD's recursive GraphQL-to-Prisma selection compiler is inlined as a
+non-exported implementation detail of generated data access; application resolvers cannot import
+it from the core-helper barrel.
 
 ### Filtering (`crud`)
 
-Each generated list query takes a typed `filters` input built from the model's own columns:
+Each generated admin list query takes a typed `filters` input built from the model's own columns:
 
 ```graphql
 query {
@@ -146,6 +144,9 @@ Operators are chosen per scalar type — strings get `equals`/`in`/`contains`/`s
 Every model's list input overrides `filters`, including models with no filterable column at all — those map to a shared `UnfilterableInput` placeholder. An explicit override is the only thing that removes an inherited field from a code-first schema, so a model left without one would keep exposing the untyped blob.
 
 Relation nesting is bounded: each level emits its own set of input types (`UserFilterInput` → `PostFilterInput2` → `UserFilterInput3`), and the deepest level carries scalar fields only, which terminates the recursion. The default is 3 levels; pass `--filterDepth` to the `crud` generator to change it. `AND`/`OR`/`NOT` are deliberately not emitted, since they are self-referencing and would reintroduce unbounded nesting.
+
+These filters exist for the admin data browser. Do not accept generated list/filter inputs from a
+user-facing resolver; define only the specific filter fields that workflow supports.
 
 > **Security (fixed in 1.1.5):** before `@nestledjs/generators@1.1.5` generated list queries inherited an untyped `filters` blob (`GraphQLJSONObject`) that reached Prisma's `where` clause verbatim. GraphQL could not validate it, so a caller controlled the full Prisma filter grammar — and because `where` is built from the **database** model rather than the GraphQL model, every column was filterable whether or not it was queryable. `@graphqlOmit` gave no protection: an omitted credential column could be recovered a character at a time using the presence or absence of results as an oracle. Upgrade to ≥ 1.1.5, regenerate, and redeploy — then audit and rotate any secret held in a column that was reachable on a deployed clone, including password-reset and invite tokens.
 >

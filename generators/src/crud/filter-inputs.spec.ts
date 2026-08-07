@@ -72,9 +72,7 @@ describe('generateFilterInputs', () => {
     })
 
     it('gives numeric and date fields ordering operators but not string matching', () => {
-      const { source } = generateFilterInputs([
-        model('Event', [field('count', 'Int'), field('startsAt', 'DateTime')]),
-      ])
+      const { source } = generateFilterInputs([model('Event', [field('count', 'Int'), field('startsAt', 'DateTime')])])
 
       expect(source).toContain('export class IntFilterInput')
       expect(source).toContain('export class DateTimeFilterInput')
@@ -383,5 +381,38 @@ describe('dto template rendering', () => {
     const dto = tree.read('out/src/lib/dto/index.ts', 'utf-8') as string
     expect(dto).toContain('export class ListUserInput extends CorePagingInput {')
     expect(dto).not.toContain('filters?:')
+  })
+})
+
+describe('admin data-access template rendering', () => {
+  function renderDataAccess(): { service: string; index: string } {
+    const tree: Tree = createTreeWithEmptyWorkspace()
+    const models = buildModels()
+    const { source: filterInputs, filterInputNames } = generateFilterInputs(models)
+
+    generateFiles(tree, joinPathFragments(__dirname, 'files/data-access'), 'out', {
+      name: 'generated-crud',
+      models,
+      filterInputs,
+      filterInputNames,
+      npmScope: 'testscope',
+      tmpl: '',
+    })
+
+    return {
+      service: tree.read('out/src/lib/api-crud-data-access.service.ts', 'utf-8') as string,
+      index: tree.read('out/src/index.ts', 'utf-8') as string,
+    }
+  }
+
+  it('keeps the recursive selector private to generated admin data access', () => {
+    const { service, index } = renderDataAccess()
+
+    expect(service).toContain("import graphqlFields from 'graphql-fields'")
+    expect(service).toContain("from './database-models'")
+    expect(service).toContain('function buildAdminSelect(info: GraphQLResolveInfo)')
+    expect(service).not.toContain('export function buildAdminSelect')
+    expect(service).not.toContain('/api/core/helpers')
+    expect(index).not.toContain('buildAdminSelect')
   })
 })

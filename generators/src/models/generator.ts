@@ -1,6 +1,7 @@
 import { formatFiles, joinPathFragments, readJson, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
 import {
+  assertNoCrudAuthAnnotations,
   filterSkippedRelationFields,
   getPrismaSchemaPath,
   getSkippedModelNames,
@@ -70,7 +71,7 @@ function buildFieldDeclaration(field: any): string {
 }
 
 function usesType(models: readonly any[], type: string): boolean {
-  return models.some(m => m.fields.some((f: { type: string }) => f.type === type))
+  return models.some((m) => m.fields.some((f: { type: string }) => f.type === type))
 }
 
 export function generateModels(models: readonly any[], enums: readonly any[], prismaImportPath: string): string {
@@ -79,7 +80,7 @@ export function generateModels(models: readonly any[], enums: readonly any[], pr
   // queryable in api-schema.graphql. Enforce it here — the same predicate the sdk/crud
   // generators use — so models.ts is the single authoritative enforcement point. Filtering
   // up front also keeps the scalar import scans (usesType) from emitting unused imports.
-  const visibleModels = models.map(m => ({
+  const visibleModels = models.map((m) => ({
     ...m,
     fields: m.fields.filter((f: { documentation?: string }) => !f.documentation?.includes('@graphqlOmit')),
   }))
@@ -96,8 +97,7 @@ export function generateModels(models: readonly any[], enums: readonly any[], pr
     output += `import { GraphQLDecimal } from 'prisma-graphql-type-decimal';\n`
   }
   if (usesType(visibleModels, 'BigInt')) output += `import { GraphQLBigInt } from 'graphql-scalars';\n`
-  if (usesType(visibleModels, 'Json'))
-    output += `import type { JsonValue } from '${prismaImportPath}';\n`
+  if (usesType(visibleModels, 'Json')) output += `import type { JsonValue } from '${prismaImportPath}';\n`
 
   const enumNames = enums.map((e: { name: string }) => e.name)
   if (enumNames.length > 0) output += `import { ${enumNames.join(', ')} } from './enums';\n`
@@ -119,12 +119,12 @@ export function generateEnums(enums: readonly any[], prismaImportPath: string): 
   output += "import { registerEnumType } from '@nestjs/graphql';\n"
 
   if (enums.length > 0) {
-    const enumNames = enums.map(e => e.name).join(', ')
+    const enumNames = enums.map((e) => e.name).join(', ')
     // Import first to make enums available in scope, then export separately
     output += `import { ${enumNames} } from '${prismaImportPath}';\n`
     output += `export { ${enumNames} };\n\n`
 
-    enums.forEach(enumType => {
+    enums.forEach((enumType) => {
       output += `registerEnumType(${enumType.name}, { name: '${enumType.name}' });\n\n`
     })
   } else {
@@ -185,14 +185,15 @@ export async function generateModelsLogic(tree: Tree, schema: GenerateModelsGene
   }
 
   const dmmf = await getDMMF({ datamodel: schemaContent })
+  assertNoCrudAuthAnnotations(dmmf.datamodel.models)
 
   // Exclude @skipCrud models and their relation fields from other models so
   // security-sensitive types don't appear in the generated GraphQL schema.
   const allModels = dmmf.datamodel.models
   const skippedModelNames = getSkippedModelNames(allModels)
   const models = allModels
-    .filter(m => !skippedModelNames.has(m.name))
-    .map(m => ({
+    .filter((m) => !skippedModelNames.has(m.name))
+    .map((m) => ({
       ...m,
       fields: filterSkippedRelationFields(m.fields, skippedModelNames),
     }))

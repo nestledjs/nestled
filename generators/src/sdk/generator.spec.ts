@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing';
-import { sdkGeneratorLogic, SdkGeneratorDependencies } from './generator';
-import { Tree } from '@nx/devkit';
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
+import { sdkGeneratorLogic, SdkGeneratorDependencies } from './generator'
+import { Tree } from '@nx/devkit'
 
 const prismaSchema = `
 generator client {
@@ -15,7 +15,7 @@ datasource db {
 model User {
   id   Int @id @default(autoincrement())
 }
-`;
+`
 
 const prismaSchemaWithEnums = `
 generator client {
@@ -44,16 +44,16 @@ model User {
   role        Role
   permissions Permission[]
 }
-`;
+`
 
 describe('sdk generator', () => {
-  let tree: Tree;
-  let mockDependencies: SdkGeneratorDependencies;
+  let tree: Tree
+  let mockDependencies: SdkGeneratorDependencies
 
   beforeEach(() => {
-    tree = createTreeWithEmptyWorkspace();
+    tree = createTreeWithEmptyWorkspace()
     // Add a package.json to the root for getNpmScope to work
-    tree.write('package.json', JSON.stringify({ name: '@test/workspace' }));
+    tree.write('package.json', JSON.stringify({ name: '@test/workspace' }))
     mockDependencies = {
       formatFiles: vi.fn(),
       installPackagesTask: vi.fn(),
@@ -70,122 +70,108 @@ describe('sdk generator', () => {
       statSync: vi.fn().mockReturnValue({ isDirectory: () => false }),
       readdirSync: vi.fn().mockReturnValue([]),
       readFileSync: vi.fn().mockReturnValue(prismaSchema),
-    };
-    vi.clearAllMocks();
-  });
+    }
+    vi.clearAllMocks()
+  })
 
   it('throws if prisma schema path is missing in config or package.json', async () => {
-    mockDependencies.readJson = vi.fn().mockReturnValue({});
+    mockDependencies.readJson = vi.fn().mockReturnValue({})
     await expect(sdkGeneratorLogic(tree, {}, mockDependencies)).rejects.toThrow(
       'Prisma schema path not found (config or package.json)',
-    );
-  });
+    )
+  })
 
   it('throws if prisma schema file does not exist', async () => {
-    mockDependencies.existsSync = vi.fn().mockReturnValue(false);
-    await expect(sdkGeneratorLogic(tree, {}, mockDependencies)).rejects.toThrow('Prisma schema not found at');
-  });
+    mockDependencies.existsSync = vi.fn().mockReturnValue(false)
+    await expect(sdkGeneratorLogic(tree, {}, mockDependencies)).rejects.toThrow('Prisma schema not found at')
+  })
 
   it('generates files and scripts for models in schema, including admin SDK', async () => {
-    const callback = await sdkGeneratorLogic(tree, {}, mockDependencies);
-    expect(mockDependencies.generateFiles).toHaveBeenCalled();
-    expect(mockDependencies.addScriptToPackageJson).toHaveBeenCalledWith(tree, 'sdk', expect.any(String));
-    expect(mockDependencies.addDependenciesToPackageJson).toHaveBeenCalled();
-    expect(mockDependencies.formatFiles).toHaveBeenCalledWith(tree);
-    expect(typeof callback).toBe('function');
-    if (callback) callback();
-    expect(mockDependencies.installPackagesTask).toHaveBeenCalledWith(tree);
+    const callback = await sdkGeneratorLogic(tree, {}, mockDependencies)
+    expect(mockDependencies.generateFiles).toHaveBeenCalled()
+    expect(mockDependencies.addScriptToPackageJson).toHaveBeenCalledWith(tree, 'sdk', expect.any(String))
+    expect(mockDependencies.addDependenciesToPackageJson).toHaveBeenCalled()
+    expect(mockDependencies.formatFiles).toHaveBeenCalledWith(tree)
+    expect(typeof callback).toBe('function')
+    if (callback) callback()
+    expect(mockDependencies.installPackagesTask).toHaveBeenCalledWith(tree)
 
     // Check that generateFiles is called for both user and admin SDK
-    const calls = vi.mocked(mockDependencies.generateFiles).mock.calls;
+    const calls = vi.mocked(mockDependencies.generateFiles).mock.calls
     // There should be at least one call for user and one for admin
-    const userCall = calls.find(([_, __, modelDir, context]) =>
-      typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('__admin')
-    );
-    const adminCall = calls.find(([_, __, modelDir, context]) =>
-      typeof modelDir === 'string' && modelDir.includes('__admin') && context?.adminPrefix === '__Admin'
-    );
-    expect(userCall).toBeTruthy();
-    expect(adminCall).toBeTruthy();
+    const userCall = calls.find(
+      ([_, __, modelDir, context]) =>
+        typeof modelDir === 'string' && modelDir.includes('graphql') && !modelDir.includes('__admin'),
+    )
+    const adminCall = calls.find(
+      ([_, __, modelDir, context]) =>
+        typeof modelDir === 'string' && modelDir.includes('__admin') && context?.adminPrefix === '__Admin',
+    )
+    expect(userCall).toBeTruthy()
+    expect(adminCall).toBeTruthy()
     // Check that adminPrefix is empty string for user SDK and '__Admin' for admin SDK
-    expect(userCall[3].adminPrefix).toBe('');
-    expect(adminCall[3].adminPrefix).toBe('__Admin');
-  });
+    expect(userCall[3].adminPrefix).toBe('')
+    expect(adminCall[3].adminPrefix).toBe('__Admin')
+  })
 
-  describe('database-models.ts auth', () => {
-    // The SDK copy of database-models.ts is written by a different model loader than the api
-    // copy. It used to leave `auth` undefined for unannotated models, and JSON.stringify drops
-    // undefined values, so the key vanished from the emitted file. Consumers that enforce
-    // per-model auth read this copy, so it has to carry a complete config for every model.
-    const schemaWithAuth = `
+  describe('database-models.ts security metadata', () => {
+    const schema = `
 model Account {
   id Int @id
 }
+`
 
+    async function generateAndReadDatabaseModels(schemaContent = schema) {
+      tree.write('libs/api/prisma/src/lib/schemas/schema.prisma', schemaContent)
+      await sdkGeneratorLogic(tree, {}, mockDependencies)
+      const content = tree.read('libs/shared/sdk/src/lib/database-models.ts', 'utf-8') as string
+      const marker = 'export const DATABASE_MODELS: DatabaseModel[] = '
+      const start = content.indexOf(marker) + marker.length
+      return {
+        content,
+        models: JSON.parse(content.slice(start, content.indexOf('\n\nexport const DATABASE_MODELS_BY_NAME'))),
+      }
+    }
+
+    it('omits obsolete per-model auth metadata', async () => {
+      const { content, models } = await generateAndReadDatabaseModels()
+
+      expect(models.find((model: any) => model.modelName === 'Account')).not.toHaveProperty('auth')
+      expect(content).not.toContain('auth?:')
+    })
+
+    it('rejects @crudAuth rather than preserving a lower-privilege configuration', async () => {
+      await expect(
+        generateAndReadDatabaseModels(`
 /// @crudAuth: { "readMany": "user" }
 model Session {
   id Int @id
 }
-`;
-
-    async function generateAndReadDatabaseModels() {
-      tree.write('libs/api/prisma/src/lib/schemas/schema.prisma', schemaWithAuth);
-      await sdkGeneratorLogic(tree, {}, mockDependencies);
-      const content = tree.read('libs/shared/sdk/src/lib/database-models.ts', 'utf-8') as string;
-      const marker = 'export const DATABASE_MODELS: DatabaseModel[] = ';
-      const start = content.indexOf(marker) + marker.length;
-      return JSON.parse(content.slice(start, content.indexOf('\n\nexport const DATABASE_MODELS_BY_NAME')));
-    }
-
-    it('carries a complete auth config for an unannotated model', async () => {
-      const models = await generateAndReadDatabaseModels();
-
-      const account = models.find((m: any) => m.modelName === 'Account');
-      expect(account.auth).toEqual({
-        readOne: 'admin',
-        readMany: 'admin',
-        count: 'admin',
-        create: 'admin',
-        update: 'admin',
-        delete: 'admin',
-      });
-    });
-
-    it('honours a partial annotation and defaults the rest to admin', async () => {
-      const models = await generateAndReadDatabaseModels();
-
-      const session = models.find((m: any) => m.modelName === 'Session');
-      expect(session.auth).toEqual({
-        readOne: 'admin',
-        readMany: 'user',
-        count: 'admin',
-        create: 'admin',
-        update: 'admin',
-        delete: 'admin',
-      });
-    });
-  });
+`),
+      ).rejects.toThrow(/Remove @crudAuth from: Session/)
+    })
+  })
 
   describe('enum field handling', () => {
     it('includes single-select and multi-select enum fields in fragment fields', async () => {
-      mockDependencies.readFileSync = vi.fn().mockReturnValue(prismaSchemaWithEnums);
+      mockDependencies.readFileSync = vi.fn().mockReturnValue(prismaSchemaWithEnums)
 
-      await sdkGeneratorLogic(tree, {}, mockDependencies);
+      await sdkGeneratorLogic(tree, {}, mockDependencies)
 
-      const calls = vi.mocked(mockDependencies.generateFiles).mock.calls;
+      const calls = vi.mocked(mockDependencies.generateFiles).mock.calls
 
       // Find the admin SDK call for User model
       const adminCall = calls.find(
         ([_, __, modelDir, context]) =>
           typeof modelDir === 'string' && modelDir.includes('__admin/user') && context?.adminPrefix === '__Admin',
-      );
-      expect(adminCall).toBeTruthy();
+      )
+      expect(adminCall).toBeTruthy()
 
       // Check that fragmentFields includes both the single enum (role) and multi-select enum (permissions)
-      const fragmentFields = adminCall![3].fragmentFields as string;
-      expect(fragmentFields).toContain('name');
-      expect(fragmentFields).toContain('role'); // Single-select enum
-      expect(fragmentFields).toContain('permissions'); // Multi-select enum
+      const fragmentFields = adminCall![3].fragmentFields as string
+      expect(fragmentFields).toContain('name')
+      expect(fragmentFields).toContain('role') // Single-select enum
+      expect(fragmentFields).toContain('permissions') // Multi-select enum
 
       // Find the client SDK call for User model
       const clientCall = calls.find(
@@ -194,81 +180,81 @@ model Session {
           modelDir.includes('graphql/user') &&
           !modelDir.includes('__admin') &&
           context?.adminPrefix === '',
-      );
-      expect(clientCall).toBeTruthy();
+      )
+      expect(clientCall).toBeTruthy()
 
       // Check that client fragmentFields also includes enum fields
-      const clientFragmentFields = clientCall![3].fragmentFields as string;
-      expect(clientFragmentFields).toContain('name');
-      expect(clientFragmentFields).toContain('role'); // Single-select enum
-      expect(clientFragmentFields).toContain('permissions'); // Multi-select enum
-    });
-  });
+      const clientFragmentFields = clientCall![3].fragmentFields as string
+      expect(clientFragmentFields).toContain('name')
+      expect(clientFragmentFields).toContain('role') // Single-select enum
+      expect(clientFragmentFields).toContain('permissions') // Multi-select enum
+    })
+  })
 
   describe('codegen.yml handling', () => {
     it('generates new codegen.yml when file does not exist', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path !== 'libs/shared/sdk/src/codegen.yml';
-      });
+        return path !== 'libs/shared/sdk/src/codegen.yml'
+      })
 
-      await sdkGeneratorLogic(tree, {}, mockDependencies);
+      await sdkGeneratorLogic(tree, {}, mockDependencies)
 
       expect(mockDependencies.generateFiles).toHaveBeenCalledWith(
         tree,
         expect.stringContaining('./files'),
         'libs/shared/sdk/src',
-        { tmpl: '' }
-      );
-    });
+        { tmpl: '' },
+      )
+    })
 
     it('preserves existing codegen.yml by default', async () => {
-      const existingContent = 'overwrite: true\nschema: "./api-schema.graphql"';
+      const existingContent = 'overwrite: true\nschema: "./api-schema.graphql"'
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
-      });
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json'
+      })
       tree.read = vi.fn().mockImplementation((path: string) => {
         if (path === 'libs/shared/sdk/src/codegen.yml') {
-          return existingContent;
+          return existingContent
         }
-        return null;
-      });
-      tree.write = vi.fn();
+        return null
+      })
+      tree.write = vi.fn()
 
-      await sdkGeneratorLogic(tree, {}, mockDependencies);
+      await sdkGeneratorLogic(tree, {}, mockDependencies)
 
-      expect(tree.read).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', 'utf-8');
-      expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', existingContent);
-    });
+      expect(tree.read).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', 'utf-8')
+      expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', existingContent)
+    })
 
     it('forces regeneration when forceCodegen is true', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
-      });
-      tree.read = vi.fn();
-      tree.write = vi.fn();
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json'
+      })
+      tree.read = vi.fn()
+      tree.write = vi.fn()
 
-      await sdkGeneratorLogic(tree, { forceCodegen: true }, mockDependencies);
+      await sdkGeneratorLogic(tree, { forceCodegen: true }, mockDependencies)
 
       expect(mockDependencies.generateFiles).toHaveBeenCalledWith(
         tree,
         expect.stringContaining('./files'),
         'libs/shared/sdk/src',
-        { tmpl: '' }
-      );
+        { tmpl: '' },
+      )
       // Should not preserve existing content when force regenerating
-      expect(tree.read).not.toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', 'utf-8');
-    });
+      expect(tree.read).not.toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', 'utf-8')
+    })
 
     it('handles null return from tree.read gracefully', async () => {
       tree.exists = vi.fn().mockImplementation((path: string) => {
-        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json';
-      });
-      tree.read = vi.fn().mockReturnValue(null);
-      tree.write = vi.fn();
+        return path === 'libs/shared/sdk/src/codegen.yml' || path === 'package.json'
+      })
+      tree.read = vi.fn().mockReturnValue(null)
+      tree.write = vi.fn()
 
-      await sdkGeneratorLogic(tree, {}, mockDependencies);
+      await sdkGeneratorLogic(tree, {}, mockDependencies)
 
-      expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', '');
-    });
-  });
-}); 
+      expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', '')
+    })
+  })
+})

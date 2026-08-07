@@ -4,6 +4,40 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 3.0.0
+
+### Changed
+
+- **Generated CRUD is always admin-only.** Every generated resolver now declares
+  `@AdminOnly()` and `@UseGuards(GqlAuthAdminGuard)` at class level. Per-operation user, public,
+  and custom guard generation has been removed.
+- **The recursive selection compiler is private generated code.** It is now a non-exported helper
+  inside `ApiCrudDataAccessService`; generated CRUD no longer imports `createSelect` from the
+  consumer's core-helper barrel.
+- **Per-model auth metadata has been removed.** Generated `database-models.ts` files no longer
+  carry the obsolete `auth` object used by relation-traversal authorization.
+
+### Removed
+
+- **`@crudAuth` support.** The CRUD, SDK, models, and model-extension generators fail before
+  writing output when any Prisma model still carries the annotation. The error lists every
+  annotated model and points to the explicit-resolver migration.
+- The programmatic `parseCrudAuth`, `getCrudAuthForModel`, `getGuardForAuthLevel`, and
+  `getAccessLevelDecoratorForAuthLevel` exports.
+
+### Migration
+
+1. Inventory every `@crudAuth` operation before deleting annotations.
+2. Replace lower-privilege operations with additive custom resolvers that use purpose-built inputs,
+   authenticated user/tenant scope, and explicit Prisma `where`/`select` clauses. Use
+   `nx g @nestledjs/generators:model-extension <Model>` when scaffolding is useful.
+3. Keep generated inputs, filters, `ApiCrudDataAccessService`, and recursive selection compilation
+   out of user-facing resolver libraries. Intentional generated-CRUD composition belongs in a
+   separate admin-only library.
+4. Remove the consumer's exported `createSelect`/viewer-context traversal machinery.
+5. Upgrade to 3.0.0 and run the full `db-update` chain. Regenerate the runtime GraphQL schema and
+   SDK, then verify every generated resolver is admin-only.
+
 ## 2.0.0
 
 ### Changed

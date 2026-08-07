@@ -3,6 +3,7 @@ import { getDMMF } from '@prisma/internals'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import {
   addToModules,
+  assertNoCrudAuthAnnotations,
   getPrismaSchemaPath,
   getSkippedModelNames,
   readPrismaSchema,
@@ -29,14 +30,14 @@ interface PrismaModel {
 }
 
 function resolveModel(models: readonly PrismaModel[], requestedName: string): PrismaModel {
-  const exactMatch = models.find(model => model.name === requestedName)
+  const exactMatch = models.find((model) => model.name === requestedName)
   if (exactMatch) return exactMatch
 
   const normalizedName = requestedName.toLowerCase()
-  const caseInsensitiveMatch = models.find(model => model.name.toLowerCase() === normalizedName)
+  const caseInsensitiveMatch = models.find((model) => model.name.toLowerCase() === normalizedName)
   if (caseInsensitiveMatch) return caseInsensitiveMatch
 
-  const availableModels = models.map(model => model.name).sort((left, right) => left.localeCompare(right))
+  const availableModels = models.map((model) => model.name).sort((left, right) => left.localeCompare(right))
   throw new Error(
     `Prisma model "${requestedName}" was not found. Available models: ${availableModels.join(', ') || '(none)'}`,
   )
@@ -46,7 +47,7 @@ function addBarrelExport(tree: Tree, indexPath: string, exportLine: string): voi
   const existingLines = tree.exists(indexPath)
     ? (tree.read(indexPath, 'utf-8') ?? '')
         .split('\n')
-        .map(line => line.trim())
+        .map((line) => line.trim())
         .filter(Boolean)
     : []
   const lines = [...new Set([...existingLines, exportLine])].sort((left, right) => left.localeCompare(right))
@@ -63,6 +64,7 @@ export async function modelExtensionGeneratorLogic(
   if (!prismaSchema) throw new Error(`No Prisma schema found at ${prismaPath}`)
 
   const dmmf = await dependencies.getDMMF({ datamodel: prismaSchema })
+  assertNoCrudAuthAnnotations(dmmf.datamodel.models)
   const model = resolveModel(dmmf.datamodel.models, options.model)
   const skippedModelNames = getSkippedModelNames(dmmf.datamodel.models)
   if (skippedModelNames.has(model.name)) {

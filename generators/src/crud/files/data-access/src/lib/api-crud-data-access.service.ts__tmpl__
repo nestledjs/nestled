@@ -1,8 +1,60 @@
 import { Injectable } from '@nestjs/common'
 import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
-import { createSelect } from '@<%= npmScope %>/api/core/helpers'
+import graphqlFields from 'graphql-fields'
 import type { GraphQLResolveInfo } from 'graphql'
+import { DATABASE_MODELS, DatabaseField, DatabaseModel } from './database-models'
 import * as dto from './dto'
+
+type FieldTree = Record<string, unknown>
+type SelectTree = Record<string, true | { select: SelectTree }>
+
+function getNamedType(type: GraphQLResolveInfo['returnType']): string {
+  if ('ofType' in type) return getNamedType(type.ofType)
+  return type.name
+}
+
+function getModelFromTypeName(typeName: string): DatabaseModel | undefined {
+  return DATABASE_MODELS.find(model => model.name === typeName)
+}
+
+const isFieldTree = (value: unknown): value is FieldTree =>
+  value !== null && typeof value === 'object' && !Array.isArray(value)
+
+function buildSelectTree(fieldTree: FieldTree, model: DatabaseModel): SelectTree {
+  const result: SelectTree = {}
+
+  for (const key in fieldTree) {
+    const field = model.fields.find((candidate: DatabaseField) => candidate.name === key)
+    if (!field) continue
+
+    if (field.relationName && isFieldTree(fieldTree[key])) {
+      const relatedModel = DATABASE_MODELS.find(candidate => candidate.name === field.type)
+      if (relatedModel) {
+        result[key] = {
+          select: buildSelectTree(fieldTree[key], relatedModel),
+        }
+      }
+    } else {
+      result[key] = true
+    }
+  }
+
+  return result
+}
+
+/** Internal selection compiler for generated admin CRUD. Deliberately not exported. */
+function buildAdminSelect(info: GraphQLResolveInfo): SelectTree {
+  const returnTypeName = getNamedType(info.returnType)
+  const model = getModelFromTypeName(returnTypeName)
+
+  if (!model) {
+    throw new Error(
+      `Model "${returnTypeName}" not found in generated CRUD metadata. Run the CRUD generator.`,
+    )
+  }
+
+  return buildSelectTree(graphqlFields(info) as FieldTree, model)
+}
 
 <% models.forEach((model, idx) => { %>
 <% if (!model.modelName || !model.pluralModelName) { throw new Error('EJS template error: modelName or pluralModelName missing for model at index ' + idx + ': ' + JSON.stringify(model)); } %>
@@ -170,14 +222,14 @@ export class ApiCrudDataAccessService {
 
     return this.data['<%= model.modelPropertyName %>'].create({
       data,
-      select: createSelect(info),
+      select: buildAdminSelect(info),
     });
   }
 
   async <%= (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1) %>(info: GraphQLResolveInfo, input?: dto.List<%= model.modelName %>Input) {
     return this.data['<%= model.modelPropertyName %>'].findMany({
       ...this.data.filter(input),
-      select: createSelect(info),
+      select: buildAdminSelect(info),
     });
   }
 
@@ -206,7 +258,7 @@ export class ApiCrudDataAccessService {
   async <%= model.modelName.charAt(0).toLowerCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: <%= model.idFieldType === 'BigInt' ? 'bigint' : 'string' %>) {
     return this.data['<%= model.modelPropertyName %>'].findUnique({
       where: { id },
-      select: createSelect(info),
+      select: buildAdminSelect(info),
     });
   }
 
@@ -216,7 +268,7 @@ export class ApiCrudDataAccessService {
     return this.data['<%= model.modelPropertyName %>'].update({
       where: { id },
       data,
-      select: createSelect(info),
+      select: buildAdminSelect(info),
     });
   }
 
