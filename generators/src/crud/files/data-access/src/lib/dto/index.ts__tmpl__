@@ -194,8 +194,11 @@ export class List<%= model.modelName %>Input extends CorePagingInput {
     CorePagingInput's untyped blob. Models with no filterable column map to UnfilterableInput. %>
 <% const filterInputName = locals.filterInputNames && locals.filterInputNames[model.modelName]; %>
 <% if (filterInputName) { %>
+<%# The initializer is intentional. With target >= ES2022, useDefineForClassFields defaults to true
+    and TypeScript reports TS2612 when this transitional override has no initializer. It remains
+    harmless after consumers remove the legacy base filters field. %>
   @Field(() => <%= filterInputName %>, { nullable: true })
-  filters?: <%= filterInputName %>
+  filters?: <%= filterInputName %> = undefined
 <% } %>
 <% for (const field of allFields) { %>
   <%

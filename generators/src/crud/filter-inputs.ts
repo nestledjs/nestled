@@ -16,18 +16,22 @@ import { ModelField, ModelType } from '../lib/engine'
  * generator strips them from `model.fields` before we see them — so an omitted column is
  * unfilterable by construction rather than by a second exclusion list that could drift.
  *
- * Operator and field names deliberately mirror Prisma's own filter grammar, so the emitted object
- * remains a valid Prisma `where` subset and consuming template code can keep merging it directly.
+ * Operator and field names deliberately mirror Prisma's own filter grammar. The generated data
+ * access service normalizes the compatibility shape for to-one relations into Prisma's relation
+ * filter form before merging it into `where`; every other emitted object is already a direct
+ * Prisma subset.
  *
- * Two deliberate omissions:
- * - `AND`/`OR`/`NOT` are not emitted. They are self-referencing, so they would reintroduce
- *   unbounded nesting depth that the depth cap below exists to prevent.
- * - Scalar list fields (`String[]`) are not filterable. Prisma models those with
+ * Logical operators and relation traversal share one depth budget. Each level points only at the
+ * next generated level, so callers can compose useful filters without regaining an unbounded,
+ * self-referencing input type.
+ *
+ * One deliberate omission remains: scalar list fields (`String[]`) are not filterable. Prisma
+ * models those with
  *   `has`/`hasEvery`/`hasSome` rather than the operators here, and nothing downstream filters on
  *   them today.
  */
 
-/** Relation nesting levels to emit. Level `maxDepth` carries scalars only, which terminates recursion. */
+/** Filter nesting levels to emit. Level `maxDepth` carries scalars only, which terminates recursion. */
 export const DEFAULT_FILTER_DEPTH = 3
 
 const COMPARABLE_OPERATORS = ['lt', 'lte', 'gt', 'gte'] as const
@@ -147,6 +151,10 @@ function listRelationFilterInputName(modelName: string, depth: number): string {
   return `${modelName}ListRelationFilterInput${depthSuffix(depth)}`
 }
 
+function toOneRelationFilterInputName(modelName: string, depth: number): string {
+  return `${modelName}RelationFilterInput${depthSuffix(depth)}`
+}
+
 function renderField(gqlType: string, name: string, tsType: string): string {
   return `  @Field(() => ${gqlType}, { nullable: true })\n  ${name}?: ${tsType}\n`
 }
@@ -155,6 +163,7 @@ function renderScalarFilterClass(def: ScalarFilterDef): string {
   const fields = [
     renderField(def.gqlType, 'equals', def.tsType),
     renderField(`[${def.gqlType}]`, 'in', `${def.tsType}[]`),
+    renderField(def.gqlType, 'not', def.tsType),
     ...def.extraOperators.map((op) => renderField(def.gqlType, op, def.tsType)),
   ]
   return `@InputType()\nexport class ${def.className} {\n${fields.join('\n')}}\n`
@@ -163,6 +172,24 @@ function renderScalarFilterClass(def: ScalarFilterDef): string {
 function renderListRelationFilterClass(className: string, targetType: string): string {
   const fields = ['some', 'every', 'none'].map((op) => renderField(targetType, op, targetType))
   return `@InputType()\nexport class ${className} {\n${fields.join('\n')}}\n`
+}
+
+interface RenderedFilterField {
+  name: string
+  source: string
+}
+
+function renderToOneRelationFilterClass(
+  className: string,
+  targetType: string,
+  directFields: readonly RenderedFilterField[],
+): string {
+  const relationOperators = ['is', 'isNot'].map((name) => renderField(targetType, name, `${targetType} | null`))
+  const compatibleDirectFields = directFields
+    .filter((field) => field.name !== 'is' && field.name !== 'isNot')
+    .map((field) => field.source)
+
+  return `@InputType()\nexport class ${className} {\n${[...relationOperators, ...compatibleDirectFields].join('\n')}}\n`
 }
 
 /**
@@ -177,8 +204,12 @@ function renderListRelationFilterClass(className: string, targetType: string): s
  */
 const INDEX_SIGNATURE_SHIM = '  [key: string]: unknown\n'
 
-function renderModelFilterClass(className: string, fields: string[], includeShim: boolean): string {
-  const body = (includeShim ? INDEX_SIGNATURE_SHIM + '\n' : '') + fields.join('\n')
+function renderModelFilterClass(
+  className: string,
+  fields: readonly RenderedFilterField[],
+  includeShim: boolean,
+): string {
+  const body = (includeShim ? INDEX_SIGNATURE_SHIM + '\n' : '') + fields.map((field) => field.source).join('\n')
   return `@InputType()\nexport class ${className} {\n${body}}\n`
 }
 
@@ -198,22 +229,25 @@ interface ScanContext {
   modelNames: Set<string>
   /** Operator inputs actually referenced, keyed by class name so each is emitted once. */
   neededScalarFilters: Map<string, ScalarFilterDef>
-  /** Rendered field lines per model, per depth. Populated deepest level first. */
-  fieldsByDepth: Map<number, Map<string, string[]>>
+  /** Rendered fields per model, per depth. Populated deepest level first. */
+  fieldsByDepth: Map<number, Map<string, RenderedFilterField[]>>
   /** Related models needing a list-relation wrapper at each depth. */
-  wrappersByDepth: Map<number, Set<string>>
+  listWrappersByDepth: Map<number, Set<string>>
+  /** Related models needing an is/isNot wrapper at each depth. */
+  toOneWrappersByDepth: Map<number, Set<string>>
 }
 
 /**
  * A relation field is only emitted when its target actually has a filter input one level down.
- * `wrappers` collects the related models that need a list-relation wrapper at this depth.
+ * The wrapper sets collect related models that need relation operator inputs at this depth.
  */
 function relationFieldLine(
   field: ModelField,
   depth: number,
   ctx: ScanContext,
-  wrappers: Set<string>,
-): string | null {
+  listWrappers: Set<string>,
+  toOneWrappers: Set<string>,
+): RenderedFilterField | null {
   // The deepest level is scalars-only — that is what terminates the recursion.
   if (depth === ctx.maxDepth) return null
   if (!ctx.modelNames.has(field.type)) return null
@@ -221,15 +255,16 @@ function relationFieldLine(
 
   if (field.isList) {
     const wrapper = listRelationFilterInputName(field.type, depth)
-    wrappers.add(field.type)
-    return renderField(wrapper, field.name, wrapper)
+    listWrappers.add(field.type)
+    return { name: field.name, source: renderField(wrapper, field.name, wrapper) }
   }
 
-  const target = modelFilterInputName(field.type, depth + 1)
-  return renderField(target, field.name, target)
+  const wrapper = toOneRelationFilterInputName(field.type, depth)
+  toOneWrappers.add(field.type)
+  return { name: field.name, source: renderField(wrapper, field.name, wrapper) }
 }
 
-function scalarFieldLine(field: ModelField, ctx: ScanContext): string | null {
+function scalarFieldLine(field: ModelField, ctx: ScanContext): RenderedFilterField | null {
   // Scalar lists use a different Prisma grammar (has/hasEvery/hasSome); not modelled.
   if (field.isList) return null
 
@@ -237,36 +272,55 @@ function scalarFieldLine(field: ModelField, ctx: ScanContext): string | null {
   if (!def) return null
 
   ctx.neededScalarFilters.set(def.className, def)
-  return renderField(def.className, field.name, def.className)
+  return { name: field.name, source: renderField(def.className, field.name, def.className) }
 }
 
-function fieldLine(field: ModelField, depth: number, ctx: ScanContext, wrappers: Set<string>): string | null {
+function fieldLine(
+  field: ModelField,
+  depth: number,
+  ctx: ScanContext,
+  listWrappers: Set<string>,
+  toOneWrappers: Set<string>,
+): RenderedFilterField | null {
   return isRelationField(field)
-    ? relationFieldLine(field, depth, ctx, wrappers)
+    ? relationFieldLine(field, depth, ctx, listWrappers, toOneWrappers)
     : scalarFieldLine(field, ctx)
+}
+
+function logicalFields(modelName: string, depth: number, ctx: ScanContext): RenderedFilterField[] {
+  if (depth === ctx.maxDepth || !ctx.fieldsByDepth.get(depth + 1)?.has(modelName)) return []
+
+  const target = modelFilterInputName(modelName, depth + 1)
+  return ['AND', 'OR', 'NOT'].map((name) => ({
+    name,
+    source: renderField(`[${target}]`, name, `${target}[]`),
+  }))
 }
 
 /** Records, for one nesting level, which models have filterable content and what it renders to. */
 function scanDepth(models: readonly ModelType[], depth: number, ctx: ScanContext): void {
-  const fieldsForDepth = new Map<string, string[]>()
-  const wrappers = new Set<string>()
+  const fieldsForDepth = new Map<string, RenderedFilterField[]>()
+  const listWrappers = new Set<string>()
+  const toOneWrappers = new Set<string>()
 
   for (const model of models) {
-    const lines = model.fields
-      .map((field) => fieldLine(field, depth, ctx, wrappers))
-      .filter((line): line is string => line !== null)
+    const fields = model.fields
+      .map((field) => fieldLine(field, depth, ctx, listWrappers, toOneWrappers))
+      .filter((field): field is RenderedFilterField => field !== null)
+    fields.push(...logicalFields(model.modelName, depth, ctx))
 
     // An @InputType with no fields is invalid in GraphQL, so a model with nothing filterable
     // simply has no filter input at this depth.
-    if (lines.length > 0) fieldsForDepth.set(model.modelName, lines)
+    if (fields.length > 0) fieldsForDepth.set(model.modelName, fields)
   }
 
   ctx.fieldsByDepth.set(depth, fieldsForDepth)
-  ctx.wrappersByDepth.set(depth, wrappers)
+  ctx.listWrappersByDepth.set(depth, listWrappers)
+  ctx.toOneWrappersByDepth.set(depth, toOneWrappers)
 }
 
 function renderDepth(models: readonly ModelType[], depth: number, ctx: ScanContext): string[] {
-  const wrappers = [...(ctx.wrappersByDepth.get(depth) ?? [])]
+  const listWrappers = [...(ctx.listWrappersByDepth.get(depth) ?? [])]
     .sort((a, b) => a.localeCompare(b))
     .map((target) =>
       renderListRelationFilterClass(
@@ -275,12 +329,24 @@ function renderDepth(models: readonly ModelType[], depth: number, ctx: ScanConte
       ),
     )
 
-  const modelClasses = models
-    .map((model) => ({ model, lines: ctx.fieldsByDepth.get(depth)?.get(model.modelName) }))
-    .filter((entry): entry is { model: ModelType; lines: string[] } => Boolean(entry.lines))
-    .map(({ model, lines }) => renderModelFilterClass(modelFilterInputName(model.modelName, depth), lines, depth === 1))
+  const toOneWrappers = [...(ctx.toOneWrappersByDepth.get(depth) ?? [])]
+    .sort((a, b) => a.localeCompare(b))
+    .map((target) =>
+      renderToOneRelationFilterClass(
+        toOneRelationFilterInputName(target, depth),
+        modelFilterInputName(target, depth + 1),
+        ctx.fieldsByDepth.get(depth + 1)?.get(target) ?? [],
+      ),
+    )
 
-  return [...wrappers, ...modelClasses]
+  const modelClasses = models
+    .map((model) => ({ model, fields: ctx.fieldsByDepth.get(depth)?.get(model.modelName) }))
+    .filter((entry): entry is { model: ModelType; fields: RenderedFilterField[] } => Boolean(entry.fields))
+    .map(({ model, fields }) =>
+      renderModelFilterClass(modelFilterInputName(model.modelName, depth), fields, depth === 1),
+    )
+
+  return [...listWrappers, ...toOneWrappers, ...modelClasses]
 }
 
 function normaliseDepth(maxDepth: number): number {
@@ -290,13 +356,14 @@ function normaliseDepth(maxDepth: number): number {
 /**
  * Builds the filter input classes for the given models.
  *
- * Relation nesting is capped by generating a distinct type per level rather than a single
- * self-referencing type: `UserFilterInput` points at `PostFilterInput2`, which points at
- * `UserFilterInput3`, which carries scalars only. A recursive input type would let a caller nest
- * relation filters arbitrarily deep at query time, which typing alone would not prevent.
+ * Filter nesting is capped by generating a distinct type per level rather than a single
+ * self-referencing type: `UserFilterInput` points at `PostFilterInput2` for a relation, or at
+ * `UserFilterInput2` for a logical operator. Level 3 carries scalars only. A recursive input type
+ * would let a caller nest filters arbitrarily deep at query time, which typing alone would not
+ * prevent.
  *
  * @param models Models to emit filters for, already stripped of `@skipCrud` and `@graphqlOmit`.
- * @param maxDepth Relation nesting levels to emit; values below 1 fall back to the default.
+ * @param maxDepth Filter nesting levels to emit; values below 1 fall back to the default.
  */
 export function generateFilterInputs(
   models: readonly ModelType[],
@@ -308,7 +375,8 @@ export function generateFilterInputs(
     modelNames: new Set(models.map((m) => m.modelName)),
     neededScalarFilters: new Map(),
     fieldsByDepth: new Map(),
-    wrappersByDepth: new Map(),
+    listWrappersByDepth: new Map(),
+    toOneWrappersByDepth: new Map(),
   }
 
   // Walk deepest level first: whether a relation field can be emitted at depth d depends on

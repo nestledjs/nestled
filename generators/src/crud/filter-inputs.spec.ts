@@ -63,7 +63,7 @@ describe('generateFilterInputs', () => {
       const { source } = generateFilterInputs([model('User', [field('email', 'String')])])
 
       expect(source).toContain('export class StringFilterInput')
-      for (const op of ['equals', 'in', 'contains', 'startsWith', 'endsWith']) {
+      for (const op of ['equals', 'in', 'not', 'contains', 'startsWith', 'endsWith']) {
         expect(source).toContain(`${op}?:`)
       }
       // Ordering comparisons are meaningless for strings and would widen the oracle surface.
@@ -72,9 +72,7 @@ describe('generateFilterInputs', () => {
     })
 
     it('gives numeric and date fields ordering operators but not string matching', () => {
-      const { source } = generateFilterInputs([
-        model('Event', [field('count', 'Int'), field('startsAt', 'DateTime')]),
-      ])
+      const { source } = generateFilterInputs([model('Event', [field('count', 'Int'), field('startsAt', 'DateTime')])])
 
       expect(source).toContain('export class IntFilterInput')
       expect(source).toContain('export class DateTimeFilterInput')
@@ -85,7 +83,7 @@ describe('generateFilterInputs', () => {
       expect(source).not.toContain('startsWith?:')
     })
 
-    it('gives boolean and enum fields equality only', () => {
+    it('gives boolean and enum fields equality and negation operators only', () => {
       const { source } = generateFilterInputs([
         model('User', [field('isActive', 'Boolean'), field('role', 'Role', { kind: 'enum' })]),
       ])
@@ -94,6 +92,8 @@ describe('generateFilterInputs', () => {
       expect(source).toContain('export class RoleFilterInput')
       expect(source).toContain('@Field(() => Role, { nullable: true })\n  equals?: Role')
       expect(source).toContain('@Field(() => [Role], { nullable: true })\n  in?: Role[]')
+      expect(source).toContain('@Field(() => Boolean, { nullable: true })\n  not?: boolean')
+      expect(source).toContain('@Field(() => Role, { nullable: true })\n  not?: Role')
       expect(source).not.toContain('gt?:')
       expect(source).not.toContain('contains?:')
     })
@@ -123,12 +123,18 @@ describe('generateFilterInputs', () => {
       expect(source).not.toContain('tags?:')
     })
 
-    it('never emits AND/OR/NOT, which would allow unbounded nesting', () => {
+    it('emits AND/OR/NOT against the next depth instead of self-referencing', () => {
       const { source } = generateFilterInputs(buildModels())
+      const level1 = classBody(source, 'UserFilterInput')
+      const level2 = classBody(source, 'UserFilterInput2')
+      const level3 = classBody(source, 'UserFilterInput3')
 
-      expect(source).not.toContain('AND')
-      expect(source).not.toContain('OR?:')
-      expect(source).not.toContain('NOT')
+      for (const op of ['AND', 'OR', 'NOT']) {
+        expect(level1).toContain(`${op}?: UserFilterInput2[]`)
+        expect(level2).toContain(`${op}?: UserFilterInput3[]`)
+        expect(level3).not.toContain(`${op}?:`)
+      }
+      expect(level1).not.toContain('AND?: UserFilterInput[]')
     })
   })
 
@@ -155,10 +161,14 @@ describe('generateFilterInputs', () => {
       }
     })
 
-    it('references the related filter input directly for to-one relations', () => {
+    it('supports is/isNot and the existing direct shorthand for to-one relations', () => {
       const { source } = generateFilterInputs(buildModels())
+      const wrapper = classBody(source, 'ProfileRelationFilterInput')
 
-      expect(source).toContain('profile?: ProfileFilterInput2')
+      expect(source).toContain('profile?: ProfileRelationFilterInput')
+      expect(wrapper).toContain('is?: ProfileFilterInput2 | null')
+      expect(wrapper).toContain('isNot?: ProfileFilterInput2 | null')
+      expect(wrapper).toContain('bio?: StringFilterInput')
       expect(source).not.toContain('ProfileListRelationFilterInput')
     })
 
@@ -182,6 +192,9 @@ describe('generateFilterInputs', () => {
       expect(level3).toContain('email?: StringFilterInput')
       expect(level3).not.toContain('posts?:')
       expect(level3).not.toContain('profile?:')
+      expect(level3).not.toContain('AND?:')
+      expect(level3).not.toContain('OR?:')
+      expect(level3).not.toContain('NOT?:')
       expect(source).not.toContain('FilterInput4')
     })
 
@@ -198,6 +211,9 @@ describe('generateFilterInputs', () => {
       expect(source).toContain('export class UserFilterInput')
       expect(source).not.toContain('FilterInput2')
       expect(source).not.toContain('ListRelationFilterInput')
+      expect(source).not.toContain('AND?:')
+      expect(source).not.toContain('OR?:')
+      expect(source).not.toContain('NOT?:')
       expect(source).toContain('email?: StringFilterInput')
     })
 
@@ -314,7 +330,7 @@ describe('generateFilterInputs', () => {
 })
 
 describe('dto template rendering', () => {
-  function renderDto(models: ModelType[], depth?: number): string {
+  function renderDataAccess(models: ModelType[], depth?: number): Tree {
     const tree: Tree = createTreeWithEmptyWorkspace()
     const { source: filterInputs, filterInputNames } = generateFilterInputs(models, depth as number)
 
@@ -327,14 +343,18 @@ describe('dto template rendering', () => {
       tmpl: '',
     })
 
-    return tree.read('out/src/lib/dto/index.ts', 'utf-8') as string
+    return tree
+  }
+
+  function renderDto(models: ModelType[], depth?: number): string {
+    return renderDataAccess(models, depth).read('out/src/lib/dto/index.ts', 'utf-8') as string
   }
 
   it('replaces the inherited opaque blob with a typed filters field', () => {
     const dto = renderDto(buildModels())
 
     expect(dto).toContain('export class ListUserInput extends CorePagingInput {')
-    expect(dto).toContain('@Field(() => UserFilterInput, { nullable: true })\n  filters?: UserFilterInput')
+    expect(dto).toContain('@Field(() => UserFilterInput, { nullable: true })\n  filters?: UserFilterInput = undefined')
     // The blob type must not reappear anywhere in the generated DTOs.
     expect(dto).not.toContain('GraphQLJSONObject')
   })
@@ -364,8 +384,28 @@ describe('dto template rendering', () => {
 
     // Without an explicit override this model would keep inheriting CorePagingInput's blob.
     const unfilterable = renderDto([model('Blob', [field('payload', 'Json')])])
-    expect(unfilterable).toContain('@Field(() => UnfilterableInput, { nullable: true })\n  filters?: UnfilterableInput')
+    expect(unfilterable).toContain(
+      '@Field(() => UnfilterableInput, { nullable: true })\n  filters?: UnfilterableInput = undefined',
+    )
     expect(unfilterable).toContain('export class UnfilterableInput')
+  })
+
+  it('initializes the legacy filters override for ES2022 class-field semantics', () => {
+    const dto = renderDto(buildModels())
+
+    expect(dto).toContain('filters?: UserFilterInput = undefined')
+  })
+
+  it('normalizes compatible to-one filter shapes before passing them to Prisma', () => {
+    const service = renderDataAccess(buildModels()).read(
+      'out/src/lib/api-crud-data-access.service.ts',
+      'utf-8',
+    ) as string
+
+    expect(service).toContain('"profile": {\n      "targetModel": "Profile",\n      "isList": false')
+    expect(service).toContain("normalizeListInputFilters('User', input)")
+    expect(service).toContain('normalized.is = hasIs')
+    expect(service).toContain("throw new BadRequestException('A to-one relation filter cannot combine is: null")
   })
 
   it('still renders for callers that do not pass the filter variables', () => {
