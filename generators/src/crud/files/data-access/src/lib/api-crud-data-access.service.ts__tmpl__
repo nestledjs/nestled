@@ -217,8 +217,8 @@ function normalizeNullableModelFilter(modelName: string, value: unknown): unknow
 }
 
 function normalizeToOneRelationFilter(targetModel: string, filter: FilterObject): FilterObject {
-  const hasIs = filter.is !== undefined
-  const hasIsNot = filter.isNot !== undefined
+  const hasIs = filter['is'] !== undefined
+  const hasIsNot = filter['isNot'] !== undefined
   const directEntries = directRelationEntries(filter)
   const directFilter = Object.fromEntries(directEntries)
 
@@ -227,17 +227,17 @@ function normalizeToOneRelationFilter(targetModel: string, filter: FilterObject)
   }
 
   const normalized: FilterObject = {}
-  if (hasIs) normalized.is = normalizeNullableModelFilter(targetModel, filter.is)
-  if (hasIsNot) normalized.isNot = normalizeNullableModelFilter(targetModel, filter.isNot)
+  if (hasIs) normalized['is'] = normalizeNullableModelFilter(targetModel, filter['is'])
+  if (hasIsNot) normalized['isNot'] = normalizeNullableModelFilter(targetModel, filter['isNot'])
   if (directEntries.length === 0) return normalized
 
-  if (filter.is === null) {
+  if (filter['is'] === null) {
     throw new BadRequestException('A to-one relation filter cannot combine is: null with direct field predicates')
   }
 
   const normalizedDirect = normalizeModelFilter(targetModel, directFilter)
-  normalized.is = hasIs
-    ? { AND: [normalized.is, normalizedDirect] }
+  normalized['is'] = hasIs
+    ? { AND: [normalized['is'], normalizedDirect] }
     : normalizedDirect
   return normalized
 }

@@ -4,6 +4,14 @@ All notable changes to `@nestledjs/generators` are documented here. This project
 uses independent semantic versioning; the current version is resolved from the npm
 registry (see `nx.json` → `release`).
 
+## 1.1.8
+
+### Fixed
+
+- **`crud`: compile relation-filter normalization with strict index-signature access.** Generated
+  data access now uses bracket notation for keys on its generic filter map, so consumers with
+  `noPropertyAccessFromIndexSignature` enabled no longer receive TS4111 errors after regeneration.
+
 ## 1.1.7
 
 ### Fixed
