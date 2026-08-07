@@ -410,6 +410,9 @@ describe('admin data-access template rendering', () => {
 
     expect(service).toContain("import graphqlFields from 'graphql-fields'")
     expect(service).toContain("from './database-models'")
+    expect(service).toContain('return DATABASE_MODELS_BY_NAME[typeName]')
+    expect(service).toContain('const relatedModel = DATABASE_MODELS_BY_NAME[field.type]')
+    expect(service).not.toContain('DATABASE_MODELS.find')
     expect(service).toContain('function buildAdminSelect(info: GraphQLResolveInfo)')
     expect(service).not.toContain('export function buildAdminSelect')
     expect(service).not.toContain('/api/core/helpers')

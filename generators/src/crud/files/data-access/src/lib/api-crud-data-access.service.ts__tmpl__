@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common'
 import { ApiCoreDataAccessService } from '@<%= npmScope %>/api/core/data-access'
 import graphqlFields from 'graphql-fields'
 import type { GraphQLResolveInfo } from 'graphql'
-import { DATABASE_MODELS, DatabaseField, DatabaseModel } from './database-models'
+import { DATABASE_MODELS_BY_NAME, DatabaseField, DatabaseModel } from './database-models'
 import * as dto from './dto'
 
 type FieldTree = Record<string, unknown>
@@ -14,7 +14,7 @@ function getNamedType(type: GraphQLResolveInfo['returnType']): string {
 }
 
 function getModelFromTypeName(typeName: string): DatabaseModel | undefined {
-  return DATABASE_MODELS.find(model => model.name === typeName)
+  return DATABASE_MODELS_BY_NAME[typeName]
 }
 
 const isFieldTree = (value: unknown): value is FieldTree =>
@@ -28,7 +28,7 @@ function buildSelectTree(fieldTree: FieldTree, model: DatabaseModel): SelectTree
     if (!field) continue
 
     if (field.relationName && isFieldTree(fieldTree[key])) {
-      const relatedModel = DATABASE_MODELS.find(candidate => candidate.name === field.type)
+      const relatedModel = DATABASE_MODELS_BY_NAME[field.type]
       if (relatedModel) {
         result[key] = {
           select: buildSelectTree(fieldTree[key], relatedModel),
