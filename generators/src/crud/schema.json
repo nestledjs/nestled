@@ -28,7 +28,7 @@
       "default": false
     },
     "filterDepth": {
-      "description": "How many levels of relation nesting the generated filter inputs allow. Each level emits a distinct set of input types, and the deepest level carries scalar fields only, which bounds how deeply a caller can nest relation filters.",
+      "description": "How many levels of relation nesting the generated filter inputs allow. Each level emits a distinct set of input types; the deepest level carries scalar fields only — it omits nested relation filters AND the AND/OR/NOT logical operators (so logical grouping is unavailable there) — which bounds how deeply a caller can nest relation filters.",
       "type": "number",
       "default": 3,
       "minimum": 1
