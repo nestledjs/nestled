@@ -192,6 +192,64 @@ describe('generate-crud generator', () => {
     })
   })
 
+  // The posture file is the same single source of truth the downstream doctor and guard-posture
+  // spec read (nestled-dev-template#140): the generator must emit what the repo declares, so
+  // `db-update` is idempotent mid-migration instead of silently re-tightening rolled-back guards.
+  describe('guard posture', () => {
+    const posturePath = '.nestled-updates/security/generated-crud-posture.json'
+    const resolverPath = 'libs/api/crud/feature/src/lib/user.resolver.ts'
+
+    it('emits the authenticated tier when the posture file declares it', async () => {
+      tree.write(posturePath, JSON.stringify({ posture: 'authenticated', reason: 'staged rollback' }))
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      const source = tree.read(resolverPath, 'utf-8')!
+      expect(source).toContain("import { Authenticated, GqlAuthGuard } from '@testscope/api/utils'")
+      expect(source).toContain('@UseGuards(GqlAuthGuard)\n@Authenticated()')
+      expect(source).not.toContain('AdminOnly')
+      expect(source).not.toContain('GqlAuthAdminGuard')
+    })
+
+    it('defaults to admin, quietly, when no posture file exists', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      expect(tree.read(resolverPath, 'utf-8')).toContain('@UseGuards(GqlAuthAdminGuard)\n@AdminOnly()')
+      expect(warn).not.toHaveBeenCalled()
+      warn.mockRestore()
+    })
+
+    it('fails closed to admin and warns on unparseable JSON', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      tree.write(posturePath, '{ not json')
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      expect(tree.read(resolverPath, 'utf-8')).toContain('@UseGuards(GqlAuthAdminGuard)\n@AdminOnly()')
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('unparseable JSON'))
+      warn.mockRestore()
+    })
+
+    it('fails closed to admin and warns on an unrecognized posture value', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      tree.write(posturePath, JSON.stringify({ posture: 'authetnicated' }))
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      expect(tree.read(resolverPath, 'utf-8')).toContain('@UseGuards(GqlAuthAdminGuard)\n@AdminOnly()')
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('unrecognized posture "authetnicated"'))
+      warn.mockRestore()
+    })
+
+    it('fails closed to admin and warns when the posture key is absent', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      tree.write(posturePath, JSON.stringify({ reason: 'forgot the key' }))
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      expect(tree.read(resolverPath, 'utf-8')).toContain('@UseGuards(GqlAuthAdminGuard)\n@AdminOnly()')
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('no "posture" key'))
+      warn.mockRestore()
+    })
+  })
+
   describe('filter inputs', () => {
     // Prisma's `where` is built from the database model, so before typed filter inputs any column
     // was filterable whether or not it was queryable — @graphqlOmit gave no protection, and

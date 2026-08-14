@@ -38,7 +38,46 @@ function toKebabCase(str: string): string {
   return str.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase()
 }
 
-export function generateResolverContent(model: ModelType, npmScope: string): string {
+// The guard posture of the generated CRUD resolvers. Normally `admin`; `authenticated` only while
+// a repo has a deliberate rollback in effect, declared in the posture file below. That file is the
+// single source of truth — the same one the repo's doctor and guard-posture spec read — so the
+// generator, doctor and spec agree by construction and `db-update` is safe to run at any point of
+// a staged migration instead of only at the endpoints (nestled-dev-template#140).
+//
+// Anything not positively readable as a KNOWN posture resolves to `admin`: a missing file,
+// unparseable JSON, an absent key, or a typo. This decides what guard gets written onto every
+// generated resolver, so the default has to be the strict one. A present-but-invalid file is
+// additionally reported, because failing closed *silently* would leave a config nobody realises
+// has stopped meaning anything. (Semantics mirror the downstream doctor's reader — keep in step.)
+export const GENERATED_CRUD_POSTURES = ['admin', 'authenticated'] as const
+export type GeneratedCrudPosture = (typeof GENERATED_CRUD_POSTURES)[number]
+export const GENERATED_CRUD_POSTURE_PATH = '.nestled-updates/security/generated-crud-posture.json'
+
+export function readGeneratedCrudPosture(tree: Tree): { posture: GeneratedCrudPosture; invalid?: string } {
+  if (!tree.exists(GENERATED_CRUD_POSTURE_PATH)) return { posture: 'admin' }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(tree.read(GENERATED_CRUD_POSTURE_PATH, 'utf-8') ?? '')
+  } catch {
+    return { posture: 'admin', invalid: 'unparseable JSON' }
+  }
+
+  const declared = (parsed as { posture?: unknown })?.posture
+  if (typeof declared === 'string' && (GENERATED_CRUD_POSTURES as readonly string[]).includes(declared)) {
+    return { posture: declared as GeneratedCrudPosture }
+  }
+  return {
+    posture: 'admin',
+    invalid: typeof declared === 'string' ? `an unrecognized posture "${declared}"` : 'no "posture" key',
+  }
+}
+
+export function generateResolverContent(
+  model: ModelType,
+  npmScope: string,
+  posture: GeneratedCrudPosture = 'admin',
+): string {
   const readManyMethodName = model.pluralModelPropertyName
   const countMethodName = `${model.pluralModelPropertyName}Count`
   const readOneMethodName = model.modelPropertyName
@@ -48,6 +87,11 @@ export function generateResolverContent(model: ModelType, npmScope: string): str
   const idTsType = model.idFieldType === 'BigInt' ? 'bigint' : 'string'
   const idArgsType = model.idFieldType === 'BigInt' ? ', { type: () => GraphQLBigInt }' : ''
   const graphqlScalarImport = model.idFieldType === 'BigInt' ? "\nimport { GraphQLBigInt } from 'graphql-scalars'" : ''
+
+  const guard =
+    posture === 'authenticated'
+      ? { imports: 'Authenticated, GqlAuthGuard', guardClass: 'GqlAuthGuard', decorator: '@Authenticated()' }
+      : { imports: 'AdminOnly, GqlAuthAdminGuard', guardClass: 'GqlAuthAdminGuard', decorator: '@AdminOnly()' }
 
   return `import { UseGuards } from '@nestjs/common'
 import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
@@ -60,11 +104,11 @@ import {
     List${model.modelName}Input,
     Update${model.modelName}Input
     } from '@${npmScope}/api/generated-crud/data-access'${graphqlScalarImport}
-import { AdminOnly, GqlAuthAdminGuard } from '@${npmScope}/api/utils'
+import { ${guard.imports} } from '@${npmScope}/api/utils'
 
 @Resolver(() => ${model.modelName})
-@UseGuards(GqlAuthAdminGuard)
-@AdminOnly()
+@UseGuards(${guard.guardClass})
+${guard.decorator}
 export class Generated${model.modelName}Resolver {
   constructor(private readonly generatedService: ApiCrudDataAccessService) {}
 
@@ -223,6 +267,7 @@ export async function generateCrudLogic(
     dataAccessLibraryRoot: string,
     featureLibraryRoot: string,
     models: ModelType[],
+    posture: GeneratedCrudPosture,
   ) {
     const npmScope = dependencies.getNpmScope(tree)
 
@@ -270,7 +315,7 @@ export async function generateCrudLogic(
         featureLibraryRoot,
         `src/lib/${toKebabCase(model.modelName)}.resolver.ts`,
       )
-      const resolverContent = generateResolverContent(model, npmScope)
+      const resolverContent = generateResolverContent(model, npmScope, posture)
       tree.write(resolverFilePath, resolverContent)
     }
   }
@@ -283,8 +328,18 @@ export async function generateCrudLogic(
     return // Return early for the test case
   }
 
+  const { posture, invalid } = readGeneratedCrudPosture(tree)
+  if (invalid) {
+    // Fail closed AND say so at emission time: a typo'd posture file silently emitting admin would
+    // regress a declared `authenticated` rollback with nothing but the downstream spec to catch it.
+    console.warn(
+      `⚠️  ${GENERATED_CRUD_POSTURE_PATH} declares ${invalid}; emitting "admin" guards. ` +
+        `Valid values: ${GENERATED_CRUD_POSTURES.join(', ')}.`,
+    )
+  }
+
   const { dataAccessLibraryRoot, featureLibraryRoot } = await createLibraries(tree, name, models)
-  await generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models)
+  await generateModelFiles(tree, dataAccessLibraryRoot, featureLibraryRoot, models, posture)
   await dependencies.formatFiles(tree)
 
   return () => {
