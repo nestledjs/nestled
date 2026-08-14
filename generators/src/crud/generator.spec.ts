@@ -239,6 +239,16 @@ describe('generate-crud generator', () => {
       warn.mockRestore()
     })
 
+    it('fails closed to admin and warns on a wrong-typed posture value', async () => {
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      tree.write(posturePath, JSON.stringify({ posture: 1 }))
+      await generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)
+
+      expect(tree.read(resolverPath, 'utf-8')).toContain('@UseGuards(GqlAuthAdminGuard)\n@AdminOnly()')
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining('a non-string posture (1)'))
+      warn.mockRestore()
+    })
+
     it('fails closed to admin and warns when the posture key is absent', async () => {
       const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
       tree.write(posturePath, JSON.stringify({ reason: 'forgot the key' }))
