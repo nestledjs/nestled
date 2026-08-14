@@ -67,13 +67,9 @@ export function readGeneratedCrudPosture(tree: Tree): { posture: GeneratedCrudPo
   if (typeof declared === 'string' && (GENERATED_CRUD_POSTURES as readonly string[]).includes(declared)) {
     return { posture: declared as GeneratedCrudPosture }
   }
-  const described =
-    typeof declared === 'string'
-      ? `an unrecognized posture "${declared}"`
-      : declared === undefined
-      ? 'no "posture" key'
-      : `a non-string posture (${JSON.stringify(declared)})`
-  return { posture: 'admin', invalid: described }
+  if (typeof declared === 'string') return { posture: 'admin', invalid: `an unrecognized posture "${declared}"` }
+  if (declared === undefined) return { posture: 'admin', invalid: 'no "posture" key' }
+  return { posture: 'admin', invalid: `a non-string posture (${JSON.stringify(declared)})` }
 }
 
 export function generateResolverContent(
