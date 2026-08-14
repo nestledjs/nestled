@@ -1,3 +1,17 @@
+## 3.1.0 (2026-08-14)
+
+### Added
+
+- **`crud`: the generator reads the guard-posture file and emits the declared tier.** The CRUD
+  generator now reads `.nestled-updates/security/generated-crud-posture.json` — the same single
+  source of truth a repo's doctor and guard-posture spec read — instead of hard-coding the admin
+  guard. `"posture": "authenticated"` emits `GqlAuthGuard` + `@Authenticated()`; everything else
+  fails closed to `GqlAuthAdminGuard` + `@AdminOnly()`. A missing file is the normal case and stays
+  quiet (output is byte-identical to 3.0.x); a present-but-invalid file (unparseable JSON, unknown
+  or wrong-typed value, absent key) still emits admin but warns at emission time. This makes
+  `db-update` idempotent at any point of a staged guard migration instead of only at the endpoints
+  (nestled-dev-template#140).
+
 # Changelog — @nestledjs/generators
 
 All notable changes to `@nestledjs/generators` are documented here. This project
