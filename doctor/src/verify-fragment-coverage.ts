@@ -102,7 +102,14 @@ Reports SDK fragment fields that no resolver select produces. Exits non-zero on 
 
 const SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
 const SELECT_FILE_SUFFIXES = ['.select.ts', '.resolver.ts', '.service.ts']
-const SELECT_CONSTANT = /^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*\{/gm
+// Discovery has to match what findConstantBody can READ, or a constant it would happily parse is
+// never offered to it — a silent skip that reports as a clean run. So: the optional type annotation
+// (`const USER_SELECT: Prisma.UserSelect = {`) and let/var, both of which findConstantBody accepts.
+//
+// The annotation excludes newlines deliberately. `[^=]+` would span lines and reintroduce the
+// backtracking that S8786 flagged here; a one-line annotation is the realistic case.
+const SELECT_CONSTANT =
+  /^[ \t]*(?:export\s+)?(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*(?::[^=\n]+)?=\s*\{/gm
 
 const alphabetical = (left: string, right: string): number => left.localeCompare(right)
 
