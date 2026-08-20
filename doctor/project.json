@@ -8,17 +8,39 @@
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": ["{options.outputPath}"],
+      "outputs": [
+        "{options.outputPath}"
+      ],
       "options": {
         "outputPath": "dist/doctor",
         "main": "doctor/src/index.ts",
         "tsConfig": "doctor/tsconfig.lib.json",
         "assets": [
           "doctor/*.md",
-          { "input": "./doctor/src", "glob": "**/*.mjs", "output": "./src" },
-          { "input": "./doctor/bin", "glob": "**/*.js", "output": "./bin" }
+          {
+            "input": "./doctor/src",
+            "glob": "**/!(*.spec).mjs",
+            "output": "./src"
+          },
+          {
+            "input": "./doctor/bin",
+            "glob": "**/*.js",
+            "output": "./bin"
+          }
         ]
       }
+    },
+    "test": {
+      "executor": "@nx/vite:test",
+      "outputs": [
+        "{options.reportsDirectory}"
+      ],
+      "options": {
+        "reportsDirectory": "../coverage/doctor"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint"
     }
   }
 }
