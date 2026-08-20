@@ -1,4 +1,5 @@
 packages:
+  - doctor
   - generators
   - upgrades
 

@@ -1,0 +1,45 @@
+{
+  "name": "@nestledjs/doctor",
+  "version": "0.1.0",
+  "type": "commonjs",
+  "main": "./src/index.js",
+  "types": "./src/index.d.ts",
+  "description": "Nestled's enforcement checks \u2014 the doctor and its verifiers, shipped as a package so every repo runs provably identical rules",
+  "keywords": [
+    "nestled",
+    "doctor",
+    "lint",
+    "architecture",
+    "enforcement",
+    "security"
+  ],
+  "author": "Nestled Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nestledjs/nestled.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "nestled-doctor": "bin/nestled-doctor.js",
+    "nestled-verify-selects": "bin/nestled-verify-selects.js",
+    "nestled-verify-select-coverage": "bin/nestled-verify-select-coverage.js",
+    "nestled-verify-fragments": "bin/nestled-verify-fragments.js",
+    "nestled-verify-prisma-client": "bin/nestled-verify-prisma-client.js"
+  },
+  "dependencies": {
+    "graphql": "^16.9.0",
+    "typescript": "^5.9.0",
+    "tsx": "^4.19.0"
+  },
+  "peerDependencies": {
+    "@prisma/internals": ">=6"
+  },
+  "peerDependenciesMeta": {
+    "@prisma/internals": {
+      "optional": true
+    }
+  }
+}
