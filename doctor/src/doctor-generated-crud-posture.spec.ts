@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
@@ -79,10 +79,21 @@ describe('readGeneratedCrudPosture', () => {
 // Nx Tree). If the generator ever changes them, the doctor would silently assert a tier the
 // generator no longer emits — so pin them against the installed package's own source.
 describe('stays in step with @nestledjs/generators', () => {
-  const generatorSource = readFileSync(
+  // The generator lives in two shapes depending on where these tests run: a dependency in a
+  // consuming repo, or the workspace source in the repo that publishes it. Check both, and fail
+  // loudly if neither is present — silently skipping would retire the drift check without saying so.
+  const generatorCandidates = [
     'node_modules/@nestledjs/generators/src/crud/generator.js',
-    'utf8',
-  )
+    '../generators/src/crud/generator.ts',
+    'generators/src/crud/generator.ts',
+  ]
+  const generatorPath = generatorCandidates.find(candidate => existsSync(candidate))
+  if (!generatorPath) {
+    throw new Error(
+      `Could not find @nestledjs/generators' crud generator in any of: ${generatorCandidates.join(', ')}`,
+    )
+  }
+  const generatorSource = readFileSync(generatorPath, 'utf8')
 
   it('uses the same posture file path', () => {
     expect(generatorSource).toContain(GENERATED_CRUD_POSTURE_PATH)
