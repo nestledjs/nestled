@@ -110,7 +110,7 @@ if (!schemaDirectory) {
 }
 const datamodel = readdirSync(schemaDirectory)
   .filter(file => file.endsWith('.prisma'))
-  .sort()
+  .sort((left, right) => left.localeCompare(right))
   .map(file => readFileSync(join(schemaDirectory, file), 'utf8'))
   .join('\n')
 
@@ -336,7 +336,7 @@ const nestedProblems = []
 const unresolved = []
 const nullableGaps = []
 
-for (const file of selectFiles.sort()) {
+for (const file of selectFiles.sort((left, right) => left.localeCompare(right))) {
   const source = readFileSync(file, 'utf8')
   const relativePath = relative(cwd, file)
   // Discovery deliberately shares the declaration shapes the readers below accept. It previously
@@ -385,7 +385,7 @@ for (const file of selectFiles.sort()) {
           file: relativePath,
           constant: path,
           model: currentModel,
-          missing: hard.sort(),
+          missing: hard.sort((left, right) => left.localeCompare(right)),
         })
       }
       if (soft.length > 0) {
@@ -393,7 +393,7 @@ for (const file of selectFiles.sort()) {
           file: relativePath,
           constant: path,
           model: currentModel,
-          missing: soft.sort(),
+          missing: soft.sort((left, right) => left.localeCompare(right)),
         })
       }
 
