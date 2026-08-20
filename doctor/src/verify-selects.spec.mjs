@@ -257,7 +257,7 @@ describe('verify-selects', () => {
 
     // Both are unresolvable by name. Scanning from the previous constant's START swept up the
     // annotation in its body and silently validated TOTALLY_UNKNOWN_THING against User.
-    expect(result.unresolved.map(entry => entry.const).sort()).toEqual([
+    expect(result.unresolved.map(entry => entry.const).sort((left, right) => left.localeCompare(right))).toEqual([
       'FIRST_SELECT',
       'TOTALLY_UNKNOWN_THING',
     ])
@@ -315,7 +315,7 @@ describe('verify-selects', () => {
     // constant at the `}` in that comment — putting the rest of its body, annotation included,
     // back into the next constant's window. Counting on the sanitized source fixes it; the mask
     // is length-preserving, so the offsets still line up with rawSource for the annotation scan.
-    expect(result.unresolved.map(entry => entry.const).sort()).toEqual([
+    expect(result.unresolved.map(entry => entry.const).sort((left, right) => left.localeCompare(right))).toEqual([
       'FIRST_SELECT',
       'TOTALLY_UNKNOWN_THING',
     ])
