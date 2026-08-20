@@ -1,10 +1,10 @@
 {
   "name": "@nestledjs/doctor",
-  "version": "0.1.0",
+  "version": "0.1.1-0",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
-  "description": "Nestled's enforcement checks \u2014 the doctor and its verifiers, shipped as a package so every repo runs provably identical rules",
+  "description": "Nestled's enforcement checks — the doctor and its verifiers, shipped as a package so every repo runs provably identical rules",
   "keywords": [
     "nestled",
     "doctor",
