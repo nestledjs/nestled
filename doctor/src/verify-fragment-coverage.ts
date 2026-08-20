@@ -59,7 +59,6 @@
  */
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs'
 import { dirname, join, relative, resolve } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import { buildSchema, getNamedType, isNonNullType, isObjectType, type GraphQLSchema } from 'graphql'
 import {
   buildPrismaSelectFromFragments,
@@ -90,7 +89,7 @@ const loadDatabaseModels = async (metadataPath: string): Promise<DatabaseModelMe
 
   const loaded = require(metadataPath) as { DATABASE_MODELS?: DatabaseModelMetadata[] }
   if (!Array.isArray(loaded.DATABASE_MODELS)) {
-    throw new Error(`${metadataPath} does not export DATABASE_MODELS`)
+    throw new TypeError(`${metadataPath} does not export DATABASE_MODELS`)
   }
 
   return loaded.DATABASE_MODELS
@@ -196,7 +195,7 @@ interface RawEntry {
 
 /** `const NAME = {` / `const NAME = (args) => ({` — where a named select's body starts. */
 export const findConstantBody = (source: string, name: string): number => {
-  const declaration = new RegExp(`\\b(?:const|let|var)\\s+${name}\\s*(?::[^=]+)?=\\s*`).exec(source)
+  const declaration = new RegExp(String.raw`\b(?:const|let|var)\s+${name}\s*(?::[^=]+)?=\s*`).exec(source)
   if (!declaration) return -1
   let cursor = declaration.index + declaration[0].length
   const arrow = /^\([^)]*\)\s*(?::[^=]+)?=>\s*\(?\s*/.exec(source.slice(cursor))
@@ -508,7 +507,7 @@ export const annotationListBefore = (
   tag: string,
 ): string[] => {
   const window = raw.slice(Math.max(previousEnd, 0), offset)
-  return [...window.matchAll(new RegExp(`@${tag}[ \\t]+([^\\n]+)`, 'g'))]
+  return [...window.matchAll(new RegExp(String.raw`@${tag}[ \t]+([^\n]+)`, 'g'))]
     .flatMap(match => match[1].replace(/\*\/.*$/, '').split(','))
     .map(entry => entry.trim())
     .filter(Boolean)
@@ -627,7 +626,7 @@ export const relationTarget = (
   const field = models
     .find(model => model.modelName === modelName)
     ?.fields?.find(entry => entry.name === fieldName)
-  return field && field.kind === 'object' ? field.type : undefined
+  return field?.kind === 'object' ? field.type : undefined
 }
 
 /**
@@ -684,8 +683,7 @@ export const flatten = (select: PrismaSelect, prefix = ''): string[] => {
     const path = prefix ? `${prefix}.${field}` : field
     if (value === true) paths.push(path)
     else {
-      paths.push(path)
-      paths.push(...flatten(value.select, path))
+      paths.push(path, ...flatten(value.select, path))
     }
   }
   return paths
@@ -867,28 +865,28 @@ const main = async (): Promise<void> => {
     console.log(
       `\nMISSING (${missing.length}) — a fragment asks for these and nothing produces them:`,
     )
-    for (const entry of missing.sort(alphabetical)) console.log(`  ${entry}`)
+    for (const entry of [...missing].sort(alphabetical)) console.log(`  ${entry}`)
   }
 
   if (nonNullPartial.length > 0) {
     console.log(
       `\nNON-NULLABLE PARTIAL (${nonNullPartial.length}) — these error the whole query, not a field:`,
     )
-    for (const entry of nonNullPartial.sort(alphabetical)) console.log(`  ${entry}`)
+    for (const entry of [...nonNullPartial].sort(alphabetical)) console.log(`  ${entry}`)
   }
 
   if (operationFindings.length > 0) {
     console.log(
       `\nOPERATION-SCOPED (${operationFindings.length}) — a served document requests what its select does not produce:`,
     )
-    for (const entry of operationFindings.sort(alphabetical)) console.log(`  ${entry}`)
+    for (const entry of [...operationFindings].sort(alphabetical)) console.log(`  ${entry}`)
   }
 
   if (verbose && partial.length > 0) {
     console.log(
       `\nPARTIAL (${partial.length}) — advisory; thinner list selects are usually correct:`,
     )
-    for (const entry of partial.sort(alphabetical)) console.log(`  ${entry}`)
+    for (const entry of [...partial].sort(alphabetical)) console.log(`  ${entry}`)
   } else if (partial.length > 0) {
     console.log(
       `\nPARTIAL: ${partial.length} field(s) present in some selects but not others (--verbose to list).`,
@@ -898,7 +896,7 @@ const main = async (): Promise<void> => {
   if (skipped.length > 0) {
     console.log(
       `\nNOT CHECKED (${skipped.length}): no named select constant maps to these models — ` +
-        `generated CRUD or inline selects. ${verbose ? skipped.sort(alphabetical).join(', ') : '--verbose to list'}`,
+        `generated CRUD or inline selects. ${verbose ? [...skipped].sort(alphabetical).join(', ') : '--verbose to list'}`,
     )
   }
 

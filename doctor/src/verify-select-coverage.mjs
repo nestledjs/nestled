@@ -182,7 +182,7 @@ for (const root of searchRoots) {
  * comment and the declaration would read as intervening code and discard the annotation.
  */
 const declarationOf = (source, name) =>
-  new RegExp(`\\b(?:export\\s+)?(?:const|let|var)\\s+${name}\\s*(?::[^=]+)?=\\s*`).exec(source)
+  new RegExp(String.raw`\b(?:export\s+)?(?:const|let|var)\s+${name}\s*(?::[^=]+)?=\s*`).exec(source)
 
 /**
  * Names of exported constants whose value is an object literal — the candidate selects in a file.
@@ -216,7 +216,7 @@ const annotationFor = (source, name, tag) => {
   const commentStart = preceding.lastIndexOf('/**', commentEnd)
   if (commentStart === -1) return []
   const jsdoc = preceding.slice(commentStart + 3, commentEnd)
-  const found = [...jsdoc.matchAll(new RegExp(`@${tag}\\s+([^\\n*]+)`, 'g'))].pop()
+  const found = [...jsdoc.matchAll(new RegExp(String.raw`@${tag}\s+([^\n*]+)`, 'g'))].pop()
   return found
     ? found[1]
         .split(',')
@@ -336,7 +336,7 @@ const nestedProblems = []
 const unresolved = []
 const nullableGaps = []
 
-for (const file of selectFiles.sort((left, right) => left.localeCompare(right))) {
+for (const file of [...selectFiles].sort((left, right) => left.localeCompare(right))) {
   const source = readFileSync(file, 'utf8')
   const relativePath = relative(cwd, file)
   // Discovery deliberately shares the declaration shapes the readers below accept. It previously
@@ -377,7 +377,8 @@ for (const file of selectFiles.sort((left, right) => left.localeCompare(right)))
       for (const [field, information] of Object.entries(graphql)) {
         if (!prismaScalars[currentModel].has(field)) continue
         if (keys.has(field) || omits.has(field)) continue
-        ;(information.nonNull ? hard : soft).push(field)
+        const bucket = information.nonNull ? hard : soft
+        bucket.push(field)
       }
       if (hard.length > 0) {
         const bucket = depth === 0 ? problems : nestedProblems
@@ -385,7 +386,7 @@ for (const file of selectFiles.sort((left, right) => left.localeCompare(right)))
           file: relativePath,
           constant: path,
           model: currentModel,
-          missing: hard.sort((left, right) => left.localeCompare(right)),
+          missing: [...hard].sort((left, right) => left.localeCompare(right)),
         })
       }
       if (soft.length > 0) {
@@ -393,7 +394,7 @@ for (const file of selectFiles.sort((left, right) => left.localeCompare(right)))
           file: relativePath,
           constant: path,
           model: currentModel,
-          missing: soft.sort((left, right) => left.localeCompare(right)),
+          missing: [...soft].sort((left, right) => left.localeCompare(right)),
         })
       }
 

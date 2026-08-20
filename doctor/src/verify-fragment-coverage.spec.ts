@@ -474,13 +474,13 @@ describe('sanitize', () => {
 
     const sanitized = sanitize(source)
     expect(sanitized).toHaveLength(source.length)
-    expect((sanitized.match(/\n/g) ?? []).length).toBe((source.match(/\n/g) ?? []).length)
+    expect(sanitized.match(/\n/g) ?? []).toHaveLength((source.match(/\n/g) ?? []).length)
   })
 
   it('keeps the newline of a CRLF line continuation', () => {
     const source = 'const X = { a: "line\\\r\n", b: true }'
 
-    expect((sanitize(source).match(/\n/g) ?? []).length).toBe(1)
+    expect(sanitize(source).match(/\n/g) ?? []).toHaveLength(1)
   })
 })
 
