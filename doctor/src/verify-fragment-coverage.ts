@@ -102,7 +102,7 @@ Reports SDK fragment fields that no resolver select produces. Exits non-zero on 
 
 const SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
 const SELECT_FILE_SUFFIXES = ['.select.ts', '.resolver.ts', '.service.ts']
-const SELECT_CONSTANT = /(?:^|\n)\s*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*\{/g
+const SELECT_CONSTANT = /^[ \t]*(?:export\s+)?const\s+([A-Z][A-Z0-9_]*)\s*=\s*\{/gm
 
 const alphabetical = (left: string, right: string): number => left.localeCompare(right)
 
@@ -324,7 +324,7 @@ const importedConstantSelect = (
       .split(',')
       .map(name => name.trim())
       .map(name => {
-        const [original, alias] = name.split(/\s+as\s+/).map(part => part.trim())
+        const [original, alias] = name.split(/\bas\b/).map(part => part.trim())
         return { original, local: alias ?? original }
       })
       .find(candidate => candidate.local === ident)
@@ -604,7 +604,7 @@ export const resolveFieldsByModel = (repo: string): Map<string, Set<string>> => 
 
         const fields = served.get(modelName) ?? new Set<string>()
         for (const match of body.matchAll(
-          /@ResolveField\(([\s\S]*?)\)\s*\n\s*(?:async\s+)?(\w+)\s*\(/g,
+          /@ResolveField\(([\s\S]*?)\)[^\S\n]*\n\s*(?:async\s+)?(\w+)\s*\(/g,
         )) {
           // `@ResolveField(() => X, { name: 'graphqlName' })` overrides the method name.
           const renamed = /name:\s*['"`]?(\w+)/.exec(match[1])
