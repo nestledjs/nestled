@@ -1539,7 +1539,7 @@ const checkUpgradeNoteImpactGate = () => {
 // This copy was narrower still: it matched only @CtxUser(), so every organization-scoped resolver
 // read as unanchored.
 const hasContextScopeAnchor = (source: string): boolean =>
-  /@Ctx[A-Za-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i.test(source)
+  /@Ctx[a-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i.test(source)
 
 const usesInputIdInPrismaWhere = (source: string): boolean =>
   /\b(?:userId|organizationId|teamId|roleId|memberId|inviteId|subscriptionId|tokenId)\b/.test(

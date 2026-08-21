@@ -194,8 +194,11 @@ export const readStringObjectArray = (
 // findings claiming its scoped resolvers were unscoped.
 //
 // `@Ctx` is a literal prefix, so NestJS's own `@Context()` does not match.
+//
+// `[a-z]` rather than `[A-Za-z]`: the /i flag already makes them equivalent, and spelling both
+// ranges is a duplicated character class (S5869). The decorators are PascalCase and still match.
 const CALLER_SCOPE_ANCHOR =
-  /@Ctx[A-Za-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
+  /@Ctx[a-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
 
 export type UndeclaredAccessOperation = {
   className: string
