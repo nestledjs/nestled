@@ -1535,10 +1535,11 @@ const checkUpgradeNoteImpactGate = () => {
   }
 }
 
+// Same @Ctx* family as CALLER_SCOPE_ANCHOR in doctor-access-policy-analysis — see the note there.
+// This copy was narrower still: it matched only @CtxUser(), so every organization-scoped resolver
+// read as unanchored.
 const hasContextScopeAnchor = (source: string): boolean =>
-  /@CtxUser\s*\(\)|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i.test(
-    source,
-  )
+  /@Ctx[A-Za-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i.test(source)
 
 const usesInputIdInPrismaWhere = (source: string): boolean =>
   /\b(?:userId|organizationId|teamId|roleId|memberId|inviteId|subscriptionId|tokenId)\b/.test(

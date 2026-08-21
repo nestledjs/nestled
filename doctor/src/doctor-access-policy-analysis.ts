@@ -182,8 +182,20 @@ export const readStringObjectArray = (
  * it takes the caller, or reaches for the caller's identity when querying. Mirrors the anchor the
  * resolver-scope review uses.
  */
+// Any @Ctx* parameter decorator: the template ships CtxUser, CtxOrganization AND
+// CtxOrganizationId, and repos add their own (muzebook has CtxOrganizationIdCached). Matching the
+// SHAPE rather than an enumerated list is both correct and the only version that stays
+// repo-agnostic — an allowlist of names would have to grow every time a repo adds one, which is
+// repo-specific knowledge in a tool eleven repos share.
+//
+// The earlier pattern required `@CtxOrganization()` exactly, so `@CtxOrganizationId()` — the
+// template's own decorator, and the better one, since it hands a resolver only the id instead of a
+// context object carrying `permissions` — failed to match. muzebook uses it 195 times and had 382
+// findings claiming its scoped resolvers were unscoped.
+//
+// `@Ctx` is a literal prefix, so NestJS's own `@Context()` does not match.
 const CALLER_SCOPE_ANCHOR =
-  /@CtxUser\s*\(\)|@CtxOrganization\s*\(\)|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
+  /@Ctx[A-Za-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
 
 export type UndeclaredAccessOperation = {
   className: string
