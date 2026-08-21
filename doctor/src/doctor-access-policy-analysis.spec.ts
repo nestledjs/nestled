@@ -141,6 +141,44 @@ describe('getUndeclaredAccessOperations', () => {
 
   // @CtxUser() is a PARAMETER decorator, so detection has to read the whole method — a scan of the
   // method's own decorators, or of its body alone, misses it.
+  // The template ships CtxUser, CtxOrganization AND CtxOrganizationId; repos add their own
+  // (muzebook has CtxOrganizationIdCached). An enumerated list would have to grow per repo, so the
+  // detector matches the @Ctx* shape. Getting this wrong produced 382 findings against muzebook
+  // claiming its scoped resolvers were unscoped.
+  it.each([
+    ['@CtxOrganization()', '@CtxOrganization() org: OrganizationContext'],
+    ['@CtxOrganizationId()', '@CtxOrganizationId() organizationId: string'],
+    ['a repo-local variant', '@CtxOrganizationIdCached() organizationId: string'],
+  ])('treats %s as caller scoping', (_label, parameter) => {
+    const undeclared = getUndeclaredAccessOperations(`
+      @Resolver()
+      class AlbumResolver {
+        @Query(() => [Album])
+        async userAlbums(${parameter}): Promise<Album[]> {
+          return this.data.album.findMany({ where: { organizationId } })
+        }
+      }
+    `)
+
+    expect(undeclared[0].callerScoped).toBe(true)
+  })
+
+  // NestJS's own @Context() injects the whole GraphQL context and is not caller scoping. "Ctx" is a
+  // literal prefix, so it must not match.
+  it('does not treat @Context() as caller scoping', () => {
+    const undeclared = getUndeclaredAccessOperations(`
+      @Resolver()
+      class ThingResolver {
+        @Query(() => String)
+        async thing(@Context() ctx: NestContextType, @Args('id') id: string): Promise<string> {
+          return this.data.thing.findFirst({ where: { id } })
+        }
+      }
+    `)
+
+    expect(undeclared[0].callerScoped).toBe(false)
+  })
+
   it('treats a @CtxUser() parameter as caller scoping', () => {
     const undeclared = getUndeclaredAccessOperations(`
       @Resolver()
