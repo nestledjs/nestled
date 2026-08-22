@@ -1852,11 +1852,20 @@ const checkAuthLevelDeclarations = () => {
  * and read exactly like the misconfiguration this indirection exists to avoid.
  */
 const readCatalogInto = (target: Set<string>, spec: PermissionCatalogSpec): void => {
-  if (!existsSync(spec.path)) return
-  const source = readFileSync(spec.path, 'utf8')
+  // A configured path is repo-authored and can point anywhere -- a directory, a file the process
+  // cannot read, a stale location. Throwing there would abort the whole doctor over one bad config
+  // line, when the access-policy check already has a finding for exactly this state ("catalog is
+  // empty or unreadable"). Leaving the set empty lets that finding do its job.
+  if (!safeStat(spec.path)?.isFile()) return
+  let source: string
+  try {
+    source = readFileSync(spec.path, 'utf8')
+  } catch {
+    return
+  }
   for (const entry of readStringObjectArray(source, spec.export, spec.fields)) {
-    const parts = spec.fields.map((field) => entry[field])
-    if (parts.some((part) => part === undefined)) continue
+    const parts: Array<string | undefined> = spec.fields.map((field) => entry[field])
+    if (parts.includes(undefined)) continue
     target.add(parts.join(':'))
   }
 }
