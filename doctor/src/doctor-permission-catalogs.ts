@@ -4,11 +4,15 @@ import { existsSync, readFileSync } from 'node:fs'
  * Where a repo declares its permissions, and what an entry in that declaration looks like.
  *
  * The doctor validates every `@Require*Permission('...')` against the repo's own catalog, so it has
- * to be able to find and read that catalog. Hard-coding one seeding convention silently punishes
- * every repo that does not share it: the catalog reads empty, and the doctor reports EVERY
- * permission the repo declares as unknown. mi-core predates the template's PlatformAccessRole model
- * and seeds `{ name, resource, action }` from its own RBAC plugin -- adopting the packaged checks
- * there produced 133 findings that were not real (23 access-policy findings became 156).
+ * to be able to find and read that catalog. Hard-coding one seeding convention means any repo that
+ * does not share it reads an empty catalog, and every permission it declares reports as unknown.
+ * mi-core is the case in the fleet: it predates the template's PlatformAccessRole model and seeds
+ * `{ name, resource, action }` from its own RBAC plugin, so it carried a local patch to doctor.ts
+ * rather than run the packaged checks.
+ *
+ * Scope, so nobody re-derives it from the file's existence: on mi-core this is worth one finding
+ * (the empty-catalog notice). Its large access-policy delta comes from the coverage rule its copied
+ * doctor predates, which this config does not affect either way.
  *
  * The defaults are exactly what was hard-coded before this file existed, so a repo that says
  * nothing gets byte-identical output.
