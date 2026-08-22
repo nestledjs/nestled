@@ -36,10 +36,12 @@ import {
   type TypeScriptSource,
 } from './doctor-sdk-contract-analysis'
 import { getRegisteredModuleClasses } from './doctor-module-analysis'
+import { GENERATED_CRUD_POSTURE_PATH, readGeneratedCrudPosture } from './doctor-generated-crud-posture'
 import {
-  GENERATED_CRUD_POSTURE_PATH,
-  readGeneratedCrudPosture,
-} from './doctor-generated-crud-posture'
+  PERMISSION_CATALOGS_PATH,
+  readPermissionCatalogConfig,
+  type PermissionCatalogSpec,
+} from './doctor-permission-catalogs'
 import {
   blankCommentsAndStrings,
   getExternalImportSpecifiers,
@@ -65,10 +67,9 @@ const notesDir = '.nestled-updates/upgrade-notes'
 const guardBaselinePath = '.nestled-updates/security/guard-baseline.json'
 const publicOperationsPath = '.nestled-updates/security/public-operations.json'
 const permissionExemptionsPath = '.nestled-updates/security/permission-exemptions.json'
-const platformPermissionCatalogPath =
-  'libs/api/prisma/src/lib/seed/seed-data/seed-platform-access-control.ts'
-const organizationPermissionCatalogPath =
-  'libs/api/prisma/src/lib/seed/seed-data/seed-roles-permissions.ts'
+const permissionCatalogs = readPermissionCatalogConfig()
+const platformPermissionCatalogPath = permissionCatalogs.config.platform.path
+const organizationPermissionCatalogPath = permissionCatalogs.config.organization.path
 const sdkContractBaselinePath = '.nestled-updates/sdk-contract-baseline.json'
 const sdkContractExceptionsPath = '.nestled-updates/sdk-contract-exceptions.json'
 const resolverSourceRoots = ['libs/api', 'apps/api/src']
@@ -254,8 +255,8 @@ const directFiles = (dir: string, predicate: (path: string) => boolean): string[
   if (!existsSync(dir)) return []
 
   return safeReadDir(dir)
-    .map(entry => join(dir, entry))
-    .filter(path => safeStat(path)?.isFile() === true && predicate(path))
+    .map((entry) => join(dir, entry))
+    .filter((path) => safeStat(path)?.isFile() === true && predicate(path))
 }
 
 const getRegexMatches = (pattern: RegExp, source: string): RegExpExecArray[] => {
@@ -276,14 +277,8 @@ const getRegexMatches = (pattern: RegExp, source: string): RegExpExecArray[] => 
 // Resolve a relative import spec to a file on disk (adding .ts/.tsx or an index file).
 const resolveLocalImport = (fromDir: string, spec: string): string | undefined => {
   const base = join(fromDir, spec)
-  const candidates = [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    join(base, 'index.ts'),
-    join(base, 'index.tsx'),
-  ]
-  return candidates.find(candidate => safeStat(candidate)?.isFile() === true)
+  const candidates = [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts'), join(base, 'index.tsx')]
+  return candidates.find((candidate) => safeStat(candidate)?.isFile() === true)
 }
 
 const getRegisteredRouteFiles = (): Set<string> => {
@@ -314,8 +309,7 @@ const getRegisteredRouteFiles = (): Set<string> => {
   // prefix of `const basePath = 'foo' + suffix` would substitute 'foo' as if it were the full
   // value and register a wrong concrete path. Only horizontal whitespace before the terminator,
   // so the lookahead can see the newline that ends the declaration.
-  const constantPattern =
-    /\b(?:const|let|var)\s+(\w+)\s*=\s*['"]([^'"]+)['"][^\S\n]*(?=as\b|;|\n|$)/g
+  const constantPattern = /\b(?:const|let|var)\s+(\w+)\s*=\s*['"]([^'"]+)['"][^\S\n]*(?=as\b|;|\n|$)/g
 
   const scan = (filePath: string): void => {
     if (visited.has(filePath) || !existsSync(filePath)) return
@@ -330,10 +324,7 @@ const getRegisteredRouteFiles = (): Set<string> => {
       constants.set(match[1], match[2])
     }
     for (const match of getRegexMatches(templatePattern, source)) {
-      const resolved = match[1].replace(
-        /\$\{(\w+)\}/g,
-        (whole, name: string) => constants.get(name) ?? whole,
-      )
+      const resolved = match[1].replace(/\$\{(\w+)\}/g, (whole, name: string) => constants.get(name) ?? whole)
       if (!resolved.includes('${')) registered.add(join(routeRoot, resolved))
     }
 
@@ -359,7 +350,7 @@ const checkRoutes = () => {
   const registered = getRegisteredRouteFiles()
   const routeFiles = walkFiles(
     routeRoot,
-    path => (path.endsWith('.tsx') || path.endsWith('.ts')) && !isRouteHelperFile(path),
+    (path) => (path.endsWith('.tsx') || path.endsWith('.ts')) && !isRouteHelperFile(path),
   )
 
   for (const file of routeFiles) {
@@ -378,7 +369,7 @@ const checkRoutes = () => {
 const checkForbiddenPrismaImports = () => {
   const files = walkFiles(
     '.',
-    path =>
+    (path) =>
       /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path) &&
       !path.includes('/node_modules/') &&
       !path.includes('/build/') &&
@@ -387,8 +378,7 @@ const checkForbiddenPrismaImports = () => {
       !path.includes('/libs/api/generated-crud/'),
   )
 
-  const directImportPattern =
-    /(?:from\s+['"]@prisma\/client['"]|require\(['"]@prisma\/client['"]\))/g
+  const directImportPattern = /(?:from\s+['"]@prisma\/client['"]|require\(['"]@prisma\/client['"]\))/g
 
   for (const file of files) {
     const source = readFileSync(file, 'utf8')
@@ -405,7 +395,7 @@ const checkForbiddenPrismaImports = () => {
 const checkStaleConfigNames = () => {
   const files = walkFiles(
     '.',
-    path =>
+    (path) =>
       /\.(ts|tsx|js|jsx|mjs|cjs|md|yml|yaml|json)$/.test(path) &&
       path !== 'scripts/doctor.ts' &&
       // Skip dev-authoring docs (plans/, agents/, ai-docs/): not the product surface, and they
@@ -444,8 +434,7 @@ const checkMcpWiring = () => {
   }
 }
 
-const normalizePath = (path: string): string =>
-  `/${path}`.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
+const normalizePath = (path: string): string => `/${path}`.replace(/\/+/g, '/').replace(/\/$/, '') || '/'
 
 const getDecoratorPath = (decoratorArgs: string | undefined): string => {
   if (!decoratorArgs) return ''
@@ -479,7 +468,7 @@ const getAllowedApiPrefixes = (): string[] => {
     return []
   }
 
-  return getRegexMatches(/['"`]([^'"`]+)['"`]/g, match[1]).map(item => normalizePath(item[1]))
+  return getRegexMatches(/['"`]([^'"`]+)['"`]/g, match[1]).map((item) => normalizePath(item[1]))
 }
 
 const isControllerCandidateFile = (path: string): boolean =>
@@ -503,7 +492,7 @@ const getControllerClassSources = (source: string): { path: string; source: stri
 }
 
 const getHttpMethodPaths = (source: string): string[] =>
-  getRegexMatches(/@(Get|Post|Put|Patch|Delete|All)\s*(?:\(([^)]*)\))?/g, source).map(match =>
+  getRegexMatches(/@(Get|Post|Put|Patch|Delete|All)\s*(?:\(([^)]*)\))?/g, source).map((match) =>
     getDecoratorPath(match[2]),
   )
 
@@ -520,13 +509,9 @@ const checkControllerMethodPaths = (
 
   for (const methodPath of methodPaths) {
     const routePath = toApiRoute(controllerPath, methodPath)
-    const isAllowed = allowedPrefixes.some(prefix => routePath.startsWith(prefix))
+    const isAllowed = allowedPrefixes.some((prefix) => routePath.startsWith(prefix))
     if (!isAllowed) {
-      fail(
-        'api-routes',
-        `Registered API route ${routePath} is not covered by VALID_API_PREFIXES`,
-        file,
-      )
+      fail('api-routes', `Registered API route ${routePath} is not covered by VALID_API_PREFIXES`, file)
     }
   }
 }
@@ -542,12 +527,7 @@ const checkApiControllerRoutesAllowed = () => {
     if (!source.includes('@Controller')) continue
 
     for (const controller of getControllerClassSources(source)) {
-      checkControllerMethodPaths(
-        file,
-        controller.path,
-        getHttpMethodPaths(controller.source),
-        allowedPrefixes,
-      )
+      checkControllerMethodPaths(file, controller.path, getHttpMethodPaths(controller.source), allowedPrefixes)
     }
   }
 }
@@ -555,25 +535,21 @@ const checkApiControllerRoutesAllowed = () => {
 const controllerSourceRoots = ['apps/api', 'libs/api']
 
 const getControllerSourceFiles = (): string[] => {
-  const files = controllerSourceRoots.flatMap(root =>
-    walkFiles(root, path => isControllerCandidateFile(path) && path.endsWith('.controller.ts')),
+  const files = controllerSourceRoots.flatMap((root) =>
+    walkFiles(root, (path) => isControllerCandidateFile(path) && path.endsWith('.controller.ts')),
   )
   return [...new Set(files)].sort((left, right) => left.localeCompare(right))
 }
 
 const getAuthSourceFiles = (): string[] => {
-  const files = resolverSourceRoots.flatMap(root =>
-    walkFiles(root, path => path.endsWith('.resolver.ts') && !path.endsWith('.spec.ts')),
+  const files = resolverSourceRoots.flatMap((root) =>
+    walkFiles(root, (path) => path.endsWith('.resolver.ts') && !path.endsWith('.spec.ts')),
   )
-  return [...new Set([...files, ...getControllerSourceFiles()])].sort((left, right) =>
-    left.localeCompare(right),
-  )
+  return [...new Set([...files, ...getControllerSourceFiles()])].sort((left, right) => left.localeCompare(right))
 }
 
 const getGuardBaselineSourceFiles = (): string[] => {
-  const customResolverFiles = walkFiles('libs/api/custom/src/lib', path =>
-    path.endsWith('.resolver.ts'),
-  )
+  const customResolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
   return [...new Set([...customResolverFiles, ...getControllerSourceFiles()])].sort((left, right) =>
     left.localeCompare(right),
   )
@@ -581,14 +557,13 @@ const getGuardBaselineSourceFiles = (): string[] => {
 
 const getGraphqlResolverMethods = (source: string): string[] =>
   getRegexMatches(/^\s{2}(?:override\s+)?(?:async\s+)?(\w+)\s*\(/gm, source)
-    .map(match => match[1])
-    .filter(methodName => methodName !== 'constructor')
+    .map((match) => match[1])
+    .filter((methodName) => methodName !== 'constructor')
 
-const getLineNumber = (source: string, index: number): number =>
-  source.slice(0, index).split('\n').length
+const getLineNumber = (source: string, index: number): number => source.slice(0, index).split('\n').length
 
 const getGeneratedCrudMethodNames = (): Set<string> => {
-  const generatedResolverFiles = walkFiles('libs/api/generated-crud/feature/src/lib', path =>
+  const generatedResolverFiles = walkFiles('libs/api/generated-crud/feature/src/lib', (path) =>
     path.endsWith('.resolver.ts'),
   )
   const methodNames = new Set<string>()
@@ -606,11 +581,7 @@ const getGeneratedCrudMethodNames = (): Set<string> => {
 const checkDefaultResolverComposition = (file: string, source: string) => {
   if (!/\bextends\s+Generated\w+Resolver\b/.test(source)) return
 
-  fail(
-    'api-names',
-    'Custom model resolvers must be additive and must not extend generated CRUD resolvers',
-    file,
-  )
+  fail('api-names', 'Custom model resolvers must be additive and must not extend generated CRUD resolvers', file)
 }
 
 const checkDefaultResolverFile = (file: string, generatedMethodNames: Set<string>) => {
@@ -623,9 +594,7 @@ const checkDefaultResolverFile = (file: string, generatedMethodNames: Set<string
 }
 
 const getGeneratedResolverClassNames = (): string[] => {
-  const resolverFiles = walkFiles('libs/api/generated-crud/feature/src/lib', path =>
-    path.endsWith('.resolver.ts'),
-  )
+  const resolverFiles = walkFiles('libs/api/generated-crud/feature/src/lib', (path) => path.endsWith('.resolver.ts'))
   const classNames: string[] = []
 
   for (const file of resolverFiles) {
@@ -642,8 +611,8 @@ const checkGeneratedCrudModuleRegistration = () => {
   const canonicalModulePath = join(featureRoot, 'lib/api-generated-crud-feature.module.ts')
   const featureIndexPath = join(featureRoot, 'index.ts')
   const appModulePath = 'apps/api/src/app.module.ts'
-  const moduleFiles = walkFiles(join(featureRoot, 'lib'), path => path.endsWith('.module.ts'))
-  const moduleDeclarations = moduleFiles.filter(file =>
+  const moduleFiles = walkFiles(join(featureRoot, 'lib'), (path) => path.endsWith('.module.ts'))
+  const moduleDeclarations = moduleFiles.filter((file) =>
     readFileSync(file, 'utf8').includes('export class ApiGeneratedCrudFeatureModule'),
   )
 
@@ -659,7 +628,7 @@ const checkGeneratedCrudModuleRegistration = () => {
   const moduleSource = stripComments(readFileSync(canonicalModulePath, 'utf8'))
   const providerBlock = /providers\s*:\s*\[([\s\S]*?)\]/.exec(moduleSource)?.[1] ?? ''
   const registeredProviders = new Set(
-    getRegexMatches(/\bGenerated\w+Resolver\b/g, providerBlock).map(match => match[0]),
+    getRegexMatches(/\bGenerated\w+Resolver\b/g, providerBlock).map((match) => match[0]),
   )
   const resolverClasses = getGeneratedResolverClassNames()
 
@@ -736,9 +705,7 @@ const checkGeneratedCrudPosture = () => {
     )
   }
 
-  const resolverFiles = walkFiles('libs/api/generated-crud/feature/src/lib', path =>
-    path.endsWith('.resolver.ts'),
-  )
+  const resolverFiles = walkFiles('libs/api/generated-crud/feature/src/lib', (path) => path.endsWith('.resolver.ts'))
 
   // At `authenticated` the repo has deliberately suspended the admin rule, so asserting it would
   // report every generated operation as a violation and bury the findings that matter. Assert the
@@ -804,7 +771,9 @@ const checkGeneratorAdminBoundaryVersion = () => {
   if (!supportsAdminOnlyGeneratorBoundary(version)) {
     fail(
       'admin-crud-boundary',
-      `@nestledjs/generators ${version || '(unknown version)'} cannot enforce the permanent admin-only CRUD and application-owned SDK boundary; upgrade to 3.0.3 or newer before running db-update`,
+      `@nestledjs/generators ${
+        version || '(unknown version)'
+      } cannot enforce the permanent admin-only CRUD and application-owned SDK boundary; upgrade to 3.0.3 or newer before running db-update`,
       generatorPackagePath,
     )
   }
@@ -836,9 +805,7 @@ const checkDefaultResolverGeneratedNameCollisions = () => {
     return
   }
 
-  const defaultResolverFiles = walkFiles('libs/api/custom/src/lib/default', path =>
-    path.endsWith('.resolver.ts'),
-  )
+  const defaultResolverFiles = walkFiles('libs/api/custom/src/lib/default', (path) => path.endsWith('.resolver.ts'))
 
   for (const file of defaultResolverFiles) {
     checkDefaultResolverFile(file, generatedMethodNames)
@@ -846,38 +813,32 @@ const checkDefaultResolverGeneratedNameCollisions = () => {
 }
 
 const checkHandwrittenAdminSdkOperations = () => {
-  const graphqlFiles = walkFiles('libs/shared/sdk/src/graphql', path => path.endsWith('.graphql'))
+  const graphqlFiles = walkFiles('libs/shared/sdk/src/graphql', (path) => path.endsWith('.graphql'))
 
   for (const file of graphqlFiles) {
     const source = stripComments(readFileSync(file, 'utf8'))
     const adminOperation = /\b(?:query|mutation|subscription)\s+__Admin\w+/.exec(source)
     if (adminOperation) {
-      fail(
-        'api-names',
-        'Hand-written __Admin* SDK operations belong under libs/shared/sdk/src/__admin',
-        file,
-      )
+      fail('api-names', 'Hand-written __Admin* SDK operations belong under libs/shared/sdk/src/__admin', file)
     }
   }
 }
 
 const checkApplicationSdkCrudBoundary = () => {
   const generatedRootFields = new Set<string>()
-  const adminFiles = walkFiles('libs/shared/sdk/src/__admin', path => path.endsWith('.graphql'))
+  const adminFiles = walkFiles('libs/shared/sdk/src/__admin', (path) => path.endsWith('.graphql'))
 
   for (const file of adminFiles) {
     const source = readFileSync(file, 'utf8')
     for (const fieldName of getGraphqlRootFieldNames(source)) generatedRootFields.add(fieldName)
   }
 
-  const applicationFiles = walkFiles('libs/shared/sdk/src/graphql', path =>
-    path.endsWith('.graphql'),
-  )
-  const applicationDocuments = applicationFiles.map(file => ({
+  const applicationFiles = walkFiles('libs/shared/sdk/src/graphql', (path) => path.endsWith('.graphql'))
+  const applicationDocuments = applicationFiles.map((file) => ({
     file,
     source: readFileSync(file, 'utf8'),
   }))
-  const applicationSources = applicationDocuments.map(document => document.source)
+  const applicationSources = applicationDocuments.map((document) => document.source)
 
   for (const document of applicationDocuments) {
     for (const violation of getPublicSdkGeneratedCrudViolations(
@@ -918,10 +879,10 @@ const writeSdkContractBaseline = (
   exceptions: SdkContractExceptions,
 ): SdkContractBaseline => {
   const baseline: SdkContractBaseline = {
-    apiWithoutSdk: report.apiWithoutSdk.filter(field => !exceptions.apiWithoutSdk?.[field]),
+    apiWithoutSdk: report.apiWithoutSdk.filter((field) => !exceptions.apiWithoutSdk?.[field]),
     inlineClientOperations: report.inlineClientOperations
-      .map(operation => `${operation.file}#${operation.name}`)
-      .filter(operation => !exceptions.inlineClientOperations?.[operation]),
+      .map((operation) => `${operation.file}#${operation.name}`)
+      .filter((operation) => !exceptions.inlineClientOperations?.[operation]),
   }
   mkdirSync(dirname(sdkContractBaselinePath), { recursive: true })
   writeFileSync(sdkContractBaselinePath, `${JSON.stringify(baseline, null, 2)}\n`)
@@ -929,7 +890,7 @@ const writeSdkContractBaseline = (
 }
 
 const graphqlSourcesUnder = (root: string): GraphqlSource[] =>
-  walkFiles(root, path => path.endsWith('.graphql')).map(file => ({
+  walkFiles(root, (path) => path.endsWith('.graphql')).map((file) => ({
     file: normalizeContractPath(file),
     source: readFileSync(file, 'utf8'),
   }))
@@ -949,8 +910,8 @@ const isClientContractSource = (path: string): boolean => {
 }
 
 const clientContractSources = (): TypeScriptSource[] =>
-  ['apps', 'libs'].flatMap(root =>
-    walkFiles(root, isClientContractSource).map(file => ({
+  ['apps', 'libs'].flatMap((root) =>
+    walkFiles(root, isClientContractSource).map((file) => ({
       file: normalizeContractPath(file),
       source: readFileSync(file, 'utf8'),
     })),
@@ -960,8 +921,7 @@ const reportSdkWithoutApi = (report: SdkContractReport): void => {
   for (const mismatch of report.sdkWithoutApi) {
     fail(
       'sdk-contract',
-      `SDK operation ${mismatch.operation} references missing GraphQL root field(s): ` +
-        mismatch.rootFields.join(', '),
+      `SDK operation ${mismatch.operation} references missing GraphQL root field(s): ` + mismatch.rootFields.join(', '),
       mismatch.file,
     )
   }
@@ -1014,7 +974,7 @@ const reportResolvedSdkBaselineEntries = (
   }
 
   const currentInlineOperations = new Set(
-    report.inlineClientOperations.map(operation => `${operation.file}#${operation.name}`),
+    report.inlineClientOperations.map((operation) => `${operation.file}#${operation.name}`),
   )
   for (const operation of baselineInlineOperations) {
     if (!currentInlineOperations.has(operation)) {
@@ -1040,10 +1000,7 @@ const unusedSdkOperationsByFile = (
 
 const operationNameCompare = (left: string, right: string): number => left.localeCompare(right)
 
-const reportUnusedSdkOperations = (
-  report: SdkContractReport,
-  exceptions: SdkContractExceptions,
-): void => {
+const reportUnusedSdkOperations = (report: SdkContractReport, exceptions: SdkContractExceptions): void => {
   for (const [file, operationNames] of unusedSdkOperationsByFile(report, exceptions)) {
     operationNames.sort(operationNameCompare)
     warn(
@@ -1079,16 +1036,12 @@ const checkSdkContract = () => {
 }
 
 const getModuleClasses = (source: string): string[] =>
-  getRegexMatches(/export\s+class\s+(\w+Module)\b/g, source).map(match => match[1])
+  getRegexMatches(/export\s+class\s+(\w+Module)\b/g, source).map((match) => match[1])
 
 const isExportedFromIndex = (source: string, path: string): boolean =>
   source.includes(`'./${path}'`) || source.includes(`"./${path}"`)
 
-const validatePluginModuleFile = (
-  moduleFile: string,
-  pluginIndex: string,
-  registeredModules: Set<string>,
-) => {
+const validatePluginModuleFile = (moduleFile: string, pluginIndex: string, registeredModules: Set<string>) => {
   const moduleSource = readFileSync(moduleFile, 'utf8')
   const moduleBasename = basename(moduleFile, '.ts')
 
@@ -1117,7 +1070,7 @@ const validatePluginDirectory = (
   if (!statSync(pluginDir).isDirectory()) return
 
   const indexPath = join(pluginDir, 'index.ts')
-  const moduleFiles = walkFiles(pluginDir, path => path.endsWith('.module.ts'))
+  const moduleFiles = walkFiles(pluginDir, (path) => path.endsWith('.module.ts'))
   if (moduleFiles.length === 0) return
 
   if (!existsSync(indexPath)) {
@@ -1143,9 +1096,9 @@ const checkPluginExportsAndRegistration = () => {
   const appModulePath = 'apps/api/src/app.module.ts'
   const rootIndex = existsSync(rootIndexPath) ? readFileSync(rootIndexPath, 'utf8') : ''
   const moduleSources = [
-    ...walkFiles('libs/api', path => path.endsWith('.module.ts')),
-    ...walkFiles('apps/api', path => path.endsWith('.module.ts')),
-  ].map(file => ({ file, source: readFileSync(file, 'utf8') }))
+    ...walkFiles('libs/api', (path) => path.endsWith('.module.ts')),
+    ...walkFiles('apps/api', (path) => path.endsWith('.module.ts')),
+  ].map((file) => ({ file, source: readFileSync(file, 'utf8') }))
   const registeredModules = getRegisteredModuleClasses(moduleSources, appModulePath)
 
   for (const entry of readdirSync(pluginsRoot)) {
@@ -1154,15 +1107,11 @@ const checkPluginExportsAndRegistration = () => {
 }
 
 const getIntegrationFiles = (integrationDir: string): string[] => [
-  ...directFiles(integrationDir, path => path.endsWith('.module.ts')),
-  ...directFiles(integrationDir, path => path.endsWith('.service.ts')),
+  ...directFiles(integrationDir, (path) => path.endsWith('.module.ts')),
+  ...directFiles(integrationDir, (path) => path.endsWith('.service.ts')),
 ]
 
-const validateIntegrationDirectory = (
-  entry: string,
-  integrationsRoot: string,
-  rootIndex: string,
-) => {
+const validateIntegrationDirectory = (entry: string, integrationsRoot: string, rootIndex: string) => {
   const integrationDir = join(integrationsRoot, entry)
   if (!statSync(integrationDir).isDirectory()) return
 
@@ -1171,31 +1120,19 @@ const validateIntegrationDirectory = (
   if (integrationFiles.length === 0) return
 
   if (!existsSync(indexPath)) {
-    fail(
-      'integration-structure',
-      'Integration with service/module is missing index.ts barrel',
-      indexPath,
-    )
+    fail('integration-structure', 'Integration with service/module is missing index.ts barrel', indexPath)
     return
   }
 
   if (!rootIndex.includes(`'./lib/${entry}'`) && !rootIndex.includes(`"./lib/${entry}"`)) {
-    fail(
-      'integration-structure',
-      'Integration is not exported from integrations/src/index.ts',
-      integrationDir,
-    )
+    fail('integration-structure', 'Integration is not exported from integrations/src/index.ts', integrationDir)
   }
 
   const integrationIndex = readFileSync(indexPath, 'utf8')
   for (const integrationFile of integrationFiles) {
     const expectedBasename = basename(integrationFile, '.ts')
     if (!isExportedFromIndex(integrationIndex, expectedBasename)) {
-      fail(
-        'integration-structure',
-        'Integration module/service is not exported from its index.ts',
-        integrationFile,
-      )
+      fail('integration-structure', 'Integration module/service is not exported from its index.ts', integrationFile)
     }
   }
 }
@@ -1242,7 +1179,7 @@ const checkSkipCrudDocumentation = () => {
 }
 
 const checkPublishablePackageReadmes = () => {
-  const packageFiles = walkFiles('libs', path => basename(path) === 'package.json')
+  const packageFiles = walkFiles('libs', (path) => basename(path) === 'package.json')
 
   for (const file of packageFiles) {
     const pkg = JSON.parse(readFileSync(file, 'utf8')) as {
@@ -1269,7 +1206,7 @@ const checkPublishedPackageVersions = () => {
   // unpublished version is expected on pull_request runs and only a failure once
   // the bump has been pushed to develop.
   const enforce = process.env.GITHUB_EVENT_NAME === 'push'
-  const packageFiles = walkFiles('libs', path => basename(path) === 'package.json')
+  const packageFiles = walkFiles('libs', (path) => basename(path) === 'package.json')
 
   for (const file of packageFiles) {
     const pkg = JSON.parse(readFileSync(file, 'utf8')) as {
@@ -1333,8 +1270,7 @@ const getApiGuardMap = (): GuardBaseline => {
   return guardMap
 }
 
-const formatGuardList = (guards: string[]): string =>
-  guards.length > 0 ? guards.join(', ') : 'none'
+const formatGuardList = (guards: string[]): string => (guards.length > 0 ? guards.join(', ') : 'none')
 
 const checkGuardRegressions = () => {
   const baseline = readGuardBaseline()
@@ -1374,10 +1310,7 @@ const readPublicOperationAllowlist = (): PublicOperationAllowlist => {
   return JSON.parse(readFileSync(publicOperationsPath, 'utf8')) as PublicOperationAllowlist
 }
 
-const reportStalePublicOperations = (
-  allowlist: PublicOperationAllowlist,
-  unguarded: Set<string>,
-) => {
+const reportStalePublicOperations = (allowlist: PublicOperationAllowlist, unguarded: Set<string>) => {
   for (const [file, operations] of Object.entries(allowlist)) {
     for (const name of Object.keys(operations)) {
       if (unguarded.has(`${file}::${name}`)) continue
@@ -1442,7 +1375,7 @@ const isGeneratedOrExternalCode = (path: string): boolean =>
 const checkUnsafeTypeScriptCasts = () => {
   const files = walkFiles(
     '.',
-    path =>
+    (path) =>
       /\.(ts|tsx)$/.test(path) &&
       // scripts/ is one-off ops/maintenance tooling (also excluded from Sonar), not shipped product
       // code; the cast gate targets the product surface. Specs and skipped future specs likewise.
@@ -1523,9 +1456,7 @@ const checkUpgradeNoteImpactGate = () => {
   const changedSensitiveFiles = changedFiles.filter(isSensitiveUpgradePath)
   if (changedSensitiveFiles.length === 0) return
 
-  const changedNotes = changedFiles.filter(
-    path => path.startsWith(`${notesDir}/`) && path.endsWith('.yaml'),
-  )
+  const changedNotes = changedFiles.filter((path) => path.startsWith(`${notesDir}/`) && path.endsWith('.yaml'))
   if (changedNotes.length === 0) {
     fail(
       'upgrade-notes',
@@ -1542,21 +1473,18 @@ const hasContextScopeAnchor = (source: string): boolean =>
   /@Ctx[a-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i.test(source)
 
 const usesInputIdInPrismaWhere = (source: string): boolean =>
-  /\b(?:userId|organizationId|teamId|roleId|memberId|inviteId|subscriptionId|tokenId)\b/.test(
-    source,
-  ) &&
+  /\b(?:userId|organizationId|teamId|roleId|memberId|inviteId|subscriptionId|tokenId)\b/.test(source) &&
   /\b(?:findFirst|findUnique|findMany|update|updateMany|delete|deleteMany|create)\s*\(/.test(source)
 
 const checkResolverScopeAnchoring = () => {
-  const resolverFiles = walkFiles('libs/api/custom/src/lib', path => path.endsWith('.resolver.ts'))
+  const resolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
 
   for (const file of resolverFiles) {
     const source = stripComments(readFileSync(file, 'utf8'))
     for (const operation of getGraphqlOperationMethods(source)) {
       // The whole method, not decorators+body: @CtxUser() lives in the parameter list.
       const operationSource = operation.text
-      if (!/@Args\s*\(/.test(operationSource) || !usesInputIdInPrismaWhere(operationSource))
-        continue
+      if (!/@Args\s*\(/.test(operationSource) || !usesInputIdInPrismaWhere(operationSource)) continue
       if (hasContextScopeAnchor(operationSource)) continue
 
       review(
@@ -1576,14 +1504,12 @@ const hasAuditMarker = (source: string): boolean =>
   /\baudit(?:Log)?\b|recordAuditLog|SecurityEvent|securityEvent/i.test(source)
 
 const hasSiblingServiceAuditMarker = (file: string): boolean => {
-  const serviceFiles = directFiles(dirname(file), path => path.endsWith('.service.ts'))
-  return serviceFiles.some(serviceFile =>
-    hasAuditMarker(stripComments(readFileSync(serviceFile, 'utf8'))),
-  )
+  const serviceFiles = directFiles(dirname(file), (path) => path.endsWith('.service.ts'))
+  return serviceFiles.some((serviceFile) => hasAuditMarker(stripComments(readFileSync(serviceFile, 'utf8'))))
 }
 
 const checkAuditCoverageHeuristic = () => {
-  const resolverFiles = walkFiles('libs/api/custom/src/lib', path => path.endsWith('.resolver.ts'))
+  const resolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
 
   for (const file of resolverFiles) {
     if (!isSensitiveMutationDomain(file)) continue
@@ -1592,11 +1518,7 @@ const checkAuditCoverageHeuristic = () => {
     const siblingServiceHasAuditMarker = hasSiblingServiceAuditMarker(file)
     for (const operation of getGraphqlOperationMethods(source)) {
       if (!/@Mutation\b/.test(operation.decorators)) continue
-      if (
-        hasAuditMarker(operation.body) ||
-        hasAuditMarker(source) ||
-        siblingServiceHasAuditMarker
-      ) {
+      if (hasAuditMarker(operation.body) || hasAuditMarker(source) || siblingServiceHasAuditMarker) {
         continue
       }
 
@@ -1641,27 +1563,20 @@ const checkEmulationResolverFile = (file: string) => {
 const checkEmulationServiceFile = (file: string) => {
   const source = stripComments(readFileSync(file, 'utf8'))
   if (!/\b(emulat|impersonat)/i.test(source) || hasPrivilegeCeiling(source)) return
-  fail(
-    'emulation-security',
-    'Emulation/impersonation service code must enforce an explicit privilege ceiling',
-    file,
-  )
+  fail('emulation-security', 'Emulation/impersonation service code must enforce an explicit privilege ceiling', file)
 }
 
 const checkEmulationPrivilegeCeiling = () => {
-  walkFiles('libs/api/custom/src/lib', path => path.endsWith('.resolver.ts')).forEach(
-    checkEmulationResolverFile,
+  walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts')).forEach(checkEmulationResolverFile)
+  walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.service.ts') && !path.endsWith('.spec.ts')).forEach(
+    checkEmulationServiceFile,
   )
-  walkFiles(
-    'libs/api/custom/src/lib',
-    path => path.endsWith('.service.ts') && !path.endsWith('.spec.ts'),
-  ).forEach(checkEmulationServiceFile)
 }
 
 // Read one key out of an already-loaded `.env` body. Shared by every check that inspects local
 // env pairings, so the quoting/comment rules stay in one place.
 const readEnvValue = (env: string, key: string): string => {
-  const line = env.split('\n').find(l => l.startsWith(`${key}=`))
+  const line = env.split('\n').find((l) => l.startsWith(`${key}=`))
   const raw = line ? line.slice(key.length + 1).trim() : ''
   // Quoted value: strip the surrounding quotes and keep it verbatim. Unquoted
   // value: drop a dotenv-style inline ` # comment` so the parsed value matches
@@ -1683,8 +1598,7 @@ const checkCookieDomainConfig = () => {
   const isLocal = (v: string) => !v || v === 'localhost' || v.startsWith('127.')
   // Cookie scope ignores a single leading dot and case, so `.example.com` and
   // `example.com` are equivalent — normalize before comparing to avoid false warnings.
-  const sameDomain = (a: string, b: string) =>
-    a.replace(/^\./, '').toLowerCase() === b.replace(/^\./, '').toLowerCase()
+  const sameDomain = (a: string, b: string) => a.replace(/^\./, '').toLowerCase() === b.replace(/^\./, '').toLowerCase()
   if (!isLocal(apiDomain) && isLocal(webDomain)) {
     warn(
       'cookie-domain',
@@ -1694,11 +1608,7 @@ const checkCookieDomainConfig = () => {
       '.env',
     )
   } else if (!isLocal(apiDomain) && !isLocal(webDomain) && !sameDomain(apiDomain, webDomain)) {
-    warn(
-      'cookie-domain',
-      `VITE_COOKIE_DOMAIN (${webDomain}) does not match API_COOKIE_DOMAIN (${apiDomain}).`,
-      '.env',
-    )
+    warn('cookie-domain', `VITE_COOKIE_DOMAIN (${webDomain}) does not match API_COOKIE_DOMAIN (${apiDomain}).`, '.env')
   }
 }
 
@@ -1766,11 +1676,7 @@ const warnPortMismatch = (options: {
   const { portKey, port, urlKey, urlValue, requireSet, consequence, fix } = options
   if (urlValue.length === 0) {
     if (requireSet) {
-      warn(
-        'dev-ports',
-        `${portKey}=${port} but ${urlKey} is not set — ${consequence} ${fix}`,
-        '.env',
-      )
+      warn('dev-ports', `${portKey}=${port} but ${urlKey} is not set — ${consequence} ${fix}`, '.env')
     }
     return
   }
@@ -1778,11 +1684,7 @@ const warnPortMismatch = (options: {
   const actual = urlPort(urlValue)
   if (actual === '' || actual === port) return
 
-  warn(
-    'dev-ports',
-    `${portKey}=${port} but ${urlKey} uses port ${actual} — ${consequence} ${fix}`,
-    '.env',
-  )
+  warn('dev-ports', `${portKey}=${port} but ${urlKey} uses port ${actual} — ${consequence} ${fix}`, '.env')
 }
 
 const checkApiPortPairing = (read: EnvReader) => {
@@ -1808,10 +1710,10 @@ const checkWebPortPairing = (read: EnvReader) => {
 
   const origins = read('ALLOWED_ORIGINS')
     .split(',')
-    .map(origin => origin.trim())
-    .filter(origin => origin.length > 0)
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0)
 
-  if (origins.length > 0 && !origins.some(origin => urlPort(origin) === port)) {
+  if (origins.length > 0 && !origins.some((origin) => urlPort(origin) === port)) {
     warn(
       'dev-ports',
       `WEB_PORT=${port} but ALLOWED_ORIGINS does not include http://localhost:${port} — ` +
@@ -1830,8 +1732,7 @@ const checkWebPortPairing = (read: EnvReader) => {
       urlValue: read('WEB_URL'),
       requireSet: false,
       consequence:
-        'ALLOWED_ORIGINS is empty, so CORS falls back to WEB_URL and the API will reject every ' +
-        'browser request.',
+        'ALLOWED_ORIGINS is empty, so CORS falls back to WEB_URL and the API will reject every ' + 'browser request.',
       fix: `Set WEB_URL to http://localhost:${port}, or list the origin in ALLOWED_ORIGINS.`,
     })
   }
@@ -1842,8 +1743,7 @@ const checkWebPortPairing = (read: EnvReader) => {
     urlKey: 'SITE_URL',
     urlValue: read('SITE_URL'),
     requireSet: false,
-    consequence:
-      'links in verification, password-reset, and invite emails point at the old web port.',
+    consequence: 'links in verification, password-reset, and invite emails point at the old web port.',
     fix: `Set SITE_URL to http://localhost:${port}.`,
   })
 }
@@ -1944,24 +1844,28 @@ const checkAuthLevelDeclarations = () => {
   }
 }
 
+/**
+ * Read one catalog into the set of permission strings it declares.
+ *
+ * Entries missing any configured field are skipped rather than added as a partial string: a
+ * half-read permission would not match anything a resolver declares, so it would report as unknown
+ * and read exactly like the misconfiguration this indirection exists to avoid.
+ */
+const readCatalogInto = (target: Set<string>, spec: PermissionCatalogSpec): void => {
+  if (!existsSync(spec.path)) return
+  const source = readFileSync(spec.path, 'utf8')
+  for (const entry of readStringObjectArray(source, spec.export, spec.fields)) {
+    const parts = spec.fields.map((field) => entry[field])
+    if (parts.some((part) => part === undefined)) continue
+    target.add(parts.join(':'))
+  }
+}
+
 const readPermissionCatalogs = () => {
   const platform = new Set<string>()
-  if (existsSync(platformPermissionCatalogPath)) {
-    const source = readFileSync(platformPermissionCatalogPath, 'utf8')
-    for (const entry of readStringObjectArray(source, 'platformPermissions', ['key'])) {
-      platform.add(entry.key)
-    }
-  }
+  readCatalogInto(platform, permissionCatalogs.config.platform)
   const organization = new Set<string>()
-  if (existsSync(organizationPermissionCatalogPath)) {
-    const source = readFileSync(organizationPermissionCatalogPath, 'utf8')
-    for (const entry of readStringObjectArray(source, 'defaultPermissions', [
-      'subject',
-      'action',
-    ])) {
-      organization.add(`${entry.subject}:${entry.action}`)
-    }
-  }
+  readCatalogInto(organization, permissionCatalogs.config.organization)
   return { organization, platform }
 }
 
@@ -2035,13 +1939,11 @@ const reportUnauthorizedOperations = (
 
   const guardedNames = new Set(
     getAuthOperations(source, file)
-      .filter(operation => hasAuthenticationGuard(operation))
-      .map(operation => operation.name),
+      .filter((operation) => hasAuthenticationGuard(operation))
+      .map((operation) => operation.name),
   )
 
-  for (const operation of getUndeclaredAccessOperations(raw, file, name =>
-    guardedNames.has(name),
-  )) {
+  for (const operation of getUndeclaredAccessOperations(raw, file, (name) => guardedNames.has(name))) {
     if (operation.callerScoped) continue
 
     unauthorized.add(`${file}::${operation.name}`)
@@ -2057,10 +1959,7 @@ const reportUnauthorizedOperations = (
 }
 
 // An exemption that no longer applies is a claim nobody is checking.
-const reportStaleExemptions = (
-  exemptions: PermissionExemptions,
-  unauthorized: Set<string>,
-): void => {
+const reportStaleExemptions = (exemptions: PermissionExemptions, unauthorized: Set<string>): void => {
   for (const [file, operations] of Object.entries(exemptions)) {
     for (const name of Object.keys(operations)) {
       if (unauthorized.has(`${file}::${name}`)) continue
@@ -2080,7 +1979,7 @@ const reportStaleExemptions = (
 // CI actually runs: scripts/verify-prisma-client.ts, tools/verify-selects.mjs,
 // tools/verify-select-coverage.mjs and the two .mjs specs. A guard with an arbitrary blind spot is
 // worse than none, because the gap is invisible from its passing output.
-const enforcementSourceGlobs = ['scripts', 'tools'].map(dir => ({
+const enforcementSourceGlobs = ['scripts', 'tools'].map((dir) => ({
   dir,
   match: (name: string) => /^(?:doctor|verify-).*\.(?:ts|mjs)$/.test(name),
 }))
@@ -2105,7 +2004,7 @@ const enforcementSourceFiles = (): string[] =>
     existsSync(dir)
       ? readdirSync(dir)
           .filter(match)
-          .map(name => `${dir}/${name}`)
+          .map((name) => `${dir}/${name}`)
       : [],
   )
 
@@ -2135,7 +2034,9 @@ const checkEnforcementPortability = () => {
 
       fail(
         'enforcement-portability',
-        `Enforcement code must be portable across every clone, but ${file} imports "${specifier}"; use only node builtins, ${[...portableEnforcementModules].join('/')}, or a relative sibling — a workspace-scoped import resolves in this repo alone`,
+        `Enforcement code must be portable across every clone, but ${file} imports "${specifier}"; use only node builtins, ${[
+          ...portableEnforcementModules,
+        ].join('/')}, or a relative sibling — a workspace-scoped import resolves in this repo alone`,
         file,
       )
     }
@@ -2159,7 +2060,9 @@ const checkAccessPolicyCoverage = () => {
 const reportInlineAccessViolation = (violation: InlineAccessCheckViolation, file: string): void => {
   fail(
     'access-policy',
-    `${violation.className}.${violation.name} calls ${violation.calls.join(', ')} inside the operation body without a scoped permission decorator; move the role gate into declarative metadata and leave only row/object checks in the service`,
+    `${violation.className}.${violation.name} calls ${violation.calls.join(
+      ', ',
+    )} inside the operation body without a scoped permission decorator; move the role gate into declarative metadata and leave only row/object checks in the service`,
     file,
     violation.line,
   )
@@ -2177,6 +2080,17 @@ const checkAccessPolicyDeclarations = () => {
     for (const violation of report.inlineViolations) {
       reportInlineAccessViolation(violation, file)
     }
+  }
+
+  // A config the reader rejected is worse than no config: the repo believes it pointed the doctor
+  // at its catalog, and the silent fallback is precisely the empty-catalog state this file exists
+  // to prevent.
+  if (permissionCatalogs.invalid) {
+    fail(
+      'access-policy',
+      `${PERMISSION_CATALOGS_PATH} declares ${permissionCatalogs.invalid}; the default catalog location is used instead, which for a repo that needed this file means every permission will report as unknown`,
+      PERMISSION_CATALOGS_PATH,
+    )
   }
 
   const scopeCatalogPath: Record<string, string> = {
@@ -2207,9 +2121,7 @@ const checkPrismaGeneratedEnums = () => {
   // Nothing generated yet is a legitimate state, e.g. a fresh clone before the first generate.
   if (!existsSync(generatedDir) || !existsSync(schemaPath)) return
 
-  const declaredEnums = getRegexMatches(/^enum\s+(\w+)/gm, readFileSync(schemaPath, 'utf8')).map(
-    match => match[1],
-  )
+  const declaredEnums = getRegexMatches(/^enum\s+(\w+)/gm, readFileSync(schemaPath, 'utf8')).map((match) => match[1])
   if (declaredEnums.length === 0) return
 
   const enumsPath = join(generatedDir, 'enums.ts')
@@ -2223,12 +2135,14 @@ const checkPrismaGeneratedEnums = () => {
   }
 
   const source = readFileSync(enumsPath, 'utf8')
-  const missing = declaredEnums.filter(name => !source.includes(`export const ${name} =`))
+  const missing = declaredEnums.filter((name) => !source.includes(`export const ${name} =`))
   if (missing.length === 0) return
 
   fail(
     'prisma-generated',
-    `Generated Prisma enums are incomplete (missing ${missing.join(', ')}). The client was written truncated, so these are undefined at runtime and the API will fail during GraphQL schema build. Re-run pnpm prisma:generate, then rebuild with --skip-nx-cache because Nx will otherwise reuse the stale bundle`,
+    `Generated Prisma enums are incomplete (missing ${missing.join(
+      ', ',
+    )}). The client was written truncated, so these are undefined at runtime and the API will fail during GraphQL schema build. Re-run pnpm prisma:generate, then rebuild with --skip-nx-cache because Nx will otherwise reuse the stale bundle`,
     enumsPath,
   )
 }
@@ -2275,9 +2189,7 @@ const cleanDownstreamAgentsMd = () => {
 
   // Leave the edit UNSTAGED and let the caller commit it. Auto-running `git add`/`git commit` here
   // is unsafe in CI, on a dirty tree, with no configured git identity, or with pre-commit hooks.
-  console.log(
-    'Removed template-only upgrade note section from AGENTS.md — review and commit the change.',
-  )
+  console.log('Removed template-only upgrade note section from AGENTS.md — review and commit the change.')
 }
 
 if (shouldUpdateGuardBaseline) {
