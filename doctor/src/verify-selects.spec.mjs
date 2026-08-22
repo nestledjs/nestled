@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 import { loadModels, verifySelects,
+  reportNothingChecked,
   readRepoConfig,
   findSelectFiles,
 } from './verify-selects.mjs'
@@ -433,5 +434,66 @@ describe('repo layout config', () => {
 
     expect(byName['a.select.ts'].conventionalNamesOnly).toBe(false)
     expect(byName['b.resolver.ts'].conventionalNamesOnly).toBe(true)
+  })
+})
+
+describe('reportNothingChecked', () => {
+  const withRepo = files => {
+    const repo = mkdtempSync(join(tmpdir(), 'verify-selects-nothing-'))
+    for (const [relativePath, contents] of Object.entries(files)) {
+      const full = join(repo, relativePath)
+      mkdirSync(dirname(full), { recursive: true })
+      writeFileSync(full, contents)
+    }
+    return repo
+  }
+
+  it('fails when a verifier checked nothing and the repo never said why', () => {
+    const repo = withRepo({})
+    const errors = []
+    const original = console.error
+    console.error = message => errors.push(message)
+    try {
+      expect(reportNothingChecked('verify-selects', repo)).toBe(1)
+    } finally {
+      console.error = original
+    }
+    // The message has to name both exits, or the reader's only obvious move is to ignore it.
+    expect(errors.join('\n')).toContain('checked 0 files')
+    expect(errors.join('\n')).toContain('selectFileSuffixes')
+    expect(errors.join('\n')).toContain('noSelectFiles')
+  })
+
+  it('passes when the repo declares it has no select files, and says so out loud', () => {
+    const repo = withRepo({
+      '.nestled-updates/doctor.config.json': JSON.stringify({
+        selectFileSuffixes: ['.select.ts'],
+        noSelectFiles: 'Returns GraphQL via generated CRUD; no narrowed named selects exist.',
+      }),
+    })
+    const logs = []
+    const original = console.log
+    console.log = message => logs.push(message)
+    try {
+      expect(reportNothingChecked('verify-selects', repo)).toBe(0)
+    } finally {
+      console.log = original
+    }
+    // Declared is not the same as hidden: the reason stays visible on every run.
+    expect(logs.join('\n')).toContain('as declared')
+    expect(logs.join('\n')).toContain('generated CRUD')
+  })
+
+  it('rejects a declaration that says nothing', () => {
+    expect(() =>
+      readRepoConfig(
+        withRepo({
+          '.nestled-updates/doctor.config.json': JSON.stringify({
+            selectFileSuffixes: ['.select.ts'],
+            noSelectFiles: '   ',
+          }),
+        }),
+      ),
+    ).toThrow(/noSelectFiles must be a non-empty string/)
   })
 })

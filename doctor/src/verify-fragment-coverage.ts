@@ -67,6 +67,7 @@ import {
   type GraphqlSource,
   type PrismaSelect,
 } from './doctor-sdk-contract-analysis'
+import { reportNothingChecked } from './verify-selects.mjs'
 
 /**
  * Load DATABASE_MODELS from the consuming repo's TypeScript source.
@@ -925,7 +926,14 @@ const main = async (): Promise<void> => {
       console.log('\nNo fragment field is unproduced by its model’s selects.')
     }
   }
-  process.exitCode = failures > 0 ? 1 : 0
+  if (failures > 0) {
+    process.exitCode = 1
+    return
+  }
+  // It already says "This is NOT fragment-coverage proof" and then exited 0, which is the same
+  // contradiction in words rather than in code. A repo that declares it has no selects passes; one
+  // that does not has either lost its selects to a rename or never declared the fact.
+  process.exitCode = checkedModels === 0 && checkedPaths === 0 ? reportNothingChecked('verify-fragments') : 0
 }
 
 // Exported rather than self-invoked: the package's bin calls this, so the parser stays importable
