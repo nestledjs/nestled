@@ -26,7 +26,8 @@ The declarations, not the rules:
 - `.nestled-updates/security/*.json` — guard baseline, public operations, permission exemptions,
   generated-crud posture
 - `.nestled-updates/sdk-contract-*.json` — SDK contract baseline and exceptions
-- `.nestled-updates/doctor.config.json` — repo layout, e.g. `selectFileSuffixes`
+- `.nestled-updates/doctor.config.json` — repo layout, e.g. `selectFileSuffixes`,
+  `permissionCatalogs` (where the repo declares its permissions, and the shape of an entry)
 
 A repo declares **where to look** and **what it has been let off**. It does not get to change
 **what the rules are** — that is the point of packaging them.
