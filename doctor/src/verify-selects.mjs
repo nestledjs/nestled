@@ -24,11 +24,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, isAbsolute, join, relative, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-export const SCHEMA_DIRECTORY_CANDIDATES = [
-  'libs/api/prisma/src/lib/schemas',
-  'prisma',
-  'libs/api/prisma/src/lib',
-]
+export const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', 'prisma', 'libs/api/prisma/src/lib']
 
 export const DEFAULT_SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
 
@@ -67,14 +63,50 @@ export const readRepoConfig = (cwd = process.cwd()) => {
   if (
     !Array.isArray(declared) ||
     declared.length === 0 ||
-    declared.some(suffix => typeof suffix !== 'string' || !suffix)
+    declared.some((suffix) => typeof suffix !== 'string' || !suffix)
   ) {
-    throw new Error(
-      `${REPO_CONFIG_PATH}: selectFileSuffixes must be a non-empty array of non-empty strings`,
-    )
+    throw new Error(`${REPO_CONFIG_PATH}: selectFileSuffixes must be a non-empty array of non-empty strings`)
   }
 
-  return { selectFileSuffixes: declared }
+  // A repo may legitimately not use the select pattern at all -- 9 of the 11 repos in this fleet do
+  // not, both templates included. That is fine; what is not fine is a verifier reporting success
+  // for having examined nothing. Declaring it converts an invisible no-op into a recorded decision,
+  // and means a repo that DID have selects cannot lose them to a rename without the check noticing.
+  const absent = parsed?.noSelectFiles
+  if (absent !== undefined && (typeof absent !== 'string' || absent.trim() === '')) {
+    throw new Error(`${REPO_CONFIG_PATH}: noSelectFiles must be a non-empty string explaining why this repo has none`)
+  }
+
+  return { selectFileSuffixes: declared, noSelectFiles: absent }
+}
+
+/**
+ * What a verifier should do when it checked nothing.
+ *
+ * Exit 0 after examining zero files is the failure mode this whole enforcement effort keeps
+ * tripping over: the check stops looking and reports clean. A declaration makes the empty state
+ * deliberate and visible; its absence makes it a failure with a message naming both ways out.
+ */
+export const reportNothingChecked = (tool, cwd = process.cwd()) => {
+  let declared
+  try {
+    declared = readRepoConfig(cwd).noSelectFiles
+  } catch {
+    // A broken config is the config reader's error to report, not ours to swallow.
+    declared = undefined
+  }
+  if (declared) {
+    console.log(`\n${tool}: checked nothing, as declared in ${REPO_CONFIG_PATH} — ${declared}`)
+    return 0
+  }
+  console.error(
+    `\n${tool}: checked 0 files, so this run proves nothing.\n` +
+      `  If this repo uses the select pattern, the files moved or were renamed — set\n` +
+      `  selectFileSuffixes in ${REPO_CONFIG_PATH} to match.\n` +
+      `  If it genuinely has none, say so: "noSelectFiles": "<why>" in the same file.\n` +
+      `  Exiting non-zero because a check that examined nothing must not report success.`,
+  )
+  return 1
 }
 
 /**
@@ -104,50 +136,39 @@ const SKIPPED_STRUCTURAL_KEYS = new Set([
   '_max',
 ])
 
-const STRUCTURAL_KEYS = new Set([
-  'select',
-  'where',
-  'orderBy',
-  'take',
-  'skip',
-  'include',
-  'distinct',
-])
+const STRUCTURAL_KEYS = new Set(['select', 'where', 'orderBy', 'take', 'skip', 'include', 'distinct'])
 
 const alphabetical = (left, right) => left.localeCompare(right)
-const normalizePath = path => path.replaceAll('\\', '/')
+const normalizePath = (path) => path.replaceAll('\\', '/')
 
-const schemaDirectory = cwd =>
-  SCHEMA_DIRECTORY_CANDIDATES.map(candidate => resolve(cwd, candidate)).find(
-    candidate =>
-      existsSync(candidate) && readdirSync(candidate).some(file => file.endsWith('.prisma')),
+const schemaDirectory = (cwd) =>
+  SCHEMA_DIRECTORY_CANDIDATES.map((candidate) => resolve(cwd, candidate)).find(
+    (candidate) => existsSync(candidate) && readdirSync(candidate).some((file) => file.endsWith('.prisma')),
   )
 
-const readDatamodel = cwd => {
+const readDatamodel = (cwd) => {
   const directory = schemaDirectory(cwd)
   if (!directory) {
     throw new Error(`No .prisma schema found under: ${SCHEMA_DIRECTORY_CANDIDATES.join(', ')}`)
   }
 
   return readdirSync(directory)
-    .filter(file => file.endsWith('.prisma'))
+    .filter((file) => file.endsWith('.prisma'))
     .sort(alphabetical)
-    .map(file => readFileSync(join(directory, file), 'utf8'))
+    .map((file) => readFileSync(join(directory, file), 'utf8'))
     .join('\n')
 }
 
-const modelsFromDmmf = dmmf =>
+const modelsFromDmmf = (dmmf) =>
   Object.fromEntries(
-    dmmf.datamodel.models.map(model => [
+    dmmf.datamodel.models.map((model) => [
       model.name,
-      Object.fromEntries(
-        model.fields.map(field => [field.name, field.kind === 'object' ? field.type : null]),
-      ),
+      Object.fromEntries(model.fields.map((field) => [field.name, field.kind === 'object' ? field.type : null])),
     ]),
   )
 
 /** `name Type[]?` -> [name, relationTarget|null]. Null for scalars, comments and block attributes. */
-const parseFieldLine = line => {
+const parseFieldLine = (line) => {
   const trimmed = line.trim()
   if (!trimmed || trimmed.startsWith('//') || trimmed.startsWith('@@')) return null
 
@@ -162,7 +183,7 @@ const parseFieldLine = line => {
  * A capitalised type is only a relation if the model it names was actually parsed. Enums and
  * unresolvable types look identical to relations at this level, so they are demoted to scalars.
  */
-const pruneUnresolvedRelations = models => {
+const pruneUnresolvedRelations = (models) => {
   for (const fields of Object.values(models)) {
     for (const [field, relationTarget] of Object.entries(fields)) {
       if (relationTarget && !models[relationTarget]) fields[field] = null
@@ -171,7 +192,7 @@ const pruneUnresolvedRelations = models => {
   return models
 }
 
-export const parseDatamodelFallback = datamodel => {
+export const parseDatamodelFallback = (datamodel) => {
   const models = {}
   let modelName
   let fields
@@ -202,10 +223,7 @@ export const parseDatamodelFallback = datamodel => {
 
 const defaultInternalsLoader = () => import('@prisma/internals')
 
-export const loadModels = async ({
-  cwd = process.cwd(),
-  internalsLoader = defaultInternalsLoader,
-} = {}) => {
+export const loadModels = async ({ cwd = process.cwd(), internalsLoader = defaultInternalsLoader } = {}) => {
   const datamodel = readDatamodel(cwd)
   try {
     const internals = await internalsLoader()
@@ -229,7 +247,7 @@ export const findSelectFiles = ({
   selectFileSuffixes = readRepoConfig(cwd).selectFileSuffixes,
 } = {}) => {
   const files = []
-  const walk = directory => {
+  const walk = (directory) => {
     if (!existsSync(directory)) return
     for (const entry of readdirSync(directory)) {
       if (entry === 'node_modules') continue
@@ -237,7 +255,7 @@ export const findSelectFiles = ({
       const stat = statSync(path)
       if (stat.isDirectory()) walk(path)
       else {
-        const suffix = selectFileSuffixes.find(candidate => entry.endsWith(candidate))
+        const suffix = selectFileSuffixes.find((candidate) => entry.endsWith(candidate))
         if (suffix) {
           files.push({
             absolutePath: path,
@@ -286,9 +304,9 @@ const copyQuotedValue = (source, start) => {
   return index
 }
 
-const maskRange = source => source.replace(/[^\n]/g, ' ')
+const maskRange = (source) => source.replace(/[^\n]/g, ' ')
 
-const sanitizeSource = source => {
+const sanitizeSource = (source) => {
   let result = ''
   let index = 0
   while (index < source.length) {
@@ -366,9 +384,7 @@ const checkProperty = (source, index, context, problems) => {
     return close === -1 ? source.length : close + 1
   }
   if (FIELD_BEARING_KEYS.has(field) || STRUCTURAL_KEYS.has(field)) {
-    return source[valueStart] === '{'
-      ? checkBlock(source, valueStart + 1, context, problems)
-      : valueStart
+    return source[valueStart] === '{' ? checkBlock(source, valueStart + 1, context, problems) : valueStart
   }
   if (!context.models[context.model]) return valueStart
 
@@ -406,14 +422,14 @@ function checkBlock(source, start, context, problems) {
   return index
 }
 
-const pascalCase = value =>
+const pascalCase = (value) =>
   value
     .split(/[-_]/)
     .filter(Boolean)
-    .map(word => word[0].toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
     .join('')
 
-const constantModelCandidates = constantName => {
+const constantModelCandidates = (constantName) => {
   const words = constantName
     .replace(/_?SELECT.*$/, '')
     .split('_')
@@ -433,12 +449,10 @@ const relationTargetForConstant = (models, constantName) => {
     .toLowerCase()
     .split('_')
     .filter(Boolean)
-  const relationName = words
-    .map((word, index) => (index === 0 ? word : word[0].toUpperCase() + word.slice(1)))
-    .join('')
+  const relationName = words.map((word, index) => (index === 0 ? word : word[0].toUpperCase() + word.slice(1))).join('')
   const targets = new Set(
     Object.values(models)
-      .map(fields => fields[relationName])
+      .map((fields) => fields[relationName])
       .filter(Boolean),
   )
   return targets.size === 1 ? [...targets][0] : null
@@ -506,12 +520,7 @@ const verifyFile = ({ absolutePath, file, conventionalNamesOnly = false }, model
       continue
     }
 
-    checkBlock(
-      source,
-      match.index + match[0].length,
-      { models, file, model, path: [match[1]] },
-      problems,
-    )
+    checkBlock(source, match.index + match[0].length, { models, file, model, path: [match[1]] }, problems)
   }
 
   return { problems, unresolved }
@@ -541,7 +550,7 @@ const usage = `Usage:
 
 Validates every *.select.ts constant under the configured roots against the Prisma schema.`
 
-const renderText = result => {
+const renderText = (result) => {
   const lines = [`verify-selects — ${result.files} file(s), schema via ${result.source}`, '']
   for (const problem of result.problems) {
     const reason =
@@ -551,10 +560,7 @@ const renderText = result => {
     lines.push(`  ${problem.file}`, `      ${problem.path}  — ${reason}`)
   }
   for (const unresolved of result.unresolved) {
-    lines.push(
-      `  ${unresolved.file}`,
-      `      ${unresolved.const}  — cannot resolve model; add /** @prisma-model X */`,
-    )
+    lines.push(`  ${unresolved.file}`, `      ${unresolved.const}  — cannot resolve model; add /** @prisma-model X */`)
   }
   lines.push(
     result.problems.length || result.unresolved.length
@@ -564,16 +570,16 @@ const renderText = result => {
   return lines.join('\n')
 }
 
-const parseArguments = arguments_ => {
+const parseArguments = (arguments_) => {
   const asJson = arguments_.includes('--json')
   const unknownOptions = arguments_.filter(
-    argument => argument.startsWith('--') && argument !== '--json' && argument !== '--',
+    (argument) => argument.startsWith('--') && argument !== '--json' && argument !== '--',
   )
   if (unknownOptions.length > 0) throw new Error(`Unknown option(s): ${unknownOptions.join(', ')}`)
-  return { asJson, roots: arguments_.filter(argument => !argument.startsWith('--')) }
+  return { asJson, roots: arguments_.filter((argument) => !argument.startsWith('--')) }
 }
 
-const errorMessage = error => {
+const errorMessage = (error) => {
   if (error instanceof Error) return error.message
   if (typeof error === 'string') return error
   return JSON.stringify(error) ?? 'Unknown verify-selects failure'
@@ -594,7 +600,8 @@ export const runCli = async (arguments_ = process.argv.slice(2), cwd = process.c
       roots: parsed.roots.length > 0 ? parsed.roots : DEFAULT_SEARCH_ROOTS,
     })
     console.log(asJson ? JSON.stringify(result, null, 2) : renderText(result))
-    return result.problems.length || result.unresolved.length ? 1 : 0
+    if (result.problems.length || result.unresolved.length) return 1
+    return result.files === 0 ? reportNothingChecked('verify-selects', cwd) : 0
   } catch (error) {
     const message = errorMessage(error)
     if (asJson) console.log(JSON.stringify({ error: message }, null, 2))

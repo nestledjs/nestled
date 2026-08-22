@@ -49,33 +49,22 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { reportNothingChecked } from './verify-selects.mjs'
 
-const SCHEMA_DIRECTORY_CANDIDATES = [
-  'libs/api/prisma/src/lib/schemas',
-  'prisma',
-  'libs/api/prisma/src/lib',
-]
+let nothingChecked = false
+
+const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', 'prisma', 'libs/api/prisma/src/lib']
 const DEFAULT_SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
 const SDL_PATH = 'api-schema.graphql'
 
-const PRISMA_SCALARS = new Set([
-  'String',
-  'Int',
-  'Float',
-  'Boolean',
-  'DateTime',
-  'Json',
-  'Decimal',
-  'BigInt',
-  'Bytes',
-])
+const PRISMA_SCALARS = new Set(['String', 'Int', 'Float', 'Boolean', 'DateTime', 'Json', 'Decimal', 'BigInt', 'Bytes'])
 
 const cwd = process.cwd()
 const argv = process.argv.slice(2)
 const asJson = argv.includes('--json')
 const warnNullable = argv.includes('--warn-nullable')
 const strictNested = argv.includes('--strict-nested')
-const roots = argv.filter(argument => !argument.startsWith('--'))
+const roots = argv.filter((argument) => !argument.startsWith('--'))
 const searchRoots = roots.length > 0 ? roots : DEFAULT_SEARCH_ROOTS
 
 // ── GraphQL SDL ──────────────────────────────────────────────────────────────
@@ -98,24 +87,21 @@ for (const match of sdl.matchAll(/^type (\w+) \{\n([\s\S]*?)^\}/gm)) {
 }
 
 // ── Prisma datamodel ─────────────────────────────────────────────────────────
-const schemaDirectory = SCHEMA_DIRECTORY_CANDIDATES.map(candidate => resolve(cwd, candidate)).find(
-  candidate =>
-    existsSync(candidate) && readdirSync(candidate).some(file => file.endsWith('.prisma')),
+const schemaDirectory = SCHEMA_DIRECTORY_CANDIDATES.map((candidate) => resolve(cwd, candidate)).find(
+  (candidate) => existsSync(candidate) && readdirSync(candidate).some((file) => file.endsWith('.prisma')),
 )
 if (!schemaDirectory) {
-  console.error(
-    `verify-select-coverage: no .prisma schema under ${SCHEMA_DIRECTORY_CANDIDATES.join(', ')}`,
-  )
+  console.error(`verify-select-coverage: no .prisma schema under ${SCHEMA_DIRECTORY_CANDIDATES.join(', ')}`)
   process.exit(2)
 }
 const datamodel = readdirSync(schemaDirectory)
-  .filter(file => file.endsWith('.prisma'))
+  .filter((file) => file.endsWith('.prisma'))
   .sort((left, right) => left.localeCompare(right))
-  .map(file => readFileSync(join(schemaDirectory, file), 'utf8'))
+  .map((file) => readFileSync(join(schemaDirectory, file), 'utf8'))
   .join('\n')
 
-const enumNames = new Set([...datamodel.matchAll(/^enum (\w+) \{/gm)].map(match => match[1]))
-const modelNames = new Set([...datamodel.matchAll(/^model (\w+) \{/gm)].map(match => match[1]))
+const enumNames = new Set([...datamodel.matchAll(/^enum (\w+) \{/gm)].map((match) => match[1]))
+const modelNames = new Set([...datamodel.matchAll(/^model (\w+) \{/gm)].map((match) => match[1]))
 
 /** model -> set of selectable scalar columns (relations excluded: they need their own select) */
 const prismaScalars = {}
@@ -141,7 +127,7 @@ for (const match of datamodel.matchAll(/^model (\w+) \{\n([\s\S]*?)^\}/gm)) {
 
 // ── select constants ─────────────────────────────────────────────────────────
 const selectFiles = []
-const walk = directory => {
+const walk = (directory) => {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name)
     if (entry.isDirectory()) walk(path)
@@ -191,11 +177,9 @@ const declarationOf = (source, name) =>
  * a building block reached through a spread, not a select the API returns, and checking it directly
  * would report the base's deliberate partiality as a defect.
  */
-const exportedConstantNames = source => [
+const exportedConstantNames = (source) => [
   ...new Set(
-    [...source.matchAll(/\bexport\s+(?:const|let|var)\s+(\w+)\s*(?::[^=]+)?=\s*\{/g)].map(
-      match => match[1],
-    ),
+    [...source.matchAll(/\bexport\s+(?:const|let|var)\s+(\w+)\s*(?::[^=]+)?=\s*\{/g)].map((match) => match[1]),
   ),
 ]
 
@@ -220,19 +204,19 @@ const annotationFor = (source, name, tag) => {
   return found
     ? found[1]
         .split(',')
-        .map(value => value.trim())
+        .map((value) => value.trim())
         .filter(Boolean)
     : []
 }
 
-const pascalCase = value =>
+const pascalCase = (value) =>
   value
     .split(/[-_]/)
     .filter(Boolean)
-    .map(word => word[0].toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word[0].toUpperCase() + word.slice(1).toLowerCase())
     .join('')
 
-const constantModelCandidates = name => {
+const constantModelCandidates = (name) => {
   const words = name
     .replace(/_?SELECT.*$/, '')
     .split('_')
@@ -280,7 +264,7 @@ const resolveSelect = (source, body, seen = new Set()) => {
       if (inlineOmit) {
         for (const field of inlineOmit[1]
           .split(',')
-          .map(value => value.trim())
+          .map((value) => value.trim())
           .filter(Boolean)) {
           omits.add(field)
         }
@@ -442,9 +426,7 @@ if (asJson) {
         console.log(`     ${entry.missing.length} non-nullable: ${entry.missing.join(', ')}\n`)
       }
     } else {
-      console.log(
-        `!  ${nestedProblems.length} nested select(s) omit ${fieldCount} non-nullable field(s).`,
-      )
+      console.log(`!  ${nestedProblems.length} nested select(s) omit ${fieldCount} non-nullable field(s).`)
       console.log("   Latent, not gated: widening a nested select can expose another user's row.")
       console.log('   The real fix is usually a purpose-built output type.')
       console.log('   Run with --strict-nested to list them.\n')
@@ -458,12 +440,13 @@ if (asJson) {
     }
   }
   if (selectFiles.length === 0) {
-    console.log('no reusable *.select.ts files discovered; nothing was checked\n')
+    nothingChecked = true
   } else if (problems.length === 0 && unresolved.length === 0) {
     console.log('every top-level select covers the non-nullable surface of its GraphQL type\n')
   }
 }
 
-const failed =
-  problems.length > 0 || unresolved.length > 0 || (strictNested && nestedProblems.length > 0)
-process.exit(failed ? 1 : 0)
+const failed = problems.length > 0 || unresolved.length > 0 || (strictNested && nestedProblems.length > 0)
+if (failed) process.exit(1)
+// Examining nothing is not the same as finding nothing wrong.
+process.exit(nothingChecked ? reportNothingChecked('verify-select-coverage') : 0)
