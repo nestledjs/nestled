@@ -157,4 +157,38 @@ describe('getAuthOperations', () => {
     expect(getOperationGuardNames(operations[0])).toEqual(['AccessPolicyGuard', 'GqlAuthGuard'])
     expect(getGuardRank(getOperationGuardNames(operations[0]))).toBe(3)
   })
+
+  it('accepts inherited parent authorization only for GraphQL field resolvers', () => {
+    const operations = getAuthOperations(`
+      @Resolver(() => User)
+      class UserResolver {
+        @ResolveField(() => Boolean)
+        @InheritedParentAuthorization()
+        isEmulating() {}
+
+        @Query(() => User)
+        @InheritedParentAuthorization()
+        unsafeUserQuery() {}
+      }
+
+      @Controller('users')
+      class UserController {
+        @Get(':id')
+        @InheritedParentAuthorization()
+        unsafeUserRoute() {}
+      }
+    `)
+
+    expect(operations.map(operation => operation.inheritsParentAuthorization)).toEqual([
+      true,
+      false,
+      false,
+    ])
+    expect(declaresAuthLevel(operations[0])).toBe(true)
+    expect(hasAuthenticationGuard(operations[0])).toBe(true)
+    expect(declaresAuthLevel(operations[1])).toBe(false)
+    expect(hasAuthenticationGuard(operations[1])).toBe(false)
+    expect(declaresAuthLevel(operations[2])).toBe(false)
+    expect(hasAuthenticationGuard(operations[2])).toBe(false)
+  })
 })

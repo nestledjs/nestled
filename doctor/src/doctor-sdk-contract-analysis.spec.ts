@@ -3,6 +3,7 @@ import {
   buildPrismaSelectFromFragments,
   buildPrismaSelectFromOperationPaths,
   getSdkContractReport,
+  getStaleSdkContractExceptions,
   normalizeContractPath,
   type DatabaseModelMetadata,
 } from './doctor-sdk-contract-analysis'
@@ -157,6 +158,43 @@ describe('SDK contract analysis', () => {
       },
     ])
   })
+
+  it('reports exception entries whose underlying finding no longer exists', () => {
+    const report = getSdkContractReport({
+      adminSources: [],
+      applicationSources: [
+        {
+          file: 'graphql/user.graphql',
+          source: 'query UserProfile { profile { id } } query UnusedProfile { unusedProfile { id } }',
+        },
+      ],
+      clientSources: [],
+      schemaSource: `
+        type User { id: ID! }
+        type Query { profile: User, unusedProfile: User, externalStatus: String }
+      `,
+    })
+
+    expect(
+      getStaleSdkContractExceptions(report, {
+        apiWithoutSdk: {
+          externalStatus: 'External protocol',
+          removedField: 'No longer exists',
+        },
+        inlineClientOperations: {
+          'apps/web/removed.tsx#Removed': 'File no longer exists',
+        },
+        sdkWithoutConsumer: {
+          'graphql/user.graphql#UnusedProfile': 'Planned consumer',
+          'graphql/user.graphql#RemovedProfile': 'Operation no longer exists',
+        },
+      }),
+    ).toEqual([
+      { category: 'apiWithoutSdk', key: 'removedField' },
+      { category: 'inlineClientOperations', key: 'apps/web/removed.tsx#Removed' },
+      { category: 'sdkWithoutConsumer', key: 'graphql/user.graphql#RemovedProfile' },
+    ])
+  })
 })
 
 describe('operation-path select analysis', () => {
@@ -296,7 +334,7 @@ describe('sdkWithoutConsumer name matching', () => {
       schemaSource: 'type Query { thing: String } type Mutation { createThing: String }',
     })
 
-    expect(report.sdkWithoutConsumer.map(operation => operation.name)).toEqual(['OrphanThing'])
+    expect(report.sdkWithoutConsumer.map((operation) => operation.name)).toEqual(['OrphanThing'])
   })
 
   it('normalizes acronym runs the way codegen does', () => {

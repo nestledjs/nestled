@@ -12,6 +12,7 @@ export type AuthOperation = {
   className: string
   decorators: string
   guardNames: string[]
+  inheritsParentAuthorization: boolean
   kind: AuthOperationKind
   line: number
   name: string
@@ -113,7 +114,7 @@ export const getGuardRank = (guards: string[]): number => {
 export const getOperationGuardNames = (operation: AuthOperation): string[] => operation.guardNames
 
 export const hasAuthenticationGuard = (operation: AuthOperation): boolean =>
-  operation.guardNames.some(isAuthenticationGuardName)
+  operation.inheritsParentAuthorization || operation.guardNames.some(isAuthenticationGuardName)
 
 export const declaresAuthLevel = (operation: AuthOperation): boolean => operation.authLevelDeclared
 
@@ -144,22 +145,32 @@ export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthO
       if (!ts.isMethodDeclaration(member)) continue
 
       const methodDecorators = getDecorators(member)
+      const methodDecoratorNames = new Set(methodDecorators.map(getDecoratorName))
       if (
         !methodDecorators.some(decorator => isOperationDecorator(getDecoratorName(decorator), kind))
       ) {
         continue
       }
 
+      const inheritsParentAuthorization =
+        kind === 'graphql' &&
+        methodDecoratorNames.has('ResolveField') &&
+        methodDecoratorNames.has('InheritedParentAuthorization')
+
       const line =
         sourceFile.getLineAndCharacterOfPosition(member.name.getStart(sourceFile)).line + 1
       operations.push({
-        authLevelDeclared: classDeclaresAuthLevel || hasAuthLevelDecorator(methodDecorators),
+        authLevelDeclared:
+          classDeclaresAuthLevel ||
+          hasAuthLevelDecorator(methodDecorators) ||
+          inheritsParentAuthorization,
         classDecorators: classDecoratorSource,
         className,
         decorators: getDecoratorSource(methodDecorators, sourceFile),
         guardNames: [...new Set([...classGuardNames, ...getGuardNames(methodDecorators)])].sort(
           (left, right) => left.localeCompare(right),
         ),
+        inheritsParentAuthorization,
         kind,
         line,
         name: getMethodName(member, sourceFile),

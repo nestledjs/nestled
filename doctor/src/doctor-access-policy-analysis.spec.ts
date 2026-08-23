@@ -6,7 +6,7 @@ import {
 } from './doctor-access-policy-analysis'
 
 describe('analyzeAccessPolicies', () => {
-  it('extracts platform and organization permission literals without option prose', () => {
+  it('extracts platform, organization, and public API scope literals without option prose', () => {
     const report = analyzeAccessPolicies(`
       @Resolver()
       class ResolverUnderTest {
@@ -19,12 +19,22 @@ describe('analyzeAccessPolicies', () => {
           organizationIdPath: 'input.organizationId',
         })
         updateMember() {}
+
+        @Post()
+        @RequirePublicApiScopes('write')
+        importFans() {}
       }
     `)
 
-    expect(report.declarations.map(item => item.permissions)).toEqual([
+    expect(report.declarations.map((item) => item.permissions)).toEqual([
       ['platform.users.read', 'platform.users.manage'],
       ['member:update'],
+      ['write'],
+    ])
+    expect(report.declarations.map((item) => item.scope)).toEqual([
+      'platform',
+      'organization',
+      'public-api',
     ])
   })
 
@@ -135,7 +145,7 @@ describe('getUndeclaredAccessOperations', () => {
       }
     `)
 
-    expect(undeclared.map(operation => operation.name)).toEqual(['getSignedUrl'])
+    expect(undeclared.map((operation) => operation.name)).toEqual(['getSignedUrl'])
     expect(undeclared[0].callerScoped).toBe(false)
   })
 
@@ -190,6 +200,24 @@ describe('getUndeclaredAccessOperations', () => {
       }
     `)
 
+    expect(undeclared[0].callerScoped).toBe(true)
+  })
+
+  it('treats an explicit inherited-parent authorization declaration as scoped', () => {
+    const undeclared = getUndeclaredAccessOperations(`
+      @Resolver(() => Account)
+      class AccountResolver {
+        @ResolveField(() => Decimal)
+        @UseGuards(GqlAuthGuard)
+        @InheritedParentAuthorization()
+        availableBalance(@Parent() account: Account) {
+          return account.availableBalance
+        }
+      }
+    `)
+
+    expect(undeclared).toHaveLength(1)
+    expect(undeclared[0].name).toBe('availableBalance')
     expect(undeclared[0].callerScoped).toBe(true)
   })
 

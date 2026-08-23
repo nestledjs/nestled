@@ -49,7 +49,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { reportNothingChecked } from './doctor-repo-config.js'
+import { readRepoConfig, reportNothingChecked } from './doctor-repo-config.js'
 
 const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', 'prisma', 'libs/api/prisma/src/lib']
 const DEFAULT_SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
@@ -64,6 +64,7 @@ const warnNullable = argv.includes('--warn-nullable')
 const strictNested = argv.includes('--strict-nested')
 const roots = argv.filter((argument) => !argument.startsWith('--'))
 const searchRoots = roots.length > 0 ? roots : DEFAULT_SEARCH_ROOTS
+const { selectFileSuffixes } = readRepoConfig(cwd)
 
 // ── GraphQL SDL ──────────────────────────────────────────────────────────────
 const sdlPath = resolve(cwd, SDL_PATH)
@@ -129,7 +130,7 @@ const walk = (directory) => {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name)
     if (entry.isDirectory()) walk(path)
-    else if (entry.name.endsWith('.select.ts')) selectFiles.push(path)
+    else if (selectFileSuffixes.some((suffix) => entry.name.endsWith(suffix))) selectFiles.push(path)
   }
 }
 for (const root of searchRoots) {
@@ -308,7 +309,9 @@ const modelFor = (source, name, file) => {
   for (const candidate of constantModelCandidates(name)) {
     if (prismaScalars[candidate]) return candidate
   }
-  const base = file.split('/').pop().replace('.select.ts', '')
+  const filename = file.split('/').pop()
+  const suffix = selectFileSuffixes.find((candidate) => filename.endsWith(candidate))
+  const base = suffix ? filename.slice(0, -suffix.length) : filename
   const pascal = pascalCase(base)
   return prismaScalars[pascal] ? pascal : null
 }

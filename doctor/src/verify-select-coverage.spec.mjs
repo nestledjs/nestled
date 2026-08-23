@@ -379,4 +379,38 @@ export const USER_SELECT = {
       },
     ])
   })
+
+  it('honours configured select file suffixes and checks a noncanonical layout', () => {
+    const workspace = createWorkspace('')
+    writeFixture(
+      workspace,
+      '.nestled-updates/doctor.config.json',
+      JSON.stringify({ selectFileSuffixes: ['.resolver.ts'] }),
+    )
+    writeFixture(
+      workspace,
+      'libs/api/custom/src/lib/user/user.resolver.ts',
+      `
+export const USER_SELECT = {
+  id: true,
+} as const
+`,
+    )
+
+    const result = runTool(workspace)
+
+    expect(result.stderr).toBe('')
+    expect(result.status).toBe(1)
+    expect(JSON.parse(result.stdout)).toMatchObject({
+      files: 1,
+      problems: [
+        {
+          file: 'libs/api/custom/src/lib/user/user.resolver.ts',
+          constant: 'USER_SELECT',
+          model: 'User',
+          missing: ['email'],
+        },
+      ],
+    })
+  })
 })

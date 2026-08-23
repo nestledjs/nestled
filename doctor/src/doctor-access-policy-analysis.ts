@@ -1,7 +1,7 @@
 import ts from 'typescript'
 import { decoratorName, decoratorsOf, unwrapExpression } from './doctor-typescript-analysis'
 
-export type AccessPolicyScope = 'platform' | 'organization'
+export type AccessPolicyScope = 'platform' | 'organization' | 'public-api'
 
 export type AccessPolicyDeclaration = {
   className: string
@@ -20,22 +20,13 @@ export type InlineAccessCheckViolation = {
 }
 
 const graphqlOperationDecorators = new Set(['Mutation', 'Query', 'ResolveField', 'Subscription'])
-const httpOperationDecorators = new Set([
-  'All',
-  'Delete',
-  'Get',
-  'Head',
-  'Options',
-  'Patch',
-  'Post',
-  'Put',
-  'Sse',
-])
+const httpOperationDecorators = new Set(['All', 'Delete', 'Get', 'Head', 'Options', 'Patch', 'Post', 'Put', 'Sse'])
 const policyDecorators = new Map<string, AccessPolicyScope>([
   ['RequirePlatformPermission', 'platform'],
   ['RequireAllPlatformPermissions', 'platform'],
   ['RequireOrganizationPermission', 'organization'],
   ['RequireAllOrganizationPermissions', 'organization'],
+  ['RequirePublicApiScopes', 'public-api'],
 ])
 const inlineAccessCalls = new Set([
   'assertPermission',
@@ -45,17 +36,13 @@ const inlineAccessCalls = new Set([
 ])
 
 const methodName = (method: ts.MethodDeclaration, sourceFile: ts.SourceFile): string =>
-  ts.isIdentifier(method.name) || ts.isStringLiteral(method.name)
-    ? method.name.text
-    : method.name.getText(sourceFile)
+  ts.isIdentifier(method.name) || ts.isStringLiteral(method.name) ? method.name.text : method.name.getText(sourceFile)
 
 const isApiClass = (statement: ts.ClassDeclaration): boolean =>
-  decoratorsOf(statement).some(decorator =>
-    ['Controller', 'Resolver'].includes(decoratorName(decorator)),
-  )
+  decoratorsOf(statement).some((decorator) => ['Controller', 'Resolver'].includes(decoratorName(decorator)))
 
 const isApiOperation = (method: ts.MethodDeclaration): boolean =>
-  decoratorsOf(method).some(decorator => {
+  decoratorsOf(method).some((decorator) => {
     const name = decoratorName(decorator)
     return graphqlOperationDecorators.has(name) || httpOperationDecorators.has(name)
   })
@@ -77,7 +64,7 @@ const permissionArguments = (decorator: ts.Decorator, scope: AccessPolicyScope):
   if (!ts.isCallExpression(decorator.expression)) return []
   const args = decorator.expression.arguments
   if (scope === 'organization') return args[0] ? stringLiterals(args[0]) : []
-  return args.flatMap(argument => stringLiterals(argument))
+  return args.flatMap((argument) => stringLiterals(argument))
 }
 
 const policyDeclarations = (
@@ -86,7 +73,7 @@ const policyDeclarations = (
   className: string,
   name: string,
 ): AccessPolicyDeclaration[] =>
-  decorators.flatMap(decorator => {
+  decorators.flatMap((decorator) => {
     const nameOfDecorator = decoratorName(decorator)
     const scope = policyDecorators.get(nameOfDecorator)
     if (!scope) return []
@@ -126,13 +113,7 @@ export const readStringObjectArray = (
   variableName: string,
   properties: readonly string[],
 ): Array<Record<string, string>> => {
-  const sourceFile = ts.createSourceFile(
-    'catalog.ts',
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  )
+  const sourceFile = ts.createSourceFile('catalog.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
 
   // Find the array-literal declaration ANYWHERE in the tree, not only among top-level statements — a
   // repo may declare the catalog inside a function, module, or block (fleet-upstream #120). Require the
@@ -159,21 +140,20 @@ export const readStringObjectArray = (
 
   if (!initializer) return []
 
-  return initializer.elements.flatMap(element => {
+  return initializer.elements.flatMap((element) => {
     const value = unwrapExpression(element)
     if (!ts.isObjectLiteralExpression(value)) return []
     const entry: Record<string, string> = {}
     for (const member of value.properties) {
       if (!ts.isPropertyAssignment(member)) continue
-      const name =
-        ts.isIdentifier(member.name) || ts.isStringLiteral(member.name) ? member.name.text : ''
+      const name = ts.isIdentifier(member.name) || ts.isStringLiteral(member.name) ? member.name.text : ''
       if (!properties.includes(name)) continue
       const propertyValue = unwrapExpression(member.initializer)
       if (ts.isStringLiteral(propertyValue) || ts.isNoSubstitutionTemplateLiteral(propertyValue)) {
         entry[name] = propertyValue.text
       }
     }
-    return properties.every(property => entry[property]) ? [entry] : []
+    return properties.every((property) => entry[property]) ? [entry] : []
   })
 }
 
@@ -198,7 +178,7 @@ export const readStringObjectArray = (
 // `[a-z]` rather than `[A-Za-z]`: the /i flag already makes them equivalent, and spelling both
 // ranges is a duplicated character class (S5869). The decorators are PascalCase and still match.
 const CALLER_SCOPE_ANCHOR =
-  /@Ctx[a-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
+  /@Ctx[a-z]*\s*\(|@InheritedParentAuthorization\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
 
 export type UndeclaredAccessOperation = {
   className: string
@@ -225,14 +205,14 @@ export const getUndeclaredAccessOperations = (
   isGuarded: (operationName: string) => boolean = () => true,
 ): UndeclaredAccessOperation[] => {
   const { declarations, operations } = analyzeAccessPolicies(source, fileName)
-  const classWide = declarations.some(declaration => declaration.name === '(class)')
+  const classWide = declarations.some((declaration) => declaration.name === '(class)')
   if (classWide) return []
 
-  const declared = new Set(declarations.map(declaration => declaration.name))
+  const declared = new Set(declarations.map((declaration) => declaration.name))
 
   return operations
-    .filter(operation => !declared.has(operation.name) && isGuarded(operation.name))
-    .map(operation => ({
+    .filter((operation) => !declared.has(operation.name) && isGuarded(operation.name))
+    .map((operation) => ({
       className: operation.className,
       name: operation.name,
       line: operation.line,
@@ -241,13 +221,7 @@ export const getUndeclaredAccessOperations = (
 }
 
 export const analyzeAccessPolicies = (source: string, fileName = 'source.ts') => {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  )
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const declarations: AccessPolicyDeclaration[] = []
   const inlineViolations: InlineAccessCheckViolation[] = []
   const operations: UndeclaredAccessOperation[] = []
@@ -255,12 +229,7 @@ export const analyzeAccessPolicies = (source: string, fileName = 'source.ts') =>
   for (const statement of sourceFile.statements) {
     if (!ts.isClassDeclaration(statement) || !isApiClass(statement)) continue
     const className = statement.name?.text ?? '(anonymous class)'
-    const classPolicies = policyDeclarations(
-      decoratorsOf(statement),
-      sourceFile,
-      className,
-      '(class)',
-    )
+    const classPolicies = policyDeclarations(decoratorsOf(statement), sourceFile, className, '(class)')
     declarations.push(...classPolicies)
 
     for (const member of statement.members) {
