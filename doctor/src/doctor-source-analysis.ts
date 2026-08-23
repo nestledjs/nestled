@@ -246,7 +246,7 @@ const regexAllowedAt = (source: string, slash: number): boolean => {
   if ('(,=:[!&|?{};+-*%~^<>'.includes(previous)) return true
 
   // A keyword may precede a regex; an identifier or literal may not (that is division).
-  let end = position + 1
+  const end = position + 1
   while (position >= 0 && /[A-Za-z_$]/.test(source[position])) position -= 1
   return KEYWORDS_BEFORE_REGEX.has(source.slice(position + 1, end))
 }

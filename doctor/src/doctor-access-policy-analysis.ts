@@ -28,6 +28,9 @@ const policyDecorators = new Map<string, AccessPolicyScope>([
   ['RequireAllOrganizationPermissions', 'organization'],
   ['RequirePublicApiScopes', 'public-api'],
 ])
+/** Exposed so doctor-auth-analysis can assert it recognizes the same decorators. */
+export const POLICY_DECORATOR_NAMES: readonly string[] = [...policyDecorators.keys()]
+
 const inlineAccessCalls = new Set([
   'assertPermission',
   'hasAnyPermissionInNamespace',
