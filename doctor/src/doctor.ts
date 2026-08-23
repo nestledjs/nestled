@@ -30,8 +30,10 @@ import {
 } from './doctor-crud-boundary-analysis'
 import {
   getSdkContractReport,
+  getStaleSdkContractExceptions,
   normalizeContractPath,
   type GraphqlSource,
+  type SdkContractExceptions,
   type SdkContractReport,
   type TypeScriptSource,
 } from './doctor-sdk-contract-analysis'
@@ -86,12 +88,6 @@ type PublicOperationAllowlist = Record<string, Record<string, string>>
 type SdkContractBaseline = {
   apiWithoutSdk?: string[]
   inlineClientOperations?: string[]
-}
-
-type SdkContractExceptions = {
-  apiWithoutSdk?: Record<string, string>
-  inlineClientOperations?: Record<string, string>
-  sdkWithoutConsumer?: Record<string, string>
 }
 
 const fail = (check: string, message: string, file?: string, line?: number) => {
@@ -1012,6 +1008,12 @@ const reportUnusedSdkOperations = (report: SdkContractReport, exceptions: SdkCon
   }
 }
 
+const reportStaleSdkContractExceptions = (report: SdkContractReport, exceptions: SdkContractExceptions): void => {
+  for (const exception of getStaleSdkContractExceptions(report, exceptions)) {
+    warn('sdk-contract', `Remove stale ${exception.category} exception: ${exception.key}`, sdkContractExceptionsPath)
+  }
+}
+
 const checkSdkContract = () => {
   if (!existsSync('api-schema.graphql')) return
 
@@ -1033,6 +1035,7 @@ const checkSdkContract = () => {
   reportInlineClientOperations(report, exceptions, baselineInlineOperations)
   reportResolvedSdkBaselineEntries(report, baselineApiFields, baselineInlineOperations)
   reportUnusedSdkOperations(report, exceptions)
+  reportStaleSdkContractExceptions(report, exceptions)
 }
 
 const getModuleClasses = (source: string): string[] =>
@@ -1894,6 +1897,11 @@ const reportAccessPolicyDeclaration = (
     return
   }
 
+  // Public API scopes are validated by the API-key guard against the key's scope list at runtime;
+  // unlike platform and organization permissions, they do not come from a seed catalog. Reaching
+  // this point with at least one literal proves the endpoint made an explicit scoped declaration.
+  if (declaration.scope === 'public-api') return
+
   const catalog = catalogs[declaration.scope]
   // An empty catalog would report EVERY declared permission as "unknown" — a broken read, not N real
   // findings (fleet-upstream #120). Note the scope once; the caller reports it after the sweep.
@@ -2057,9 +2065,10 @@ const checkAccessPolicyCoverage = () => {
   const unauthorized = new Set<string>()
 
   for (const file of getAuthSourceFiles()) {
-    // Generated CRUD is governed by generated-crud posture, not per-operation permissions: the
-    // whole surface is one declared tier, asserted by checkGeneratedCrudPosture.
-    if (file.includes('libs/api/generated-crud/')) continue
+    // The generated posture proves the privilege ceiling, not why each operation exists. Generated
+    // methods still owe an auditable read/manage capability just like handwritten admin methods.
+    // The generator emits those declarations; checking the output here catches stale or edited
+    // generated files before deployment.
     reportUnauthorizedOperations(file, exemptions, unauthorized)
   }
 

@@ -90,7 +90,13 @@ export function generateResolverContent(
   const guard =
     posture === 'authenticated'
       ? { imports: 'Authenticated, GqlAuthGuard', guardClass: 'GqlAuthGuard', decorator: '@Authenticated()' }
-      : { imports: 'AdminOnly, GqlAuthAdminGuard', guardClass: 'GqlAuthAdminGuard', decorator: '@AdminOnly()' }
+      : {
+          imports: 'AdminOnly, GqlAuthAdminGuard, RequirePlatformPermission',
+          guardClass: 'GqlAuthAdminGuard',
+          decorator: '@AdminOnly()',
+        }
+  const readPermission = posture === 'admin' ? "  @RequirePlatformPermission('platform.data-browser.read')\n" : ''
+  const managePermission = posture === 'admin' ? "  @RequirePlatformPermission('platform.data-browser.manage')\n" : ''
 
   return `import { UseGuards } from '@nestjs/common'
 import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
@@ -112,7 +118,7 @@ export class Generated${model.modelName}Resolver {
   constructor(private readonly generatedService: ApiCrudDataAccessService) {}
 
   @Query(() => [${model.modelName}], { nullable: true })
-  ${readManyMethodName}(
+${readPermission}  ${readManyMethodName}(
     @Info() info: GraphQLResolveInfo,
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${model.modelName}Input,
   ) {
@@ -120,14 +126,14 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Query(() => CorePaging, { nullable: true })
-  ${countMethodName}(
+${readPermission}  ${countMethodName}(
     @Args({ name: 'input', type: () => List${model.modelName}Input, nullable: true }) input?: List${model.modelName}Input,
   ) {
     return this.generatedService.${countMethodName}(input)
   }
 
   @Query(() => ${model.modelName}, { nullable: true })
-  ${readOneMethodName}(
+${readPermission}  ${readOneMethodName}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType}
   ) {
@@ -135,7 +141,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  create${model.modelName}(
+${managePermission}  create${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('input') input: Create${model.modelName}Input,
   ) {
@@ -143,7 +149,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  update${model.modelName}(
+${managePermission}  update${model.modelName}(
     @Info() info: GraphQLResolveInfo,
     @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType},
     @Args('input') input: Update${model.modelName}Input,
@@ -152,7 +158,7 @@ export class Generated${model.modelName}Resolver {
   }
 
   @Mutation(() => ${model.modelName}, { nullable: true })
-  delete${model.modelName}(
+${managePermission}  delete${model.modelName}(
     @Args('${model.modelPropertyName}Id'${idArgsType}) ${model.modelPropertyName}Id: ${idTsType},
   ) {
     return this.generatedService.delete${model.modelName}(${model.modelPropertyName}Id)

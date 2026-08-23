@@ -68,6 +68,17 @@ export type SdkContractReport = {
   sdkWithoutConsumer: SdkOperation[]
 }
 
+export type SdkContractExceptions = {
+  apiWithoutSdk?: Record<string, string>
+  inlineClientOperations?: Record<string, string>
+  sdkWithoutConsumer?: Record<string, string>
+}
+
+export type StaleSdkContractException = {
+  category: keyof SdkContractExceptions
+  key: string
+}
+
 export type SdkRootMismatch = {
   file: string
   operation: string
@@ -86,12 +97,7 @@ const alphabetical = (left: string, right: string): number => left.localeCompare
 const mergeSelect = (target: PrismaSelect, addition: PrismaSelect): void => {
   for (const [fieldName, value] of Object.entries(addition)) {
     const current = target[fieldName]
-    if (
-      current !== true &&
-      value !== true &&
-      current?.select !== undefined &&
-      value.select !== undefined
-    ) {
+    if (current !== true && value !== true && current?.select !== undefined && value.select !== undefined) {
       mergeSelect(current.select, value.select)
     } else if (current === undefined || (current === true && value !== true)) {
       target[fieldName] = value
@@ -107,9 +113,7 @@ const fragmentsFrom = (sources: readonly GraphqlSource[]): Map<string, FragmentR
       if (definition.kind !== Kind.FRAGMENT_DEFINITION) continue
       const existing = fragments.get(definition.name.value)
       if (existing) {
-        throw new Error(
-          `Duplicate fragment ${definition.name.value} in ${existing.file} and ${graphqlSource.file}`,
-        )
+        throw new Error(`Duplicate fragment ${definition.name.value} in ${existing.file} and ${graphqlSource.file}`)
       }
       fragments.set(definition.name.value, { definition, file: graphqlSource.file })
     }
@@ -132,7 +136,7 @@ const selectForField = (
   fragmentPath: ReadonlySet<string>,
 ): PrismaSelect => {
   const fieldName = selection.name.value
-  const field = model.fields.find(candidate => candidate.name === fieldName)
+  const field = model.fields.find((candidate) => candidate.name === fieldName)
   if (!field) {
     context.skippedFields.add(`${model.modelName}.${fieldName}`)
     return {}
@@ -141,12 +145,7 @@ const selectForField = (
   const relatedModel = context.models.get(field.type)
   if (!relatedModel || !selection.selectionSet) return { [fieldName]: true }
 
-  const nestedSelect = selectForSelectionSet(
-    selection.selectionSet,
-    relatedModel,
-    context,
-    fragmentPath,
-  )
+  const nestedSelect = selectForSelectionSet(selection.selectionSet, relatedModel, context, fragmentPath)
   if (Object.keys(nestedSelect).length > 0) {
     return { [fieldName]: { select: nestedSelect } }
   }
@@ -219,17 +218,16 @@ export const buildPrismaSelectFromFragments = (options: {
   targetModelName: string
 }): FragmentSelectResult => {
   const fragments = fragmentsFrom(options.allSources)
-  const rootFiles = new Set(options.rootSources.map(source => source.file))
+  const rootFiles = new Set(options.rootSources.map((source) => source.file))
   const rootFragments = [...fragments.values()].filter(
-    fragment =>
-      rootFiles.has(fragment.file) &&
-      fragment.definition.typeCondition.name.value === options.targetModelName,
+    (fragment) =>
+      rootFiles.has(fragment.file) && fragment.definition.typeCondition.name.value === options.targetModelName,
   )
   if (rootFragments.length === 0) {
     throw new Error(`No ${options.targetModelName} fragments found in ${[...rootFiles].join(', ')}`)
   }
 
-  const models = new Map(options.models.map(model => [model.modelName, model]))
+  const models = new Map(options.models.map((model) => [model.modelName, model]))
   const targetModel = models.get(options.targetModelName)
   if (!targetModel) {
     throw new Error(`No generated database metadata found for ${options.targetModelName}`)
@@ -256,7 +254,7 @@ export const buildPrismaSelectFromFragments = (options: {
   }
 
   return {
-    fragmentNames: rootFragments.map(fragment => fragment.definition.name.value).sort(alphabetical),
+    fragmentNames: rootFragments.map((fragment) => fragment.definition.name.value).sort(alphabetical),
     missingFragments: [...context.missingFragments].sort(alphabetical),
     select,
     skippedFields: [...context.skippedFields].sort(alphabetical),
@@ -323,9 +321,7 @@ const inlineFragmentSetsOn = (
     }
     if (selection.kind === Kind.FIELD) {
       if (selection.selectionSet) {
-        sets.push(
-          ...inlineFragmentSetsOn(selection.selectionSet, typeName, fragments, fragmentPath),
-        )
+        sets.push(...inlineFragmentSetsOn(selection.selectionSet, typeName, fragments, fragmentPath))
       }
       continue
     }
@@ -333,19 +329,16 @@ const inlineFragmentSetsOn = (
     if (!fragment || fragmentPath.has(selection.name.value)) continue
     const nextPath = new Set(fragmentPath)
     nextPath.add(selection.name.value)
-    sets.push(
-      ...inlineFragmentSetsOn(fragment.definition.selectionSet, typeName, fragments, nextPath),
-    )
+    sets.push(...inlineFragmentSetsOn(fragment.definition.selectionSet, typeName, fragments, nextPath))
   }
   return sets
 }
 
 /** Operation definitions across the whole SDK, parsed once so path matching doesn't reparse. */
 const operationDefinitionsOf = (sources: readonly GraphqlSource[]): OperationDefinitionNode[] =>
-  sources.flatMap(source =>
+  sources.flatMap((source) =>
     parse(source.source).definitions.filter(
-      (definition): definition is OperationDefinitionNode =>
-        definition.kind === Kind.OPERATION_DEFINITION,
+      (definition): definition is OperationDefinitionNode => definition.kind === Kind.OPERATION_DEFINITION,
     ),
   )
 
@@ -359,13 +352,13 @@ const pathCursors = (
   operations: readonly OperationDefinitionNode[],
   fragments: ReadonlyMap<string, FragmentReference>,
 ): { cursors: SelectionSetNode[]; remaining: string[] } => {
-  const segments = entry.split('.').map(segment => segment.trim())
+  const segments = entry.split('.').map((segment) => segment.trim())
   if (!/^[A-Z]/.test(segments[0] ?? '')) {
-    return { cursors: operations.map(operation => operation.selectionSet), remaining: segments }
+    return { cursors: operations.map((operation) => operation.selectionSet), remaining: segments }
   }
   const cursors = [...fragments.values()]
-    .filter(fragment => fragment.definition.typeCondition.name.value === segments[0])
-    .map(fragment => fragment.definition.selectionSet)
+    .filter((fragment) => fragment.definition.typeCondition.name.value === segments[0])
+    .map((fragment) => fragment.definition.selectionSet)
   for (const operation of operations) {
     cursors.push(...inlineFragmentSetsOn(operation.selectionSet, segments[0], fragments, new Set()))
   }
@@ -380,11 +373,9 @@ const walkPathToLeaves = (
 ): FieldNode[] => {
   let current: SelectionSetNode[] = [...cursors]
   for (const [index, segment] of remaining.entries()) {
-    const nodes = current.flatMap(cursor => fieldNodesNamed(cursor, segment, fragments, new Set()))
+    const nodes = current.flatMap((cursor) => fieldNodesNamed(cursor, segment, fragments, new Set()))
     if (index === remaining.length - 1) return nodes
-    current = nodes
-      .map(node => node.selectionSet)
-      .filter((set): set is SelectionSetNode => set !== undefined)
+    current = nodes.map((node) => node.selectionSet).filter((set): set is SelectionSetNode => set !== undefined)
   }
   return []
 }
@@ -413,7 +404,7 @@ export const buildPrismaSelectFromOperationPaths = (options: {
   targetModelName: string
 }): OperationPathSelectResult => {
   const fragments = fragmentsFrom(options.allSources)
-  const models = new Map(options.models.map(model => [model.modelName, model]))
+  const models = new Map(options.models.map((model) => [model.modelName, model]))
   const targetModel = models.get(options.targetModelName)
   if (!targetModel) {
     throw new Error(`No generated database metadata found for ${options.targetModelName}`)
@@ -466,11 +457,7 @@ const operationRootFields = (
     if (!fragment || fragmentPath.has(fragmentName)) continue
     const nextPath = new Set(fragmentPath)
     nextPath.add(fragmentName)
-    for (const field of operationRootFields(
-      fragment.definition.selectionSet,
-      fragments,
-      nextPath,
-    )) {
+    for (const field of operationRootFields(fragment.definition.selectionSet, fragments, nextPath)) {
       fields.add(field)
     }
   }
@@ -488,9 +475,7 @@ export const getSdkOperations = (sources: readonly GraphqlSource[]): SdkOperatio
       operations.push({
         file: graphqlSource.file,
         name: definition.name?.value ?? '(anonymous operation)',
-        rootFields: [...operationRootFields(definition.selectionSet, fragments, new Set())].sort(
-          alphabetical,
-        ),
+        rootFields: [...operationRootFields(definition.selectionSet, fragments, new Set())].sort(alphabetical),
       })
     }
   }
@@ -505,7 +490,7 @@ export const getSdkOperations = (sources: readonly GraphqlSource[]): SdkOperatio
  */
 export const codegenPascalCase = (name: string): string =>
   (name.match(/[A-Z]+(?![a-z])|[A-Z]?[a-z0-9]+/g) ?? [name])
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
     .join('')
 
 const sdkModulePattern = /\/shared\/sdk$|\/shared\/sdk\/|^@[^/]+\/shared\/sdk$/
@@ -515,10 +500,7 @@ type SdkImportBindings = {
   namespaces: Set<string>
 }
 
-const collectSdkImportDeclaration = (
-  statement: ts.Statement,
-  bindings: SdkImportBindings,
-): void => {
+const collectSdkImportDeclaration = (statement: ts.Statement, bindings: SdkImportBindings): void => {
   if (!ts.isImportDeclaration(statement) || !ts.isStringLiteral(statement.moduleSpecifier)) return
   if (!sdkModulePattern.test(statement.moduleSpecifier.text)) return
 
@@ -576,9 +558,7 @@ const getSdkValueImports = (sources: readonly TypeScriptSource[]): Set<string> =
 
 const operationPattern = /\b(?:query|mutation|subscription)\s+([_A-Za-z]\w*)/g
 
-export const getInlineClientOperations = (
-  sources: readonly TypeScriptSource[],
-): InlineClientOperation[] => {
+export const getInlineClientOperations = (sources: readonly TypeScriptSource[]): InlineClientOperation[] => {
   const operations: InlineClientOperation[] = []
 
   for (const typeScriptSource of sources) {
@@ -591,17 +571,10 @@ export const getInlineClientOperations = (
     )
 
     const visit = (node: ts.Node): void => {
-      if (
-        ts.isTaggedTemplateExpression(node) &&
-        ts.isIdentifier(node.tag) &&
-        node.tag.text === 'gql'
-      ) {
+      if (ts.isTaggedTemplateExpression(node) && ts.isIdentifier(node.tag) && node.tag.text === 'gql') {
         const templateText = ts.isNoSubstitutionTemplateLiteral(node.template)
           ? node.template.text
-          : [
-              node.template.head.text,
-              ...node.template.templateSpans.map(span => span.literal.text),
-            ].join(' ')
+          : [node.template.head.text, ...node.template.templateSpans.map((span) => span.literal.text)].join(' ')
         operationPattern.lastIndex = 0
         let match: RegExpExecArray | null
         while ((match = operationPattern.exec(templateText)) !== null) {
@@ -617,9 +590,7 @@ export const getInlineClientOperations = (
     visit(sourceFile)
   }
 
-  return operations.sort(
-    (left, right) => left.file.localeCompare(right.file) || left.line - right.line,
-  )
+  return operations.sort((left, right) => left.file.localeCompare(right.file) || left.line - right.line)
 }
 
 export const getSdkContractReport = (options: {
@@ -636,27 +607,22 @@ export const getSdkContractReport = (options: {
   const adminOperations = getSdkOperations(options.adminSources)
   const applicationOperations = getSdkOperations(options.applicationSources)
   const coveredFields = new Set(
-    [...adminOperations, ...applicationOperations].flatMap(operation => operation.rootFields),
+    [...adminOperations, ...applicationOperations].flatMap((operation) => operation.rootFields),
   )
   const consumerImports = getSdkValueImports(options.clientSources)
   const allOperations = [...adminOperations, ...applicationOperations]
 
   return {
-    apiWithoutSdk: [...schemaRootFields]
-      .filter(field => !coveredFields.has(field))
-      .sort(alphabetical),
+    apiWithoutSdk: [...schemaRootFields].filter((field) => !coveredFields.has(field)).sort(alphabetical),
     inlineClientOperations: getInlineClientOperations(options.clientSources),
     sdkWithoutApi: allOperations
-      .map(operation => ({
+      .map((operation) => ({
         file: operation.file,
         operation: operation.name,
-        rootFields: operation.rootFields.filter(field => !schemaRootFields.has(field)),
+        rootFields: operation.rootFields.filter((field) => !schemaRootFields.has(field)),
       }))
-      .filter(mismatch => mismatch.rootFields.length > 0)
-      .sort(
-        (left, right) =>
-          left.file.localeCompare(right.file) || left.operation.localeCompare(right.operation),
-      ),
+      .filter((mismatch) => mismatch.rootFields.length > 0)
+      .sort((left, right) => left.file.localeCompare(right.file) || left.operation.localeCompare(right.operation)),
     // The generated document const is the codegen-PascalCased operation name: `mutation
     // createPaymentTransaction` exports `CreatePaymentTransaction`, and acronym runs are
     // normalized (`deleteCourseFAQ` → `DeleteCourseFaq`, `FAQS` → `Faqs`). Consumers import
@@ -664,9 +630,32 @@ export const getSdkContractReport = (options: {
     // every such operation as unconsumed — an oracle that, followed blindly, would have
     // deleted live staff mutations.
     sdkWithoutConsumer: applicationOperations.filter(
-      operation =>
-        !consumerImports.has(operation.name) &&
-        !consumerImports.has(codegenPascalCase(operation.name)),
+      (operation) => !consumerImports.has(operation.name) && !consumerImports.has(codegenPascalCase(operation.name)),
     ),
   }
+}
+
+/**
+ * Exception entries are decisions about a finding that still exists. Once the finding disappears,
+ * the entry becomes an unchecked claim and must be removed rather than carried indefinitely.
+ */
+export const getStaleSdkContractExceptions = (
+  report: SdkContractReport,
+  exceptions: SdkContractExceptions,
+): StaleSdkContractException[] => {
+  const current: Record<keyof SdkContractExceptions, Set<string>> = {
+    apiWithoutSdk: new Set(report.apiWithoutSdk),
+    inlineClientOperations: new Set(
+      report.inlineClientOperations.map((operation) => `${operation.file}#${operation.name}`),
+    ),
+    sdkWithoutConsumer: new Set(report.sdkWithoutConsumer.map((operation) => `${operation.file}#${operation.name}`)),
+  }
+
+  return (Object.keys(current) as Array<keyof SdkContractExceptions>)
+    .flatMap((category) =>
+      Object.keys(exceptions[category] ?? {})
+        .filter((key) => !current[category].has(key))
+        .map((key) => ({ category, key })),
+    )
+    .sort((left, right) => left.category.localeCompare(right.category) || left.key.localeCompare(right.key))
 }
