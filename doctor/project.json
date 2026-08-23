@@ -29,6 +29,11 @@
           },
           {
             "input": "./doctor/src",
+            "glob": "**/*.d.ts",
+            "output": "./src"
+          },
+          {
+            "input": "./doctor/src",
             "glob": "doctor-repo-config.js",
             "output": "./src"
           }
