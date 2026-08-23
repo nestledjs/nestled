@@ -33,7 +33,8 @@ export const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', '
 export const DEFAULT_SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
 
 // Re-exported so existing callers and specs keep one import site. The definitions live in
-// doctor-repo-config.ts because the CommonJS fragment verifier cannot import an .mjs at all.
+// doctor-repo-config.js (typed by doctor-repo-config.d.ts) because the CommonJS fragment
+// verifier cannot import an .mjs at all.
 export {
   REPO_CONFIG_PATH,
   DEFAULT_SELECT_FILE_SUFFIXES,

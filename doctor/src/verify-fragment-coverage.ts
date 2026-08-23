@@ -510,6 +510,68 @@ export const annotationListBefore = (raw: string, offset: number, previousEnd: n
     .filter(Boolean)
 }
 
+/**
+ * Every select constant declared in one file, with same-file spreads already resolved.
+ *
+ * Split out of readSelectConstants so the walk stays readable: the per-file work is a parser with
+ * its own offset rules, and nesting it three deep inside the root/file loops made the whole thing
+ * one 25-branch function.
+ */
+const readConstantsFromFile = (
+  repo: string,
+  absolute: string,
+  models: readonly DatabaseModelMetadata[],
+): SelectConstant[] => {
+  const raw = readFileSync(absolute, 'utf8')
+  const source = sanitize(raw)
+  const file = relative(repo, absolute)
+  const fileConstants: SelectConstant[] = []
+
+  const inFile = new Map<string, { select: PrismaSelect; spreads: string[] }>()
+  let previousEnd = 0
+  SELECT_CONSTANT.lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = SELECT_CONSTANT.exec(source)) !== null) {
+    const open = source.indexOf('{', match.index + match[0].length - 1)
+    if (open === -1) continue
+    const select = toSelect(source, open, new Set(), { file: absolute })
+    const { spreads } = scanObject(source, open)
+    if (Object.keys(select).length === 0 && spreads.length === 0) continue
+    // The regex runs against sanitized source. A preceding JSDoc is whitespace there, so its
+    // leading `\s*` can move match.index to the top of the comment and put the annotation
+    // behind its own lookup window. The `const` keyword has the same offset in raw and
+    // sanitized source and is the stable anchor.
+    const declaration = match.index + match[0].indexOf('const')
+    const annotated = annotationBefore(raw, declaration, previousEnd)
+    const fragmentPartial = /@fragment-partial\b/.test(raw.slice(Math.max(previousEnd, 0), declaration))
+    const omits = annotationListBefore(raw, declaration, previousEnd, 'select-omits')
+    const operations = annotationListBefore(raw, declaration, previousEnd, 'graphql-operations')
+    previousEnd = matchingBrace(source, open)
+    inFile.set(match[1], { select, spreads })
+    if (fragmentPartial) continue
+    fileConstants.push({
+      file,
+      model: modelForConstant(match[1], annotated, models),
+      name: match[1],
+      omits,
+      operations,
+      select,
+    })
+  }
+
+  // Resolve `...SPREAD` against constants declared in the same file, following chains.
+  //
+  // A single pass would be order-dependent: if A spreads B and B spreads C, then resolving A
+  // before B has resolved its own spreads gives A only B's literal fields, and every field
+  // reaching A through C would be reported MISSING even though it is selected. Recursing per
+  // constant makes the result independent of declaration order.
+  for (const constant of fileConstants) {
+    constant.select = resolveSpreads(constant.name, inFile)
+  }
+
+  return fileConstants
+}
+
 export const readSelectConstants = (repo: string, models: readonly DatabaseModelMetadata[]): SelectConstant[] => {
   const constants: SelectConstant[] = []
 
@@ -517,51 +579,7 @@ export const readSelectConstants = (repo: string, models: readonly DatabaseModel
     const files = walk(join(repo, root), (path) => SELECT_FILE_SUFFIXES.some((s) => path.endsWith(s)))
     for (const absolute of files) {
       if (absolute.includes('.spec.')) continue
-      const raw = readFileSync(absolute, 'utf8')
-      const source = sanitize(raw)
-      const file = relative(repo, absolute)
-
-      const inFile = new Map<string, { select: PrismaSelect; spreads: string[] }>()
-      let previousEnd = 0
-      SELECT_CONSTANT.lastIndex = 0
-      let match: RegExpExecArray | null
-      while ((match = SELECT_CONSTANT.exec(source)) !== null) {
-        const open = source.indexOf('{', match.index + match[0].length - 1)
-        if (open === -1) continue
-        const select = toSelect(source, open, new Set(), { file: absolute })
-        const { spreads } = scanObject(source, open)
-        if (Object.keys(select).length === 0 && spreads.length === 0) continue
-        // The regex runs against sanitized source. A preceding JSDoc is whitespace there, so its
-        // leading `\s*` can move match.index to the top of the comment and put the annotation
-        // behind its own lookup window. The `const` keyword has the same offset in raw and
-        // sanitized source and is the stable anchor.
-        const declaration = match.index + match[0].indexOf('const')
-        const annotated = annotationBefore(raw, declaration, previousEnd)
-        const fragmentPartial = /@fragment-partial\b/.test(raw.slice(Math.max(previousEnd, 0), declaration))
-        const omits = annotationListBefore(raw, declaration, previousEnd, 'select-omits')
-        const operations = annotationListBefore(raw, declaration, previousEnd, 'graphql-operations')
-        previousEnd = matchingBrace(source, open)
-        inFile.set(match[1], { select, spreads })
-        if (fragmentPartial) continue
-        constants.push({
-          file,
-          model: modelForConstant(match[1], annotated, models),
-          name: match[1],
-          omits,
-          operations,
-          select,
-        })
-      }
-
-      // Resolve `...SPREAD` against constants declared in the same file, following chains.
-      //
-      // A single pass would be order-dependent: if A spreads B and B spreads C, then resolving A
-      // before B has resolved its own spreads gives A only B's literal fields, and every field
-      // reaching A through C would be reported MISSING even though it is selected. Recursing per
-      // constant makes the result independent of declaration order.
-      for (const constant of constants.filter((entry) => entry.file === file)) {
-        constant.select = resolveSpreads(constant.name, inFile)
-      }
+      constants.push(...readConstantsFromFile(repo, absolute, models))
     }
   }
 
