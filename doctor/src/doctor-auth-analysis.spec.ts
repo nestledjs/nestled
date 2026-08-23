@@ -41,11 +41,7 @@ describe('getAuthOperations', () => {
     expect(operations[1].decorators).toContain('GqlAuthAdminGuard')
     expect(operations.every(declaresAuthLevel)).toBe(true)
     expect(operations.every(hasAuthenticationGuard)).toBe(true)
-    expect(getOperationGuardNames(operations[1])).toEqual([
-      'GqlAuthAdminGuard',
-      'GqlAuthGuard',
-      'GqlThrottlerGuard',
-    ])
+    expect(getOperationGuardNames(operations[1])).toEqual(['GqlAuthAdminGuard', 'GqlAuthGuard', 'GqlThrottlerGuard'])
   })
 
   it('keeps access metadata isolated when a file contains multiple classes', () => {
@@ -64,7 +60,7 @@ describe('getAuthOperations', () => {
       }
     `)
 
-    expect(operations.map(operation => operation.name)).toEqual(['publicRoute', 'privateRoute'])
+    expect(operations.map((operation) => operation.name)).toEqual(['publicRoute', 'privateRoute'])
     expect(operations[0].classDecorators).toContain('@Public()')
     expect(operations[1].classDecorators).not.toContain('@Public()')
     expect(declaresAuthLevel(operations[0])).toBe(true)
@@ -93,7 +89,7 @@ describe('getAuthOperations', () => {
       }
     `)
 
-    expect(operations.map(operation => [operation.kind, operation.name])).toEqual([
+    expect(operations.map((operation) => [operation.kind, operation.name])).toEqual([
       ['graphql', 'user'],
       ['http', 'options'],
       ['http', 'head'],
@@ -179,16 +175,24 @@ describe('getAuthOperations', () => {
       }
     `)
 
-    expect(operations.map(operation => operation.inheritsParentAuthorization)).toEqual([
-      true,
-      false,
-      false,
-    ])
+    expect(operations.map((operation) => operation.inheritsParentAuthorization)).toEqual([true, false, false])
     expect(declaresAuthLevel(operations[0])).toBe(true)
     expect(hasAuthenticationGuard(operations[0])).toBe(true)
     expect(declaresAuthLevel(operations[1])).toBe(false)
     expect(hasAuthenticationGuard(operations[1])).toBe(false)
     expect(declaresAuthLevel(operations[2])).toBe(false)
     expect(hasAuthenticationGuard(operations[2])).toBe(false)
+  })
+})
+
+describe('decorator lists agree across checks', () => {
+  it('auth-analysis knows every decorator access-policy treats as a declaration', async () => {
+    // These drifted once: RequirePublicApiScopes was added to the access-policy map alone, so an
+    // operation declaring only that read as covered to one check and unguarded to the other.
+    const policy = await import('./doctor-access-policy-analysis')
+    const auth = await import('./doctor-auth-analysis')
+    const policyNames = [...(policy.POLICY_DECORATOR_NAMES ?? [])].sort()
+    const authNames = [...(auth.ACCESS_POLICY_DECORATOR_NAMES ?? [])].sort()
+    expect(authNames).toEqual(policyNames)
   })
 })

@@ -1,8 +1,5 @@
 import ts from 'typescript'
-import {
-  decoratorName as getDecoratorName,
-  decoratorsOf as getDecorators,
-} from './doctor-typescript-analysis'
+import { decoratorName as getDecoratorName, decoratorsOf as getDecorators } from './doctor-typescript-analysis'
 
 export type AuthOperationKind = 'graphql' | 'http'
 
@@ -20,37 +17,28 @@ export type AuthOperation = {
 
 const graphqlOperationDecorators = new Set(['Mutation', 'Query', 'ResolveField', 'Subscription'])
 
-const httpOperationDecorators = new Set([
-  'All',
-  'Delete',
-  'Get',
-  'Head',
-  'Options',
-  'Patch',
-  'Post',
-  'Put',
-  'Sse',
-])
+const httpOperationDecorators = new Set(['All', 'Delete', 'Get', 'Head', 'Options', 'Patch', 'Post', 'Put', 'Sse'])
 
+// Must stay in step with policyDecorators in doctor-access-policy-analysis. Two checks disagreeing
+// about whether a decorator declares authorization is worse than either rule being wrong: the same
+// operation reads as declared to one and undeclared to the other, and whichever runs second looks
+// like the broken one. The spec asserts they match.
 const accessPolicyDecorators = new Set([
   'RequirePlatformPermission',
   'RequireAllPlatformPermissions',
   'RequireOrganizationPermission',
   'RequireAllOrganizationPermissions',
+  'RequirePublicApiScopes',
 ])
-const authLevelDecorators = new Set([
-  'Public',
-  'Authenticated',
-  'AdminOnly',
-  ...accessPolicyDecorators,
-])
+/** Exposed so the spec can assert this stays in step with the access-policy map. */
+export const ACCESS_POLICY_DECORATOR_NAMES: readonly string[] = [...accessPolicyDecorators]
+
+const authLevelDecorators = new Set(['Public', 'Authenticated', 'AdminOnly', ...accessPolicyDecorators])
 const nonAuthGuardPattern = /Throttler|RateLimit/
 const guardNamePattern = /^[A-Z]\w*Guard$/
 
-const getDecoratorSource = (
-  decorators: readonly ts.Decorator[],
-  sourceFile: ts.SourceFile,
-): string => decorators.map(decorator => decorator.getText(sourceFile)).join('\n')
+const getDecoratorSource = (decorators: readonly ts.Decorator[], sourceFile: ts.SourceFile): string =>
+  decorators.map((decorator) => decorator.getText(sourceFile)).join('\n')
 
 const getClassKind = (decoratorNames: Set<string>): AuthOperationKind | undefined => {
   if (decoratorNames.has('Controller')) return 'http'
@@ -70,7 +58,7 @@ const collectGuardNames = (node: ts.Node, guards: Set<string>) => {
   if (ts.isIdentifier(node) && guardNamePattern.test(node.text)) {
     guards.add(node.text)
   }
-  ts.forEachChild(node, child => collectGuardNames(child, guards))
+  ts.forEachChild(node, (child) => collectGuardNames(child, guards))
 }
 
 const getGuardNames = (decorators: readonly ts.Decorator[]): string[] => {
@@ -95,16 +83,15 @@ const getGuardNames = (decorators: readonly ts.Decorator[]): string[] => {
 }
 
 const hasAuthLevelDecorator = (decorators: readonly ts.Decorator[]): boolean =>
-  decorators.some(decorator => authLevelDecorators.has(getDecoratorName(decorator)))
+  decorators.some((decorator) => authLevelDecorators.has(getDecoratorName(decorator)))
 
-export const isAuthenticationGuardName = (guard: string): boolean =>
-  !nonAuthGuardPattern.test(guard)
+export const isAuthenticationGuardName = (guard: string): boolean => !nonAuthGuardPattern.test(guard)
 
 export const getGuardRank = (guards: string[]): number => {
   const authenticationGuards = guards.filter(isAuthenticationGuardName)
   if (authenticationGuards.includes('AccessPolicyGuard')) return 3
   if (authenticationGuards.includes('GqlAuthAdminGuard')) return 3
-  if (authenticationGuards.some(guard => guard.includes('Scoped') || guard.includes('Owner'))) {
+  if (authenticationGuards.some((guard) => guard.includes('Scoped') || guard.includes('Owner'))) {
     return 2
   }
   if (authenticationGuards.includes('GqlAuthGuard')) return 1
@@ -119,13 +106,7 @@ export const hasAuthenticationGuard = (operation: AuthOperation): boolean =>
 export const declaresAuthLevel = (operation: AuthOperation): boolean => operation.authLevelDeclared
 
 export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthOperation[] => {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  )
+  const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const operations: AuthOperation[] = []
 
   for (const statement of sourceFile.statements) {
@@ -146,9 +127,7 @@ export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthO
 
       const methodDecorators = getDecorators(member)
       const methodDecoratorNames = new Set(methodDecorators.map(getDecoratorName))
-      if (
-        !methodDecorators.some(decorator => isOperationDecorator(getDecoratorName(decorator), kind))
-      ) {
+      if (!methodDecorators.some((decorator) => isOperationDecorator(getDecoratorName(decorator), kind))) {
         continue
       }
 
@@ -157,18 +136,15 @@ export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthO
         methodDecoratorNames.has('ResolveField') &&
         methodDecoratorNames.has('InheritedParentAuthorization')
 
-      const line =
-        sourceFile.getLineAndCharacterOfPosition(member.name.getStart(sourceFile)).line + 1
+      const line = sourceFile.getLineAndCharacterOfPosition(member.name.getStart(sourceFile)).line + 1
       operations.push({
         authLevelDeclared:
-          classDeclaresAuthLevel ||
-          hasAuthLevelDecorator(methodDecorators) ||
-          inheritsParentAuthorization,
+          classDeclaresAuthLevel || hasAuthLevelDecorator(methodDecorators) || inheritsParentAuthorization,
         classDecorators: classDecoratorSource,
         className,
         decorators: getDecoratorSource(methodDecorators, sourceFile),
-        guardNames: [...new Set([...classGuardNames, ...getGuardNames(methodDecorators)])].sort(
-          (left, right) => left.localeCompare(right),
+        guardNames: [...new Set([...classGuardNames, ...getGuardNames(methodDecorators)])].sort((left, right) =>
+          left.localeCompare(right),
         ),
         inheritsParentAuthorization,
         kind,
