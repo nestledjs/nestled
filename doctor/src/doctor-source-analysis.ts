@@ -29,8 +29,7 @@ export const getExternalImportSpecifiers = (source: string, fileName = 'source.t
       // `import x = require('…')`. A static external import that looks nothing like one, and the
       // only import form that reaches a module without an ImportDeclaration or a CallExpression —
       // so a scan built from those two alone lets it through silently.
-      if (ts.isExternalModuleReference(node.moduleReference))
-        record(node.moduleReference.expression)
+      if (ts.isExternalModuleReference(node.moduleReference)) record(node.moduleReference.expression)
     } else if (
       ts.isCallExpression(node) &&
       (node.expression.kind === ts.SyntaxKind.ImportKeyword ||
@@ -70,13 +69,7 @@ export type GraphqlOperationMethod = {
  * has to look at the whole method.
  */
 export const getGraphqlOperationMethods = (source: string): GraphqlOperationMethod[] => {
-  const sourceFile = ts.createSourceFile(
-    'operation.ts',
-    source,
-    ts.ScriptTarget.Latest,
-    true,
-    ts.ScriptKind.TS,
-  )
+  const sourceFile = ts.createSourceFile('operation.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const methods: GraphqlOperationMethod[] = []
 
   const visit = (node: ts.Node): void => {
@@ -84,9 +77,7 @@ export const getGraphqlOperationMethods = (source: string): GraphqlOperationMeth
       for (const member of node.members) {
         if (!ts.isMethodDeclaration(member) || !member.name) continue
 
-        const decorators = (ts.getDecorators(member) ?? [])
-          .map(decorator => decorator.getText(sourceFile))
-          .join('\n')
+        const decorators = (ts.getDecorators(member) ?? []).map((decorator) => decorator.getText(sourceFile)).join('\n')
         if (!/@(?:Query|Mutation|Subscription|ResolveField)\b/.test(decorators)) continue
 
         methods.push({
@@ -109,16 +100,10 @@ export const getGraphqlOperationMethods = (source: string): GraphqlOperationMeth
 const startsWithBlockComment = (source: string, index: number): boolean =>
   source[index] === '/' && source[index + 1] === '*'
 
-const startsWithLineComment = (
-  source: string,
-  index: number,
-  onlyWhitespaceOnLine: boolean,
-): boolean => onlyWhitespaceOnLine && source[index] === '/' && source[index + 1] === '/'
+const startsWithLineComment = (source: string, index: number, onlyWhitespaceOnLine: boolean): boolean =>
+  onlyWhitespaceOnLine && source[index] === '/' && source[index + 1] === '/'
 
-const skipBlockComment = (
-  source: string,
-  startIndex: number,
-): { index: number; preservedNewlines: string } => {
+const skipBlockComment = (source: string, startIndex: number): { index: number; preservedNewlines: string } => {
   let index = startIndex + 2
   let preservedNewlines = ''
 
@@ -227,6 +212,75 @@ const skipInterpolation = (source: string, startIndex: number): number => {
  * class blanks the rest of that line, and code inside a template-literal `${…}` is blanked with
  * the string — both vanishingly rare in product source, and both fail toward NOT flagging.
  */
+/**
+ * Whether a `/` at this position opens a regex literal rather than dividing.
+ *
+ * Decided by the previous significant character, which is the standard heuristic: a regex may
+ * follow an operator, an opening bracket, a comma, a semicolon, or a keyword, but not a value.
+ * Getting it wrong in the safe direction (reading a regex as division) leaves the source
+ * unmasked, which is what happened before this existed; getting it wrong the other way would
+ * blank real code, so the accept-list is deliberately narrow.
+ */
+const KEYWORDS_BEFORE_REGEX = new Set([
+  'return',
+  'typeof',
+  'instanceof',
+  'in',
+  'of',
+  'case',
+  'do',
+  'else',
+  'yield',
+  'await',
+  'delete',
+  'void',
+  'new',
+])
+
+const regexAllowedAt = (source: string, slash: number): boolean => {
+  let position = slash - 1
+  while (position >= 0 && /\s/.test(source[position])) position -= 1
+  if (position < 0) return true
+
+  const previous = source[position]
+  if ('(,=:[!&|?{};+-*%~^<>'.includes(previous)) return true
+
+  // A keyword may precede a regex; an identifier or literal may not (that is division).
+  let end = position + 1
+  while (position >= 0 && /[A-Za-z_$]/.test(source[position])) position -= 1
+  return KEYWORDS_BEFORE_REGEX.has(source.slice(position + 1, end))
+}
+
+/**
+ * Index just past a regex literal, honouring escapes and character classes.
+ *
+ * Inside `[...]` a `/` does not terminate the literal, and neither quotes nor backticks mean
+ * anything at all. Missing that is how a backtick in a character class -- `/[`'"]/` -- was read as
+ * opening a template literal, blanking every line up to the next backtick in the file and hiding
+ * the findings in between.
+ */
+const skipRegexLiteral = (source: string, start: number): number => {
+  let index = start + 1
+  let inClass = false
+  while (index < source.length) {
+    const character = source[index]
+    if (character === '\\') {
+      index += 2
+      continue
+    }
+    if (character === '\n') return index
+    if (inClass) {
+      if (character === ']') inClass = false
+    } else if (character === '[') {
+      inClass = true
+    } else if (character === '/') {
+      return index + 1
+    }
+    index += 1
+  }
+  return index
+}
+
 export const blankCommentsAndStrings = (source: string): string => {
   const out = source.split('')
   const blank = (from: number, to: number): void => {
@@ -251,6 +305,12 @@ export const blankCommentsAndStrings = (source: string): string => {
       index = end
     } else if (source[index] === '`') {
       const end = skipTemplateLiteral(source, index)
+      blank(index, end)
+      index = end
+    } else if (source[index] === '/' && regexAllowedAt(source, index)) {
+      // Blanked like any other literal. Left unhandled, a quote or backtick inside the pattern
+      // opens a string that never closes where the reader expects.
+      const end = skipRegexLiteral(source, index)
       blank(index, end)
       index = end
     } else {
