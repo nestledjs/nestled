@@ -173,14 +173,14 @@ describe('generate-crud generator', () => {
 
       expect(source).toContain("import { UseGuards } from '@nestjs/common'")
       expect(source).toContain(
-        "import { AdminOnly, GqlAuthAdminGuard, RequirePlatformPermission } from '@scope/api/utils'",
+        "import { AdminOnly, GqlAuthAdminGuard, RequirePlatformPermissionUnderClassGuard } from '@scope/api/utils'",
       )
       expect(source).toContain(
         '@Resolver(() => User)\n@UseGuards(GqlAuthAdminGuard)\n@AdminOnly()\nexport class GeneratedUserResolver',
       )
       expect(source.match(/@AdminOnly\(\)/g)).toHaveLength(1)
-      expect(source.match(/@RequirePlatformPermission\('platform\.data-browser\.read'\)/g)).toHaveLength(3)
-      expect(source.match(/@RequirePlatformPermission\('platform\.data-browser\.manage'\)/g)).toHaveLength(3)
+      expect(source.match(/@RequirePlatformPermissionUnderClassGuard\('platform\.data-browser\.read'\)/g)).toHaveLength(3)
+      expect(source.match(/@RequirePlatformPermissionUnderClassGuard\('platform\.data-browser\.manage'\)/g)).toHaveLength(3)
       expect(source).not.toContain('@Public()')
       expect(source).not.toContain('@Authenticated()')
       expect(source).not.toContain('GqlAuthGuard')
@@ -212,7 +212,7 @@ describe('generate-crud generator', () => {
       expect(source).toContain('@UseGuards(GqlAuthGuard)\n@Authenticated()')
       expect(source).not.toContain('AdminOnly')
       expect(source).not.toContain('GqlAuthAdminGuard')
-      expect(source).not.toContain('RequirePlatformPermission')
+      expect(source).not.toContain('RequirePlatformPermissionUnderClassGuard')
     })
 
     it('defaults to admin, quietly, when no posture file exists', async () => {

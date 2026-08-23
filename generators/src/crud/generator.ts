@@ -91,12 +91,22 @@ export function generateResolverContent(
     posture === 'authenticated'
       ? { imports: 'Authenticated, GqlAuthGuard', guardClass: 'GqlAuthGuard', decorator: '@Authenticated()' }
       : {
-          imports: 'AdminOnly, GqlAuthAdminGuard, RequirePlatformPermission',
+          imports: 'AdminOnly, GqlAuthAdminGuard, RequirePlatformPermissionUnderClassGuard',
           guardClass: 'GqlAuthAdminGuard',
           decorator: '@AdminOnly()',
         }
-  const readPermission = posture === 'admin' ? "  @RequirePlatformPermission('platform.data-browser.read')\n" : ''
-  const managePermission = posture === 'admin' ? "  @RequirePlatformPermission('platform.data-browser.manage')\n" : ''
+  // The ...UnderClassGuard variant, not RequirePlatformPermission: the class already carries
+  // GqlAuthAdminGuard, and the composing decorator would add a second JWT verification plus an
+  // organization-context preload on every call, then override the class's @AdminOnly() with its own
+  // @Authenticated() -- leaving each root declaring a weaker level than the guard enforces.
+  const readPermission =
+    posture === 'admin'
+      ? "  @RequirePlatformPermissionUnderClassGuard('platform.data-browser.read')\n"
+      : ''
+  const managePermission =
+    posture === 'admin'
+      ? "  @RequirePlatformPermissionUnderClassGuard('platform.data-browser.manage')\n"
+      : ''
 
   return `import { UseGuards } from '@nestjs/common'
 import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'

@@ -27,6 +27,9 @@ const policyDecorators = new Map<string, AccessPolicyScope>([
   ['RequireOrganizationPermission', 'organization'],
   ['RequireAllOrganizationPermissions', 'organization'],
   ['RequirePublicApiScopes', 'public-api'],
+  // Same policy, for a method whose class already authenticates -- generated CRUD. It declares a
+  // permission exactly as the composing variant does; only the guard wiring differs.
+  ['RequirePlatformPermissionUnderClassGuard', 'platform'],
 ])
 /** Exposed so doctor-auth-analysis can assert it recognizes the same decorators. */
 export const POLICY_DECORATOR_NAMES: readonly string[] = [...policyDecorators.keys()]
