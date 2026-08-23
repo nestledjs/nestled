@@ -472,14 +472,15 @@ describe('reportNothingChecked', () => {
       }),
     })
     const logs = []
-    const original = console.log
-    console.log = message => logs.push(message)
+    const original = console.error
+    console.error = message => logs.push(message)
     try {
       expect(reportNothingChecked('verify-selects', repo)).toBe(0)
     } finally {
-      console.log = original
+      console.error = original
     }
-    // Declared is not the same as hidden: the reason stays visible on every run.
+    // stderr, so --json stdout stays parseable. Declared is not the same as hidden: the reason
+    // stays visible on every run.
     expect(logs.join('\n')).toContain('as declared')
     expect(logs.join('\n')).toContain('generated CRUD')
   })
@@ -495,5 +496,27 @@ describe('reportNothingChecked', () => {
         }),
       ),
     ).toThrow(/noSelectFiles must be a non-empty string/)
+  })
+})
+
+describe('reportNothingChecked config errors', () => {
+  it('reports a malformed config as its own failure, not as a verification result', () => {
+    const repo = mkdtempSync(join(tmpdir(), 'verify-selects-badcfg-'))
+    mkdirSync(join(repo, '.nestled-updates'), { recursive: true })
+    writeFileSync(join(repo, '.nestled-updates/doctor.config.json'), '{ not json')
+    const errors = []
+    const original = console.error
+    console.error = message => errors.push(message)
+    let code
+    try {
+      code = reportNothingChecked('verify-selects', repo)
+    } finally {
+      console.error = original
+    }
+    // 2, not 1: a config that cannot be parsed is a different problem with a different fix, and
+    // the generic advice would tell the reader to edit the file that is already unreadable.
+    expect(code).toBe(2)
+    expect(errors.join('\n')).toContain('not valid JSON')
+    expect(errors.join('\n')).not.toContain('checked 0 files')
   })
 })
