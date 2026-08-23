@@ -49,8 +49,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
-import { reportNothingChecked } from './verify-selects.mjs'
-
+import { reportNothingChecked } from './doctor-repo-config.js'
 
 const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', 'prisma', 'libs/api/prisma/src/lib']
 const DEFAULT_SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
