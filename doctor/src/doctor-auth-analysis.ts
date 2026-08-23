@@ -29,6 +29,7 @@ const accessPolicyDecorators = new Set([
   'RequireOrganizationPermission',
   'RequireAllOrganizationPermissions',
   'RequirePublicApiScopes',
+  'RequirePlatformPermissionUnderClassGuard',
 ])
 /** Exposed so the spec can assert this stays in step with the access-policy map. */
 export const ACCESS_POLICY_DECORATOR_NAMES: readonly string[] = [...accessPolicyDecorators]
