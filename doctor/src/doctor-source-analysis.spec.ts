@@ -246,3 +246,37 @@ describe('getExternalImportSpecifiers', () => {
     ).toEqual(['typescript'])
   })
 })
+
+describe('blankCommentsAndStrings and regex literals', () => {
+  it('does not read a backtick inside a regex as opening a template literal', () => {
+    // mi-core hit this: a backtick in a character class blanked every line to the next backtick
+    // in the file, hiding three genuine `as any` findings from the cast gate.
+    const source = ["const quote = /[`'\"]/g", 'const bad = value as any'].join('\n')
+    expect(blankCommentsAndStrings(source)).toContain('as any')
+  })
+
+  it('blanks the regex body so a quote inside it cannot open a string', () => {
+    const source = ["const q = /it's/", "const after = 'x'"].join('\n')
+    const out = blankCommentsAndStrings(source)
+    expect(out).not.toContain("it's")
+    // The line after must survive: an unterminated string would have swallowed it.
+    expect(out.split('\n')[1]).toHaveLength("const after = 'x'".length)
+  })
+
+  it('treats division as division, not as a regex', () => {
+    // Misreading this the other way blanks real code, so the accept-list stays narrow.
+    const source = ['const ratio = total / count', 'const bad = value as any'].join('\n')
+    expect(blankCommentsAndStrings(source)).toContain('as any')
+    expect(blankCommentsAndStrings(source)).toContain('total / count')
+  })
+
+  it('handles an escaped slash and a slash inside a character class', () => {
+    const source = ['const p = /[/]\\//', 'const bad = value as any'].join('\n')
+    expect(blankCommentsAndStrings(source)).toContain('as any')
+  })
+
+  it('allows a regex after a keyword', () => {
+    const source = ['function f(v) { return /[`]/.test(v) }', 'const bad = value as any'].join('\n')
+    expect(blankCommentsAndStrings(source)).toContain('as any')
+  })
+})
