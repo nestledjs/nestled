@@ -67,6 +67,7 @@ import {
   type GraphqlSource,
   type PrismaSelect,
 } from './doctor-sdk-contract-analysis'
+import { reportNothingChecked } from './doctor-repo-config'
 
 /**
  * Load DATABASE_MODELS from the consuming repo's TypeScript source.
@@ -108,8 +109,7 @@ const SELECT_FILE_SUFFIXES = ['.select.ts', '.resolver.ts', '.service.ts']
 //
 // The annotation excludes newlines deliberately. `[^=]+` would span lines and reintroduce the
 // backtracking that S8786 flagged here; a one-line annotation is the realistic case.
-const SELECT_CONSTANT =
-  /^[ \t]*(?:export\s+)?(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*(?::[^=\n]+)?=\s*\{/gm
+const SELECT_CONSTANT = /^[ \t]*(?:export\s+)?(?:const|let|var)\s+([A-Z][A-Z0-9_]*)\s*(?::[^=\n]+)?=\s*\{/gm
 
 const alphabetical = (left: string, right: string): number => left.localeCompare(right)
 
@@ -280,7 +280,7 @@ const NAMED_IMPORT_PATTERN = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*['"](\.[
 const resolveImportFile = (fromDir: string, spec: string): string | undefined => {
   const base = resolve(fromDir, spec)
   const candidates = [base, `${base}.ts`, `${base}.tsx`, join(base, 'index.ts')]
-  return candidates.find(candidate => {
+  return candidates.find((candidate) => {
     try {
       return statSync(candidate).isFile()
     } catch {
@@ -312,10 +312,7 @@ const readFileText = (file: string): { raw: string; sanitized: string } => {
   return text
 }
 
-const importedConstantSelect = (
-  ident: string,
-  context: SourceContext,
-): PrismaSelect | undefined => {
+const importedConstantSelect = (ident: string, context: SourceContext): PrismaSelect | undefined => {
   if (context.imported) return undefined
   // Import specifiers live inside string literals, which sanitize() blanks — so imports are read
   // from the raw file, not from the sanitized source the select parser works on. But raw text
@@ -329,12 +326,12 @@ const importedConstantSelect = (
     if (!sanitized.startsWith('import', match.index)) continue
     const binding = match[1]
       .split(',')
-      .map(name => name.trim())
-      .map(name => {
-        const [original, alias] = name.split(/\bas\b/).map(part => part.trim())
+      .map((name) => name.trim())
+      .map((name) => {
+        const [original, alias] = name.split(/\bas\b/).map((part) => part.trim())
         return { original, local: alias ?? original }
       })
-      .find(candidate => candidate.local === ident)
+      .find((candidate) => candidate.local === ident)
     if (!binding?.original) continue
 
     const importedFile = resolveImportFile(dirname(context.file), match[2])
@@ -394,9 +391,7 @@ export const toSelect = (
       continue
     }
     if (entry.kind !== 'object') continue
-    const inner = scanObject(source, entry.open).entries.find(
-      candidate => candidate.name === 'select',
-    )
+    const inner = scanObject(source, entry.open).entries.find((candidate) => candidate.name === 'select')
     if (inner?.kind === 'object') {
       select[entry.name] = { select: toSelect(source, inner.open, seen, context) }
       continue
@@ -489,9 +484,9 @@ const modelForConstant = (
   annotated: string | undefined,
   models: readonly DatabaseModelMetadata[],
 ): string | undefined => {
-  if (annotated) return models.find(model => model.modelName === annotated)?.modelName
+  if (annotated) return models.find((model) => model.modelName === annotated)?.modelName
   const stem = name.replace(/_(FIELDS|SELECT)$/, '').replaceAll('_', '')
-  return models.find(model => model.modelName.toUpperCase() === stem)?.modelName
+  return models.find((model) => model.modelName.toUpperCase() === stem)?.modelName
 }
 
 /** The `@prisma-model X` annotation attached to a constant, if the comment directly precedes it. */
@@ -507,27 +502,19 @@ const annotationBefore = (raw: string, offset: number, previousEnd: number): str
  * value runs to end of line; a closing comment marker on the same line is stripped so the
  * annotation can sit last in a one-line or block comment.
  */
-export const annotationListBefore = (
-  raw: string,
-  offset: number,
-  previousEnd: number,
-  tag: string,
-): string[] => {
+export const annotationListBefore = (raw: string, offset: number, previousEnd: number, tag: string): string[] => {
   const window = raw.slice(Math.max(previousEnd, 0), offset)
   return [...window.matchAll(new RegExp(String.raw`@${tag}[ \t]+([^\n]+)`, 'g'))]
-    .flatMap(match => match[1].replace(/\*\/.*$/, '').split(','))
-    .map(entry => entry.trim())
+    .flatMap((match) => match[1].replace(/\*\/.*$/, '').split(','))
+    .map((entry) => entry.trim())
     .filter(Boolean)
 }
 
-export const readSelectConstants = (
-  repo: string,
-  models: readonly DatabaseModelMetadata[],
-): SelectConstant[] => {
+export const readSelectConstants = (repo: string, models: readonly DatabaseModelMetadata[]): SelectConstant[] => {
   const constants: SelectConstant[] = []
 
   for (const root of SEARCH_ROOTS) {
-    const files = walk(join(repo, root), path => SELECT_FILE_SUFFIXES.some(s => path.endsWith(s)))
+    const files = walk(join(repo, root), (path) => SELECT_FILE_SUFFIXES.some((s) => path.endsWith(s)))
     for (const absolute of files) {
       if (absolute.includes('.spec.')) continue
       const raw = readFileSync(absolute, 'utf8')
@@ -550,9 +537,7 @@ export const readSelectConstants = (
         // sanitized source and is the stable anchor.
         const declaration = match.index + match[0].indexOf('const')
         const annotated = annotationBefore(raw, declaration, previousEnd)
-        const fragmentPartial = /@fragment-partial\b/.test(
-          raw.slice(Math.max(previousEnd, 0), declaration),
-        )
+        const fragmentPartial = /@fragment-partial\b/.test(raw.slice(Math.max(previousEnd, 0), declaration))
         const omits = annotationListBefore(raw, declaration, previousEnd, 'select-omits')
         const operations = annotationListBefore(raw, declaration, previousEnd, 'graphql-operations')
         previousEnd = matchingBrace(source, open)
@@ -574,7 +559,7 @@ export const readSelectConstants = (
       // before B has resolved its own spreads gives A only B's literal fields, and every field
       // reaching A through C would be reported MISSING even though it is selected. Recursing per
       // constant makes the result independent of declaration order.
-      for (const constant of constants.filter(entry => entry.file === file)) {
+      for (const constant of constants.filter((entry) => entry.file === file)) {
         constant.select = resolveSpreads(constant.name, inFile)
       }
     }
@@ -596,7 +581,7 @@ export const resolveFieldsByModel = (repo: string): Map<string, Set<string>> => 
   const served = new Map<string, Set<string>>()
 
   for (const root of SEARCH_ROOTS) {
-    for (const absolute of walk(join(repo, root), path => path.endsWith('.resolver.ts'))) {
+    for (const absolute of walk(join(repo, root), (path) => path.endsWith('.resolver.ts'))) {
       if (absolute.includes('.spec.')) continue
       const source = sanitize(readFileSync(absolute, 'utf8'))
 
@@ -605,14 +590,11 @@ export const resolveFieldsByModel = (repo: string): Map<string, Set<string>> => 
       for (let index = 0; index < classes.length; index++) {
         const modelName = classes[index][1]
         const start = classes[index].index ?? 0
-        const end =
-          index + 1 < classes.length ? (classes[index + 1].index ?? source.length) : source.length
+        const end = index + 1 < classes.length ? classes[index + 1].index ?? source.length : source.length
         const body = source.slice(start, end)
 
         const fields = served.get(modelName) ?? new Set<string>()
-        for (const match of body.matchAll(
-          /@ResolveField\(([\s\S]*?)\)[^\S\n]*\n\s*(?:async\s+)?(\w+)\s*\(/g,
-        )) {
+        for (const match of body.matchAll(/@ResolveField\(([\s\S]*?)\)[^\S\n]*\n\s*(?:async\s+)?(\w+)\s*\(/g)) {
           // `@ResolveField(() => X, { name: 'graphqlName' })` overrides the method name.
           const renamed = /name:\s*['"`]?(\w+)/.exec(match[1])
           fields.add(renamed ? renamed[1] : match[2])
@@ -630,9 +612,7 @@ export const relationTarget = (
   modelName: string,
   fieldName: string,
 ): string | undefined => {
-  const field = models
-    .find(model => model.modelName === modelName)
-    ?.fields?.find(entry => entry.name === fieldName)
+  const field = models.find((model) => model.modelName === modelName)?.fields?.find((entry) => entry.name === fieldName)
   return field?.kind === 'object' ? field.type : undefined
 }
 
@@ -697,7 +677,7 @@ export const flatten = (select: PrismaSelect, prefix = ''): string[] => {
 }
 
 const graphqlSources = (root: string): GraphqlSource[] =>
-  walk(root, path => path.endsWith('.graphql')).map(file => ({
+  walk(root, (path) => path.endsWith('.graphql')).map((file) => ({
     file,
     source: readFileSync(file, 'utf8'),
   }))
@@ -709,7 +689,7 @@ const main = async (): Promise<void> => {
     return
   }
   const verbose = args.includes('--verbose')
-  const repo = resolve(args.find(argument => !argument.startsWith('--')) ?? process.cwd())
+  const repo = resolve(args.find((argument) => !argument.startsWith('--')) ?? process.cwd())
 
   // database-models.ts is TypeScript SOURCE in the consuming repo, so it cannot be imported by a
   // plain node process — which is what this becomes once these checks ship as a package rather than
@@ -723,7 +703,7 @@ const main = async (): Promise<void> => {
   const schema = buildSchema(readFileSync(join(repo, 'api-schema.graphql'), 'utf8'))
 
   const constants = readSelectConstants(repo, DATABASE_MODELS)
-  const operationScoped = constants.filter(constant => constant.operations.length > 0)
+  const operationScoped = constants.filter((constant) => constant.operations.length > 0)
   const byModel = new Map<string, SelectConstant[]>()
   for (const constant of constants) {
     // An operation-scoped select answers for ITS documents, not for the model's whole
@@ -736,8 +716,8 @@ const main = async (): Promise<void> => {
   }
 
   const fragmentModels = new Set(
-    allSources.flatMap(source =>
-      [...source.source.matchAll(/^fragment\s+\w+\s+on\s+(\w+)/gm)].map(match => match[1]),
+    allSources.flatMap((source) =>
+      [...source.source.matchAll(/^fragment\s+\w+\s+on\s+(\w+)/gm)].map((match) => match[1]),
     ),
   )
 
@@ -752,10 +732,10 @@ const main = async (): Promise<void> => {
   let resolvedElsewhere = 0
 
   for (const modelName of [...fragmentModels].sort(alphabetical)) {
-    if (!DATABASE_MODELS.some(model => model.modelName === modelName)) continue
+    if (!DATABASE_MODELS.some((model) => model.modelName === modelName)) continue
     const selects = byModel.get(modelName)
     if (!selects || selects.length === 0) {
-      if (!operationScoped.some(constant => constant.model === modelName)) skipped.push(modelName)
+      if (!operationScoped.some((constant) => constant.model === modelName)) skipped.push(modelName)
       continue
     }
 
@@ -773,37 +753,28 @@ const main = async (): Promise<void> => {
     }
 
     checkedModels++
-    const { skipped: viaResolveField, wanted } = requiredPaths(
-      required,
-      modelName,
-      served,
-      DATABASE_MODELS,
-    )
+    const { skipped: viaResolveField, wanted } = requiredPaths(required, modelName, served, DATABASE_MODELS)
     resolvedElsewhere += viaResolveField.length
-    const provided = selects.map(select => new Set(flatten(select.select)))
+    const provided = selects.map((select) => new Set(flatten(select.select)))
 
     for (const path of wanted) {
-      const holders = provided.filter(set => set.has(path)).length
+      const holders = provided.filter((set) => set.has(path)).length
       if (holders === 0) {
-        missing.push(
-          `${modelName}.${path} — produced by none of ${selects.map(s => s.name).join(', ')}`,
-        )
+        missing.push(`${modelName}.${path} — produced by none of ${selects.map((s) => s.name).join(', ')}`)
       } else if (holders < selects.length) {
         const without = selects.filter((_, index) => !provided[index].has(path))
         const escalated = selects.filter(
           (select, index) =>
-            !provided[index].has(path) &&
-            !select.omits.includes(path) &&
-            parentProduced(provided[index], path),
+            !provided[index].has(path) && !select.omits.includes(path) && parentProduced(provided[index], path),
         )
         if (nonNullableAt(schema, modelName, path) && escalated.length > 0) {
           nonNullPartial.push(
-            `${modelName}.${path} — non-nullable, absent from ${escalated.map(s => s.name).join(', ')}: ` +
+            `${modelName}.${path} — non-nullable, absent from ${escalated.map((s) => s.name).join(', ')}: ` +
               `any document those selects serve that requests it fails the WHOLE query. ` +
               `Add the field, or acknowledge a deliberate deny with @select-omits ${path}.`,
           )
         } else {
-          partial.push(`${modelName}.${path} — absent from ${without.map(s => s.name).join(', ')}`)
+          partial.push(`${modelName}.${path} — absent from ${without.map((s) => s.name).join(', ')}`)
         }
       }
     }
@@ -869,16 +840,12 @@ const main = async (): Promise<void> => {
   )
 
   if (missing.length > 0) {
-    console.log(
-      `\nMISSING (${missing.length}) — a fragment asks for these and nothing produces them:`,
-    )
+    console.log(`\nMISSING (${missing.length}) — a fragment asks for these and nothing produces them:`)
     for (const entry of [...missing].sort(alphabetical)) console.log(`  ${entry}`)
   }
 
   if (nonNullPartial.length > 0) {
-    console.log(
-      `\nNON-NULLABLE PARTIAL (${nonNullPartial.length}) — these error the whole query, not a field:`,
-    )
+    console.log(`\nNON-NULLABLE PARTIAL (${nonNullPartial.length}) — these error the whole query, not a field:`)
     for (const entry of [...nonNullPartial].sort(alphabetical)) console.log(`  ${entry}`)
   }
 
@@ -890,20 +857,18 @@ const main = async (): Promise<void> => {
   }
 
   if (verbose && partial.length > 0) {
-    console.log(
-      `\nPARTIAL (${partial.length}) — advisory; thinner list selects are usually correct:`,
-    )
+    console.log(`\nPARTIAL (${partial.length}) — advisory; thinner list selects are usually correct:`)
     for (const entry of [...partial].sort(alphabetical)) console.log(`  ${entry}`)
   } else if (partial.length > 0) {
-    console.log(
-      `\nPARTIAL: ${partial.length} field(s) present in some selects but not others (--verbose to list).`,
-    )
+    console.log(`\nPARTIAL: ${partial.length} field(s) present in some selects but not others (--verbose to list).`)
   }
 
   if (skipped.length > 0) {
     console.log(
       `\nNOT CHECKED (${skipped.length}): no named select constant maps to these models — ` +
-        `generated CRUD or inline selects. ${verbose ? [...skipped].sort(alphabetical).join(', ') : '--verbose to list'}`,
+        `generated CRUD or inline selects. ${
+          verbose ? [...skipped].sort(alphabetical).join(', ') : '--verbose to list'
+        }`,
     )
   }
 
@@ -936,9 +901,6 @@ const main = async (): Promise<void> => {
     process.exitCode = 0
     return
   }
-  // Imported here, not at the top: this module is consumed as CommonJS, and a static import of an
-  // .mjs compiles to require(), which throws ERR_REQUIRE_ASYNC_MODULE before main() ever runs.
-  const { reportNothingChecked } = await import('./verify-selects.mjs')
   process.exitCode = reportNothingChecked('verify-fragments')
 }
 

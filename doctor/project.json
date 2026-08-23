@@ -26,6 +26,11 @@
             "input": "./doctor/bin",
             "glob": "**/*.js",
             "output": "./bin"
+          },
+          {
+            "input": "./doctor/src",
+            "glob": "doctor-repo-config.js",
+            "output": "./src"
           }
         ]
       }
