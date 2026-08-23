@@ -91,12 +91,17 @@ export const reportNothingChecked = (tool, cwd = process.cwd()) => {
   let declared
   try {
     declared = readRepoConfig(cwd).noSelectFiles
-  } catch {
-    // A broken config is the config reader's error to report, not ours to swallow.
-    declared = undefined
+  } catch (error) {
+    // A malformed config is its own failure with its own fix. Swallowing it here would print the
+    // generic "checked 0 files" advice, which tells the reader to edit the very file that cannot
+    // be parsed -- and dressing a config error as a verification failure hides which one it is.
+    console.error(`\n${tool}: ${error.message}`)
+    return 2
   }
   if (declared) {
-    console.log(`\n${tool}: checked nothing, as declared in ${REPO_CONFIG_PATH} — ${declared}`)
+    // stderr, so --json callers can parse stdout: a human-readable line on stdout would corrupt
+    // the machine-readable output for exactly the automated callers this exit code is for.
+    console.error(`\n${tool}: checked nothing, as declared in ${REPO_CONFIG_PATH} — ${declared}`)
     return 0
   }
   console.error(

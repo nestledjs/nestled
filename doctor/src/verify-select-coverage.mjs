@@ -51,7 +51,6 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
 import { reportNothingChecked } from './verify-selects.mjs'
 
-let nothingChecked = false
 
 const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', 'prisma', 'libs/api/prisma/src/lib']
 const DEFAULT_SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
@@ -440,7 +439,7 @@ if (asJson) {
     }
   }
   if (selectFiles.length === 0) {
-    nothingChecked = true
+    // reported below, for both output modes
   } else if (problems.length === 0 && unresolved.length === 0) {
     console.log('every top-level select covers the non-nullable surface of its GraphQL type\n')
   }
@@ -448,5 +447,7 @@ if (asJson) {
 
 const failed = problems.length > 0 || unresolved.length > 0 || (strictNested && nestedProblems.length > 0)
 if (failed) process.exit(1)
-// Examining nothing is not the same as finding nothing wrong.
-process.exit(nothingChecked ? reportNothingChecked('verify-select-coverage') : 0)
+// Examining nothing is not the same as finding nothing wrong. Derived from the file count rather
+// than a flag set while rendering, so --json reaches the same verdict as the text output -- the
+// first cut set the flag inside the text-only branch, leaving --json to exit 0 on zero files.
+process.exit(selectFiles.length === 0 ? reportNothingChecked('verify-select-coverage') : 0)

@@ -67,7 +67,6 @@ import {
   type GraphqlSource,
   type PrismaSelect,
 } from './doctor-sdk-contract-analysis'
-import { reportNothingChecked } from './verify-selects.mjs'
 
 /**
  * Load DATABASE_MODELS from the consuming repo's TypeScript source.
@@ -933,7 +932,14 @@ const main = async (): Promise<void> => {
   // It already says "This is NOT fragment-coverage proof" and then exited 0, which is the same
   // contradiction in words rather than in code. A repo that declares it has no selects passes; one
   // that does not has either lost its selects to a rename or never declared the fact.
-  process.exitCode = checkedModels === 0 && checkedPaths === 0 ? reportNothingChecked('verify-fragments') : 0
+  if (checkedModels > 0 || checkedPaths > 0) {
+    process.exitCode = 0
+    return
+  }
+  // Imported here, not at the top: this module is consumed as CommonJS, and a static import of an
+  // .mjs compiles to require(), which throws ERR_REQUIRE_ASYNC_MODULE before main() ever runs.
+  const { reportNothingChecked } = await import('./verify-selects.mjs')
+  process.exitCode = reportNothingChecked('verify-fragments')
 }
 
 // Exported rather than self-invoked: the package's bin calls this, so the parser stays importable
