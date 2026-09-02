@@ -1,11 +1,5 @@
 import ts from 'typescript'
-import {
-  GraphQLError,
-  Kind,
-  parse,
-  type FragmentDefinitionNode,
-  type SelectionSetNode,
-} from 'graphql'
+import { GraphQLError, Kind, parse, type FragmentDefinitionNode, type SelectionSetNode } from 'graphql'
 import { getAuthOperations } from './doctor-auth-analysis'
 
 export type CrudBoundaryViolation = {
@@ -108,8 +102,7 @@ type RootFieldAnalysis = {
   violations: CrudBoundaryViolation[]
 }
 
-const lineAtOffset = (source: string, offset: number): number =>
-  source.slice(0, offset).split('\n').length
+const lineAtOffset = (source: string, offset: number): number => source.slice(0, offset).split('\n').length
 
 const getFragments = (sources: readonly string[]): Map<string, FragmentDefinitionNode> => {
   const fragments = new Map<string, FragmentDefinitionNode>()
@@ -125,11 +118,7 @@ const getFragments = (sources: readonly string[]): Map<string, FragmentDefinitio
   return fragments
 }
 
-const addGeneratedRootFieldViolation = (
-  fieldName: string,
-  offset: number,
-  analysis: RootFieldAnalysis,
-) => {
+const addGeneratedRootFieldViolation = (fieldName: string, offset: number, analysis: RootFieldAnalysis) => {
   analysis.violations.push({
     line: lineAtOffset(analysis.operationSource, offset),
     message:
@@ -147,11 +136,7 @@ const checkRootSelections = (
   for (const selection of selectionSet.selections) {
     if (selection.kind === Kind.FIELD) {
       if (analysis.generatedRootFields.has(selection.name.value)) {
-        addGeneratedRootFieldViolation(
-          selection.name.value,
-          reportOffset ?? selection.loc?.start ?? 0,
-          analysis,
-        )
+        addGeneratedRootFieldViolation(selection.name.value, reportOffset ?? selection.loc?.start ?? 0, analysis)
       }
       continue
     }
@@ -202,7 +187,7 @@ export const getPublicSdkGeneratedCrudViolations = (
 const flattenGqlTemplate = (template: ts.TemplateLiteral): string =>
   ts.isNoSubstitutionTemplateLiteral(template)
     ? template.text
-    : [template.head.text, ...template.templateSpans.map(span => span.literal.text)].join(' ')
+    : [template.head.text, ...template.templateSpans.map((span) => span.literal.text)].join(' ')
 
 /**
  * Generated-CRUD roots called from GraphQL written inline in client code as `gql\`...\`` — the
@@ -230,11 +215,7 @@ export const getInlineClientGeneratedCrudViolations = (
   const violations: CrudBoundaryViolation[] = []
 
   const visit = (node: ts.Node): void => {
-    if (
-      ts.isTaggedTemplateExpression(node) &&
-      ts.isIdentifier(node.tag) &&
-      node.tag.text === 'gql'
-    ) {
+    if (ts.isTaggedTemplateExpression(node) && ts.isIdentifier(node.tag) && node.tag.text === 'gql') {
       const line = lineFor(sourceFile, node)
 
       try {
@@ -260,26 +241,20 @@ export const getInlineClientGeneratedCrudViolations = (
   return violations
 }
 
-export const getGeneratedCrudImportViolations = (
-  source: string,
-  fileName = 'source.ts',
-): CrudBoundaryViolation[] =>
+export const getGeneratedCrudImportViolations = (source: string, fileName = 'source.ts'): CrudBoundaryViolation[] =>
   getModuleReferences(source, fileName)
-    .filter(reference => isGeneratedCrudModule(reference.moduleName))
-    .map(reference => ({
+    .filter((reference) => isGeneratedCrudModule(reference.moduleName))
+    .map((reference) => ({
       line: reference.line,
       message:
         `Handwritten resolvers and services must not import generated admin CRUD (${reference.moduleName}); ` +
         'define an explicit input and Prisma query instead; there is no admin-only exception',
     }))
 
-export const getLegacyCoreHelpersImportViolations = (
-  source: string,
-  fileName = 'source.ts',
-): CrudBoundaryViolation[] =>
+export const getLegacyCoreHelpersImportViolations = (source: string, fileName = 'source.ts'): CrudBoundaryViolation[] =>
   getModuleReferences(source, fileName)
-    .filter(reference => reference.moduleName.includes('/api/core/helpers'))
-    .map(reference => ({
+    .filter((reference) => reference.moduleName.includes('/api/core/helpers'))
+    .map((reference) => ({
       line: reference.line,
       message:
         'Application API code must not import the removed core-helper library; build an explicit Prisma select instead',
@@ -291,14 +266,60 @@ export const getCrudAuthAnnotationLines = (schema: string): number[] =>
     .map((line, index) => (line.includes('@crudAuth') ? index + 1 : undefined))
     .filter((line): line is number => line !== undefined)
 
+/**
+ * `/// @dateOnly` marks a Prisma `DateTime` column that is conceptually a calendar day rather
+ * than an instant. PostgreSQL-backed models have no date-only scalar, so this annotation is the
+ * only signal a client has for deciding whether to render on the UTC calendar or in local time.
+ * An annotation on anything else silently produces the wrong one, so it is rejected here.
+ */
+export const getDateOnlyAnnotationViolations = (schema: string): CrudBoundaryViolation[] => {
+  const lines = schema.split('\n')
+  const violations: CrudBoundaryViolation[] = []
+
+  for (let index = 0; index < lines.length; index += 1) {
+    if (!lines[index].includes('@dateOnly')) continue
+
+    // Resolve to the annotated declaration: the next line that is not itself a doc comment, so a
+    // multi-line comment block above a field still points at that field.
+    let target = index + 1
+    while (target < lines.length && lines[target].trim().startsWith('///')) target += 1
+
+    const declaration = target < lines.length ? lines[target].trim() : ''
+    const line = index + 1
+
+    if (declaration.startsWith('model ') || declaration.startsWith('enum ')) {
+      violations.push({
+        line,
+        message: '@dateOnly is a field annotation and cannot be applied to a model or enum',
+      })
+      continue
+    }
+
+    const fieldMatch = /^([A-Za-z_]\w*)\s+(\w+)/.exec(declaration)
+    if (!fieldMatch) {
+      violations.push({ line, message: '@dateOnly must sit directly above the field it annotates' })
+      continue
+    }
+
+    if (fieldMatch[2] !== 'DateTime') {
+      violations.push({
+        line,
+        message: `@dateOnly only applies to a DateTime field; ${fieldMatch[1]} is ${fieldMatch[2]}`,
+      })
+    }
+  }
+
+  return violations
+}
+
 export const getCustomResolverNameViolations = (
   source: string,
   generatedMethodNames: ReadonlySet<string>,
   fileName = 'source.ts',
 ): CrudBoundaryViolation[] =>
   getAuthOperations(source, fileName)
-    .filter(operation => operation.kind === 'graphql' && generatedMethodNames.has(operation.name))
-    .map(operation => ({
+    .filter((operation) => operation.kind === 'graphql' && generatedMethodNames.has(operation.name))
+    .map((operation) => ({
       line: operation.line,
       message: `Custom resolver method "${operation.name}" collides with a generated CRUD field name`,
     }))
@@ -323,13 +344,10 @@ export const getNonAuthenticatedOperationViolations = (
   source: string,
   fileName = 'source.ts',
 ): CrudBoundaryViolation[] =>
-  getAuthOperations(source, fileName).flatMap(operation => {
+  getAuthOperations(source, fileName).flatMap((operation) => {
     const violations: CrudBoundaryViolation[] = []
 
-    if (
-      !operation.guardNames.includes('GqlAuthGuard') &&
-      !operation.guardNames.includes('GqlAuthAdminGuard')
-    ) {
+    if (!operation.guardNames.includes('GqlAuthGuard') && !operation.guardNames.includes('GqlAuthAdminGuard')) {
       violations.push({
         line: operation.line,
         message: `${operation.className}.${operation.name} must use GqlAuthGuard (or the stricter GqlAuthAdminGuard) while generated-crud posture is authenticated`,
@@ -349,11 +367,8 @@ export const getNonAuthenticatedOperationViolations = (
     return violations
   })
 
-export const getNonAdminOperationViolations = (
-  source: string,
-  fileName = 'source.ts',
-): CrudBoundaryViolation[] =>
-  getAuthOperations(source, fileName).flatMap(operation => {
+export const getNonAdminOperationViolations = (source: string, fileName = 'source.ts'): CrudBoundaryViolation[] =>
+  getAuthOperations(source, fileName).flatMap((operation) => {
     const violations: CrudBoundaryViolation[] = []
 
     if (!operation.guardNames.includes('GqlAuthAdminGuard')) {

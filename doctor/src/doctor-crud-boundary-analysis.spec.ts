@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   getCrudAuthAnnotationLines,
   getCustomResolverNameViolations,
+  getDateOnlyAnnotationViolations,
   getGeneratedCrudImportViolations,
   getGraphqlRootFieldNames,
   getLegacyCoreHelpersImportViolations,
@@ -48,9 +49,7 @@ describe('generated CRUD boundary analysis', () => {
     expect(isHandwrittenApiFile('libs/api/custom/src/lib/user.resolver.ts')).toBe(true)
     expect(isHandwrittenApiFile('libs\\api\\custom\\src\\lib\\user.resolver.ts')).toBe(true)
     expect(isHandwrittenApiFile('apps\\api\\src\\app.module.ts')).toBe(false)
-    expect(
-      isHandwrittenApiFile('libs\\api\\generated-crud\\feature\\src\\lib\\user.resolver.ts'),
-    ).toBe(false)
+    expect(isHandwrittenApiFile('libs\\api\\generated-crud\\feature\\src\\lib\\user.resolver.ts')).toBe(false)
     expect(isHandwrittenApiFile('libs\\api\\custom\\src\\lib\\user.resolver.spec.ts')).toBe(false)
   })
 
@@ -227,7 +226,7 @@ describe('generated CRUD boundary analysis', () => {
       }
     `)
 
-    expect(violations.map(violation => violation.message)).toEqual([
+    expect(violations.map((violation) => violation.message)).toEqual([
       'UserResolver.user must use GqlAuthAdminGuard',
       'UserResolver.user must declare @AdminOnly()',
     ])
@@ -376,7 +375,7 @@ describe('getNonAuthenticatedOperationViolations', () => {
       }
     `)
 
-    expect(violations.map(violation => violation.message)).toEqual([
+    expect(violations.map((violation) => violation.message)).toEqual([
       'GeneratedUserResolver.user must use GqlAuthGuard (or the stricter GqlAuthAdminGuard) while generated-crud posture is authenticated',
       'GeneratedUserResolver.user must declare @Authenticated() (or the stricter @AdminOnly()) while generated-crud posture is authenticated',
     ])
@@ -396,5 +395,61 @@ describe('getNonAuthenticatedOperationViolations', () => {
         }
       `),
     ).toEqual([])
+  })
+
+  it('accepts @dateOnly on a DateTime field', () => {
+    const schema = [
+      'model Person {',
+      '  id        String    @id',
+      '  /// @dateOnly',
+      '  birthDate DateTime?',
+      '  /// The day the contract starts.',
+      '  /// @dateOnly',
+      '  startDate DateTime  @default(now())',
+      '  lastSeenAt DateTime?',
+      '}',
+    ].join('\n')
+
+    expect(getDateOnlyAnnotationViolations(schema)).toEqual([])
+  })
+
+  it('rejects @dateOnly on a field that is not a DateTime', () => {
+    // The annotation only means anything for a column that has no date-only scalar to declare.
+    const schema = ['model Person {', '  /// @dateOnly', '  label String', '}'].join('\n')
+
+    const violations = getDateOnlyAnnotationViolations(schema)
+
+    expect(violations).toHaveLength(1)
+    expect(violations[0].line).toBe(2)
+    expect(violations[0].message).toContain('label is String')
+  })
+
+  it('rejects @dateOnly on a model or enum', () => {
+    const schema = [
+      '/// @dateOnly',
+      'model Person {',
+      '  id String @id',
+      '}',
+      '',
+      '/// @dateOnly',
+      'enum Cadence {',
+      '  DAILY',
+      '}',
+    ].join('\n')
+
+    const violations = getDateOnlyAnnotationViolations(schema)
+
+    expect(violations).toHaveLength(2)
+    expect(violations[0].message).toContain('cannot be applied to a model or enum')
+    expect(violations[1].message).toContain('cannot be applied to a model or enum')
+  })
+
+  it('rejects a dangling @dateOnly with no declaration beneath it', () => {
+    const schema = ['model Person {', '  id String @id', '  /// @dateOnly', '}'].join('\n')
+
+    const violations = getDateOnlyAnnotationViolations(schema)
+
+    expect(violations).toHaveLength(1)
+    expect(violations[0].message).toContain('must sit directly above the field it annotates')
   })
 })
