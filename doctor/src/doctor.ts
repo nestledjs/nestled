@@ -18,6 +18,7 @@ import {
 import {
   getCrudAuthAnnotationLines,
   getCustomResolverNameViolations,
+  getDateOnlyAnnotationViolations,
   getGeneratedCrudImportViolations,
   getGraphqlRootFieldNames,
   getInlineClientGeneratedCrudViolations,
@@ -1181,6 +1182,15 @@ const checkSkipCrudDocumentation = () => {
   }
 }
 
+const checkDateOnlyAnnotations = () => {
+  if (!existsSync(schemaPath)) return
+
+  const schema = readFileSync(schemaPath, 'utf8')
+  for (const violation of getDateOnlyAnnotationViolations(schema)) {
+    fail('date-only', violation.message, schemaPath, violation.line)
+  }
+}
+
 const checkPublishablePackageReadmes = () => {
   const packageFiles = walkFiles('libs', (path) => basename(path) === 'package.json')
 
@@ -2234,6 +2244,7 @@ checkSdkContract()
 checkPluginExportsAndRegistration()
 checkIntegrationExports()
 checkSkipCrudDocumentation()
+checkDateOnlyAnnotations()
 checkPublishablePackageReadmes()
 checkPublishedPackageVersions()
 checkUpgradeNoteImpactGate()
