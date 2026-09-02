@@ -444,6 +444,22 @@ describe('getNonAuthenticatedOperationViolations', () => {
     expect(violations[1].message).toContain('cannot be applied to a model or enum')
   })
 
+  it('ignores @dateOnly outside a doc comment or as part of a longer token', () => {
+    // Prisma surfaces only `///` comments as documentation, so a `//` comment has no effect and
+    // must not be reported; `@dateOnlyDeprecated` is a different annotation entirely. Both match
+    // how the client predicates read the schema.
+    const schema = [
+      'model Person {',
+      '  // @dateOnly',
+      '  label String',
+      '  /// @dateOnlyDeprecated',
+      '  legacy String',
+      '}',
+    ].join('\n')
+
+    expect(getDateOnlyAnnotationViolations(schema)).toEqual([])
+  })
+
   it('rejects a dangling @dateOnly with no declaration beneath it', () => {
     const schema = ['model Person {', '  id String @id', '  /// @dateOnly', '}'].join('\n')
 

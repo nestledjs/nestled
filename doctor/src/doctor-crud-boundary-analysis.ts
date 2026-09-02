@@ -277,7 +277,12 @@ export const getDateOnlyAnnotationViolations = (schema: string): CrudBoundaryVio
   const violations: CrudBoundaryViolation[] = []
 
   for (let index = 0; index < lines.length; index += 1) {
-    if (!lines[index].includes('@dateOnly')) continue
+    // Only a `///` doc comment reaches the DMMF as documentation, so a `//` comment mentioning
+    // the annotation has no effect and must not be reported. The token is matched with a word
+    // boundary so `@dateOnlyDeprecated` is a different annotation, exactly as the client
+    // predicates read it.
+    const trimmed = lines[index].trim()
+    if (!trimmed.startsWith('///') || !/@dateOnly\b/.test(trimmed)) continue
 
     // Resolve to the annotated declaration: the next line that is not itself a doc comment, so a
     // multi-line comment block above a field still points at that field.
