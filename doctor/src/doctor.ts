@@ -15,6 +15,7 @@ import {
   type AccessPolicyDeclaration,
   type InlineAccessCheckViolation,
 } from './doctor-access-policy-analysis'
+import { isSensitiveTemplatePath } from './doctor-upgrade-note-analysis'
 import {
   getCrudAuthAnnotationLines,
   getCustomResolverNameViolations,
@@ -1450,17 +1451,7 @@ const generatedOutputPaths = new Set([
 const isGeneratedOutput = (path: string): boolean => generatedOutputPaths.has(path)
 
 const isSensitiveUpgradePath = (path: string): boolean =>
-  !isGeneratedOutput(path) &&
-  (/^libs\/api\/(core|custom|utils|integrations)\//.test(path) ||
-    path.startsWith('apps/api/') ||
-    path.startsWith('apps/web/app/routes/') ||
-    path === 'apps/web/app/routes.tsx' ||
-    path === schemaPath ||
-    path.includes('/guards/') ||
-    path.includes('/billing/') ||
-    path.includes('/auth/') ||
-    path.includes('/rbac/') ||
-    path.includes('/admin/'))
+  !isGeneratedOutput(path) && isSensitiveTemplatePath(path, schemaPath)
 
 const checkUpgradeNoteImpactGate = () => {
   if (!isSourceTemplateRepository()) return
