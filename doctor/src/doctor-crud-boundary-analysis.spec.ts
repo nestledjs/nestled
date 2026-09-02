@@ -396,7 +396,9 @@ describe('getNonAuthenticatedOperationViolations', () => {
       `),
     ).toEqual([])
   })
+})
 
+describe('getDateOnlyAnnotationViolations', () => {
   it('accepts @dateOnly on a DateTime field', () => {
     const schema = [
       'model Person {',
