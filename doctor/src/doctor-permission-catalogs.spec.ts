@@ -2,7 +2,12 @@ import { describe, expect, it } from 'vitest'
 import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { DEFAULT_PERMISSION_CATALOGS, readPermissionCatalogConfig } from './doctor-permission-catalogs'
+import {
+  DEFAULT_PERMISSION_CATALOGS,
+  DEFAULT_EMULATION_PERMISSION,
+  readPermissionCatalogConfig,
+  readEmulationPermissionConfig,
+} from './doctor-permission-catalogs'
 
 const writeConfig = (contents: string): string => {
   const file = join(mkdtempSync(join(tmpdir(), 'catalogs-')), 'doctor.config.json')
@@ -88,6 +93,50 @@ describe('readPermissionCatalogConfig', () => {
     // A config file that only sets other things must not be read as a catalog misconfiguration.
     expect(readPermissionCatalogConfig(writeConfig('{ "selectFileSuffixes": [".select.ts"] }'))).toEqual({
       config: DEFAULT_PERMISSION_CATALOGS,
+    })
+  })
+})
+
+describe('readEmulationPermissionConfig', () => {
+  it('returns the previously hard-coded value when no file exists', () => {
+    expect(readEmulationPermissionConfig(join(tmpdir(), 'absent-emulation.json'))).toEqual({
+      permission: DEFAULT_EMULATION_PERMISSION,
+    })
+    expect(DEFAULT_EMULATION_PERMISSION).toBe('platform.users.emulate')
+  })
+
+  it('takes a repo whose emulation permission is scoped outside the platform catalog', () => {
+    // mi-core: admin.emulate is deliberately tighter than GqlAuthAdminGuard's admin-namespace
+    // check, but doesn't match the hard-coded default, so every emulation resolver reported as
+    // unguarded regardless of enforcement. nestledjs/nestled#139's related-issue note.
+    const file = writeConfig(JSON.stringify({ emulationPermission: 'admin.emulate' }))
+
+    expect(readEmulationPermissionConfig(file)).toEqual({ permission: 'admin.emulate' })
+  })
+
+  it('falls back and says so for a declared value that is not a non-empty string', () => {
+    expect(readEmulationPermissionConfig(writeConfig(JSON.stringify({ emulationPermission: '' })))).toEqual({
+      permission: DEFAULT_EMULATION_PERMISSION,
+      invalid: 'emulationPermission is not a non-empty string',
+    })
+    expect(readEmulationPermissionConfig(writeConfig(JSON.stringify({ emulationPermission: 42 })))).toEqual({
+      permission: DEFAULT_EMULATION_PERMISSION,
+      invalid: 'emulationPermission is not a non-empty string',
+    })
+  })
+
+  it('falls back and says so for a file it cannot read as config', () => {
+    expect(readEmulationPermissionConfig(writeConfig('{ "emulationPermission": '))).toEqual({
+      permission: DEFAULT_EMULATION_PERMISSION,
+      invalid: 'unparseable JSON',
+    })
+    expect(readEmulationPermissionConfig(writeConfig('[]'))).toEqual({
+      permission: DEFAULT_EMULATION_PERMISSION,
+      invalid: 'not a JSON object',
+    })
+    // A config file that only sets other things must not be read as a misconfiguration.
+    expect(readEmulationPermissionConfig(writeConfig('{ "selectFileSuffixes": [".select.ts"] }'))).toEqual({
+      permission: DEFAULT_EMULATION_PERMISSION,
     })
   })
 })

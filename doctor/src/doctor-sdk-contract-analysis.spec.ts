@@ -159,6 +159,33 @@ describe('SDK contract analysis', () => {
     ])
   })
 
+  it('recognizes Subscription root fields, not just Query and Mutation', () => {
+    // Regression: schemaRootFields only read getQueryType/getMutationType, so every subscription
+    // operation reported as referencing a "missing" root field unconditionally, in every repo,
+    // regardless of whether it was declared and resolved correctly. nestledjs/nestled#148.
+    const report = getSdkContractReport({
+      adminSources: [],
+      applicationSources: [
+        {
+          file: 'graphql/chat.graphql',
+          source: `
+            query Chats { chats { id } }
+            subscription ChatSub($chatId: ID!) { chatSub(chatId: $chatId) { id } }
+          `,
+        },
+      ],
+      clientSources: [],
+      schemaSource: `
+        type Chat { id: ID! }
+        type Query { chats: [Chat!]! }
+        type Subscription { chatSub(chatId: ID!): Chat! }
+      `,
+    })
+
+    expect(report.sdkWithoutApi).toEqual([])
+    expect(report.apiWithoutSdk).toEqual([])
+  })
+
   it('reports exception entries whose underlying finding no longer exists', () => {
     const report = getSdkContractReport({
       adminSources: [],

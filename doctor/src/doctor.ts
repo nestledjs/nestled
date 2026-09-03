@@ -44,6 +44,8 @@ import { GENERATED_CRUD_POSTURE_PATH, readGeneratedCrudPosture } from './doctor-
 import {
   PERMISSION_CATALOGS_PATH,
   readPermissionCatalogConfig,
+  readEmulationPermissionConfig,
+  DEFAULT_EMULATION_PERMISSION,
   type PermissionCatalogSpec,
 } from './doctor-permission-catalogs'
 import {
@@ -74,6 +76,7 @@ const permissionExemptionsPath = '.nestled-updates/security/permission-exemption
 const permissionCatalogs = readPermissionCatalogConfig()
 const platformPermissionCatalogPath = permissionCatalogs.config.platform.path
 const organizationPermissionCatalogPath = permissionCatalogs.config.organization.path
+const emulationPermission = readEmulationPermissionConfig()
 const sdkContractBaselinePath = '.nestled-updates/sdk-contract-baseline.json'
 const sdkContractExceptionsPath = '.nestled-updates/sdk-contract-exceptions.json'
 const resolverSourceRoots = ['libs/api', 'apps/api/src']
@@ -1550,7 +1553,7 @@ const isEmulationMutation = (operation: GraphqlOperation): boolean =>
 const hasEmulationAuthorization = (operation: GraphqlOperation): boolean =>
   operation.decorators.includes('GqlAuthAdminGuard') ||
   (operation.decorators.includes('RequirePlatformPermission') &&
-    operation.decorators.includes('platform.users.emulate'))
+    operation.decorators.includes(emulationPermission.permission))
 
 const checkEmulationResolverFile = (file: string) => {
   const source = stripComments(readFileSync(file, 'utf8'))
@@ -1558,7 +1561,7 @@ const checkEmulationResolverFile = (file: string) => {
     if (!isEmulationMutation(operation) || hasEmulationAuthorization(operation)) continue
     fail(
       'emulation-security',
-      `Emulation/impersonation resolver ${operation.name} must require GqlAuthAdminGuard or platform.users.emulate`,
+      `Emulation/impersonation resolver ${operation.name} must require GqlAuthAdminGuard or ${emulationPermission.permission}`,
       file,
     )
   }
@@ -1571,6 +1574,16 @@ const checkEmulationServiceFile = (file: string) => {
 }
 
 const checkEmulationPrivilegeCeiling = () => {
+  // A config the reader rejected is worse than no config: the repo believes it pointed the
+  // doctor at its permission, and the silent fallback to the template default is precisely the
+  // false-positive state this key exists to prevent.
+  if (emulationPermission.invalid) {
+    fail(
+      'emulation-security',
+      `${PERMISSION_CATALOGS_PATH} declares ${emulationPermission.invalid}; the default emulation permission ('${DEFAULT_EMULATION_PERMISSION}') is used instead`,
+      PERMISSION_CATALOGS_PATH,
+    )
+  }
   walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts')).forEach(checkEmulationResolverFile)
   walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.service.ts') && !path.endsWith('.spec.ts')).forEach(
     checkEmulationServiceFile,

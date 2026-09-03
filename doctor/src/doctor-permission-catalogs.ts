@@ -135,3 +135,54 @@ export const readPermissionCatalogConfig = (
 
   return problems.length > 0 ? { config, invalid: problems.join('; ') } : { config }
 }
+
+/** The key inside {@link PERMISSION_CATALOGS_PATH} naming the emulation-guard permission. */
+export const EMULATION_PERMISSION_KEY = 'emulationPermission'
+
+/**
+ * The permission the `emulation-security` check accepts in place of `GqlAuthAdminGuard` on an
+ * impersonation resolver, when a repo says nothing. This is the platform-catalog convention the
+ * template ships, not a universal constant: a repo whose emulation permission is scoped
+ * differently (mi-core's `admin.emulate`, seeded outside the platform catalog on purpose) needs
+ * to declare it, or every impersonation resolver reports as unguarded regardless of its actual
+ * enforcement.
+ */
+export const DEFAULT_EMULATION_PERMISSION = 'platform.users.emulate'
+
+export type EmulationPermissionReading = {
+  permission: string
+  /** Why a declared value was rejected. Absent when the file is absent or the value is valid. */
+  invalid?: string
+}
+
+/**
+ * Read the repo's declared emulation permission from {@link PERMISSION_CATALOGS_PATH}, falling
+ * back to {@link DEFAULT_EMULATION_PERMISSION}. Shares the file with `permissionCatalogs` and
+ * `selectFileSuffixes`; saying nothing about this key is the normal case, not a misconfiguration.
+ */
+export const readEmulationPermissionConfig = (
+  configPath: string = PERMISSION_CATALOGS_PATH,
+): EmulationPermissionReading => {
+  if (!existsSync(configPath)) return { permission: DEFAULT_EMULATION_PERMISSION }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(readFileSync(configPath, 'utf8'))
+  } catch {
+    return { permission: DEFAULT_EMULATION_PERMISSION, invalid: 'unparseable JSON' }
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return { permission: DEFAULT_EMULATION_PERMISSION, invalid: 'not a JSON object' }
+  }
+
+  const declared = (parsed as Record<string, unknown>)[EMULATION_PERMISSION_KEY]
+  if (declared === undefined) return { permission: DEFAULT_EMULATION_PERMISSION }
+  if (!isNonEmptyString(declared)) {
+    return {
+      permission: DEFAULT_EMULATION_PERMISSION,
+      invalid: `${EMULATION_PERMISSION_KEY} is not a non-empty string`,
+    }
+  }
+
+  return { permission: declared }
+}
