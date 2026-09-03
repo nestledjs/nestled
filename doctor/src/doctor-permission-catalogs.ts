@@ -184,5 +184,8 @@ export const readEmulationPermissionConfig = (
     }
   }
 
-  return { permission: declared }
+  // Trimmed, not just validated as non-empty when trimmed: an untrimmed value passes this check
+  // but then never matches the un-padded decorator text at the call site, which is a confusing
+  // false positive with no error reported to explain it.
+  return { permission: declared.trim() }
 }
