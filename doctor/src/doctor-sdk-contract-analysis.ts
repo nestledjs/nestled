@@ -603,6 +603,7 @@ export const getSdkContractReport = (options: {
   const schemaRootFields = new Set([
     ...Object.keys(schema.getQueryType()?.getFields() ?? {}),
     ...Object.keys(schema.getMutationType()?.getFields() ?? {}),
+    ...Object.keys(schema.getSubscriptionType()?.getFields() ?? {}),
   ])
   const adminOperations = getSdkOperations(options.adminSources)
   const applicationOperations = getSdkOperations(options.applicationSources)
