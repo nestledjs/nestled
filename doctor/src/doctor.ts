@@ -1550,10 +1550,21 @@ const isEmulationMutation = (operation: GraphqlOperation): boolean =>
     /\b\w+\.emulate\w*\s*\(/i.test(operation.body) ||
     /\b\w+\.impersonate\w*\s*\(/i.test(operation.body))
 
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/**
+ * Whether `literal` appears as a whole quoted string argument in `source`, not merely as a
+ * substring. A plain `.includes()` would let a configured `admin.emulate` match inside an
+ * unrelated `'admin.emulateUser'` literal -- a false negative in a security check, which is
+ * the wrong direction to be wrong in.
+ */
+const hasQuotedLiteral = (source: string, literal: string): boolean =>
+  new RegExp(`['"]${escapeRegExp(literal)}['"]`).test(source)
+
 const hasEmulationAuthorization = (operation: GraphqlOperation): boolean =>
   operation.decorators.includes('GqlAuthAdminGuard') ||
   (operation.decorators.includes('RequirePlatformPermission') &&
-    operation.decorators.includes(emulationPermission.permission))
+    hasQuotedLiteral(operation.decorators, emulationPermission.permission))
 
 const checkEmulationResolverFile = (file: string) => {
   const source = stripComments(readFileSync(file, 'utf8'))
