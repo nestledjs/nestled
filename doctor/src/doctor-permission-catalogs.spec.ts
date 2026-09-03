@@ -114,6 +114,15 @@ describe('readEmulationPermissionConfig', () => {
     expect(readEmulationPermissionConfig(file)).toEqual({ permission: 'admin.emulate' })
   })
 
+  it('trims a declared value, rather than validate it trimmed and return it padded', () => {
+    // An untrimmed value passes the non-empty check but then never matches the un-padded
+    // decorator text at the emulation-security call site -- a confusing false positive with no
+    // error reported to explain it.
+    const file = writeConfig(JSON.stringify({ emulationPermission: '  admin.emulate  ' }))
+
+    expect(readEmulationPermissionConfig(file)).toEqual({ permission: 'admin.emulate' })
+  })
+
   it('falls back and says so for a declared value that is not a non-empty string', () => {
     expect(readEmulationPermissionConfig(writeConfig(JSON.stringify({ emulationPermission: '' })))).toEqual({
       permission: DEFAULT_EMULATION_PERMISSION,
