@@ -186,6 +186,34 @@ describe('SDK contract analysis', () => {
     expect(report.apiWithoutSdk).toEqual([])
   })
 
+  it('does not treat an object type named Subscription as the subscription root when nothing subscribes to it', () => {
+    // Regression in the #148 fix itself: GraphQL treats a type literally named Subscription as
+    // the schema's subscription root by convention, with no explicit `schema { ... }` block
+    // required. nestled-template's own schema has exactly this -- a Stripe billing model named
+    // Subscription, zero real subscription operations or resolvers anywhere in the project. The
+    // #148 fix alone turned every one of that model's fields into a new apiWithoutSdk finding.
+    const report = getSdkContractReport({
+      adminSources: [],
+      applicationSources: [
+        {
+          file: 'graphql/organization.graphql',
+          // A field NAMED subscription, not a subscription OPERATION -- this must not count as
+          // evidence that real subscriptions exist.
+          source: 'query OrgBilling { organization { subscription { plan } } }',
+        },
+      ],
+      clientSources: [],
+      schemaSource: `
+        type Plan { id: ID! }
+        type Subscription { id: ID! stripeCustomerId: String plan: Plan }
+        type Organization { id: ID! subscription: Subscription }
+        type Query { organization: Organization }
+      `,
+    })
+
+    expect(report.apiWithoutSdk).toEqual([])
+  })
+
   it('reports exception entries whose underlying finding no longer exists', () => {
     const report = getSdkContractReport({
       adminSources: [],
