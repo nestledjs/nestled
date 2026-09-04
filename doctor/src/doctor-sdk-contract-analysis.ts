@@ -593,6 +593,19 @@ export const getInlineClientOperations = (sources: readonly TypeScriptSource[]):
   return operations.sort((left, right) => left.file.localeCompare(right.file) || left.line - right.line)
 }
 
+/**
+ * Whether any SDK document defines a real `subscription` operation, checked from the parsed AST
+ * (`OperationDefinitionNode.operation`), never from matching the word "subscription" as text --
+ * an object field can be named `subscription` (e.g. `organization { subscription { plan } }`)
+ * without a single real subscription operation existing anywhere in the project.
+ */
+const hasSubscriptionOperation = (sources: readonly GraphqlSource[]): boolean =>
+  sources.some((source) =>
+    parse(source.source).definitions.some(
+      (definition) => definition.kind === Kind.OPERATION_DEFINITION && definition.operation === 'subscription',
+    ),
+  )
+
 export const getSdkContractReport = (options: {
   adminSources: readonly GraphqlSource[]
   applicationSources: readonly GraphqlSource[]
@@ -600,10 +613,19 @@ export const getSdkContractReport = (options: {
   schemaSource: string
 }): SdkContractReport => {
   const schema = buildSchema(options.schemaSource)
+  // GraphQL treats any type literally named Query/Mutation/Subscription as that root operation
+  // type unless the schema has an explicit `schema { ... }` block saying otherwise -- so a
+  // perfectly ordinary object type that happens to be named Subscription (a billing model, say)
+  // is silently wired up as the subscription root. Counting its fields as SDK-coverable root
+  // fields would demand SDK operations for fields nobody ever intended as subscribable, so the
+  // Subscription type is only trusted when at least one real subscription operation exists to
+  // consume it -- the same evidence #148 itself supplies for a project that has genuine ones.
+  const includeSubscriptionFields =
+    hasSubscriptionOperation(options.adminSources) || hasSubscriptionOperation(options.applicationSources)
   const schemaRootFields = new Set([
     ...Object.keys(schema.getQueryType()?.getFields() ?? {}),
     ...Object.keys(schema.getMutationType()?.getFields() ?? {}),
-    ...Object.keys(schema.getSubscriptionType()?.getFields() ?? {}),
+    ...(includeSubscriptionFields ? Object.keys(schema.getSubscriptionType()?.getFields() ?? {}) : []),
   ])
   const adminOperations = getSdkOperations(options.adminSources)
   const applicationOperations = getSdkOperations(options.applicationSources)
