@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
 import { sdkGeneratorLogic, SdkGeneratorDependencies } from './generator'
 import { Tree } from '@nx/devkit'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 
 const prismaSchema = `
 generator client {
@@ -266,6 +268,23 @@ model Session {
       await sdkGeneratorLogic(tree, {}, mockDependencies)
 
       expect(tree.write).toHaveBeenCalledWith('libs/shared/sdk/src/codegen.yml', '')
+    })
+  })
+
+  describe('core.graphql template', () => {
+    it('never hardcodes an operation for a field that is not derived from the Prisma schema', () => {
+      // `core.graphql` is unconditionally overwritten on every generator run (unlike
+      // codegen.yml, it has no preserve-existing-content path), so anything hardcoded here
+      // that isn't guaranteed to exist in every consuming schema comes back even after a repo
+      // deliberately removes it. `query Uptime { uptime }` did exactly that: a repo that
+      // removed the anonymous GraphQL `uptime` query as unused public surface (keeping only
+      // its REST liveness probe) got it silently regenerated on the next db-update, breaking
+      // SDK codegen. CorePagingDetails is safe to keep hardcoded because every model's list
+      // response shares it by construction, not because it happens to exist today.
+      const templatePath = join(__dirname, 'files/graphql/core/core.graphql__tmpl__')
+      const content = readFileSync(templatePath, 'utf-8')
+
+      expect(content.toLowerCase()).not.toContain('uptime')
     })
   })
 })
