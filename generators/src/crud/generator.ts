@@ -72,6 +72,33 @@ export function readGeneratedCrudPosture(tree: Tree): { posture: GeneratedCrudPo
   return { posture: 'admin', invalid: `a non-string posture (${JSON.stringify(declared)})` }
 }
 
+export const CORE_PAGING_INPUT_PATH = 'libs/api/core/data-access/src/lib/dto/core-paging.input.ts'
+
+/**
+ * 1.1.6+ assigns a typed `<Model>FilterInput` to every `List<Model>Input.filters`, overriding the
+ * base class's field of the same name. If that base class — the template's `CorePagingInput` —
+ * still declares its own `filters: Record<string, unknown>`, the override collides under
+ * `noImplicitOverride` and every generated model fails with TS4114 ("must have an 'override'
+ * modifier"), pointing at generated code and naming the one fix that must not happen: adding
+ * `override` would just move the failure to TS4113 once the base field is later removed, since
+ * that's the whole point of this generator's output. Detecting it here, before 22,000 lines of DTO
+ * get written, turns a wall of confusing generated-code errors into one actionable message.
+ */
+export function assertCorePagingInputHasNoFilters(tree: Tree): void {
+  if (!tree.exists(CORE_PAGING_INPUT_PATH)) return
+
+  const content = tree.read(CORE_PAGING_INPUT_PATH, 'utf-8') ?? ''
+  if (!/\bfilters\s*\??\s*:/.test(content)) return
+
+  throw new Error(
+    `@nestledjs/generators 1.1.6+ emits a typed <Model>FilterInput on every List<Model>Input, but ` +
+      `${CORE_PAGING_INPUT_PATH} still declares "filters". Remove that field before regenerating — ` +
+      `see the 2026-08-05-filter-injection-prisma-where upgrade note. It is also the ` +
+      `filter-injection vulnerability that note exists to close: an untyped "filters" blob reaches ` +
+      `Prisma's "where" clause verbatim.`,
+  )
+}
+
 export function generateResolverContent(
   model: ModelType,
   npmScope: string,
@@ -337,6 +364,7 @@ export async function generateCrudLogic(
 
   // Main Orchestration Logic
   const name = schema.name || 'generated-crud'
+  assertCorePagingInputHasNoFilters(tree)
   const models = await getAllPrismaModels(tree)
   if (models.length === 0) {
     console.error('No Prisma models found')

@@ -2,7 +2,13 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createTreeWithEmptyWorkspace } from '@nx/devkit/testing'
-import { GenerateCrudGeneratorDependencies, generateCrudLogic, generateResolverContent } from './generator'
+import {
+  assertCorePagingInputHasNoFilters,
+  CORE_PAGING_INPUT_PATH,
+  GenerateCrudGeneratorDependencies,
+  generateCrudLogic,
+  generateResolverContent,
+} from './generator'
 import { Tree } from '@nx/devkit'
 
 // The mocked DMMF object
@@ -315,6 +321,56 @@ describe('generate-crud generator', () => {
       const { filterInputs } = (mockDependencies.apiLibraryGenerator as any).mock.calls[0][1]
       expect(filterInputs).toContain('export class UserFilterInput')
       expect(filterInputs).not.toContain('UserFilterInput2')
+    })
+  })
+
+  describe('CorePagingInput filter-injection ordering guard (#179)', () => {
+    // 1.1.6+ overrides List<Model>Input.filters with a typed <Model>FilterInput. If the base
+    // class still declares its own untyped `filters`, that collides under `noImplicitOverride`
+    // and surfaces as 62 TS4114 errors pointing at 22,000 lines of generated code, naming the
+    // one fix that must not happen ("add override"). Failing before any file is written turns
+    // that into one actionable message instead.
+    const filterInjectionMessage = /still declares "filters"/
+
+    it('does not throw when core-paging.input.ts does not exist', () => {
+      expect(() => assertCorePagingInputHasNoFilters(tree)).not.toThrow()
+    })
+
+    it('does not throw once the base class has dropped filters', () => {
+      tree.write(
+        CORE_PAGING_INPUT_PATH,
+        `
+        @InputType()
+        export class CorePagingInput {
+          @Field({ nullable: true, defaultValue: 20 })
+          take?: number
+        }
+      `,
+      )
+      expect(() => assertCorePagingInputHasNoFilters(tree)).not.toThrow()
+    })
+
+    it('throws with an actionable message when the base class still declares filters', () => {
+      tree.write(
+        CORE_PAGING_INPUT_PATH,
+        `
+        @InputType()
+        export class CorePagingInput {
+          @Field({ nullable: true })
+          filters?: Record<string, unknown>
+        }
+      `,
+      )
+      expect(() => assertCorePagingInputHasNoFilters(tree)).toThrow(filterInjectionMessage)
+    })
+
+    it('stops generateCrudLogic before writing any files', async () => {
+      tree.write(CORE_PAGING_INPUT_PATH, 'filters?: Record<string, unknown>')
+
+      await expect(generateCrudLogic(tree, { name: 'crud' } as any, mockDependencies)).rejects.toThrow(
+        filterInjectionMessage,
+      )
+      expect(mockDependencies.apiLibraryGenerator).not.toHaveBeenCalled()
     })
   })
 })
