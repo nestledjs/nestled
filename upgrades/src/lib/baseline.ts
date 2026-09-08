@@ -14,7 +14,8 @@ export type Outcome =
   | 'blocked'
   | 'superseded'
   | 'not-applicable'
-  | 'pending-release';
+  | 'pending-release'
+  | 'needs-review';
 
 /** Outcomes that mean a note should not be offered again. */
 export const TERMINAL_OUTCOMES: ReadonlySet<Outcome> = new Set<Outcome>([
@@ -22,6 +23,15 @@ export const TERMINAL_OUTCOMES: ReadonlySet<Outcome> = new Set<Outcome>([
   'superseded',
   'not-applicable',
 ]);
+
+/**
+ * `needs-review` is deliberately excluded from TERMINAL_OUTCOMES: the release that produced it
+ * is held back from baseline advancement (see `applyRun`), so the note's `review` text keeps
+ * being re-surfaced by `check`/`apply` on every run until a human or agent does the work and
+ * hand-edits this entry to a terminal outcome (the same pattern already used for `blocked`).
+ * Resolve it by setting the status to `applied` once the reviewed change is made, or
+ * `not-applicable` if it doesn't apply to this project.
+ */
 
 export interface TemplateState {
   repo?: string;

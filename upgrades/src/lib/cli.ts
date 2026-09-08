@@ -66,6 +66,7 @@ function printPending(pending: PendingResult): void {
     for (const note of notes) {
       const flag = note.status ? ` [${note.status}]` : '';
       console.log(`    • ${note.id} (${note.delivery})${flag} — ${note.title}`);
+      if (note.review) console.log(`        ⚠ review: ${note.review}`);
     }
   }
 }
@@ -131,6 +132,28 @@ function reportApply(result: ApplyRunResult): number {
       if (result.pr?.status === 'created') console.log(`PR: ${result.pr.url}`);
       if (result.pr?.status === 'blocked') console.log(`PR not created: ${result.pr.reason}`);
       return 0;
+    case 'needs-review': {
+      const clean = result.applied.filter((note) => !note.review);
+      const needsReview = result.applied.filter((note) => note.review);
+      console.log(`Applied ${clean.length} note(s) on branch ${result.branch}:`);
+      for (const note of clean) {
+        const via = note.via3way ? ' (3-way)' : note.alreadyApplied ? ' (already present)' : '';
+        console.log(`  • ${note.id} — ${note.title}${via}`);
+      }
+      console.log(`\n⚠️  Needs review before this is done — a human/agent must apply intent below:`);
+      for (const note of needsReview) {
+        console.log(`  • ${note.id} — ${note.title}`);
+        console.log(`      ${note.review}`);
+      }
+      console.log(
+        `\nBaseline advanced to ${result.baselineRelease ?? 'unset'} (held just below the release with ` +
+          `unreviewed work — it stays pending on every future check/apply until you resolve it by ` +
+          `hand-editing .nestled/upgrade-log.yaml to a terminal outcome, same as a blocked note).`,
+      );
+      if (result.pr?.status === 'created') console.log(`PR: ${result.pr.url}`);
+      if (result.pr?.status === 'blocked') console.log(`PR not created: ${result.pr.reason}`);
+      return 0;
+    }
     case 'blocked':
       console.error(`Blocked at ${result.blocked?.id}: ${result.blocked?.reason}`);
       if (result.blocked?.output) console.error(result.blocked.output);

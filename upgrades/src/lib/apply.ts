@@ -29,7 +29,7 @@ import {
 /** A patch must never touch our own bookkeeping. */
 const PATCH_EXCLUDES = ['.nestled/**'];
 
-export type RunStatus = 'up-to-date' | 'applied' | 'blocked' | 'verification-failed';
+export type RunStatus = 'up-to-date' | 'applied' | 'needs-review' | 'blocked' | 'verification-failed';
 
 export interface AppliedNote {
   id: string;
@@ -38,6 +38,8 @@ export interface AppliedNote {
   via3way?: boolean;
   alreadyApplied?: boolean;
   packageUpdated?: { manifest: string; name: string; version: string }[];
+  /** Carried over from the note when present; a human/agent still owes this work. */
+  review?: string;
 }
 
 export interface BlockedInfo {
@@ -243,13 +245,24 @@ function releasesForBaseline(manifest: Manifest, pending: PendingResult) {
 }
 
 function prBody(applied: AppliedNote[], channel: string, ceiling?: string): string {
-  const lines = applied.map((note) => `- ${note.id} — ${note.title}`);
+  const clean = applied.filter((note) => !note.review);
+  const needsReview = applied.filter((note) => note.review);
+  const lines = clean.map((note) => `- ${note.id} — ${note.title}`);
+  const reviewSection = needsReview.length
+    ? [
+        '',
+        '## ⚠️ Needs review before merging',
+        '',
+        ...needsReview.flatMap((note) => [`- **${note.id}** — ${note.title}`, '', `  ${note.review}`, '']),
+      ]
+    : [];
   return [
     '## Nestled upgrades',
     '',
     `Channel: ${channel}${ceiling ? ` (up to ${ceiling})` : ''}`,
     '',
     ...lines,
+    ...reviewSection,
     '',
     '🤖 Applied by nestled-update',
   ].join('\n');
@@ -295,6 +308,12 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
   const applied: { note: UpgradeNote; entry: AppliedNote }[] = [];
   let blocked: BlockedInfo | null = null;
+  /**
+   * Set to the releaseId of the first note carrying `review`. Baseline must not advance past
+   * this release — see the comment on `advanceBaseline` below — so later notes, even ones that
+   * would apply cleanly, are left pending rather than climbing past unreviewed work.
+   */
+  let reviewReleaseId: string | null = null;
 
   for (const note of pending.notes) {
     if (note.area && forked.has(note.area)) {
@@ -339,8 +358,19 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       entry.alreadyApplied = patch.alreadyApplied;
     }
 
+    if (note.review) entry.review = note.review;
+
     commitAll(projectDir, `Apply Nestled upgrade ${note.id}`);
     applied.push({ note, entry });
+
+    // A note with no mechanical component at all (pure `intent-only`) still reaches here with
+    // nothing to commit beyond a no-op; `commitAll` is a no-op when nothing changed. Either way,
+    // stop climbing the release ladder here: later notes may build on the judgment call this one
+    // is waiting on, so they stay pending rather than applying past it.
+    if (entry.review) {
+      reviewReleaseId = note.releaseId;
+      break;
+    }
   }
 
   if (blocked) {
@@ -369,9 +399,18 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   }
 
   for (const { note, entry } of applied) {
-    log.upgrades[note.id] = (entry.alreadyApplied ? 'superseded' : 'applied') as Outcome;
+    log.upgrades[note.id] = (entry.review ? 'needs-review' : entry.alreadyApplied ? 'superseded' : 'applied') as Outcome;
   }
-  advanceBaseline(log, releasesForBaseline(feed.manifest, pending));
+  // Hold the baseline just below reviewReleaseId, not just below `pending.ceiling`: computePending
+  // stops re-offering a release once the baseline passes it, terminal-note-status or not (see
+  // pending.ts). Advancing past an unreviewed note would make `review` unrecoverable — the only
+  // durable record left would be the ledger's bare `needs-review` string. Held back, `check` keeps
+  // re-fetching and re-printing the note's `review` text on every run until someone resolves it by
+  // hand-editing this entry to a terminal outcome, the same way `blocked` already works.
+  const eligibleReleases = releasesForBaseline(feed.manifest, pending).filter(
+    (release) => !reviewReleaseId || compareReleaseId(release.id, reviewReleaseId) < 0,
+  );
+  advanceBaseline(log, eligibleReleases);
   writeUpgradeLog(projectDir, log);
 
   let pr: PrResult | undefined;
@@ -385,7 +424,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   }
 
   return {
-    status: 'applied',
+    status: reviewReleaseId ? 'needs-review' : 'applied',
     channel,
     branch,
     applied: applied.map((a) => a.entry),

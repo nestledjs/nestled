@@ -10,7 +10,7 @@ import { parse } from 'yaml';
  * See docs/DISTRIBUTION-SPEC.md in the nestled-upgrader repo for the full model.
  */
 
-export type DeliveryType = 'code-patch' | 'package-release' | 'hybrid';
+export type DeliveryType = 'code-patch' | 'package-release' | 'hybrid' | 'intent-only';
 
 export interface PackageRelease {
   name: string;
@@ -35,6 +35,16 @@ export interface UpgradeNote {
   patch?: string;
   /** For `package-release` and `hybrid`. */
   packageReleases?: PackageRelease[];
+  /**
+   * Present when this note has a component no diff can express — the change is a pattern to
+   * apply against the consumer's own, necessarily-different content (e.g. "annotate the
+   * calendar-day columns in your own schema.prisma"), not a text one repo's diff can carry to
+   * another. Orthogonal to `delivery`: a `hybrid` note can bump packages, apply a patch, AND
+   * still need this, when a release couples a mechanical change to a judgment call the template
+   * author cannot make on the consumer's behalf. For a pure `intent-only` note this is the whole
+   * task; `intent` still carries the why, `review` carries the reviewer-facing instructions.
+   */
+  review?: string;
 }
 
 export interface Release {

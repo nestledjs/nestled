@@ -19,6 +19,39 @@ template maintainer produces upgrades); every clone only ever consumes.
 
 See `docs/DISTRIBUTION-SPEC.md` in the nestled-upgrader repo for the full design.
 
+## Delivery types
+
+- **`code-patch`** — a `.diff` applied via `git apply`, falling back to `--3way`.
+- **`package-release`** — bumps named packages in `package.json` and regenerates
+  the lockfile locally; never diffs a lockfile.
+- **`hybrid`** — both of the above.
+- **`intent-only`** — no patch, no package bump. The change is a pattern to
+  apply against the consumer's own content that no diff can carry, because
+  every consumer's content differs (e.g. "annotate the calendar-day columns in
+  your own `schema.prisma`"). `intent` explains why; a separate `review` field
+  carries the reviewer-facing instructions for what to actually go do.
+
+Any note — regardless of delivery type — may also carry `review`. It's
+orthogonal to delivery: a `hybrid` note can bump a package, apply a patch, AND
+still need a human judgment call the template author can't make on the
+consumer's behalf. When `review` is present, `apply` still performs the
+mechanical part (if any) and commits it, but:
+
+- the note's outcome is recorded as `needs-review`, not `applied`
+- the baseline is held **just below** the release containing that note, even
+  though its mechanical part succeeded — advancing past it would make the
+  review permanently unrecoverable, since a release below baseline is never
+  re-offered by `check`/`apply` regardless of the note's own status
+- later releases in the same channel are left pending rather than applied on
+  top of unreviewed work
+- `check` and `apply` keep re-surfacing the `review` text on every future run
+  until it's resolved
+
+Resolve it the same way a `blocked` note is resolved: do the reviewed work,
+then hand-edit `.nestled/upgrade-log.yaml` to set that note's status to a
+terminal outcome (`applied`, or `not-applicable` if it doesn't apply to this
+project). The next `apply` picks up where it left off.
+
 ## CLI
 
 ```bash

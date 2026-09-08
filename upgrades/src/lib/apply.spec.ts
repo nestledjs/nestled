@@ -4,7 +4,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyRun } from './apply';
-import { initBaseline, readUpgradeLog } from './baseline';
+import { initBaseline, readUpgradeLog, writeUpgradeLog } from './baseline';
 
 function git(cwd: string, args: string[]): string {
   const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
@@ -38,6 +38,20 @@ function writeManifest(release: string, ceiling: string): void {
     '        patch: patches/change.diff',
   ].join('\n');
   writeFileSync(join(feedDir, 'manifest.yaml'), manifest, 'utf8');
+}
+
+interface RawRelease {
+  id: string;
+  notes: string[];
+}
+
+/** Writes a manifest from pre-rendered YAML note blocks, for scenarios writeManifest can't express. */
+function writeManifestReleases(ceiling: string, releases: RawRelease[]): void {
+  const lines = ['schemaVersion: 1', 'channels:', `  stable: "${ceiling}"`, 'releases:'];
+  for (const release of releases) {
+    lines.push(`  - id: "${release.id}"`, '    templateCommit: abc123', '    notes:', ...release.notes);
+  }
+  writeFileSync(join(feedDir, 'manifest.yaml'), lines.join('\n'), 'utf8');
 }
 
 beforeEach(() => {
@@ -114,5 +128,117 @@ describe('applyRun', () => {
     const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
     expect(result.status).toBe('up-to-date');
     expect(result.applied).toEqual([]);
+  });
+
+  it('holds baseline below a pure intent-only note and reports it for review', () => {
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-review',
+          '        title: Annotate calendar-day columns',
+          '        delivery: intent-only',
+          '        intent: Add @dateOnly to calendar-day fields in your own schema.',
+          '        review: Walk schema.prisma and annotate every calendar-day field with @dateOnly.',
+        ],
+      },
+    ]);
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('needs-review');
+    expect(result.applied).toHaveLength(1);
+    expect(result.applied[0]).toMatchObject({
+      id: 'note-review',
+      review: 'Walk schema.prisma and annotate every calendar-day field with @dateOnly.',
+    });
+    // nothing to diff for a pure intent-only note; the tree is unchanged
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+
+    const log = readUpgradeLog(repo);
+    expect(log.upgrades['note-review']).toBe('needs-review');
+    // baseline stays below the release with unreviewed work, not just below the channel ceiling
+    expect(log.template.baselineRelease).toBe('2026.01.0');
+  });
+
+  it('applies the mechanical part of a hybrid note that also needs review, and stops the ladder there', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifestReleases('2026.03.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-hybrid-review',
+          '        title: Scaffold + annotate',
+          '        delivery: hybrid',
+          '        intent: Apply the scaffolding patch, then annotate your own schema.',
+          '        patch: patches/change.diff',
+          '        review: Annotate calendar-day fields per the intent above.',
+        ],
+      },
+      {
+        id: '2026.03.0',
+        notes: [
+          '      - id: note-later',
+          '        title: Should stay pending',
+          '        delivery: code-patch',
+          '        patch: patches/change.diff',
+        ],
+      },
+    ]);
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('needs-review');
+    // the mechanical part still lands
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello world\n');
+    // only the review-carrying note ran this pass; the later release's note was left pending
+    expect(result.applied.map((n) => n.id)).toEqual(['note-hybrid-review']);
+
+    const log = readUpgradeLog(repo);
+    expect(log.upgrades['note-hybrid-review']).toBe('needs-review');
+    expect(log.upgrades['note-later']).toBeUndefined();
+    // held below 2026.02.0, not advanced to the 2026.03.0 ceiling
+    expect(log.template.baselineRelease).toBe('2026.01.0');
+  });
+
+  it('proceeds past a reviewed note once it is hand-resolved to a terminal outcome', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifestReleases('2026.03.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-review',
+          '        title: Needs a human',
+          '        delivery: intent-only',
+          '        intent: Do the judgment call.',
+          '        review: Go do the judgment call.',
+        ],
+      },
+      {
+        id: '2026.03.0',
+        notes: [
+          '      - id: note-later',
+          '        title: Mechanical follow-up',
+          '        delivery: code-patch',
+          '        patch: patches/change.diff',
+        ],
+      },
+    ]);
+
+    const first = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+    expect(first.status).toBe('needs-review');
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
+
+    // simulate the human/agent finishing the review and hand-editing the ledger, same as `blocked`
+    const log = readUpgradeLog(repo);
+    log.upgrades['note-review'] = 'applied';
+    writeUpgradeLog(repo, log);
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'resolve review']);
+
+    const second = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+    expect(second.status).toBe('applied');
+    expect(second.applied.map((n) => n.id)).toEqual(['note-later']);
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.03.0');
   });
 });
