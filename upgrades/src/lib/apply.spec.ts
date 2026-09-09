@@ -241,4 +241,38 @@ describe('applyRun', () => {
     expect(second.applied.map((n) => n.id)).toEqual(['note-later']);
     expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.03.0');
   });
+
+  it("uses the note's own verification instead of the consumer's failing auto-detected script", () => {
+    // The consumer's own `test` script needs infra an unattended rollout can't assume is running
+    // (a database, Docker) and would fail on pre-existing issues unrelated to this note. Without
+    // note-level verification, `inferVerification` would run this failing script and block.
+    writeFileSync(
+      join(repo, 'package.json'),
+      JSON.stringify({ name: 'consumer', scripts: { test: 'exit 1' } }),
+      'utf8',
+    );
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add failing test script']);
+
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-1',
+          '        title: Change hello',
+          '        delivery: code-patch',
+          '        patch: patches/change.diff',
+          '        verification:',
+          '          - "true"',
+        ],
+      },
+    ]);
+
+    // no `verification` option passed: this proves the note's own field is what wins, not a test override
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml') });
+
+    expect(result.status).toBe('applied');
+    expect(result.verification).toEqual([{ command: 'true', status: 0, output: '', error: '' }]);
+  });
 });

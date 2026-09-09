@@ -380,7 +380,13 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     return { status: 'blocked', channel, branch, applied: [], blocked, baselineRelease: log.template.baselineRelease };
   }
 
-  const commands = options.verification ?? config.verification ?? inferVerification(projectDir);
+  // A note's own `verification` takes precedence over the consumer's auto-detected lint/test
+  // scripts: the full suite may need infrastructure (a database, Docker) an unattended rollout
+  // can't assume is running, and would catch unrelated pre-existing failures rather than this
+  // specific change. An explicit --verify still wins, for an operator forcing an ad-hoc check.
+  const noteVerification = [...new Set(applied.flatMap(({ note }) => note.verification ?? []))];
+  const commands =
+    options.verification ?? (noteVerification.length ? noteVerification : config.verification ?? inferVerification(projectDir));
   const verification = applied.length ? runVerification(projectDir, commands) : [];
   const failed = verification.find((item) => item.status !== 0);
   if (failed) {

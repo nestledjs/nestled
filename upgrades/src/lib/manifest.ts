@@ -45,6 +45,13 @@ export interface UpgradeNote {
    * task; `intent` still carries the why, `review` carries the reviewer-facing instructions.
    */
   review?: string;
+  /**
+   * Commands to run after this note applies, in place of the consumer's auto-detected
+   * `lint`/`test` scripts. Prefer this whenever the full suite needs infrastructure (a database,
+   * Docker) that an unattended rollout can't assume is running, or would otherwise catch
+   * unrelated pre-existing failures rather than this specific change.
+   */
+  verification?: string[];
 }
 
 export interface Release {
