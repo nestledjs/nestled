@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/upgrades",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "commonjs",
   "description": "Consume and apply Nestled template upgrades in a cloned project (nestled-update).",
   "main": "./src/index.js",
