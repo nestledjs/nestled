@@ -164,6 +164,25 @@ describe('applyRun', () => {
     expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
   });
 
+  it('does not re-attempt a note recorded as blocked, and leaves git alone', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    const log = readUpgradeLog(repo);
+    log.upgrades['note-1'] = { status: 'blocked', notes: 'Held on purpose.' };
+    writeUpgradeLog(repo, log);
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'record block']);
+    const before = git(repo, ['rev-parse', '--abbrev-ref', 'HEAD']).trim();
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-1');
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(git(repo, ['rev-parse', '--abbrev-ref', 'HEAD']).trim()).toBe(before);
+    expect(readUpgradeLog(repo).upgrades['note-1']).toEqual({ status: 'blocked', notes: 'Held on purpose.' });
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
+  });
+
   it('holds baseline below a pure intent-only note and reports it for review', () => {
     writeManifestReleases('2026.02.0', [
       {
