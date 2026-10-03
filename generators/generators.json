@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/schema",
+  "name": "generators",
+  "version": "1.0.0",
+  "generators": {
+    "crud": {
+      "factory": "./src/crud/generator.js",
+      "schema": "./src/crud/schema.json",
+      "description": "Generate CRUD libraries based on Prisma models"
+    },
+    "custom": {
+      "factory": "./src/custom/generator.js",
+      "schema": "./src/custom/schema.json",
+      "description": "Create or maintain the custom API library shell"
+    },
+    "sdk": {
+      "factory": "./src/sdk/generator.js",
+      "schema": "./src/sdk/schema.json",
+      "description": "Generate the GraphQL SDK"
+    },
+    "models": {
+      "factory": "./src/models/generator.js",
+      "schema": "./src/models/schema.json",
+      "description": "Generate GraphQL ObjectType models and enums from the Prisma schema"
+    },
+    "workspace-setup": {
+      "factory": "./src/workspace-setup/generator.js",
+      "schema": "./src/workspace-setup/schema.json",
+      "description": "Set up a freshly cloned workspace: rename the project, ensure .env/Docker, apply Prisma migrations, generate models, and seed"
+    },
+    "model-extension": {
+      "factory": "./src/model-extension/generator.js",
+      "schema": "./src/model-extension/schema.json",
+      "description": "Scaffold an additive model-specific API resolver module"
+    }
+  }
+}

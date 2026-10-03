@@ -1,0 +1,27 @@
+packages:
+  - doctor
+  - generators
+  - upgrades
+
+onlyBuiltDependencies:
+  - '@apollo/protobufjs'
+  - '@nestjs/core'
+  - '@parcel/watcher'
+  - '@prisma/adapter-pg'
+  - '@prisma/client'
+  - '@prisma/engines'
+  - '@prisma/extension-optimize'
+  - '@swc/core'
+  - '@tailwindcss/oxide'
+  - core-js
+  - es5-ext
+  - esbuild
+  - graphql-query-complexity
+  - graphql-redis-subscriptions
+  - ioredis
+  - nx
+  - pluralize
+  - prisma
+  - prisma-graphql-type-decimal
+  - type-graphql
+  - unrs-resolver

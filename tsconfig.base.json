@@ -1,0 +1,24 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "nodeNext",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "importHelpers": true,
+    "target": "es2015",
+    "module": "nodeNext",
+    "esModuleInterop": true,
+    "lib": ["es2021", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@nestledjs/generators": ["generators/src/index.ts"],
+      "@nestledjs/upgrades": ["upgrades/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

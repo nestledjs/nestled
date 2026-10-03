@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  main:
+    runs-on: ubuntu-latest
+    env:
+      NODE_OPTIONS: "--max-old-space-size=4096"
+      NX_CLOUD_AUTH_TOKEN: ${{ secrets.NX_CLOUD_AUTH_TOKEN }}
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Cache Playwright Browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-browsers
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install dependencies (triggers postinstall + playwright install)
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify browser installation
+        run: |
+          if [ ! -f ~/.cache/ms-playwright/chromium-*/*/chrome-linux/headless_shell ]; then
+            echo "Browser install incomplete. Reinstalling..."
+            pnpm exec playwright install --with-deps
+          fi
+
+      # Enable Nx Cloud Distributed CI (keep this)
+      - run: pnpm dlx nx-cloud start-ci-run --distribute-on="3 linux-medium-js" --stop-agents-after="build"
+
+      - uses: nrwl/nx-set-shas@v4
+
+      - name: Run affected commands
+        run: pnpm exec nx affected -t lint test build

@@ -1,0 +1,20 @@
+query <%= adminPrefix ? adminPrefix : '' %><%= className %>($<%= propertyName %>Id: <%= idGraphQLType %>!) {
+  <%= propertyName %>(<%= propertyName %>Id: $<%= propertyName %>Id) {
+    ...<%= adminPrefix ? adminPrefix : '' %><%= className %>Details
+  }
+}
+
+query <%= adminPrefix ? adminPrefix : '' %><%= pluralClassName %>($input: List<%= className %>Input) {
+  <%= pluralPropertyName %>(input: $input) {
+    ...<%= adminPrefix ? adminPrefix : '' %><%= className %>Summary
+  }
+  counters: <%= pluralPropertyName %>Count(input: $input) {
+    ...CorePagingDetails
+  }
+}
+
+query <%= adminPrefix ? adminPrefix : '' %><%= className %>Pagination($input: List<%= className %>Input) {
+  counters: <%= pluralPropertyName %>Count(input: $input) {
+    ...CorePagingDetails
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "../../node_modules/@nx/devkit/schema.d.json",
+  "extends": "../../node_modules/@nx/devkit/generators.json",
+  "properties": {
+    "name": {
+      "description": "Name of the custom API library to create or maintain",
+      "type": "string",
+      "default": "custom"
+    },
+    "directory": {
+      "description": "Optional directory to place the library",
+      "type": "string"
+    },
+    "overwrite": {
+      "description": "Whether to recreate the custom API library",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": []
+}
