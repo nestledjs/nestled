@@ -297,7 +297,8 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   }
 
   // A note already recorded as blocked waits for a person: it was tried, or deliberately held, and
-  // re-attempting it unattended would redo exactly what was refused. Stop before touching git; the
+  // re-attempting it unattended would redo exactly what was refused. Stop before creating a branch or
+  // touching the working tree (the feed itself has already been read, which may have fetched); the
   // ledger entry is resolved by hand-editing it to a terminal outcome, as with `needs-review`.
   const held = pending.notes.find((note) => note.status === 'blocked');
   if (held && held === pending.notes[0]) {
