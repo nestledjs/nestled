@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { getAuthOperations, getGuardRank } from './doctor-auth-analysis'
 import {
+  discoverComposedGuardDecorators,
   getComposedGuardDecorators,
-  getComposedGuardDefinitions,
   mayDeclareComposedGuards,
 } from './doctor-composed-guards'
 
@@ -158,12 +158,123 @@ describe('getComposedGuardDecorators', () => {
         { file: 'a.ts', source: 'export const Policy = (...p: string[]) => SetMetadata(KEY, p)' },
       ]).size,
     ).toBe(0)
-    expect(getComposedGuardDefinitions('export const n = 1').get('n')?.guards.size).toBe(0)
+    expect(getComposedGuardDecorators([{ file: 'a.ts', source: 'export const n = 1' }]).size).toBe(0)
   })
 
   it('pre-filters files that cannot declare a composed guard', () => {
     expect(mayDeclareComposedGuards('export const x = 1')).toBe(false)
     expect(mayDeclareComposedGuards('applyDecorators(SetMetadata(K, v))')).toBe(true)
     expect(mayDeclareComposedGuards("export const A = () => RequirePlatformPermission('x')")).toBe(true)
+  })
+
+  it('does not credit a UseGuards call whose decorator is discarded', () => {
+    const composedGuards = getComposedGuardDecorators([
+      {
+        file: 'a.ts',
+        source: `
+          export const LooksGuarded = () => {
+            UseGuards(GqlAuthAdminGuard)
+            return applyDecorators(SetMetadata(KEY, true))
+          }
+          export const AlsoDiscarded = () => applyDecorators(SetMetadata(KEY, [UseGuards(GqlAuthAdminGuard)]))
+        `,
+      },
+    ])
+
+    expect(composedGuards.has('LooksGuarded')).toBe(false)
+    expect(composedGuards.has('AlsoDiscarded')).toBe(false)
+  })
+
+  it('credits a conditional return only with the guards every branch applies', () => {
+    const composedGuards = getComposedGuardDecorators([
+      {
+        file: 'a.ts',
+        source: `
+          export const Ternary = (strict: boolean) =>
+            strict
+              ? applyDecorators(UseGuards(GqlAuthGuard, StaffGuard))
+              : applyDecorators(UseGuards(GqlAuthGuard))
+          export function Branches(strict: boolean) {
+            if (strict) return applyDecorators(UseGuards(GqlAuthGuard, StaffGuard))
+            return UseGuards(GqlAuthGuard, ReportsGuard)
+          }
+          export function Disjoint(strict: boolean) {
+            if (strict) return UseGuards(StaffGuard)
+            return UseGuards(ReportsGuard)
+          }
+        `,
+      },
+    ])
+
+    expect(composedGuards.get('Ternary')).toEqual(['GqlAuthGuard'])
+    expect(composedGuards.get('Branches')).toEqual(['GqlAuthGuard'])
+    expect(composedGuards.has('Disjoint')).toBe(false)
+  })
+
+  it('credits nothing when a path can end without returning a decorator', () => {
+    const composedGuards = getComposedGuardDecorators([
+      {
+        file: 'a.ts',
+        source: `
+          export function MaybeGuarded(strict: boolean) {
+            if (strict) return applyDecorators(UseGuards(GqlAuthGuard))
+          }
+          export function BareReturn(strict: boolean) {
+            if (strict) return
+            return applyDecorators(UseGuards(GqlAuthGuard))
+          }
+        `,
+      },
+    ])
+
+    expect(composedGuards.size).toBe(0)
+  })
+
+  it('ignores returns of functions nested inside the factory', () => {
+    const composedGuards = getComposedGuardDecorators([
+      {
+        file: 'a.ts',
+        source: `
+          export function Staff() {
+            const unused = () => UseGuards(GqlAuthAdminGuard)
+            return applyDecorators(UseGuards(GqlAuthGuard))
+          }
+        `,
+      },
+    ])
+
+    expect(composedGuards.get('Staff')).toEqual(['GqlAuthGuard'])
+  })
+})
+
+describe('discoverComposedGuardDecorators', () => {
+  const base = {
+    file: 'libs/api/utils/base-guards.ts',
+    source: 'export const BaseGuards = () => applyDecorators(UseGuards(GqlAuthGuard, StaffGuard))',
+  }
+  const wrapper = { file: 'libs/api/staff/staff-only.ts', source: 'export const StaffOnly = () => BaseGuards()' }
+  const outer = { file: 'libs/api/staff/staff-admin.ts', source: 'export const StaffAdmin = () => StaffOnly()' }
+  const unrelated = { file: 'libs/api/other/thing.ts', source: 'export const helper = () => compute()' }
+
+  it('finds a wrapper in a file that only delegates to a composed factory defined elsewhere', () => {
+    expect(mayDeclareComposedGuards(wrapper.source)).toBe(false)
+
+    const composedGuards = discoverComposedGuardDecorators([base, wrapper, unrelated])
+
+    expect(composedGuards.get('StaffOnly')).toEqual(['GqlAuthGuard', 'StaffGuard'])
+    expect(composedGuards.has('helper')).toBe(false)
+  })
+
+  it('follows delegation through several files until nothing new is found', () => {
+    expect(discoverComposedGuardDecorators([outer, wrapper, base]).get('StaffAdmin')).toEqual([
+      'GqlAuthGuard',
+      'StaffGuard',
+    ])
+  })
+
+  it('does not match a discovered name inside a longer identifier', () => {
+    const lookalike = { file: 'c.ts', source: 'export const X = () => BaseGuardsLegacy()' }
+
+    expect(discoverComposedGuardDecorators([base, lookalike]).has('X')).toBe(false)
   })
 })

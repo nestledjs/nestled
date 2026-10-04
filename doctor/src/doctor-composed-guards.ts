@@ -27,7 +27,10 @@ import {
  * Deliberately static and conservative:
  * - Only top-level declarations are read: `const X = (...) => applyDecorators(...)`,
  *   `const X = applyDecorators(...)`, and `function X() { return applyDecorators(...) }`.
- * - A factory that delegates to another composed factory (a private helper, or one of the access
+ * - Only the decorator a factory RETURNS counts. A `UseGuards(...)` call whose result is discarded
+ *   applies nothing at runtime and is not credited; a conditional return credits only the guards
+ *   every path applies, and a body that can return without a decorator credits none.
+ * - A factory that returns another composed factory (a private helper, or one of the access
  *   policy decorators) inherits its guards, resolved across files.
  * - A name defined more than once with different guards resolves to the guards ALL definitions
  *   share. Picking the larger set could credit a route with a guard it does not have; the
@@ -35,11 +38,12 @@ import {
  * - The access-policy decorators keep their existing modelling and are not overridden here.
  */
 
+/**
+ * What a declaration's RETURNED decorator applies, given a way to resolve the factories it calls.
+ * Evaluated lazily so delegation can be resolved across files once every definition is known.
+ */
 type ComposedDefinition = {
-  /** Guards the declaration applies directly, through `UseGuards(...)` anywhere in its body. */
-  guards: Set<string>
-  /** Every function the declaration calls by name — candidates for delegated composition. */
-  calls: Set<string>
+  evaluate: (resolve: (name: string) => ReadonlySet<string>) => Set<string>
 }
 
 export type ComposedGuardSource = {
@@ -59,26 +63,93 @@ const calleeName = (call: ts.CallExpression): string => {
   return ''
 }
 
-const readDefinition = (body: ts.Node): ComposedDefinition => {
-  const definition: ComposedDefinition = { guards: new Set(), calls: new Set() }
+const intersect = (sets: readonly ReadonlySet<string>[]): Set<string> => {
+  if (sets.length === 0) return new Set()
+  const [first, ...rest] = sets
+  return new Set([...first].filter((guard) => rest.every((other) => other.has(guard))))
+}
 
-  const visit = (node: ts.Node): void => {
-    if (ts.isCallExpression(node)) {
-      const name = calleeName(node)
-      if (name === 'UseGuards') {
-        for (const argument of node.arguments) {
-          for (const guard of guardNamesIn(argument)) definition.guards.add(guard)
-        }
-      } else if (name) {
-        definition.calls.add(name)
-      }
+const unwrap = (expression: ts.Expression): ts.Expression => {
+  let current = expression
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  ) {
+    current = current.expression
+  }
+  return current
+}
+
+/**
+ * Guards a decorator EXPRESSION applies — only what ends up in the decorator, never a `UseGuards`
+ * call made and discarded alongside it. A conditional applies only the guards both branches share;
+ * anything else unrecognized (a spread, a local variable, an arbitrary call) applies none. Every
+ * uncertainty resolves toward crediting fewer guards, which can only report, never hide.
+ */
+const evaluateDecorator = (node: ts.Expression, resolve: (name: string) => ReadonlySet<string>): Set<string> => {
+  const expression = unwrap(node)
+
+  if (ts.isConditionalExpression(expression)) {
+    return intersect([
+      evaluateDecorator(expression.whenTrue, resolve),
+      evaluateDecorator(expression.whenFalse, resolve),
+    ])
+  }
+  if (ts.isIdentifier(expression)) return new Set(resolve(expression.text))
+  if (!ts.isCallExpression(expression)) return new Set()
+
+  const name = calleeName(expression)
+  if (name === 'UseGuards') return new Set(expression.arguments.flatMap((argument) => guardNamesIn(argument)))
+  if (name === 'applyDecorators') {
+    const guards = new Set<string>()
+    for (const argument of expression.arguments) {
+      if (ts.isSpreadElement(argument)) continue
+      for (const guard of evaluateDecorator(argument, resolve)) guards.add(guard)
     }
+    return guards
+  }
+  return name ? new Set(resolve(name)) : new Set()
+}
+
+/** Return statements of a function body, excluding those of functions nested inside it. */
+const returnStatementsOf = (body: ts.Block): ts.ReturnStatement[] => {
+  const returns: ts.ReturnStatement[] = []
+  const visit = (node: ts.Node): void => {
+    if (ts.isFunctionLike(node)) return
+    if (ts.isReturnStatement(node)) returns.push(node)
     ts.forEachChild(node, visit)
   }
-  visit(body)
-
-  return definition
+  ts.forEachChild(body, visit)
+  return returns
 }
+
+/**
+ * A function body applies the guards EVERY return path applies. A bare `return`, or a body that
+ * can fall off the end without returning, contributes an empty path and so credits nothing.
+ */
+const evaluateBody = (body: ts.Block, resolve: (name: string) => ReadonlySet<string>): Set<string> => {
+  const returns = returnStatementsOf(body)
+  const last = body.statements[body.statements.length - 1]
+  const mayFallThrough = !last || !ts.isReturnStatement(last)
+  if (returns.length === 0 || mayFallThrough) return new Set()
+  return intersect(
+    returns.map((statement) => (statement.expression ? evaluateDecorator(statement.expression, resolve) : new Set())),
+  )
+}
+
+const readDefinition = (initializer: ts.Node): ComposedDefinition => ({
+  evaluate: (resolve) => {
+    const node = ts.isExpression(initializer) ? unwrap(initializer) : initializer
+    if (ts.isArrowFunction(node) || ts.isFunctionExpression(node) || ts.isFunctionDeclaration(node)) {
+      if (!node.body) return new Set()
+      return ts.isBlock(node.body) ? evaluateBody(node.body, resolve) : evaluateDecorator(node.body, resolve)
+    }
+    // `const Staff = applyDecorators(...)`, applied as `@Staff`.
+    return ts.isExpression(node) ? evaluateDecorator(node, resolve) : new Set()
+  },
+})
 
 /** Top-level decorator-factory candidates in one file, keyed by declared name. */
 export const getComposedGuardDefinitions = (
@@ -90,7 +161,7 @@ export const getComposedGuardDefinitions = (
 
   for (const statement of sourceFile.statements) {
     if (ts.isFunctionDeclaration(statement) && statement.name && statement.body) {
-      definitions.set(statement.name.text, readDefinition(statement.body))
+      definitions.set(statement.name.text, readDefinition(statement))
       continue
     }
     if (!ts.isVariableStatement(statement)) continue
@@ -127,15 +198,9 @@ export const getComposedGuardDecorators = (sources: readonly ComposedGuardSource
     if (!definitions || visiting.has(name)) return new Set()
 
     const nextVisiting = new Set(visiting).add(name)
-    const perDefinition = definitions.map((definition) => {
-      const guards = new Set(definition.guards)
-      for (const called of definition.calls) {
-        for (const guard of resolve(called, nextVisiting)) guards.add(guard)
-      }
-      return guards
-    })
-    const [first, ...rest] = perDefinition
-    const shared = new Set([...first].filter((guard) => rest.every((guards) => guards.has(guard))))
+    const shared = intersect(
+      definitions.map((definition) => definition.evaluate((called) => resolve(called, nextVisiting))),
+    )
 
     // Cache only results computed outside a cycle: one computed mid-cycle saw a truncated view.
     if (visiting.size === 0) resolved.set(name, shared)
@@ -157,9 +222,36 @@ export const getComposedGuardDecorators = (sources: readonly ComposedGuardSource
 }
 
 /**
- * Whether a file can hold a composed guard decorator, so the scan parses only those. Matches the
- * composition machinery and the access-policy decorators a wrapper might delegate to.
+ * Whether a file can hold a composed guard decorator on its own evidence: it uses the composition
+ * machinery, or delegates to an access-policy decorator. A file that only delegates to a repo-local
+ * composed factory carries neither — `discoverComposedGuardDecorators` finds those.
  */
 export const mayDeclareComposedGuards = (source: string): boolean =>
   /\bapplyDecorators\b|\bUseGuards\b/.test(source) ||
   ACCESS_POLICY_DECORATOR_NAMES.some((name) => source.includes(name))
+
+const mentionsAny = (source: string, names: readonly string[]): boolean =>
+  names.some((name) => new RegExp(`(?<![\\w$])${name.replaceAll('$', '\\$')}(?![\\w$])`).test(source))
+
+/**
+ * Composed decorators across every candidate source, parsing only the files that can matter.
+ *
+ * Starts from the files that hold composition evidence themselves, then repeatedly adds files that
+ * mention a decorator already discovered — a wrapper like `export const StaffOnly = () => BaseGuards()`
+ * in a file of its own carries no seed name, and without this its routes would read as unguarded.
+ * Stops when a pass discovers nothing new.
+ */
+export const discoverComposedGuardDecorators = (
+  candidates: readonly ComposedGuardSource[],
+): ComposedGuardDecorators => {
+  const included = new Set(candidates.filter(({ source }) => mayDeclareComposedGuards(source)))
+  let composed = getComposedGuardDecorators([...included])
+
+  for (;;) {
+    const names = [...composed.keys()]
+    const added = candidates.filter((candidate) => !included.has(candidate) && mentionsAny(candidate.source, names))
+    if (added.length === 0) return composed
+    for (const candidate of added) included.add(candidate)
+    composed = getComposedGuardDecorators([...included])
+  }
+}

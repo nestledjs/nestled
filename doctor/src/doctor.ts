@@ -55,7 +55,7 @@ import {
   stripComments,
 } from './doctor-source-analysis'
 import { unauditedMutations } from './doctor-audit-coverage'
-import { getComposedGuardDecorators, mayDeclareComposedGuards } from './doctor-composed-guards'
+import { discoverComposedGuardDecorators } from './doctor-composed-guards'
 import type { ComposedGuardDecorators } from './doctor-auth-analysis'
 import {
   DECLARED_GUARDS_PATH,
@@ -589,10 +589,8 @@ const getComposedGuards = (): ComposedGuardDecorators => {
         path.endsWith('.ts') && !path.endsWith('.d.ts') && !path.endsWith('.spec.ts') && !path.endsWith('.test.ts'),
     ),
   )
-  const sources = [...new Set(files)]
-    .map((file) => ({ file, source: stripComments(readFileSync(file, 'utf8')) }))
-    .filter(({ source }) => mayDeclareComposedGuards(source))
-  composedGuardDecorators = getComposedGuardDecorators(sources)
+  const sources = [...new Set(files)].map((file) => ({ file, source: stripComments(readFileSync(file, 'utf8')) }))
+  composedGuardDecorators = discoverComposedGuardDecorators(sources)
   return composedGuardDecorators
 }
 
