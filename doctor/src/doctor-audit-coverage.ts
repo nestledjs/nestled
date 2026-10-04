@@ -1,8 +1,14 @@
 import ts from 'typescript'
 
-/** Words that mark an audit or security-event write. */
+/**
+ * Words that mark an audit or security-event write. `audit` counts as any part of an identifier, so
+ * project helpers such as `recordBillingAuditLog`, `runInAuditTransaction`, `this.auditService` or a
+ * `programApplicationAudit` model are recognised: lower-case `audit` at the start of a name, or
+ * `Audit`/`AUDIT` as a later camel-case or constant segment. Case-sensitive on purpose, so a word
+ * that merely contains the letters (`plaudit`) does not count.
+ */
 export const hasAuditMarker = (source: string): boolean =>
-  /\baudit(?:Log)?\b|recordAuditLog|SecurityEvent|securityEvent/i.test(source)
+  /(?<![a-z])audit|Audit|AUDIT|SecurityEvent|securityEvent|SECURITY_EVENT/.test(source)
 
 interface ClassInfo {
   /** Injected or declared fields and the class they are typed as, e.g. `orders` -> `OrdersService`. */

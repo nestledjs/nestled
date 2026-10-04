@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { unauditedMutations } from './doctor-audit-coverage'
+import { hasAuditMarker, unauditedMutations } from './doctor-audit-coverage'
 
 const resolver = (body: string) => `
 import { Mutation, Resolver } from '@nestjs/graphql'
@@ -170,5 +170,30 @@ export class UserResolver {
 `)
 
     expect(unauditedMutations(source, [])).toEqual([])
+  })
+})
+
+describe('hasAuditMarker', () => {
+  it('recognises audit as any part of an identifier', () => {
+    for (const source of [
+      'this.audit.log()',
+      'this.data.auditLog.create({})',
+      'await recordAuditLog(this.data, {})',
+      'await recordBillingAuditLog(this.data, {})',
+      'return this.runInAuditTransaction(async (tx) => {})',
+      'await this.auditService.record({})',
+      'await tx.programApplicationAudit.create({})',
+      'this.securityEvents.logPasswordChanged(id)',
+      'await this.logSecurityEvent(id)',
+      "action: AUDIT_ACTIONS.UPDATED",
+    ]) {
+      expect(hasAuditMarker(source), source).toBe(true)
+    }
+  })
+
+  it('does not count a word that only contains the letters', () => {
+    for (const source of ['const plaudit = 1', 'return this.orders.update()']) {
+      expect(hasAuditMarker(source), source).toBe(false)
+    }
   })
 })
