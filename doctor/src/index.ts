@@ -5,6 +5,7 @@
  */
 export * from './doctor-access-policy-analysis'
 export * from './doctor-auth-analysis'
+export * from './doctor-composed-guards'
 export * from './doctor-crud-boundary-analysis'
 export * from './doctor-generated-crud-posture'
 export * from './doctor-module-analysis'

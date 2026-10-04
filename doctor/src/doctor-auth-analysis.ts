@@ -62,14 +62,48 @@ const collectGuardNames = (node: ts.Node, guards: Set<string>) => {
   ts.forEachChild(node, (child) => collectGuardNames(child, guards))
 }
 
-const getGuardNames = (decorators: readonly ts.Decorator[]): string[] => {
+/**
+ * Guard names written inside one `UseGuards(...)` argument list, normalized the way the guard
+ * baseline records them: `AuthGuard('jwt')` reads as `AuthGuard`. Exposed so the composed-decorator
+ * scan reads guards exactly as a literal call site is read — two normalizations would let the same
+ * guard compare unequal to itself.
+ */
+export const guardNamesIn = (node: ts.Node): string[] => {
+  const guards = new Set<string>()
+  collectGuardNames(node, guards)
+  return [...guards]
+}
+
+/** The guards each access-policy decorator applies, as `getAuthOperations` attributes them. */
+export const ACCESS_POLICY_DECORATOR_GUARDS: readonly string[] = ['AccessPolicyGuard', 'GqlAuthGuard']
+
+/**
+ * Decorator name -> the guards it applies, for repo-local decorators that compose `UseGuards` with
+ * `applyDecorators`. Built by `getComposedGuardDecorators`.
+ */
+export type ComposedGuardDecorators = ReadonlyMap<string, readonly string[]>
+
+export type AuthOperationOptions = {
+  composedGuards?: ComposedGuardDecorators
+}
+
+const getGuardNames = (
+  decorators: readonly ts.Decorator[],
+  composedGuards: ComposedGuardDecorators = new Map(),
+): string[] => {
   const guards = new Set<string>()
 
   for (const decorator of decorators) {
     const decoratorName = getDecoratorName(decorator)
     if (accessPolicyDecorators.has(decoratorName)) {
-      guards.add('GqlAuthGuard')
-      guards.add('AccessPolicyGuard')
+      for (const guard of ACCESS_POLICY_DECORATOR_GUARDS) guards.add(guard)
+      continue
+    }
+    // A decorator that applies its guards through applyDecorators enforces exactly what the same
+    // guards written literally would, so it is read as if they were.
+    const composed = composedGuards.get(decoratorName)
+    if (composed) {
+      for (const guard of composed) guards.add(guard)
       continue
     }
     if (decoratorName !== 'UseGuards') continue
@@ -106,7 +140,12 @@ export const hasAuthenticationGuard = (operation: AuthOperation): boolean =>
 
 export const declaresAuthLevel = (operation: AuthOperation): boolean => operation.authLevelDeclared
 
-export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthOperation[] => {
+export const getAuthOperations = (
+  source: string,
+  fileName = 'source.ts',
+  options: AuthOperationOptions = {},
+): AuthOperation[] => {
+  const { composedGuards } = options
   const sourceFile = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
   const operations: AuthOperation[] = []
 
@@ -120,7 +159,7 @@ export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthO
 
     const className = statement.name?.text ?? '(anonymous class)'
     const classDecoratorSource = getDecoratorSource(classDecorators, sourceFile)
-    const classGuardNames = getGuardNames(classDecorators)
+    const classGuardNames = getGuardNames(classDecorators, composedGuards)
     const classDeclaresAuthLevel = hasAuthLevelDecorator(classDecorators)
 
     for (const member of statement.members) {
@@ -144,8 +183,8 @@ export const getAuthOperations = (source: string, fileName = 'source.ts'): AuthO
         classDecorators: classDecoratorSource,
         className,
         decorators: getDecoratorSource(methodDecorators, sourceFile),
-        guardNames: [...new Set([...classGuardNames, ...getGuardNames(methodDecorators)])].sort((left, right) =>
-          left.localeCompare(right),
+        guardNames: [...new Set([...classGuardNames, ...getGuardNames(methodDecorators, composedGuards)])].sort(
+          (left, right) => left.localeCompare(right),
         ),
         inheritsParentAuthorization,
         kind,

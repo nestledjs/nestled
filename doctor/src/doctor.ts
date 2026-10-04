@@ -55,6 +55,8 @@ import {
   stripComments,
 } from './doctor-source-analysis'
 import { unauditedMutations } from './doctor-audit-coverage'
+import { getComposedGuardDecorators, mayDeclareComposedGuards } from './doctor-composed-guards'
+import type { ComposedGuardDecorators } from './doctor-auth-analysis'
 import { findRawNulLines, RAW_NUL_SOURCE_PATTERN } from './doctor-raw-nul-bytes'
 
 type Finding = {
@@ -563,6 +565,29 @@ const getGuardBaselineSourceFiles = (): string[] => {
   return [...new Set([...customResolverFiles, ...getControllerSourceFiles()])].sort((left, right) =>
     left.localeCompare(right),
   )
+}
+
+// Where a decorator that composes guards with applyDecorators can live: the API app and every shared
+// library, since a guard decorator is as likely to sit in a utils lib as next to the resolver.
+const composedGuardSourceRoots = ['apps/api', 'libs']
+
+let composedGuardDecorators: ComposedGuardDecorators | undefined
+
+/** Read once, lazily: every guard-reading check shares the same view of composed decorators. */
+const getComposedGuards = (): ComposedGuardDecorators => {
+  if (composedGuardDecorators) return composedGuardDecorators
+  const files = composedGuardSourceRoots.flatMap((root) =>
+    walkFiles(
+      root,
+      (path) =>
+        path.endsWith('.ts') && !path.endsWith('.d.ts') && !path.endsWith('.spec.ts') && !path.endsWith('.test.ts'),
+    ),
+  )
+  const sources = [...new Set(files)]
+    .map((file) => ({ file, source: stripComments(readFileSync(file, 'utf8')) }))
+    .filter(({ source }) => mayDeclareComposedGuards(source))
+  composedGuardDecorators = getComposedGuardDecorators(sources)
+  return composedGuardDecorators
 }
 
 const getGraphqlResolverMethods = (source: string): string[] =>
@@ -1284,7 +1309,7 @@ const getApiGuardMap = (): GuardBaseline => {
 
   for (const file of getGuardBaselineSourceFiles()) {
     const source = stripComments(readFileSync(file, 'utf8'))
-    const operations = getAuthOperations(source, file)
+    const operations = getAuthOperations(source, file, { composedGuards: getComposedGuards() })
     if (operations.length === 0) continue
 
     guardMap[file] = {}
@@ -1359,7 +1384,7 @@ const checkUnguardedRootOperations = () => {
   for (const file of getAuthSourceFiles()) {
     const source = stripComments(readFileSync(file, 'utf8'))
 
-    for (const operation of getAuthOperations(source, file)) {
+    for (const operation of getAuthOperations(source, file, { composedGuards: getComposedGuards() })) {
       // Keep @ResolveField handlers in this check. Nest executes guards on field handlers, and the
       // parent root may be public or otherwise less restrictive than the field it exposes.
       if (hasAuthenticationGuard(operation)) continue
@@ -2031,7 +2056,7 @@ const reportUnauthorizedOperations = (
   const source = stripComments(raw)
 
   const guardedNames = new Set(
-    getAuthOperations(source, file)
+    getAuthOperations(source, file, { composedGuards: getComposedGuards() })
       .filter((operation) => hasAuthenticationGuard(operation))
       .map((operation) => operation.name),
   )
