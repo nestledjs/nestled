@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyRun } from './apply';
@@ -327,5 +327,246 @@ describe('applyRun', () => {
 
     expect(result.status).toBe('applied');
     expect(result.verification).toEqual([{ command: 'true', status: 0, output: '', error: '' }]);
+  });
+});
+
+describe('applyRun --allow-dirty', () => {
+  const NOTES = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', ''].join('\n');
+  const USER_EDIT = 'my own unfinished edit\n';
+
+  /** A committed, unrelated file the user then edits without committing. */
+  function dirtyUnrelatedFile(): void {
+    mkdirSync(join(repo, 'docs'), { recursive: true });
+    writeFileSync(join(repo, 'docs', 'notes.md'), NOTES, 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add notes']);
+    writeFileSync(join(repo, 'docs', 'notes.md'), NOTES + USER_EDIT, 'utf8');
+  }
+
+  function untrackedUnrelatedFile(): void {
+    mkdirSync(join(repo, 'docs'), { recursive: true });
+    writeFileSync(join(repo, 'docs', 'draft.md'), 'not committed yet\n', 'utf8');
+  }
+
+  /** A patch for hello.txt that will not apply, because hello.txt is then committed with other content. */
+  function conflictingPatch(name: string, { withBlob = true } = {}): void {
+    let diff = makeDiff('hello.txt', 'hello world\n');
+    // Without the `index` line, --3way has no base blob to merge from and fails outright.
+    if (!withBlob) diff = diff.replace(/^index .*\n/m, '');
+    writeFileSync(join(feedDir, 'patches', name), diff, 'utf8');
+  }
+
+  function divergeHello(): void {
+    writeFileSync(join(repo, 'hello.txt'), 'completely different\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'diverge']);
+  }
+
+  function codePatchNote(id: string, patch: string): string[] {
+    return [
+      `      - id: ${id}`,
+      `        title: ${id}`,
+      '        delivery: code-patch',
+      `        patch: patches/${patch}`,
+    ];
+  }
+
+  const status = (path: string) => git(repo, ['status', '--porcelain', '--', path]).trim();
+  const run = (extra: Record<string, unknown> = {}) =>
+    applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true, ...extra });
+
+  it('keeps an unrelated uncommitted edit when a failed 3-way attempt is undone', () => {
+    conflictingPatch('change.diff');
+    divergeHello();
+    dirtyUnrelatedFile();
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.reason).toContain('did not apply cleanly');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    // the 3-way attempt's conflict markers are gone
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('completely different\n');
+    expect(status('hello.txt')).toBe('');
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBe('blocked');
+  });
+
+  it('keeps an unrelated uncommitted edit when a patch without a 3-way base fails', () => {
+    conflictingPatch('change.diff', { withBlob: false });
+    divergeHello();
+    dirtyUnrelatedFile();
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('completely different\n');
+  });
+
+  it('rolls back earlier notes of the run but not the user’s edits, tracked or untracked', () => {
+    writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    // note-2 creates a file and edits hello.txt against content it will not find
+    writeFileSync(join(repo, 'added.txt'), 'from the template\n', 'utf8');
+    git(repo, ['add', '-N', 'added.txt']);
+    writeFileSync(join(repo, 'hello.txt'), 'something else\n', 'utf8');
+    const bad = git(repo, ['diff']).replace(/^index .*\n/gm, (line) => (line.includes('0000000') ? line : ''));
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'added.txt'));
+    git(repo, ['checkout', '--', 'hello.txt']);
+    writeFileSync(join(feedDir, 'patches', 'bad.diff'), bad.replace('-hello', '-not what is there'), 'utf8');
+    writeManifestReleases('2026.02.0', [
+      { id: '2026.02.0', notes: [...codePatchNote('note-1', 'good.diff'), ...codePatchNote('note-2', 'bad.diff')] },
+    ]);
+    dirtyUnrelatedFile();
+    untrackedUnrelatedFile();
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-2');
+    // the run's own work is gone: note-1's commit and change, note-2's partial state
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(existsSync(join(repo, 'added.txt'))).toBe(false);
+    // the user's work is exactly as it was, and still uncommitted
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(status('docs/notes.md')).toBe('M docs/notes.md');
+    expect(readFileSync(join(repo, 'docs', 'draft.md'), 'utf8')).toBe('not committed yet\n');
+    expect(status('docs/draft.md')).toBe('?? docs/draft.md');
+  });
+
+  it('keeps the user’s edits when verification fails, and commits none of them on success', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    dirtyUnrelatedFile();
+    untrackedUnrelatedFile();
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const failed = run({ verification: ['false'] });
+
+    expect(failed.status).toBe('verification-failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(status('docs/draft.md')).toBe('?? docs/draft.md');
+
+    // once the note is unheld, a passing run commits only the upgrade
+    const log = readUpgradeLog(repo);
+    delete log.upgrades['note-1'];
+    writeUpgradeLog(repo, log);
+    const passed = run();
+
+    expect(passed.status).toBe('applied');
+    expect(git(repo, ['show', '--name-only', '--format=', 'HEAD']).trim()).toBe('hello.txt');
+    expect(status('docs/notes.md')).toBe('M docs/notes.md');
+    expect(status('docs/draft.md')).toBe('?? docs/draft.md');
+  });
+
+  it('blocks a note whose patch touches a file with uncommitted changes, and leaves the file alone', () => {
+    dirtyUnrelatedFile();
+    // the patch edits line one; the user's uncommitted edit is at the end, so it would apply on top
+    git(repo, ['stash', '-q']);
+    writeFileSync(
+      join(feedDir, 'patches', 'change.diff'),
+      makeDiff('docs/notes.md', NOTES.replace('one', 'ONE')),
+      'utf8',
+    );
+    git(repo, ['stash', 'pop', '-q']);
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-1');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(result.blocked?.reason).toContain('docs/notes.md has uncommitted changes');
+    expect(result.blocked?.reason).toContain('commit or stash them first');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(status('docs/notes.md')).toBe('M docs/notes.md');
+    // held back by the user's work, not by the upgrade: nothing recorded, so a later run retries it
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBeUndefined();
+  });
+
+  it('blocks a package bump whose manifest has uncommitted changes, before writing anything', () => {
+    writeFileSync(join(repo, 'package.json'), `${JSON.stringify({ name: 'consumer', dependencies: {} }, null, 2)}\n`);
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add package.json']);
+    const userManifest = `${JSON.stringify(
+      { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } },
+      null,
+      2,
+    )}\n`;
+    writeFileSync(join(repo, 'package.json'), userManifest);
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['package.json']);
+    expect(readFileSync(join(repo, 'package.json'), 'utf8')).toBe(userManifest);
+  });
+});
+
+describe('applyRun on a clean tree', () => {
+  it('still rolls back every change of a failed multi-note run', () => {
+    writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeFileSync(join(repo, 'added.txt'), 'new\n', 'utf8');
+    git(repo, ['add', '-N', 'added.txt']);
+    const create = git(repo, ['diff']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'added.txt'));
+    writeFileSync(join(feedDir, 'patches', 'create.diff'), create, 'utf8');
+    writeFileSync(
+      join(feedDir, 'patches', 'bad.diff'),
+      makeDiff('hello.txt', 'other\n').replace('-hello', '-nope'),
+      'utf8',
+    );
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-1',
+          '        title: Change hello',
+          '        delivery: code-patch',
+          '        patch: patches/good.diff',
+          '      - id: note-2',
+          '        title: Add a file',
+          '        delivery: code-patch',
+          '        patch: patches/create.diff',
+          '      - id: note-3',
+          '        title: Will not apply',
+          '        delivery: code-patch',
+          '        patch: patches/bad.diff',
+        ],
+      },
+    ]);
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-3');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(existsSync(join(repo, 'added.txt'))).toBe(false);
+    const dirty = git(repo, ['status', '--porcelain'])
+      .split('\n')
+      .filter((line) => line.trim() && !line.includes('.nestled/'));
+    expect(dirty).toEqual([]);
   });
 });

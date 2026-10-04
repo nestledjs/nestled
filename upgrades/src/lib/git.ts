@@ -6,8 +6,8 @@ export interface GitResult {
   stderr: string;
 }
 
-export function git(cwd: string, args: string[]): GitResult {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+export function git(cwd: string, args: string[], input?: string): GitResult {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', input });
   return {
     status: result.status ?? 1,
     stdout: result.stdout ?? '',
@@ -58,7 +58,11 @@ export function commitAll(cwd: string, message: string): string {
  * Restore a working tree that we dirtied, safe only when the caller verified the
  * tree was clean before starting: reverts tracked edits and removes files our
  * patches added, but preserves `.nestled/` so the log we are about to write
- * survives. Never call this when the run started `--allow-dirty`.
+ * survives. Never call this when the run started `--allow-dirty`: it reverts and
+ * deletes every uncommitted change in the repository, the user's included.
+ *
+ * @deprecated `applyRun` no longer uses it; it rolls back only the paths a run
+ * touched (see `RunChanges`). Kept for API compatibility.
  */
 export function resetWorktree(cwd: string): void {
   git(cwd, ['checkout', '--', '.']);

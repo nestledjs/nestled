@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, relative } from 'node:path';
+import { commitPaths, dirtyPaths, patchPaths, RunChanges } from './changes';
 import { compareReleaseId, Manifest, PackageRelease, UpgradeNote } from './manifest';
 import {
   advanceBaseline,
@@ -46,6 +47,12 @@ export interface BlockedInfo {
   id: string;
   reason: string;
   output?: string;
+  /**
+   * Set when the note was held back only because it would touch these paths, which had uncommitted
+   * changes when the run started. Nothing is wrong with the upgrade itself, so it is not recorded as
+   * `blocked` in the ledger: commit or stash the paths and run again.
+   */
+  uncommitted?: string[];
 }
 
 export interface VerificationResult {
@@ -89,7 +96,11 @@ interface PatchAttempt {
   output?: string;
 }
 
-function tryApplyPatch(cwd: string, diffText: string): PatchAttempt {
+/**
+ * `undoPartial` puts back the patch's own paths after a failed 3-way attempt (which can leave conflict
+ * markers and index entries behind); it must touch nothing else.
+ */
+function tryApplyPatch(cwd: string, diffText: string, undoPartial: () => void): PatchAttempt {
   const excludeArgs = PATCH_EXCLUDES.map((pattern) => `--exclude=${pattern}`);
   const dir = mkdtempSync(join(tmpdir(), 'nestled-upd-'));
   const file = join(dir, 'change.diff');
@@ -101,8 +112,8 @@ function tryApplyPatch(cwd: string, diffText: string): PatchAttempt {
       if (reverse.status === 0) return { applied: false, alreadyApplied: true };
       const threeWay = git(cwd, ['apply', '--3way', ...excludeArgs, file]);
       if (threeWay.status === 0) return { applied: true, via3way: true };
-      // 3-way may have left partial state on this (uncommitted) note only.
-      git(cwd, ['checkout', '--', '.']);
+      // 3-way may have left partial state, but only on this note's own paths.
+      undoPartial();
       return { applied: false, output: check.stderr || check.stdout };
     }
     const apply = git(cwd, ['apply', ...excludeArgs, file]);
@@ -168,19 +179,27 @@ function updateLockfile(cwd: string): { status: number; reason: string } {
   };
 }
 
-function applyPackageReleases(cwd: string, note: UpgradeNote): PackageApplyResult {
+function lockfilePath(cwd: string): string | null {
+  for (const name of ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json']) {
+    if (existsSync(join(cwd, name))) return join(cwd, name);
+  }
+  return null;
+}
+
+interface PackagePlan {
+  /** Absolute paths of the manifests the bump rewrites, with their new contents. */
+  writes: { path: string; contents: string }[];
+  updated: { manifest: string; name: string; version: string }[];
+  /** The lockfile the install step rewrites (absolute), when there are manifests to change. */
+  lockfile: string | null;
+}
+
+/** Work out what a package bump would write, without writing anything. */
+function planPackageReleases(cwd: string, note: UpgradeNote): PackagePlan {
   const releases = note.packageReleases ?? [];
-  if (releases.some((release) => !release.targetVersion && !release.versionRange)) {
-    return { status: 'blocked', reason: 'Package release is missing targetVersion and versionRange (pending release).' };
-  }
-  for (const release of releases) {
-    const version = release.targetVersion ?? release.versionRange;
-    if (!verifyPublishedPackage(release.name, version)) {
-      return { status: 'blocked', reason: `Cannot verify published version for ${release.name}@${version}.` };
-    }
-  }
   const manifests = findPackageManifests(cwd, releases);
-  const updated: { manifest: string; name: string; version: string }[] = [];
+  const writes: PackagePlan['writes'] = [];
+  const updated: PackagePlan['updated'] = [];
   for (const manifestPath of manifests) {
     const pkg = safeReadPackageJson(manifestPath);
     if (!pkg) continue;
@@ -195,8 +214,29 @@ function applyPackageReleases(cwd: string, note: UpgradeNote): PackageApplyResul
         }
       }
     }
-    if (changed) writeFileSync(manifestPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    if (changed) writes.push({ path: manifestPath, contents: `${JSON.stringify(pkg, null, 2)}\n` });
   }
+  return { writes, updated, lockfile: writes.length ? lockfilePath(cwd) : null };
+}
+
+/** Absolute paths the package step of `note` would write: changed manifests and the lockfile. */
+function packageTargets(plan: PackagePlan): string[] {
+  return [...plan.writes.map((write) => write.path), ...(plan.lockfile ? [plan.lockfile] : [])];
+}
+
+function applyPackageReleases(cwd: string, note: UpgradeNote, plan: PackagePlan): PackageApplyResult {
+  const releases = note.packageReleases ?? [];
+  if (releases.some((release) => !release.targetVersion && !release.versionRange)) {
+    return { status: 'blocked', reason: 'Package release is missing targetVersion and versionRange (pending release).' };
+  }
+  for (const release of releases) {
+    const version = release.targetVersion ?? release.versionRange;
+    if (!verifyPublishedPackage(release.name, version)) {
+      return { status: 'blocked', reason: `Cannot verify published version for ${release.name}@${version}.` };
+    }
+  }
+  const { updated } = plan;
+  for (const write of plan.writes) writeFileSync(write.path, write.contents);
   if (updated.length === 0) {
     const names = releases.map((r) => r.name).join(', ') || 'the referenced packages';
     return { status: 'not-applicable', reason: `Project does not consume ${names}.` };
@@ -324,9 +364,35 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
   const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
 
+  // Everything below works in repository-root-relative paths, the form `git status` reports.
+  const root = gitOutput(projectDir, ['rev-parse', '--show-toplevel']) || projectDir;
+  const prefix = gitOutput(projectDir, ['rev-parse', '--show-prefix']);
+  const fromProject = (path: string) => `${prefix}${path}`.split('\\').join('/');
+  const fromAbsolute = (path: string) => fromProject(relative(projectDir, path));
+  // What the user had uncommitted when we started is theirs: no note may write it, no rollback may revert it.
+  const dirtyAtStart = startedClean ? new Set<string>() : dirtyPaths(root);
+  const changes = new RunChanges(root, startCommit);
+  const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
+    const overlap = paths.filter((path) => dirtyAtStart.has(path));
+    if (!overlap.length) return null;
+    const subject = `${overlap.join(', ')} ${overlap.length === 1 ? 'has' : 'have'}`;
+    const reason = `${subject} uncommitted changes this upgrade would overwrite; commit or stash them first, then re-run.`;
+    return { id, reason, uncommitted: overlap };
+  };
+
+  /**
+   * Undo the run: drop its commits and put back exactly the paths it touched. Every other file,
+   * including everything uncommitted at the start of an `--allow-dirty` run, is left as it is.
+   */
   const rollback = () => {
-    if (startedClean && startCommit) git(projectDir, ['reset', '--hard', startCommit]);
-    else git(projectDir, ['checkout', '--', '.']);
+    if (startedClean && startCommit) {
+      // The tree was clean (outside `.nestled/`) when we started, so nothing here is anyone else's work.
+      git(projectDir, ['reset', '--hard', startCommit]);
+    } else if (startCommit) {
+      // Keep the index and working tree: they hold the user's uncommitted changes as well as ours.
+      git(root, ['reset', '--soft', startCommit]);
+    }
+    changes.restore();
   };
 
   const applied: { note: UpgradeNote; entry: AppliedNote }[] = [];
@@ -348,9 +414,21 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       break;
     }
     const entry: AppliedNote = { id: note.id, title: note.title, delivery: note.delivery };
+    const noteTouched = new Set<string>();
 
     if (includesPackage(note)) {
-      const result = applyPackageReleases(projectDir, note);
+      const plan = planPackageReleases(projectDir, note);
+      const targets = packageTargets(plan).map(fromAbsolute);
+      blocked = uncommittedBlock(note.id, targets);
+      if (blocked) break;
+      changes.willTouch(targets);
+      targets.forEach((path) => noteTouched.add(path));
+      // The install may write more than the lockfile; anything it newly dirties is ours too.
+      const dirtyBefore = dirtyPaths(root);
+      const result = applyPackageReleases(projectDir, note, plan);
+      const sideEffects = [...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path));
+      changes.didChange(sideEffects);
+      sideEffects.forEach((path) => noteTouched.add(path));
       if (result.status === 'blocked') {
         blocked = { id: note.id, reason: result.reason ?? 'Package release blocked.' };
         break;
@@ -372,7 +450,12 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
         blocked = { id: note.id, reason: `Patch not found in feed: ${note.patch}` };
         break;
       }
-      const patch = tryApplyPatch(projectDir, diff);
+      const paths = patchPaths(diff, PATCH_EXCLUDES).map(fromProject);
+      blocked = uncommittedBlock(note.id, paths);
+      if (blocked) break;
+      changes.willTouch(paths);
+      paths.forEach((path) => noteTouched.add(path));
+      const patch = tryApplyPatch(projectDir, diff, () => changes.restore(paths));
       if (!patch.applied && !patch.alreadyApplied) {
         blocked = {
           id: note.id,
@@ -387,11 +470,14 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
     if (note.review) entry.review = note.review;
 
-    commitAll(projectDir, `Apply Nestled upgrade ${note.id}`);
+    // On a dirty tree, commit only what this note changed: the user's own edits stay uncommitted.
+    const message = `Apply Nestled upgrade ${note.id}`;
+    if (startedClean) commitAll(projectDir, message);
+    else commitPaths(root, message, [...noteTouched]);
     applied.push({ note, entry });
 
     // A note with no mechanical component at all (pure `intent-only`) still reaches here with
-    // nothing to commit beyond a no-op; `commitAll` is a no-op when nothing changed. Either way,
+    // nothing to commit beyond a no-op; committing is a no-op when nothing changed. Either way,
     // stop climbing the release ladder here: later notes may build on the judgment call this one
     // is waiting on, so they stay pending rather than applying past it.
     if (entry.review) {
@@ -402,7 +488,8 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
   if (blocked) {
     rollback();
-    setOutcome(log, blocked.id, 'blocked');
+    // Held back only by the user's uncommitted work: not a problem with the upgrade, so not recorded.
+    if (!blocked.uncommitted) setOutcome(log, blocked.id, 'blocked');
     writeUpgradeLog(projectDir, log);
     return { status: 'blocked', channel, branch, applied: [], blocked, baselineRelease: log.template.baselineRelease };
   }
