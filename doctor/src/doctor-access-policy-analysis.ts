@@ -1,4 +1,6 @@
 import ts from 'typescript'
+import { hasAuthenticationGuard, type AuthOperation } from './doctor-auth-analysis'
+import { declaredGuardsOn, type DeclaredGuards } from './doctor-declared-guards'
 import { decoratorName, decoratorsOf, unwrapExpression } from './doctor-typescript-analysis'
 
 export type AccessPolicyScope = 'platform' | 'organization' | 'public-api'
@@ -224,6 +226,35 @@ export const getUndeclaredAccessOperations = (
       line: operation.line,
       callerScoped: operation.callerScoped,
     }))
+}
+
+/**
+ * Authenticated operations nothing authorizes: no permission declared, no caller scoping, and no
+ * repo-declared guard.
+ *
+ * A guard the repo declared in declared-guards.json counts as authorization here, applied by
+ * `@UseGuards(...)` at the method or class level or through a composed decorator — `authOperations`
+ * must come from `getAuthOperations` with the repo's composed decorators, so the three read the
+ * same. An undeclared repo-local guard still proves only authentication, and still fails.
+ */
+export const getUnauthorizedAccessOperations = (
+  source: string,
+  fileName: string,
+  authOperations: readonly AuthOperation[],
+  declaredGuards: DeclaredGuards,
+): UndeclaredAccessOperation[] => {
+  const guarded = new Set(
+    authOperations.filter((operation) => hasAuthenticationGuard(operation)).map((operation) => operation.name),
+  )
+  const behindDeclaredGuard = new Set(
+    authOperations
+      .filter((operation) => declaredGuardsOn(operation.guardNames, declaredGuards).length > 0)
+      .map((operation) => operation.name),
+  )
+
+  return getUndeclaredAccessOperations(source, fileName, (name) => guarded.has(name)).filter(
+    (operation) => !operation.callerScoped && !behindDeclaredGuard.has(operation.name),
+  )
 }
 
 export const analyzeAccessPolicies = (source: string, fileName = 'source.ts') => {
