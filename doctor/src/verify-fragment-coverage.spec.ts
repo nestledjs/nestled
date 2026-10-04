@@ -12,6 +12,7 @@ import {
   resolveSpreads,
   sanitize,
   scanObject,
+  selectFilesIn,
   toSelect,
 } from './verify-fragment-coverage'
 
@@ -264,7 +265,7 @@ describe('readSelectConstants', () => {
       )
 
       const constants = readSelectConstants(workspace, courseModels)
-      expect(constants.find(constant => constant.name === 'COURSE_SELECT')?.select).toEqual({
+      expect(constants.find((constant) => constant.name === 'COURSE_SELECT')?.select).toEqual({
         id: true,
         chapters: { select: { id: true, title: true } },
       })
@@ -285,7 +286,7 @@ describe('readSelectConstants', () => {
       )
 
       const constants = readSelectConstants(workspace, courseModels)
-      expect(constants.find(constant => constant.name === 'COURSE_SELECT')?.select).toEqual({
+      expect(constants.find((constant) => constant.name === 'COURSE_SELECT')?.select).toEqual({
         chapters: { select: { title: true } },
       })
     })
@@ -308,16 +309,10 @@ describe('readSelectConstants', () => {
         } as const
       `,
       )
-      writeSelectFile(
-        workspace,
-        'leaf.select.ts',
-        `export const LEAF_SELECT = { id: true } as const`,
-      )
+      writeSelectFile(workspace, 'leaf.select.ts', `export const LEAF_SELECT = { id: true } as const`)
 
       // MIDDLE_SELECT's own fields resolve; the second hop to LEAF_SELECT deliberately does not.
-      const course = readSelectConstants(workspace, courseModels).find(
-        constant => constant.name === 'COURSE_SELECT',
-      )
+      const course = readSelectConstants(workspace, courseModels).find((constant) => constant.name === 'COURSE_SELECT')
       expect(course?.select).toEqual({
         chapters: { select: { title: true, sections: { select: {} } } },
       })
@@ -345,7 +340,7 @@ describe('readSelectConstants', () => {
         // The live import resolves; the commented one neither binds nor warns about its
         // nonexistent module.
         const constants = readSelectConstants(workspace, courseModels)
-        expect(constants.find(constant => constant.name === 'COURSE_SELECT')?.select).toEqual({
+        expect(constants.find((constant) => constant.name === 'COURSE_SELECT')?.select).toEqual({
           chapters: { select: { title: true } },
         })
         expect(warnings).toEqual([])
@@ -368,10 +363,10 @@ describe('readSelectConstants', () => {
         `)
 
         const constants = readSelectConstants(workspace, courseModels)
-        expect(constants.find(constant => constant.name === 'COURSE_SELECT')?.select).toEqual({
+        expect(constants.find((constant) => constant.name === 'COURSE_SELECT')?.select).toEqual({
           chapters: { select: {} },
         })
-        expect(warnings.some(message => message.includes('could not resolve import'))).toBe(true)
+        expect(warnings.some((message) => message.includes('could not resolve import'))).toBe(true)
       } finally {
         console.warn = original
       }
@@ -385,14 +380,14 @@ describe('scanObject', () => {
     const scanned = scanObject(source, openBraceOf(source))
 
     expect(scanned.spreads).toEqual(['BASE_FIELDS'])
-    expect(scanned.entries.map(entry => entry.name)).toEqual(['ownedByOrganizationId'])
+    expect(scanned.entries.map((entry) => entry.name)).toEqual(['ownedByOrganizationId'])
   })
 
   it('reports only the outermost level', () => {
     const source = `{ a: true, rel: { select: { b: true } } }`
     const scanned = scanObject(source, openBraceOf(source))
 
-    expect(scanned.entries.map(entry => entry.name)).toEqual(['a', 'rel'])
+    expect(scanned.entries.map((entry) => entry.name)).toEqual(['a', 'rel'])
   })
 })
 
@@ -489,18 +484,12 @@ describe('annotationListBefore', () => {
 
   it('splits a comma-separated list', () => {
     const raw = `/** @select-omits redFlagged, tokenVersion */\n${constant}`
-    expect(annotationListBefore(raw, raw.indexOf(constant), 0, 'select-omits')).toEqual([
-      'redFlagged',
-      'tokenVersion',
-    ])
+    expect(annotationListBefore(raw, raw.indexOf(constant), 0, 'select-omits')).toEqual(['redFlagged', 'tokenVersion'])
   })
 
   it('accumulates repeated tags across lines', () => {
     const raw = `/**\n * @graphql-operations me\n * @graphql-operations UserToken.user\n */\n${constant}`
-    expect(annotationListBefore(raw, raw.indexOf(constant), 0, 'graphql-operations')).toEqual([
-      'me',
-      'UserToken.user',
-    ])
+    expect(annotationListBefore(raw, raw.indexOf(constant), 0, 'graphql-operations')).toEqual(['me', 'UserToken.user'])
   })
 
   it('does not inherit an annotation that belongs to the previous constant', () => {
@@ -508,9 +497,7 @@ describe('annotationListBefore', () => {
     // before that point documented THAT constant, not this one.
     const raw = `/** @select-omits redFlagged */\nconst A = { a: true }\n${constant}`
     const previousEnd = raw.indexOf('}') + 1
-    expect(annotationListBefore(raw, raw.indexOf(constant), previousEnd, 'select-omits')).toEqual(
-      [],
-    )
+    expect(annotationListBefore(raw, raw.indexOf(constant), previousEnd, 'select-omits')).toEqual([])
   })
 })
 
@@ -564,5 +551,14 @@ describe('nonNullableAt', () => {
 
   it('treats an unknown field as nullable rather than guessing', () => {
     expect(nonNullableAt(schema, 'User', 'notAField')).toBe(false)
+  })
+})
+
+describe('selectFilesIn', () => {
+  it('counts a select file even when it exports no select constant', () => {
+    // Zero constants is not zero files: a file holding only helpers is still a select file, so the
+    // "no select files" declaration must not be accepted for it.
+    const workspace = createSelectWorkspace(`const helper = { id: true } as const\n`)
+    expect(selectFilesIn(workspace)).toHaveLength(1)
   })
 })
