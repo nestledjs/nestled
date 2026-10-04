@@ -74,6 +74,7 @@ const notesDir = '.nestled-updates/upgrade-notes'
 const guardBaselinePath = '.nestled-updates/security/guard-baseline.json'
 const publicOperationsPath = '.nestled-updates/security/public-operations.json'
 const permissionExemptionsPath = '.nestled-updates/security/permission-exemptions.json'
+const auditExemptionsPath = '.nestled-updates/security/audit-exemptions.json'
 const permissionCatalogs = readPermissionCatalogConfig()
 const platformPermissionCatalogPath = permissionCatalogs.config.platform.path
 const organizationPermissionCatalogPath = permissionCatalogs.config.organization.path
@@ -83,6 +84,10 @@ const sdkContractExceptionsPath = '.nestled-updates/sdk-contract-exceptions.json
 const resolverSourceRoots = ['libs/api', 'apps/api/src']
 const gitBaseRef = process.env.NX_BASE || process.env.GITHUB_BASE_REF || 'develop'
 const shouldUpdateGuardBaseline = process.argv.includes('--update-guard-baseline')
+// --full judges the whole repository: every review finding fails, not only those on changed lines.
+// Run it to get a repository clean (for example when adopting a doctor release); the default run then
+// fails only new findings on changed lines, which keeps a clean repository clean.
+const fullRun = process.argv.includes('--full')
 const shouldUpdateSdkContractBaseline = process.argv.includes('--update-sdk-contract-baseline')
 const sourceTemplateRemotePattern = /github\.com[:/]nestledjs\/nestled-(?:dev-)?template(?:\.git)?$/
 
@@ -162,7 +167,9 @@ const isChangedLine = (file: string | undefined, line: number | undefined): bool
 }
 
 const review = (check: string, message: string, file?: string, line?: number) => {
-  if (isChangedLine(file, line)) {
+  if (fullRun) {
+    fail(check, message, file, line)
+  } else if (isChangedLine(file, line)) {
     fail(check, `New changed-line finding: ${message}`, file, line)
   } else {
     warn(check, message, file, line)
@@ -1513,8 +1520,30 @@ const siblingServiceSources = (file: string): string[] =>
     stripComments(readFileSync(serviceFile, 'utf8')),
   )
 
+type AuditExemptions = Record<string, Record<string, string>>
+
+/**
+ * Mutations that deliberately write no audit record, each with the reason, in the same shape as the
+ * permission exemptions: `{ "<resolver file>": { "<mutation>": "<why no audit record is needed>" } }`.
+ * A missing or empty reason is a failure: an exemption is a claim, and a claim needs its reason.
+ */
+const readAuditExemptions = (): AuditExemptions => {
+  if (!existsSync(auditExemptionsPath)) return {}
+  const exemptions = JSON.parse(readFileSync(auditExemptionsPath, 'utf8')) as AuditExemptions
+  for (const [file, mutations] of Object.entries(exemptions)) {
+    for (const [name, reason] of Object.entries(mutations ?? {})) {
+      if (typeof reason !== 'string' || reason.trim() === '') {
+        fail('audit-coverage', `Audit exemption for ${file} ${name} needs a non-empty reason`, auditExemptionsPath)
+      }
+    }
+  }
+  return exemptions
+}
+
 const checkAuditCoverageHeuristic = () => {
   const resolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
+  const exemptions = readAuditExemptions()
+  const unaudited = new Set<string>()
 
   for (const file of resolverFiles) {
     if (!isSensitiveMutationDomain(file)) continue
@@ -1522,11 +1551,25 @@ const checkAuditCoverageHeuristic = () => {
     const source = stripComments(readFileSync(file, 'utf8'))
     // Judged per mutation: an audit call elsewhere in the file or service no longer counts.
     for (const mutation of unauditedMutations(source, siblingServiceSources(file))) {
+      unaudited.add(`${file}::${mutation.name}`)
+      if (exemptions[file]?.[mutation.name]) continue
       review(
         'audit-coverage',
-        `Review ${mutation.name}: sensitive mutation writes no audit record (in its body or in a method it calls)`,
+        `${mutation.name}: sensitive mutation writes no audit record (in its body or in a method it calls); write one, or record it in ${auditExemptionsPath} with a reason`,
         file,
         mutation.line,
+      )
+    }
+  }
+
+  // An exemption that no longer applies is a claim nobody is checking.
+  for (const [file, mutations] of Object.entries(exemptions)) {
+    for (const name of Object.keys(mutations ?? {})) {
+      if (unaudited.has(`${file}::${name}`)) continue
+      warn(
+        'audit-coverage',
+        `Audit exemption for ${name} no longer applies (it now writes an audit record, or no longer exists); remove the stale entry`,
+        auditExemptionsPath,
       )
     }
   }
