@@ -3,12 +3,12 @@ import ts from 'typescript'
 /**
  * Words that mark an audit or security-event write. `audit` counts as any part of an identifier, so
  * project helpers such as `recordBillingAuditLog`, `runInAuditTransaction`, `this.auditService` or a
- * `programApplicationAudit` model are recognised: lower-case `audit` at the start of a name, or
- * `Audit`/`AUDIT` as a later camel-case or constant segment. Case-sensitive on purpose, so a word
- * that merely contains the letters (`plaudit`) does not count.
+ * `programApplicationAudit` model are recognised: `audit`/`AUDIT` at the start of a name or after `_`,
+ * or `Audit` as a later camel-case segment. Case-sensitive on purpose, so a word that merely
+ * contains the letters (`plaudit`, `PLAUDIT`, `PLaudit`) does not count.
  */
 export const hasAuditMarker = (source: string): boolean =>
-  /(?<![a-z])audit|Audit|AUDIT|SecurityEvent|securityEvent|SECURITY_EVENT/.test(source)
+  /(?<![A-Za-z0-9])(?:audit|AUDIT|securityEvent|SECURITY_EVENT)|Audit|SecurityEvent/.test(source)
 
 interface ClassInfo {
   /** Injected or declared fields and the class they are typed as, e.g. `orders` -> `OrdersService`. */

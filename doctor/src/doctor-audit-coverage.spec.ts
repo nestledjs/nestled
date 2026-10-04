@@ -185,14 +185,16 @@ describe('hasAuditMarker', () => {
       'await tx.programApplicationAudit.create({})',
       'this.securityEvents.logPasswordChanged(id)',
       'await this.logSecurityEvent(id)',
-      "action: AUDIT_ACTIONS.UPDATED",
+      'action: AUDIT_ACTIONS.UPDATED',
+      'await record_audit(row)',
+      'emit(USER_AUDIT_EVENT)',
     ]) {
       expect(hasAuditMarker(source), source).toBe(true)
     }
   })
 
   it('does not count a word that only contains the letters', () => {
-    for (const source of ['const plaudit = 1', 'return this.orders.update()']) {
+    for (const source of ['const plaudit = 1', 'PLAUDIT', 'PLaudit', 'return this.orders.update()']) {
       expect(hasAuditMarker(source), source).toBe(false)
     }
   })
