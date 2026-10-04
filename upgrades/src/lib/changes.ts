@@ -274,6 +274,42 @@ export class RunChanges {
   }
 }
 
+/** The current bytes of each of `paths` (null when absent), to tell later whether anything rewrote them. */
+export function snapshotFiles(root: string, paths: Iterable<string>): Map<string, Buffer | null> {
+  const snapshot = new Map<string, Buffer | null>();
+  for (const path of paths) {
+    const absolute = join(root, path);
+    if (!existsSync(absolute)) snapshot.set(path, null);
+    else if (lstatSync(absolute).isFile()) snapshot.set(path, readFileSync(absolute));
+  }
+  return snapshot;
+}
+
+/**
+ * Put back every snapshotted file whose bytes no longer match, and return those paths. Used around
+ * steps that run third-party code (a package install, verification commands) on a dirty tree, so a
+ * script that rewrites a file the user has uncommitted changes in cannot cost them that work.
+ */
+export function restoreChangedFiles(root: string, snapshot: Map<string, Buffer | null>): string[] {
+  const restored: string[] = [];
+  for (const [path, contents] of snapshot) {
+    const absolute = join(root, path);
+    const stat = existsSync(absolute) ? lstatSync(absolute) : null;
+    if (stat?.isDirectory()) continue;
+    if (contents === null) {
+      if (!stat) continue;
+      rmSync(absolute, { force: true });
+    } else {
+      if (stat?.isFile() && readFileSync(absolute).equals(contents)) continue;
+      if (stat) rmSync(absolute, { force: true });
+      mkdirSync(dirname(absolute), { recursive: true });
+      writeFileSync(absolute, contents);
+    }
+    restored.push(path);
+  }
+  return restored;
+}
+
 /**
  * Commit only `paths`, leaving anything else the user has staged or modified out of the commit and
  * exactly as it was. Returns the new HEAD (short), or the unchanged HEAD when none of `paths` changed.
@@ -291,8 +327,9 @@ export function commitPaths(root: string, message: string, paths: string[]): str
     if (addable.length) git(root, [LITERAL, 'add', '-A', '--', ...addable]);
   }
   // Exactly the paths with something staged: a path that ended up unchanged would fail `--only`.
+  // --no-renames: a staged rename must list its source too, or `--only` leaves the deletion behind.
   const staged = chunks(unique).flatMap((chunk) =>
-    git(root, [LITERAL, 'diff', '--cached', '--name-only', '-z', '--', ...chunk])
+    git(root, [LITERAL, 'diff', '--cached', '--no-renames', '--name-only', '-z', '--', ...chunk])
       .stdout.split('\0')
       .filter(Boolean),
   );

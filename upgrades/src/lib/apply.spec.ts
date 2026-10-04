@@ -18,7 +18,7 @@ let feedDir: string;
 /** Build a valid unified diff by making the edit, capturing `git diff`, reverting. */
 function makeDiff(file: string, contents: string): string {
   writeFileSync(join(repo, file), contents, 'utf8');
-  const diff = git(repo, ['diff']);
+  const diff = git(repo, ['diff', '--', file]);
   git(repo, ['checkout', '--', file]);
   return diff;
 }
@@ -519,6 +519,178 @@ describe('applyRun --allow-dirty', () => {
     expect(result.status).toBe('blocked');
     expect(result.blocked?.uncommitted).toEqual(['package.json']);
     expect(readFileSync(join(repo, 'package.json'), 'utf8')).toBe(userManifest);
+  });
+});
+
+describe('applyRun --allow-dirty with third-party steps and layouts', () => {
+  const USER_NOTES = 'one\ntwo\nmy own unfinished edit\n';
+  let binDir: string;
+  let savedPath: string | undefined;
+
+  beforeEach(() => {
+    binDir = mkdtempSync(join(tmpdir(), 'nestled-bin-'));
+    savedPath = process.env.PATH;
+    mkdirSync(join(repo, 'docs'), { recursive: true });
+    writeFileSync(join(repo, 'docs', 'notes.md'), 'one\ntwo\n', 'utf8');
+    writeFileSync(join(repo, 'other.txt'), 'clean\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add files']);
+    writeFileSync(join(repo, 'docs', 'notes.md'), USER_NOTES, 'utf8');
+  });
+
+  afterEach(() => {
+    process.env.PATH = savedPath;
+    rmSync(binDir, { recursive: true, force: true });
+  });
+
+  /** A stand-in `npm` whose `view` succeeds and whose `install` runs `installScript`, like a postinstall would. */
+  function fakeNpm(installScript: string): void {
+    const script = [
+      '#!/bin/sh',
+      'if [ "$1" = "view" ]; then echo \'"2.0.0"\'; exit 0; fi',
+      'if [ "$1" = "install" ]; then',
+      installScript,
+      'exit 0; fi',
+      'exit 1',
+      '',
+    ].join('\n');
+    writeFileSync(join(binDir, 'npm'), script, { mode: 0o755 });
+    process.env.PATH = `${binDir}:${savedPath}`;
+  }
+
+  it('puts back a dirty file an install script rewrote, and blocks the bump', () => {
+    const manifest = `${JSON.stringify({ name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    writeFileSync(join(repo, 'package.json'), manifest);
+    writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+    git(repo, ['add', 'package.json', 'package-lock.json']);
+    git(repo, ['commit', '-q', '-m', 'add manifest']);
+    fakeNpm('echo "rewritten by a script" > docs/notes.md; echo "{\\"v\\":2}" > package-lock.json; echo x > other.txt');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    // the bump, the lockfile and the script's other write are all undone
+    expect(readFileSync(join(repo, 'package.json'), 'utf8')).toBe(manifest);
+    expect(readFileSync(join(repo, 'package-lock.json'), 'utf8')).toBe('{}\n');
+    expect(readFileSync(join(repo, 'other.txt'), 'utf8')).toBe('clean\n');
+  });
+
+  it('undoes what failing verification wrote, without touching the user’s edits', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['echo x > other.txt; echo y > docs/notes.md; echo z > generated.txt; false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'other.txt'), 'utf8')).toBe('clean\n');
+    expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('commits both sides of a renamed file', () => {
+    git(repo, ['mv', 'other.txt', 'renamed.txt']);
+    const rename = git(repo, ['diff', '--cached', '-M']);
+    git(repo, ['reset', '-q', '--', 'other.txt', 'renamed.txt']);
+    rmSync(join(repo, 'renamed.txt'));
+    git(repo, ['checkout', '--', 'other.txt']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), rename, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('applied');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).not.toContain('other.txt');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).toContain('renamed.txt');
+    expect(git(repo, ['status', '--porcelain', '--', 'other.txt', 'renamed.txt']).trim()).toBe('');
+    expect(git(repo, ['status', '--porcelain', '--', 'docs/notes.md']).trim()).toBe('M docs/notes.md');
+  });
+
+  it('checks patch paths from the repository root when the project is a subdirectory', () => {
+    const project = join(repo, 'apps', 'example');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(join(project, 'file.txt'), 'base\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add project']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('apps/example/file.txt', 'base\nmore\n'), 'utf8');
+    writeFileSync(join(project, 'file.txt'), 'base\nmine\n', 'utf8');
+    initBaseline(project, { at: '2026.01.0', channel: 'stable' });
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(project, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['apps/example/file.txt']);
+    expect(readFileSync(join(project, 'file.txt'), 'utf8')).toBe('base\nmine\n');
+  });
+
+  it('resolves a manifest outside the project directory against the repository root', () => {
+    const project = join(repo, 'apps', 'example');
+    mkdirSync(project, { recursive: true });
+    mkdirSync(join(repo, 'shared'), { recursive: true });
+    writeFileSync(join(project, 'keep.txt'), 'x\n', 'utf8');
+    writeFileSync(join(repo, 'shared', 'package.json'), '{}\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add shared manifest']);
+    const userManifest = `${JSON.stringify({ dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    writeFileSync(join(repo, 'shared', 'package.json'), userManifest, 'utf8');
+    initBaseline(project, { at: '2026.01.0', channel: 'stable' });
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+          '            manifests:',
+          '              - ../../shared/package.json',
+        ],
+      },
+    ]);
+
+    const result = applyRun(project, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['shared/package.json']);
+    expect(readFileSync(join(repo, 'shared', 'package.json'), 'utf8')).toBe(userManifest);
   });
 });
 

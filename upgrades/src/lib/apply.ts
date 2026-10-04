@@ -1,8 +1,8 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
-import { commitPaths, dirtyPaths, patchPaths, RunChanges } from './changes';
+import { join, posix, relative, sep } from 'node:path';
+import { commitPaths, dirtyPaths, patchPaths, restoreChangedFiles, RunChanges, snapshotFiles } from './changes';
 import { compareReleaseId, Manifest, PackageRelease, UpgradeNote } from './manifest';
 import {
   advanceBaseline,
@@ -364,11 +364,14 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
   const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
 
-  // Everything below works in repository-root-relative paths, the form `git status` reports.
+  // Everything below works in repository-root-relative paths, the form `git status` reports. Patch
+  // paths already are (git apply resolves them from the root, skipping any outside this directory).
   const root = gitOutput(projectDir, ['rev-parse', '--show-toplevel']) || projectDir;
   const prefix = gitOutput(projectDir, ['rev-parse', '--show-prefix']);
-  const fromProject = (path: string) => `${prefix}${path}`.split('\\').join('/');
-  const fromAbsolute = (path: string) => fromProject(relative(projectDir, path));
+  const fromAbsolute = (path: string) => {
+    const fromHere = relative(projectDir, path);
+    return posix.normalize(`${prefix}${sep === '/' ? fromHere : fromHere.split(sep).join('/')}`);
+  };
   // What the user had uncommitted when we started is theirs: no note may write it, no rollback may revert it.
   const dirtyAtStart = startedClean ? new Set<string>() : dirtyPaths(root);
   const changes = new RunChanges(root, startCommit);
@@ -378,6 +381,19 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     const subject = `${overlap.join(', ')} ${overlap.length === 1 ? 'has' : 'have'}`;
     const reason = `${subject} uncommitted changes this upgrade would overwrite; commit or stash them first, then re-run.`;
     return { id, reason, uncommitted: overlap };
+  };
+  /**
+   * Run a step that executes third-party code (an install's lifecycle scripts, verification commands):
+   * whatever it newly dirties is recorded as the run's own, and any file the user had uncommitted
+   * changes in that it rewrote is put back. Returns the step's result and the user files it rewrote.
+   */
+  const guarded = <T>(step: () => T): { result: T; sideEffects: string[]; clobbered: string[] } => {
+    const dirtyBefore = dirtyPaths(root);
+    const userFiles = snapshotFiles(root, dirtyAtStart);
+    const result = step();
+    const sideEffects = [...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path));
+    changes.didChange(sideEffects);
+    return { result, sideEffects, clobbered: restoreChangedFiles(root, userFiles) };
   };
 
   /**
@@ -423,12 +439,11 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       if (blocked) break;
       changes.willTouch(targets);
       targets.forEach((path) => noteTouched.add(path));
-      // The install may write more than the lockfile; anything it newly dirties is ours too.
-      const dirtyBefore = dirtyPaths(root);
-      const result = applyPackageReleases(projectDir, note, plan);
-      const sideEffects = [...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path));
-      changes.didChange(sideEffects);
+      // The install may write more than the lockfile, and its scripts may write anything.
+      const { result, sideEffects, clobbered } = guarded(() => applyPackageReleases(projectDir, note, plan));
       sideEffects.forEach((path) => noteTouched.add(path));
+      blocked = uncommittedBlock(note.id, clobbered);
+      if (blocked) break;
       if (result.status === 'blocked') {
         blocked = { id: note.id, reason: result.reason ?? 'Package release blocked.' };
         break;
@@ -450,7 +465,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
         blocked = { id: note.id, reason: `Patch not found in feed: ${note.patch}` };
         break;
       }
-      const paths = patchPaths(diff, PATCH_EXCLUDES).map(fromProject);
+      const paths = patchPaths(diff, PATCH_EXCLUDES).filter((path) => path.startsWith(prefix));
       blocked = uncommittedBlock(note.id, paths);
       if (blocked) break;
       changes.willTouch(paths);
@@ -501,7 +516,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   const noteVerification = [...new Set(applied.flatMap(({ note }) => note.verification ?? []))];
   const commands =
     options.verification ?? (noteVerification.length ? noteVerification : config.verification ?? inferVerification(projectDir));
-  const verification = applied.length ? runVerification(projectDir, commands) : [];
+  const verification = applied.length ? guarded(() => runVerification(projectDir, commands)).result : [];
   const failed = verification.find((item) => item.status !== 0);
   if (failed) {
     rollback();
