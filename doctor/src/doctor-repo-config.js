@@ -103,8 +103,8 @@ const reportNothingChecked = (tool, cwd = process.cwd(), state = 'no-select-file
   }
   if (state === 'no-checkable-selects') {
     console.error(
-      `\n${tool}: select constants were found, but none maps to a model or operation this check can\n` +
-        `  verify, so this run proves nothing. If that is by design (GraphQL served by generated CRUD and\n` +
+      `\n${tool}: files that can hold select constants were found, but no select constant in them maps\n` +
+        `  to a model or operation this check can verify, so this run proves nothing. If that is by design (GraphQL served by generated CRUD and\n` +
         `  inline selects), say so: "noCheckableSelects": "<why>" in ${REPO_CONFIG_PATH}.\n` +
         `  Exiting non-zero because a check that examined nothing must not report success.`,
     )
