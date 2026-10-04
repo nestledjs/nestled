@@ -73,6 +73,73 @@ afterEach(() => {
 })
 
 describe('verify-select-coverage', () => {
+  it('reads every field of a select written on one line', () => {
+    const workspace = createWorkspace(`
+export const USER_SELECT = { id: true, email: true } as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(0)
+    expect(JSON.parse(result.stdout).problems).toEqual([])
+  })
+
+  it('gives a collapsed nested select the same verdict as the expanded one', () => {
+    const workspace = createWorkspace(`
+export const COLLAPSED_SELECT = {
+  id: true,
+  email: true,
+  posts: { select: { id: true, title: true, authorId: true } },
+} as const
+
+export const EXPANDED_SELECT = {
+  id: true,
+  email: true,
+  posts: {
+    select: {
+      id: true,
+      title: true,
+      authorId: true,
+    },
+  },
+} as const
+`)
+
+    const result = runTool(workspace, '--strict-nested')
+
+    expect(result.status).toBe(0)
+    const report = JSON.parse(result.stdout)
+    expect(report.problems).toEqual([])
+    expect(report.nestedProblems ?? []).toEqual([])
+  })
+
+  it('does not split an entry on a comma inside a comment or string', () => {
+    const workspace = createWorkspace(`
+export const USER_SELECT = {
+  // the id, which every select needs
+  id: true, email: true, // trailing, with a comma
+} as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(0)
+    expect(JSON.parse(result.stdout).problems).toEqual([])
+  })
+
+  it('still honours an @select-omits comment before a one-line entry', () => {
+    const workspace = createWorkspace(`
+export const USER_SELECT = {
+  /** @select-omits email */ id: true,
+} as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(0)
+    expect(JSON.parse(result.stdout).problems).toEqual([])
+  })
+
   it('writes a complete --json report through a pipe, even past the 64 KiB pipe buffer', () => {
     // process.exit() used to run before stdout drained, cutting piped output at the buffer size.
     const constants = Array.from(
