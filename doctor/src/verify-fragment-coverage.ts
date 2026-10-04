@@ -572,19 +572,14 @@ const readConstantsFromFile = (
   return fileConstants
 }
 
-export const readSelectConstants = (repo: string, models: readonly DatabaseModelMetadata[]): SelectConstant[] => {
-  const constants: SelectConstant[] = []
+/** Select files under the search roots: the same discovery readSelectConstants uses. */
+export const selectFilesIn = (repo: string): string[] =>
+  SEARCH_ROOTS.flatMap((root) =>
+    walk(join(repo, root), (path) => SELECT_FILE_SUFFIXES.some((s) => path.endsWith(s))),
+  ).filter((absolute) => !absolute.includes('.spec.'))
 
-  for (const root of SEARCH_ROOTS) {
-    const files = walk(join(repo, root), (path) => SELECT_FILE_SUFFIXES.some((s) => path.endsWith(s)))
-    for (const absolute of files) {
-      if (absolute.includes('.spec.')) continue
-      constants.push(...readConstantsFromFile(repo, absolute, models))
-    }
-  }
-
-  return constants
-}
+export const readSelectConstants = (repo: string, models: readonly DatabaseModelMetadata[]): SelectConstant[] =>
+  selectFilesIn(repo).flatMap((absolute) => readConstantsFromFile(repo, absolute, models))
 
 /**
  * GraphQL fields each model serves with `@ResolveField` rather than from the parent's select.
@@ -921,10 +916,13 @@ const main = async (): Promise<void> => {
     process.exitCode = 0
     return
   }
+  // Which "checked nothing" state this is depends on whether select FILES exist, not on how many
+  // constants were parsed: a file holding only @fragment-partial helpers, or no exported select,
+  // yields zero constants but is still a select file, and must not be answered with noSelectFiles.
   process.exitCode = reportNothingChecked(
     'verify-fragments',
-    process.cwd(),
-    constants.length === 0 ? 'no-select-files' : 'no-checkable-selects',
+    repo,
+    selectFilesIn(repo).length === 0 ? 'no-select-files' : 'no-checkable-selects',
   )
 }
 

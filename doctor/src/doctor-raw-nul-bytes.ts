@@ -9,13 +9,17 @@
  */
 export const RAW_NUL_SOURCE_PATTERN = /\.(ts|tsx|cts|mts|js|jsx|cjs|mjs|json|prisma|graphql|md|snap)$/
 
-/** 1-based line numbers of every raw NUL byte in a file's contents. */
+/**
+ * 1-based line numbers of every raw NUL byte in a file's contents, in one pass over the bytes. In UTF-8
+ * a newline byte (0x0a) never occurs inside a multi-byte character, so counting bytes gives the same
+ * line numbers as decoding, without re-decoding the prefix for every NUL found.
+ */
 export const findRawNulLines = (buffer: Buffer): number[] => {
   const lines: number[] = []
-  let index = buffer.indexOf(0)
-  while (index !== -1) {
-    lines.push(buffer.subarray(0, index).toString('utf8').split('\n').length)
-    index = buffer.indexOf(0, index + 1)
+  let line = 1
+  for (const byte of buffer) {
+    if (byte === 0x0a) line++
+    else if (byte === 0x00) lines.push(line)
   }
   return lines
 }

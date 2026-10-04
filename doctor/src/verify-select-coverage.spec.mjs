@@ -110,6 +110,18 @@ export const SECRET_SELECT = { id: true } as const
     ])
   })
 
+  it('does not claim coverage when every select was a declared skip', () => {
+    const workspace = createNonGraphqlWorkspace(`
+/** @prisma-model Secret */
+export const SECRET_SELECT = { id: true } as const
+`)
+
+    expect(JSON.parse(runTool(workspace).stdout).checked).toBe(0)
+    const text = spawnSync(process.execPath, [toolPath], { cwd: workspace, encoding: 'utf8' }).stdout
+    expect(text).not.toContain('every top-level select covers')
+    expect(text).toContain('no select was checked')
+  })
+
   it('accepts @no-graphql-type with a reason, and keeps the reason in the report', () => {
     const workspace = createNonGraphqlWorkspace(`
 /**

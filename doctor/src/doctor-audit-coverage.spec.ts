@@ -35,6 +35,8 @@ export class ComputeBillingResolver {
     const source = resolver(`
 @Resolver()
 export class BillingResolver {
+  constructor(private readonly billing: BillingService) {}
+
   @Mutation(() => Boolean)
   updatePlan() {
     return this.billing.updatePlan()
@@ -57,6 +59,8 @@ export class BillingService {
     const source = resolver(`
 @Resolver()
 export class BillingResolver {
+  constructor(private readonly billing: BillingService) {}
+
   @Mutation(() => Boolean)
   setSpendingLimit() {
     return this.billing.setSpendingLimit()
@@ -81,6 +85,8 @@ export class BillingService {
     const source = resolver(`
 @Resolver()
 export class RoleResolver {
+  constructor(private readonly roles: RoleService) {}
+
   @Mutation(() => Boolean)
   grantRole() {
     return this.roles.grant()
@@ -99,6 +105,57 @@ export class RoleService {
 `
 
     expect(unauditedMutations(source, [service])).toEqual([])
+  })
+
+  it('follows a call to the service the field is typed as, not any service with that method name', () => {
+    const source = resolver(`
+@Resolver()
+export class OrderResolver {
+  constructor(private readonly orders: OrdersService) {}
+
+  @Mutation(() => Boolean)
+  updateOrder() {
+    return this.orders.update()
+  }
+}
+`)
+    const orders = `
+export class OrdersService {
+  update() {
+    return this.prisma.order.update({})
+  }
+}
+`
+    const invoices = `
+export class InvoicesService {
+  update() {
+    this.audit.log('invoice.updated')
+  }
+}
+`
+
+    expect(unauditedMutations(source, [orders, invoices]).map((mutation) => mutation.name)).toEqual(['updateOrder'])
+  })
+
+  it('does not follow a call through a field whose type is unknown', () => {
+    const source = resolver(`
+@Resolver()
+export class OrderResolver {
+  @Mutation(() => Boolean)
+  updateOrder() {
+    return this.orders.update()
+  }
+}
+`)
+    const audited = `
+export class OrdersService {
+  update() {
+    this.audit.log('order.updated')
+  }
+}
+`
+
+    expect(unauditedMutations(source, [audited]).map((mutation) => mutation.name)).toEqual(['updateOrder'])
   })
 
   it('ignores queries', () => {

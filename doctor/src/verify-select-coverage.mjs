@@ -373,6 +373,8 @@ function run() {
   const skipped = []
   /** `@no-graphql-type` on a select whose model has since gained a GraphQL type. */
   const staleDeclarations = []
+  /** Selects actually checked against a GraphQL type (declared skips are not counted). */
+  let checkedSelects = 0
   const nullableGaps = []
 
   for (const file of [...selectFiles].sort((left, right) => left.localeCompare(right))) {
@@ -414,6 +416,7 @@ function run() {
         // The declaration must not outlive the fact: once the model is on GraphQL, check it.
         staleDeclarations.push({ file: relativePath, constant: name, model })
       }
+      checkedSelects++
 
       const walkSelect = (currentModel, selectBody, path, depth = 0) => {
         if (depth > 6) return
@@ -469,6 +472,7 @@ function run() {
           problems,
           nestedProblems,
           unresolved,
+          checked: checkedSelects,
           skipped,
           staleDeclarations,
           nullableGaps: warnNullable ? nullableGaps : undefined,
@@ -521,7 +525,12 @@ function run() {
     if (selectFiles.length === 0) {
       // reported below, for both output modes
     } else if (problems.length === 0 && unresolved.length === 0 && staleDeclarations.length === 0) {
-      console.log('every top-level select covers the non-nullable surface of its GraphQL type\n')
+      // Never claim coverage that wasn't checked: a run whose selects were all declared skips says so.
+      console.log(
+        checkedSelects > 0
+          ? 'every top-level select covers the non-nullable surface of its GraphQL type\n'
+          : 'no select was checked: every select found is a declared non-GraphQL skip (listed above)\n',
+      )
     }
   }
 
