@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import {
   getUndeclaredAccessOperations,
+  getUnauthorizedAccessOperations,
   analyzeAccessPolicies,
   readStringObjectArray,
 } from './doctor-access-policy-analysis'
+import { getAuthOperations } from './doctor-auth-analysis'
+import { getComposedGuardDecorators } from './doctor-composed-guards'
+import { parseDeclaredGuards } from './doctor-declared-guards'
 
 describe('analyzeAccessPolicies', () => {
   it('extracts platform, organization, and public API scope literals without option prose', () => {
@@ -31,11 +35,7 @@ describe('analyzeAccessPolicies', () => {
       ['member:update'],
       ['write'],
     ])
-    expect(report.declarations.map((item) => item.scope)).toEqual([
-      'platform',
-      'organization',
-      'public-api',
-    ])
+    expect(report.declarations.map((item) => item.scope)).toEqual(['platform', 'organization', 'public-api'])
   })
 
   it('reports inline permission helpers on an operation with no declarative policy', () => {
@@ -284,6 +284,109 @@ describe('getUndeclaredAccessOperations', () => {
         'auth.resolver.ts',
         () => false,
       ),
+    ).toEqual([])
+  })
+})
+
+describe('getUnauthorizedAccessOperations', () => {
+  const declaredGuards = parseDeclaredGuards(
+    JSON.stringify({
+      GqlAuthBillingAdminGuard: {
+        authLevel: 'authenticated',
+        grants: ['billing:manage'],
+        superAdminBypass: true,
+        reason: 'Billing staff operate the billing system.',
+      },
+    }),
+  ).guards
+
+  const unauthorizedNames = (source: string, composedSources: string[] = []): string[] => {
+    const composedGuards = getComposedGuardDecorators(
+      composedSources.map((composed, index) => ({ file: `decorators-${index}.ts`, source: composed })),
+    )
+    const authOperations = getAuthOperations(source, 'billing.resolver.ts', { composedGuards })
+    return getUnauthorizedAccessOperations(source, 'billing.resolver.ts', authOperations, declaredGuards).map(
+      (operation) => operation.name,
+    )
+  }
+
+  it('accepts an operation behind a declared guard at the method level', () => {
+    expect(
+      unauthorizedNames(`
+        @Resolver()
+        class BillingResolver {
+          @Mutation(() => Boolean)
+          @Authenticated()
+          @UseGuards(GqlAuthBillingAdminGuard)
+          closeBillingRun(@Args('id') id: string) {}
+
+          @Query(() => Boolean)
+          @Authenticated()
+          @UseGuards(GqlAuthGuard)
+          billingRuns(@Args('id') id: string) {}
+        }
+      `),
+    ).toEqual(['billingRuns'])
+  })
+
+  it('accepts every operation behind a declared guard at the class level', () => {
+    expect(
+      unauthorizedNames(`
+        @Authenticated()
+        @UseGuards(GqlAuthBillingAdminGuard)
+        @Resolver()
+        class BillingResolver {
+          @Query(() => Boolean)
+          billingRuns(@Args('id') id: string) {}
+
+          @Mutation(() => Boolean)
+          closeBillingRun(@Args('id') id: string) {}
+        }
+      `),
+    ).toEqual([])
+  })
+
+  it('accepts a declared guard applied through a composed decorator', () => {
+    expect(
+      unauthorizedNames(
+        `
+          @Resolver()
+          class BillingResolver {
+            @Query(() => Boolean)
+            @BillingStaff()
+            billingRuns(@Args('id') id: string) {}
+          }
+        `,
+        ['export const BillingStaff = () => applyDecorators(Authenticated(), UseGuards(GqlAuthBillingAdminGuard))'],
+      ),
+    ).toEqual([])
+  })
+
+  it('still fails an operation behind a repo-local guard nobody declared', () => {
+    expect(
+      unauthorizedNames(`
+        @Authenticated()
+        @UseGuards(GqlAuthReportsGuard)
+        @Resolver()
+        class ReportsResolver {
+          @Query(() => Boolean)
+          reports(@Args('id') id: string) {}
+        }
+      `),
+    ).toEqual(['reports'])
+  })
+
+  it('keeps caller-scoped operations out, as before', () => {
+    expect(
+      unauthorizedNames(`
+        @Authenticated()
+        @UseGuards(GqlAuthGuard)
+        @Resolver()
+        class MeResolver {
+          @Query(() => Boolean)
+          me(@CtxUser() user: User) {}
+        }
+      `),
     ).toEqual([])
   })
 })

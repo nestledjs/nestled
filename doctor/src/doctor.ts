@@ -10,7 +10,7 @@ import {
 } from './doctor-auth-analysis'
 import {
   analyzeAccessPolicies,
-  getUndeclaredAccessOperations,
+  getUnauthorizedAccessOperations,
   readStringObjectArray,
   type AccessPolicyDeclaration,
   type InlineAccessCheckViolation,
@@ -57,6 +57,12 @@ import {
 import { unauditedMutations } from './doctor-audit-coverage'
 import { getComposedGuardDecorators, mayDeclareComposedGuards } from './doctor-composed-guards'
 import type { ComposedGuardDecorators } from './doctor-auth-analysis'
+import {
+  DECLARED_GUARDS_PATH,
+  readDeclaredGuards,
+  unusedDeclaredGuards,
+  type DeclaredGuards,
+} from './doctor-declared-guards'
 import { findRawNulLines, RAW_NUL_SOURCE_PATTERN } from './doctor-raw-nul-bytes'
 
 type Finding = {
@@ -2051,25 +2057,25 @@ const reportUnauthorizedOperations = (
   file: string,
   exemptions: PermissionExemptions,
   unauthorized: Set<string>,
+  declaredGuards: DeclaredGuards,
+  declaredGuardsInUse: Set<string>,
 ): void => {
   const raw = readFileSync(file, 'utf8')
-  const source = stripComments(raw)
+  const authOperations = getAuthOperations(stripComments(raw), file, { composedGuards: getComposedGuards() })
 
-  const guardedNames = new Set(
-    getAuthOperations(source, file, { composedGuards: getComposedGuards() })
-      .filter((operation) => hasAuthenticationGuard(operation))
-      .map((operation) => operation.name),
-  )
+  for (const operation of authOperations) {
+    for (const guard of operation.guardNames) {
+      if (declaredGuards.has(guard)) declaredGuardsInUse.add(guard)
+    }
+  }
 
-  for (const operation of getUndeclaredAccessOperations(raw, file, (name) => guardedNames.has(name))) {
-    if (operation.callerScoped) continue
-
+  for (const operation of getUnauthorizedAccessOperations(raw, file, authOperations, declaredGuards)) {
     unauthorized.add(`${file}::${operation.name}`)
     if (exemptions[file]?.[operation.name]) continue
 
     fail(
       'access-policy',
-      `${operation.className}.${operation.name} is authenticated but neither declares a permission nor scopes to the caller; add a Require*Permission decorator, take @CtxUser() and scope the query, or record it in ${permissionExemptionsPath} with a reason`,
+      `${operation.className}.${operation.name} is authenticated but neither declares a permission nor scopes to the caller; add a Require*Permission decorator, take @CtxUser() and scope the query, protect it with a guard declared in ${DECLARED_GUARDS_PATH}, or record it in ${permissionExemptionsPath} with a reason`,
       file,
       operation.line,
     )
@@ -2164,16 +2170,34 @@ const checkEnforcementPortability = () => {
 const checkAccessPolicyCoverage = () => {
   const exemptions = readPermissionExemptions()
   const unauthorized = new Set<string>()
+  const declared = readDeclaredGuards()
+  const declaredGuardsInUse = new Set<string>()
+
+  // A rejected entry recognizes nothing, so the operations it meant to cover fail on their own; say
+  // why here, once, rather than leaving the repo to wonder why its declaration had no effect.
+  for (const problem of declared.problems) {
+    fail('access-policy', `${DECLARED_GUARDS_PATH}: ${problem}`, DECLARED_GUARDS_PATH)
+  }
 
   for (const file of getAuthSourceFiles()) {
     // The generated posture proves the privilege ceiling, not why each operation exists. Generated
     // methods still owe an auditable read/manage capability just like handwritten admin methods.
     // The generator emits those declarations; checking the output here catches stale or edited
     // generated files before deployment.
-    reportUnauthorizedOperations(file, exemptions, unauthorized)
+    reportUnauthorizedOperations(file, exemptions, unauthorized, declared.guards, declaredGuardsInUse)
   }
 
   reportStaleExemptions(exemptions, unauthorized)
+
+  // An unused declaration is a claim nobody checks: it would quietly start authorizing whatever the
+  // guard is next applied to, with a reason written for something else.
+  for (const guard of unusedDeclaredGuards(declared.guards, declaredGuardsInUse)) {
+    warn(
+      'access-policy',
+      `Declared guard ${guard} is not applied to any API operation; remove the stale declaration`,
+      DECLARED_GUARDS_PATH,
+    )
+  }
 }
 
 const reportInlineAccessViolation = (violation: InlineAccessCheckViolation, file: string): void => {
