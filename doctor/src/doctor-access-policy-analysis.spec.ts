@@ -134,6 +134,29 @@ describe('readStringObjectArray', () => {
 })
 
 describe('getUndeclaredAccessOperations', () => {
+  it('scopes a declared permission to its own class when two classes share a method name', () => {
+    const undeclared = getUndeclaredAccessOperations(`
+      @Resolver()
+      @RequirePlatformPermission('reports.read')
+      class ReportsResolver {
+        @Query(() => Boolean)
+        list(@Args('id') id: string) {}
+      }
+
+      @Resolver()
+      class BillingResolver {
+        @Query(() => Boolean)
+        @RequirePlatformPermission('billing.read')
+        summary(@Args('id') id: string) {}
+
+        @Query(() => Boolean)
+        list(@Args('id') id: string) {}
+      }
+    `)
+
+    expect(undeclared.map((operation) => `${operation.className}.${operation.name}`)).toEqual(['BillingResolver.list'])
+  })
+
   it('reports an operation with neither a permission nor caller scoping', () => {
     const undeclared = getUndeclaredAccessOperations(`
       @Resolver()
@@ -374,6 +397,57 @@ describe('getUnauthorizedAccessOperations', () => {
         }
       `),
     ).toEqual(['reports'])
+  })
+
+  // Two resolvers in one file can share a method name. A declared guard on one must not authorize
+  // the other: keyed by method name alone, the unguarded `list` disappeared from the findings.
+  it('joins on class and method, so a declared guard on one class does not cover another', () => {
+    const source = `
+      @Resolver()
+      class BillingResolver {
+        @Query(() => Boolean)
+        @Authenticated()
+        @UseGuards(GqlAuthBillingAdminGuard)
+        list(@Args('id') id: string) {}
+      }
+
+      @Resolver()
+      class ReportsResolver {
+        @Query(() => Boolean)
+        @Authenticated()
+        @UseGuards(GqlAuthGuard)
+        list(@Args('id') id: string) {}
+      }
+    `
+    const authOperations = getAuthOperations(source, 'billing.resolver.ts')
+    const unauthorized = getUnauthorizedAccessOperations(source, 'billing.resolver.ts', authOperations, declaredGuards)
+
+    expect(unauthorized.map((operation) => `${operation.className}.${operation.name}`)).toEqual([
+      'ReportsResolver.list',
+    ])
+  })
+
+  it('does not treat a public method as guarded because a same-named method elsewhere in the file is', () => {
+    const source = `
+      @Resolver()
+      class PublicResolver {
+        @Query(() => Boolean)
+        @Public()
+        list(@Args('id') id: string) {}
+      }
+
+      @Resolver()
+      class ReportsResolver {
+        @Query(() => Boolean)
+        @Authenticated()
+        @UseGuards(GqlAuthGuard)
+        list(@Args('id') id: string) {}
+      }
+    `
+    const authOperations = getAuthOperations(source, 'reports.resolver.ts')
+    const unauthorized = getUnauthorizedAccessOperations(source, 'reports.resolver.ts', authOperations, declaredGuards)
+
+    expect(unauthorized.map((operation) => operation.className)).toEqual(['ReportsResolver'])
   })
 
   it('keeps caller-scoped operations out, as before', () => {

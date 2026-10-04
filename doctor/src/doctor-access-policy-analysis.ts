@@ -196,6 +196,8 @@ export type UndeclaredAccessOperation = {
   callerScoped: boolean
 }
 
+const operationKey = (className: string, name: string): string => `${className}.${name}`
+
 /**
  * Guarded API operations that declare no permission — neither on the method nor class-wide.
  *
@@ -210,16 +212,25 @@ export type UndeclaredAccessOperation = {
 export const getUndeclaredAccessOperations = (
   source: string,
   fileName = 'source.ts',
-  isGuarded: (operationName: string) => boolean = () => true,
+  isGuarded: (operationName: string, className: string) => boolean = () => true,
 ): UndeclaredAccessOperation[] => {
   const { declarations, operations } = analyzeAccessPolicies(source, fileName)
-  const classWide = declarations.some((declaration) => declaration.name === '(class)')
-  if (classWide) return []
 
-  const declared = new Set(declarations.map((declaration) => declaration.name))
+  // Keyed by class as well as method: a file can hold several resolvers, and a permission declared
+  // on one class's `list` (or class-wide on one class) says nothing about another class's `list`.
+  // Keying by method name alone let one declaration hide an unrelated, undeclared endpoint.
+  const classWide = new Set(
+    declarations.filter((declaration) => declaration.name === '(class)').map((declaration) => declaration.className),
+  )
+  const declared = new Set(declarations.map((declaration) => operationKey(declaration.className, declaration.name)))
 
   return operations
-    .filter((operation) => !declared.has(operation.name) && isGuarded(operation.name))
+    .filter(
+      (operation) =>
+        !classWide.has(operation.className) &&
+        !declared.has(operationKey(operation.className, operation.name)) &&
+        isGuarded(operation.name, operation.className),
+    )
     .map((operation) => ({
       className: operation.className,
       name: operation.name,
@@ -243,17 +254,24 @@ export const getUnauthorizedAccessOperations = (
   authOperations: readonly AuthOperation[],
   declaredGuards: DeclaredGuards,
 ): UndeclaredAccessOperation[] => {
+  // Joined on class and method, never method alone: two resolvers in one file can share a method
+  // name, and a declared guard on one must not authorize the other.
   const guarded = new Set(
-    authOperations.filter((operation) => hasAuthenticationGuard(operation)).map((operation) => operation.name),
+    authOperations
+      .filter((operation) => hasAuthenticationGuard(operation))
+      .map((operation) => operationKey(operation.className, operation.name)),
   )
   const behindDeclaredGuard = new Set(
     authOperations
       .filter((operation) => declaredGuardsOn(operation.guardNames, declaredGuards).length > 0)
-      .map((operation) => operation.name),
+      .map((operation) => operationKey(operation.className, operation.name)),
   )
 
-  return getUndeclaredAccessOperations(source, fileName, (name) => guarded.has(name)).filter(
-    (operation) => !operation.callerScoped && !behindDeclaredGuard.has(operation.name),
+  return getUndeclaredAccessOperations(source, fileName, (name, className) =>
+    guarded.has(operationKey(className, name)),
+  ).filter(
+    (operation) =>
+      !operation.callerScoped && !behindDeclaredGuard.has(operationKey(operation.className, operation.name)),
   )
 }
 
