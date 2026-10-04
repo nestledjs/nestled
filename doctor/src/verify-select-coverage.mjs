@@ -249,6 +249,49 @@ function run() {
   }
 
   /**
+   * Split a select body into its top-level entries: commas separate entries only outside nested
+   * objects, arrays, strings and comments. Layout doesn't matter, so `{ id: true, name: true }` on
+   * one line yields both entries. Comments stay attached to the entry they precede.
+   */
+  const topLevelEntries = (body) => {
+    const entries = []
+    let depth = 0
+    let start = 0
+    let index = 0
+    while (index < body.length) {
+      const char = body[index]
+      const next = body[index + 1]
+      if (char === '/' && next === '/') {
+        const end = body.indexOf('\n', index)
+        index = end < 0 ? body.length : end
+        continue
+      }
+      if (char === '/' && next === '*') {
+        const end = body.indexOf('*/', index + 2)
+        index = end < 0 ? body.length : end + 2
+        continue
+      }
+      if (char === '"' || char === "'" || char === '`') {
+        let cursor = index + 1
+        while (cursor < body.length && body[cursor] !== char) cursor += body[cursor] === '\\' ? 2 : 1
+        index = cursor + 1
+        continue
+      }
+      if (char === '{' || char === '[' || char === '(') depth++
+      else if (char === '}' || char === ']' || char === ')') depth--
+      else if (char === ',' && depth === 0) {
+        entries.push(body.slice(start, index))
+        start = index + 1
+      }
+      index++
+    }
+    entries.push(body.slice(start))
+    return entries.map((entry) => entry.trim()).filter(Boolean)
+  }
+
+  const LEADING_COMMENTS = /^(?:\s*(?:\/\*[\s\S]*?\*\/|\/\/[^\n]*(?:\n|$)))*\s*/
+
+  /**
    * Top-level entries of a select body, following `...OTHER` spreads within the file. `nested`
    * maps a relation key to the body of its inner `select: { ... }`, so the caller can recurse into
    * it against the relation's target model.
@@ -257,52 +300,48 @@ function run() {
     const keys = new Set()
     const omits = new Set()
     const nested = {}
-    let depth = 0
-    const lines = body.split('\n')
-    let offset = 0
-    for (const line of lines) {
-      const trimmed = line.trim()
-      if (depth === 0) {
-        const inlineOmit = trimmed.match(/@select-omits\s+([^\n*]+)/)
-        if (inlineOmit) {
-          for (const field of inlineOmit[1]
-            .split(',')
-            .map((value) => value.trim())
-            .filter(Boolean)) {
-            omits.add(field)
+    for (const entry of topLevelEntries(body)) {
+      // `@select-omits` comments sit before an entry (or alone, before the next one), never inside
+      // a nested object, so only the text before the entry's first `{` is searched.
+      const head = entry.split('{')[0]
+      for (const inlineOmit of head.matchAll(/@select-omits\s+([^\n*]+)/g)) {
+        for (const field of inlineOmit[1]
+          .split(',')
+          .map((value) => value.trim())
+          .filter(Boolean)) {
+          omits.add(field)
+        }
+      }
+      const code = entry.replace(LEADING_COMMENTS, '')
+      const key = code.match(/^(\w+)\s*:/)
+      if (key) {
+        keys.add(key[1])
+        const rest = code.slice(key[0].length)
+        if (rest.trimStart().startsWith('{')) {
+          const outer = objectBodyAt(rest, 0)
+          if (outer) {
+            const selectAt = outer.search(/\bselect:/)
+            if (selectAt >= 0) nested[key[1]] = objectBodyAt(outer, selectAt)
           }
         }
-        const key = trimmed.match(/^(\w+):/)
-        if (key) {
-          keys.add(key[1])
-          const rest = body.slice(offset + line.indexOf(':') + 1)
-          if (rest.trimStart().startsWith('{')) {
-            const outer = objectBodyAt(rest, 0)
-            if (outer) {
-              const selectAt = outer.search(/\bselect:/)
-              if (selectAt >= 0) nested[key[1]] = objectBodyAt(outer, selectAt)
-            }
+        continue
+      }
+      const spread = code.match(/^\.\.\.([A-Z][A-Z0-9_]*)\b/)
+      if (spread && !seen.has(spread[1])) {
+        seen.add(spread[1])
+        const inner = constantBody(source, spread[1])
+        if (inner) {
+          const resolved = resolveSelect(source, inner, seen)
+          for (const field of resolved.keys) keys.add(field)
+          for (const omitted of resolved.omits) omits.add(omitted)
+          for (const [field, select] of Object.entries(resolved.nested)) {
+            nested[field] ??= select
           }
-        }
-        const spread = trimmed.match(/^\.\.\.([A-Z][A-Z0-9_]*)\b/)
-        if (spread && !seen.has(spread[1])) {
-          seen.add(spread[1])
-          const inner = constantBody(source, spread[1])
-          if (inner) {
-            const resolved = resolveSelect(source, inner, seen)
-            for (const field of resolved.keys) keys.add(field)
-            for (const omitted of resolved.omits) omits.add(omitted)
-            for (const [field, select] of Object.entries(resolved.nested)) {
-              nested[field] ??= select
-            }
-            for (const omitted of annotationFor(source, spread[1], 'select-omits')) {
-              omits.add(omitted)
-            }
+          for (const omitted of annotationFor(source, spread[1], 'select-omits')) {
+            omits.add(omitted)
           }
         }
       }
-      depth += (line.match(/\{/g) ?? []).length - (line.match(/\}/g) ?? []).length
-      offset += line.length + 1
     }
     return { keys, omits, nested }
   }
