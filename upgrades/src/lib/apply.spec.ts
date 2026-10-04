@@ -1,6 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyRun } from './apply';
@@ -653,6 +663,96 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(result.status).toBe('blocked');
     expect(result.blocked?.uncommitted).toEqual(['apps/example/file.txt']);
     expect(readFileSync(join(project, 'file.txt'), 'utf8')).toBe('base\nmine\n');
+  });
+
+  function runWithVerification(command: string) {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    return applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [command], allowDirty: true });
+  }
+
+  it('puts back the staged version of a partially staged file that a step re-stages', () => {
+    writeFileSync(join(repo, 'docs', 'notes.md'), 'one\ntwo\nstaged\n', 'utf8');
+    git(repo, ['add', 'docs/notes.md']);
+    writeFileSync(join(repo, 'docs', 'notes.md'), USER_NOTES, 'utf8');
+    const stagedBefore = git(repo, ['ls-files', '-s', 'docs/notes.md']);
+
+    const result = runWithVerification('git add docs/notes.md; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['ls-files', '-s', 'docs/notes.md'])).toBe(stagedBefore);
+    expect(git(repo, ['show', ':docs/notes.md'])).toBe('one\ntwo\nstaged\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('removes a file a note created even after a failing step rewrote it', () => {
+    writeFileSync(join(repo, 'added.txt'), 'from the template\n', 'utf8');
+    git(repo, ['add', '-N', 'added.txt']);
+    const create = git(repo, ['diff', '--', 'added.txt']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'added.txt'));
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), create, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['echo changed > added.txt; false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, 'added.txt'))).toBe(false);
+    expect(git(repo, ['status', '--porcelain', '--', 'added.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('puts back a dirty file a step replaced with a directory', () => {
+    const result = runWithVerification('rm docs/notes.md; mkdir -p docs/notes.md/inner; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(lstatSync(join(repo, 'docs', 'notes.md')).isFile()).toBe(true);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('puts back dirty symlinks, valid and dangling, that a step replaced', () => {
+    symlinkSync('notes.md', join(repo, 'docs', 'valid-link'));
+    symlinkSync('missing-target', join(repo, 'docs', 'dangling-link'));
+
+    const result = runWithVerification(
+      'rm docs/valid-link docs/dangling-link; echo x > docs/valid-link; ln -s elsewhere docs/dangling-link; false',
+    );
+
+    expect(result.status).toBe('verification-failed');
+    expect(readlinkSync(join(repo, 'docs', 'valid-link'))).toBe('notes.md');
+    expect(readlinkSync(join(repo, 'docs', 'dangling-link'))).toBe('missing-target');
+  });
+
+  it('does not write a package bump through a symlinked manifest', () => {
+    writeFileSync(join(repo, '.gitignore'), 'linked/\ntarget.json\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore']);
+    const target = `${JSON.stringify({ dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    writeFileSync(join(repo, 'target.json'), target, 'utf8');
+    mkdirSync(join(repo, 'linked'));
+    symlinkSync('../target.json', join(repo, 'linked', 'package.json'));
+    fakeNpm('true');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(readFileSync(join(repo, 'target.json'), 'utf8')).toBe(target);
   });
 
   it('resolves a manifest outside the project directory against the repository root', () => {

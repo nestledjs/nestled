@@ -56,6 +56,22 @@ describe('patchPaths', () => {
     expect(patchPaths(diff).sort()).toEqual(['bin/run', 'docs/über.md', 'my notes.md']);
   });
 
+  it('strips whatever prefixes the diff uses, as git apply -p1 does', () => {
+    const diff = [
+      'diff --git old/docs/notes.md new/docs/notes.md',
+      '--- old/docs/notes.md',
+      '+++ new/docs/notes.md',
+      '@@ -1 +1 @@',
+      '-a',
+      '+b',
+      'diff --git x/bin/my tool y/bin/my tool',
+      'old mode 100644',
+      'new mode 100755',
+      '',
+    ].join('\n');
+    expect(patchPaths(diff).sort()).toEqual(['bin/my tool', 'docs/notes.md']);
+  });
+
   it('never mistakes hunk lines for headers', () => {
     const diff = [
       'diff --git a/README.md b/README.md',

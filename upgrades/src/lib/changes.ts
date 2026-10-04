@@ -1,4 +1,16 @@
-import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, rmdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  readlinkSync,
+  rmdirSync,
+  rmSync,
+  Stats,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, join } from 'node:path';
 import { git, gitOutput } from './git';
 
@@ -69,25 +81,30 @@ function unquote(raw: string): string {
   return Buffer.from(bytes).toString('utf8');
 }
 
-/** The path on a `---`/`+++`/`rename from` line: unquoted, `a/`/`b/` stripped, `/dev/null` dropped. */
-function headerPath(raw: string, stripPrefix: boolean): string | null {
-  let value = raw.startsWith('"') ? unquote(raw) : raw.replace(/\t.*$/, '');
-  if (value === '/dev/null') return null;
-  if (stripPrefix) value = value.replace(/^[ab]\//, '');
-  return value || null;
+/** Drop the first path component, as `git apply` does by default (`-p1`): `a/x`, `old/x` -> `x`. */
+function stripComponent(path: string): string | null {
+  const slash = path.indexOf('/');
+  return slash > 0 && slash < path.length - 1 ? path.slice(slash + 1) : null;
 }
 
-/** `diff --git a/x b/x` when the section has no other path line (mode-only, binary). */
+/** The path on a `---`/`+++`/`rename from` line: unquoted, `/dev/null` dropped, first component stripped. */
+function headerPath(raw: string, stripPrefix: boolean): string | null {
+  const value = raw.startsWith('"') ? unquote(raw) : raw.replace(/\t.*$/, '');
+  if (value === '/dev/null' || !value) return null;
+  return stripPrefix ? stripComponent(value) : value;
+}
+
+/** `diff --git <p>/x <p>/x` when the section has no other path line (mode-only, binary). */
 function gitHeaderPaths(rest: string): string[] {
   const quoted = rest.match(/^("(?:[^"\\]|\\.)*"|\S+) ("(?:[^"\\]|\\.)*"|\S+)$/);
   if (quoted && (quoted[1].startsWith('"') || quoted[2].startsWith('"'))) {
     return [quoted[1], quoted[2]].map((part) => headerPath(part, true)).filter((p): p is string => !!p);
   }
-  // Unquoted `a/<p> b/<p>` with an identical path on both sides (no rename): split down the middle.
-  if (rest.startsWith('a/') && (rest.length - 5) % 2 === 0) {
-    const half = (rest.length - 5) / 2;
-    const path = rest.slice(2, 2 + half);
-    if (rest.slice(2 + half) === ` b/${path}`) return [path];
+  // Unquoted, and the same path on both sides (there is no rename without rename lines): find the
+  // space that splits the header into two sides that agree once their prefixes are stripped.
+  for (let i = rest.indexOf(' '); i > 0; i = rest.indexOf(' ', i + 1)) {
+    const left = stripComponent(rest.slice(0, i));
+    if (left && left === stripComponent(rest.slice(i + 1))) return [left];
   }
   return [];
 }
@@ -158,7 +175,47 @@ export function patchPaths(diffText: string, excludes: string[] = []): string[] 
   return [...paths].filter((path) => !excluded.some((pattern) => pattern.test(path)));
 }
 
-type PriorState = { kind: 'tracked' } | { kind: 'absent' } | { kind: 'untracked'; contents: Buffer };
+/** What is at a path on disk, captured so it can be put back exactly. */
+type FileState =
+  | { kind: 'absent' }
+  | { kind: 'file'; contents: Buffer; mode: number }
+  | { kind: 'link'; target: string }
+  /** A directory or special file: never captured, never overwritten. */
+  | { kind: 'other' };
+
+function lstatOrNull(absolute: string): Stats | null {
+  try {
+    return lstatSync(absolute);
+  } catch {
+    return null;
+  }
+}
+
+function readState(absolute: string): FileState {
+  const stat = lstatOrNull(absolute);
+  if (!stat) return { kind: 'absent' };
+  if (stat.isSymbolicLink()) return { kind: 'link', target: readlinkSync(absolute) };
+  if (stat.isFile()) return { kind: 'file', contents: readFileSync(absolute), mode: stat.mode & 0o777 };
+  return { kind: 'other' };
+}
+
+function sameState(a: FileState, b: FileState): boolean {
+  if (a.kind === 'file' && b.kind === 'file') return a.mode === b.mode && a.contents.equals(b.contents);
+  if (a.kind === 'link' && b.kind === 'link') return a.target === b.target;
+  return a.kind === b.kind && a.kind !== 'other';
+}
+
+/** Replace whatever is at `absolute` with `state`. */
+function writeState(absolute: string, state: FileState): void {
+  if (state.kind === 'other') return;
+  if (lstatOrNull(absolute)) rmSync(absolute, { recursive: true, force: true });
+  if (state.kind === 'absent') return;
+  mkdirSync(dirname(absolute), { recursive: true });
+  if (state.kind === 'link') symlinkSync(state.target, absolute);
+  else writeFileSync(absolute, state.contents, { mode: state.mode });
+}
+
+type PriorState = { kind: 'tracked' } | FileState;
 
 /**
  * The paths one apply run changes, each with how it looked before the run first touched it, so a
@@ -187,12 +244,8 @@ export class RunChanges {
     if (!fresh.length) return;
     const tracked = this.trackedAtStart(fresh);
     for (const path of fresh) {
-      const absolute = join(this.root, path);
-      if (tracked.has(path)) this.prior.set(path, { kind: 'tracked' });
-      else if (!existsSync(absolute)) this.prior.set(path, { kind: 'absent' });
-      // An untracked file the user has, invisible to `git status` because it is ignored.
-      else if (lstatSync(absolute).isFile())
-        this.prior.set(path, { kind: 'untracked', contents: readFileSync(absolute) });
+      // Anything not tracked is either absent or a file the user has that git ignores: keep a copy.
+      this.prior.set(path, tracked.has(path) ? { kind: 'tracked' } : readState(join(this.root, path)));
     }
   }
 
@@ -218,18 +271,20 @@ export class RunChanges {
     for (const chunk of chunks(tracked)) {
       git(this.root, [LITERAL, 'checkout', this.startCommit, '--', ...chunk]);
     }
+    // -f: the index entry may match neither HEAD nor the file on disk (staged by us, then rewritten).
     for (const chunk of chunks(others)) {
-      git(this.root, [LITERAL, 'rm', '--cached', '-q', '--ignore-unmatch', '--', ...chunk]);
+      git(this.root, [LITERAL, 'rm', '--cached', '-f', '-q', '--ignore-unmatch', '--', ...chunk]);
     }
     for (const path of others) {
-      const state = this.prior.get(path);
+      const state = this.prior.get(path) as FileState;
       const absolute = join(this.root, path);
-      if (state?.kind === 'untracked') {
-        mkdirSync(dirname(absolute), { recursive: true });
-        writeFileSync(absolute, state.contents);
-      } else if (existsSync(absolute) && !lstatSync(absolute).isDirectory()) {
+      if (state.kind === 'absent') {
+        // Something the run created; a directory in its place is not ours to remove.
+        if (!lstatOrNull(absolute) || lstatOrNull(absolute)?.isDirectory()) continue;
         rmSync(absolute, { force: true });
         this.pruneEmptyParents(path);
+      } else {
+        writeState(absolute, state);
       }
     }
   }
@@ -239,19 +294,9 @@ export class RunChanges {
     const tracked = new Set<string>();
     if (!this.startCommit) return tracked;
     for (const chunk of chunks(paths)) {
-      const out = git(this.root, [
-        LITERAL,
-        'ls-tree',
-        '-r',
-        '-z',
-        '--name-only',
-        '--full-tree',
-        this.startCommit,
-        '--',
-        ...chunk,
-      ]);
-      out.stdout
-        .split('\0')
+      const args = [LITERAL, 'ls-tree', '-r', '-z', '--name-only', '--full-tree', this.startCommit, '--', ...chunk];
+      git(this.root, args)
+        .stdout.split('\0')
         .filter(Boolean)
         .forEach((path) => tracked.add(path));
     }
@@ -274,40 +319,63 @@ export class RunChanges {
   }
 }
 
-/** The current bytes of each of `paths` (null when absent), to tell later whether anything rewrote them. */
-export function snapshotFiles(root: string, paths: Iterable<string>): Map<string, Buffer | null> {
-  const snapshot = new Map<string, Buffer | null>();
-  for (const path of paths) {
-    const absolute = join(root, path);
-    if (!existsSync(absolute)) snapshot.set(path, null);
-    else if (lstatSync(absolute).isFile()) snapshot.set(path, readFileSync(absolute));
+/** Index entries (`mode sha stage`, one per stage) of each of `paths`; a path with none is not in the index. */
+function indexEntries(root: string, paths: string[]): Map<string, string[]> {
+  const entries = new Map<string, string[]>();
+  for (const chunk of chunks(paths)) {
+    const out = git(root, [LITERAL, 'ls-files', '-s', '-z', '--', ...chunk]).stdout;
+    for (const record of out.split('\0').filter(Boolean)) {
+      const tab = record.indexOf('\t');
+      const path = record.slice(tab + 1);
+      entries.set(path, [...(entries.get(path) ?? []), record.slice(0, tab)]);
+    }
   }
-  return snapshot;
+  return entries;
+}
+
+/** The user's uncommitted work at a set of paths: what is on disk, and what is staged. */
+export interface UserState {
+  files: Map<string, FileState>;
+  index: Map<string, string[]>;
+}
+
+/** Capture `paths` as they are now, on disk and in the index. */
+export function snapshotFiles(root: string, paths: Iterable<string>): UserState {
+  const list = [...new Set(paths)];
+  const files = new Map<string, FileState>();
+  for (const path of list) files.set(path, readState(join(root, path)));
+  return { files, index: indexEntries(root, list) };
 }
 
 /**
- * Put back every snapshotted file whose bytes no longer match, and return those paths. Used around
- * steps that run third-party code (a package install, verification commands) on a dirty tree, so a
- * script that rewrites a file the user has uncommitted changes in cannot cost them that work.
+ * Put back every snapshotted path whose file (contents, mode, symlink target, or presence) or index
+ * entry no longer matches, and return those paths. Used around steps that run third-party code (a
+ * package install, verification commands) on a dirty tree, so a script that rewrites, replaces or
+ * re-stages a file the user has uncommitted work in cannot cost them that work.
  */
-export function restoreChangedFiles(root: string, snapshot: Map<string, Buffer | null>): string[] {
-  const restored: string[] = [];
-  for (const [path, contents] of snapshot) {
+export function restoreChangedFiles(root: string, snapshot: UserState): string[] {
+  const restored = new Set<string>();
+  for (const [path, before] of snapshot.files) {
     const absolute = join(root, path);
-    const stat = existsSync(absolute) ? lstatSync(absolute) : null;
-    if (stat?.isDirectory()) continue;
-    if (contents === null) {
-      if (!stat) continue;
-      rmSync(absolute, { force: true });
-    } else {
-      if (stat?.isFile() && readFileSync(absolute).equals(contents)) continue;
-      if (stat) rmSync(absolute, { force: true });
-      mkdirSync(dirname(absolute), { recursive: true });
-      writeFileSync(absolute, contents);
-    }
-    restored.push(path);
+    if (before.kind === 'other' || sameState(before, readState(absolute))) continue;
+    // A directory where the user had nothing was not theirs; leave it.
+    if (before.kind === 'absent' && lstatOrNull(absolute)?.isDirectory()) continue;
+    writeState(absolute, before);
+    restored.add(path);
   }
-  return restored;
+  const now = indexEntries(root, [...snapshot.files.keys()]);
+  const changed = [...snapshot.files.keys()].filter(
+    (path) => (snapshot.index.get(path) ?? []).join('\n') !== (now.get(path) ?? []).join('\n'),
+  );
+  if (changed.length) {
+    for (const chunk of chunks(changed)) {
+      git(root, [LITERAL, 'update-index', '--force-remove', '--', ...chunk]);
+    }
+    const info = changed.flatMap((path) => (snapshot.index.get(path) ?? []).map((entry) => `${entry}\t${path}\0`));
+    if (info.length) git(root, ['update-index', '-z', '--index-info'], info.join(''));
+    changed.forEach((path) => restored.add(path));
+  }
+  return [...restored];
 }
 
 /**

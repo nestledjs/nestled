@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, posix, relative, sep } from 'node:path';
 import { commitPaths, dirtyPaths, patchPaths, restoreChangedFiles, RunChanges, snapshotFiles } from './changes';
@@ -201,6 +201,8 @@ function planPackageReleases(cwd: string, note: UpgradeNote): PackagePlan {
   const writes: PackagePlan['writes'] = [];
   const updated: PackagePlan['updated'] = [];
   for (const manifestPath of manifests) {
+    // Writing through a symlink would change a file somewhere else, which no rollback could find.
+    if (lstatSync(manifestPath).isSymbolicLink()) continue;
     const pkg = safeReadPackageJson(manifestPath);
     if (!pkg) continue;
     let changed = false;
