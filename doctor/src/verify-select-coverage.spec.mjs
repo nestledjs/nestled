@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
 
 const toolPath = fileURLToPath(new URL('./verify-select-coverage.mjs', import.meta.url))
+const binPath = fileURLToPath(new URL('../bin/nestled-verify-select-coverage.js', import.meta.url))
 const workspaces = []
 
 const writeFixture = (workspace, path, contents) => {
@@ -73,6 +74,25 @@ afterEach(() => {
 })
 
 describe('verify-select-coverage', () => {
+  it('runs once through the bin and carries its exit code back', () => {
+    const clean = createWorkspace(`
+      /** @prisma-model User */
+      export const userSelect = { id: true, email: true, dob: true } as const
+    `)
+    const passed = spawnSync(process.execPath, [binPath, '--json'], { cwd: clean, encoding: 'utf8' })
+    expect(passed.stderr).toBe('')
+    expect(passed.status).toBe(0)
+    expect(JSON.parse(passed.stdout)).toBeTruthy()
+
+    const broken = createWorkspace(`
+      /** @prisma-model User */
+      export const userSelect = { id: true } as const
+    `)
+    const failed = spawnSync(process.execPath, [binPath, '--json'], { cwd: broken, encoding: 'utf8' })
+    expect(failed.stderr).toBe('')
+    expect(failed.status).toBe(1)
+  })
+
   const createNonGraphqlWorkspace = (selectSource) => {
     const workspace = mkdtempSync(join(tmpdir(), 'verify-select-coverage-'))
     workspaces.push(workspace)

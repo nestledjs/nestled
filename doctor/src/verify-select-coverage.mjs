@@ -49,6 +49,7 @@
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { join, relative, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
 import { readRepoConfig, reportNothingChecked } from './doctor-repo-config.js'
 
 const SCHEMA_DIRECTORY_CANDIDATES = ['libs/api/prisma/src/lib/schemas', 'prisma', 'libs/api/prisma/src/lib']
@@ -546,4 +547,10 @@ function run() {
   return selectFiles.length === 0 ? reportNothingChecked('verify-select-coverage') : 0
 }
 
-process.exitCode = run()
+/** Entry point for the `nestled-verify-select-coverage` bin: runs the check, returns the exit code. */
+export const runCli = () => run()
+
+// Run directly (`node verify-select-coverage.mjs`), not when imported: the bin imports this module
+// and calls runCli, and running on import as well made the check run twice and the bin crash.
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+if (isMain) process.exitCode = run()
