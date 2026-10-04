@@ -54,6 +54,7 @@ import {
   getGraphqlOperationMethods,
   stripComments,
 } from './doctor-source-analysis'
+import { unauditedMutations } from './doctor-audit-coverage'
 
 type Finding = {
   check: string
@@ -1507,13 +1508,10 @@ const checkResolverScopeAnchoring = () => {
 const isSensitiveMutationDomain = (file: string): boolean =>
   /\/(auth|admin|billing|organization|subscription|user|role|permission|invite)\//.test(file)
 
-const hasAuditMarker = (source: string): boolean =>
-  /\baudit(?:Log)?\b|recordAuditLog|SecurityEvent|securityEvent/i.test(source)
-
-const hasSiblingServiceAuditMarker = (file: string): boolean => {
-  const serviceFiles = directFiles(dirname(file), (path) => path.endsWith('.service.ts'))
-  return serviceFiles.some((serviceFile) => hasAuditMarker(stripComments(readFileSync(serviceFile, 'utf8'))))
-}
+const siblingServiceSources = (file: string): string[] =>
+  directFiles(dirname(file), (path) => path.endsWith('.service.ts')).map((serviceFile) =>
+    stripComments(readFileSync(serviceFile, 'utf8')),
+  )
 
 const checkAuditCoverageHeuristic = () => {
   const resolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
@@ -1522,18 +1520,13 @@ const checkAuditCoverageHeuristic = () => {
     if (!isSensitiveMutationDomain(file)) continue
 
     const source = stripComments(readFileSync(file, 'utf8'))
-    const siblingServiceHasAuditMarker = hasSiblingServiceAuditMarker(file)
-    for (const operation of getGraphqlOperationMethods(source)) {
-      if (!/@Mutation\b/.test(operation.decorators)) continue
-      if (hasAuditMarker(operation.body) || hasAuditMarker(source) || siblingServiceHasAuditMarker) {
-        continue
-      }
-
+    // Judged per mutation: an audit call elsewhere in the file or service no longer counts.
+    for (const mutation of unauditedMutations(source, siblingServiceSources(file))) {
       review(
         'audit-coverage',
-        `Review ${operation.name}: sensitive mutation has no obvious audit log call in its resolver file`,
+        `Review ${mutation.name}: sensitive mutation writes no audit record (in its body or in a method it calls)`,
         file,
-        operation.line,
+        mutation.line,
       )
     }
   }
