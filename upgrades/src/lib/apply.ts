@@ -296,6 +296,21 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     return { status: 'up-to-date', channel, applied: [], baselineRelease: log.template.baselineRelease };
   }
 
+  // A note already recorded as blocked waits for a person: it was tried, or deliberately held, and
+  // re-attempting it unattended would redo exactly what was refused. Stop before creating a branch or
+  // touching the working tree (the feed itself has already been read, which may have fetched); the
+  // ledger entry is resolved by hand-editing it to a terminal outcome, as with `needs-review`.
+  const held = pending.notes.find((note) => note.status === 'blocked');
+  if (held && held === pending.notes[0]) {
+    return {
+      status: 'blocked',
+      channel,
+      applied: [],
+      blocked: { id: held.id, reason: 'Recorded as blocked; resolve it by hand, then record a terminal outcome.' },
+      baselineRelease: log.template.baselineRelease,
+    };
+  }
+
   if (!isGitRepo(projectDir)) {
     throw new Error('Project is not a git repository; cannot create an upgrade branch.');
   }
@@ -324,6 +339,10 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   let reviewReleaseId: string | null = null;
 
   for (const note of pending.notes) {
+    if (note.status === 'blocked') {
+      blocked = { id: note.id, reason: 'Recorded as blocked; resolve it by hand, then record a terminal outcome.' };
+      break;
+    }
     if (note.area && forked.has(note.area)) {
       blocked = { id: note.id, reason: `Area "${note.area}" is marked forked; review intent before applying.` };
       break;
