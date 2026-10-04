@@ -55,6 +55,7 @@ import {
   stripComments,
 } from './doctor-source-analysis'
 import { unauditedMutations } from './doctor-audit-coverage'
+import { findRawNulLines, RAW_NUL_SOURCE_PATTERN } from './doctor-raw-nul-bytes'
 
 type Finding = {
   check: string
@@ -1520,6 +1521,20 @@ const siblingServiceSources = (file: string): string[] =>
     stripComments(readFileSync(serviceFile, 'utf8')),
   )
 
+// Raw NUL bytes hide a file from grep and ripgrep entirely; see doctor-raw-nul-bytes.ts.
+const checkRawNulBytes = () => {
+  for (const file of ['libs', 'apps'].flatMap((dir) => walkFiles(dir, (path) => RAW_NUL_SOURCE_PATTERN.test(path)))) {
+    for (const line of findRawNulLines(readFileSync(file))) {
+      fail(
+        'raw-nul-byte',
+        'Raw NUL (0x00) byte: grep and ripgrep treat this file as binary and silently skip it. Write the escape \\x00 inside a string or template literal instead',
+        file,
+        line,
+      )
+    }
+  }
+}
+
 type AuditExemptions = Record<string, Record<string, string>>
 
 /**
@@ -2312,6 +2327,7 @@ checkUnsafeTypeScriptCasts()
 checkResolverScopeAnchoring()
 checkAuditCoverageHeuristic()
 checkEmulationPrivilegeCeiling()
+checkRawNulBytes()
 
 printFindings('Warnings', warnings)
 printFindings('Failures', failures)
