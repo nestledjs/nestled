@@ -4,11 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { afterEach, describe, expect, it } from 'vitest'
-import { loadModels, verifySelects,
-  reportNothingChecked,
-  readRepoConfig,
-  findSelectFiles,
-} from './verify-selects.mjs'
+import { loadModels, verifySelects, reportNothingChecked, readRepoConfig, findSelectFiles } from './verify-selects.mjs'
 
 const toolPath = fileURLToPath(new URL('./verify-selects.mjs', import.meta.url))
 const workspaces = []
@@ -132,9 +128,7 @@ describe('verify-selects', () => {
         path: 'SETTINGS_SELECT.author.missingUserField',
       },
     ])
-    expect(result.unresolved).toEqual([
-      { file: 'custom-selects/settings.select.ts', const: 'MYSTERY_SELECT' },
-    ])
+    expect(result.unresolved).toEqual([{ file: 'custom-selects/settings.select.ts', const: 'MYSTERY_SELECT' }])
   })
 
   it('uses the regex schema fallback when Prisma internals are unavailable', async () => {
@@ -152,11 +146,7 @@ describe('verify-selects', () => {
 
   it('supports configurable roots, JSON output, and a non-zero finding exit', () => {
     const workspace = createWorkspace()
-    writeFixture(
-      workspace,
-      'chosen/user.select.ts',
-      'export const USER_SELECT = { friendsCount: true }',
-    )
+    writeFixture(workspace, 'chosen/user.select.ts', 'export const USER_SELECT = { friendsCount: true }')
     writeFixture(workspace, 'ignored/user.select.ts', 'export const USER_SELECT = { id: true }')
 
     const result = spawnSync(process.execPath, [toolPath, '--json', 'chosen'], {
@@ -258,7 +248,7 @@ describe('verify-selects', () => {
 
     // Both are unresolvable by name. Scanning from the previous constant's START swept up the
     // annotation in its body and silently validated TOTALLY_UNKNOWN_THING against User.
-    expect(result.unresolved.map(entry => entry.const).sort((left, right) => left.localeCompare(right))).toEqual([
+    expect(result.unresolved.map((entry) => entry.const).sort((left, right) => left.localeCompare(right))).toEqual([
       'FIRST_SELECT',
       'TOTALLY_UNKNOWN_THING',
     ])
@@ -282,7 +272,7 @@ describe('verify-selects', () => {
     const result = await verifySelects({ cwd: workspace, roots: ['custom-selects'] })
 
     // Tightening the scan window must not break the annotation's actual purpose.
-    expect(result.unresolved.map(entry => entry.const)).toEqual(['FIRST_SELECT'])
+    expect(result.unresolved.map((entry) => entry.const)).toEqual(['FIRST_SELECT'])
     expect(result.problems).toEqual([
       {
         file: 'custom-selects/misc.select.ts',
@@ -316,7 +306,7 @@ describe('verify-selects', () => {
     // constant at the `}` in that comment — putting the rest of its body, annotation included,
     // back into the next constant's window. Counting on the sanitized source fixes it; the mask
     // is length-preserving, so the offsets still line up with rawSource for the annotation scan.
-    expect(result.unresolved.map(entry => entry.const).sort((left, right) => left.localeCompare(right))).toEqual([
+    expect(result.unresolved.map((entry) => entry.const).sort((left, right) => left.localeCompare(right))).toEqual([
       'FIRST_SELECT',
       'TOTALLY_UNKNOWN_THING',
     ])
@@ -396,9 +386,7 @@ describe('repo layout config', () => {
       'not valid JSON',
     )
     expect(() =>
-      readRepoConfig(
-        withRepo({ '.nestled-updates/doctor.config.json': JSON.stringify({ selectFileSuffixes: 'x' }) }),
-      ),
+      readRepoConfig(withRepo({ '.nestled-updates/doctor.config.json': JSON.stringify({ selectFileSuffixes: 'x' }) })),
     ).toThrow('array of non-empty strings')
   })
 
@@ -414,9 +402,7 @@ describe('repo layout config', () => {
     ).toThrow('non-empty array')
 
     expect(() =>
-      readRepoConfig(
-        withRepo({ '.nestled-updates/doctor.config.json': JSON.stringify({ selectFileSuffixes: [] }) }),
-      ),
+      readRepoConfig(withRepo({ '.nestled-updates/doctor.config.json': JSON.stringify({ selectFileSuffixes: [] }) })),
     ).toThrow('non-empty array')
   })
 
@@ -438,7 +424,7 @@ describe('repo layout config', () => {
 })
 
 describe('reportNothingChecked', () => {
-  const withRepo = files => {
+  const withRepo = (files) => {
     const repo = mkdtempSync(join(tmpdir(), 'verify-selects-nothing-'))
     for (const [relativePath, contents] of Object.entries(files)) {
       const full = join(repo, relativePath)
@@ -452,7 +438,7 @@ describe('reportNothingChecked', () => {
     const repo = withRepo({})
     const errors = []
     const original = console.error
-    console.error = message => errors.push(message)
+    console.error = (message) => errors.push(message)
     try {
       expect(reportNothingChecked('verify-selects', repo)).toBe(1)
     } finally {
@@ -473,7 +459,7 @@ describe('reportNothingChecked', () => {
     })
     const logs = []
     const original = console.error
-    console.error = message => logs.push(message)
+    console.error = (message) => logs.push(message)
     try {
       expect(reportNothingChecked('verify-selects', repo)).toBe(0)
     } finally {
@@ -483,6 +469,43 @@ describe('reportNothingChecked', () => {
     // stays visible on every run.
     expect(logs.join('\n')).toContain('as declared')
     expect(logs.join('\n')).toContain('generated CRUD')
+  })
+
+  const capture = (run) => {
+    const errors = []
+    const original = console.error
+    console.error = (message) => errors.push(message)
+    try {
+      return { code: run(), text: errors.join('\n') }
+    } finally {
+      console.error = original
+    }
+  }
+  const config = (fields) =>
+    withRepo({
+      '.nestled-updates/doctor.config.json': JSON.stringify({ selectFileSuffixes: ['.select.ts'], ...fields }),
+    })
+
+  it('names noCheckableSelects, not noSelectFiles, when selects exist but none is checkable', () => {
+    const { code, text } = capture(() => reportNothingChecked('verify-fragments', config({}), 'no-checkable-selects'))
+    expect(code).toBe(1)
+    expect(text).toContain('noCheckableSelects')
+    expect(text).not.toContain('noSelectFiles')
+  })
+
+  it('passes the no-checkable-selects state only with its own declaration', () => {
+    const declared = config({ noCheckableSelects: 'GraphQL is served by generated CRUD and inline selects.' })
+    expect(capture(() => reportNothingChecked('verify-fragments', declared, 'no-checkable-selects')).code).toBe(0)
+    // One declaration cannot stand in for the other: losing every select file must still fail.
+    expect(capture(() => reportNothingChecked('verify-fragments', declared, 'no-select-files')).code).toBe(1)
+    const wrongField = config({ noSelectFiles: 'none here' })
+    expect(capture(() => reportNothingChecked('verify-fragments', wrongField, 'no-checkable-selects')).code).toBe(1)
+  })
+
+  it('rejects an empty noCheckableSelects declaration', () => {
+    expect(() => readRepoConfig(config({ noCheckableSelects: '  ' }))).toThrow(
+      /noCheckableSelects must be a non-empty string/,
+    )
   })
 
   it('rejects a declaration that says nothing', () => {
@@ -506,7 +529,7 @@ describe('reportNothingChecked config errors', () => {
     writeFileSync(join(repo, '.nestled-updates/doctor.config.json'), '{ not json')
     const errors = []
     const original = console.error
-    console.error = message => errors.push(message)
+    console.error = (message) => errors.push(message)
     let code
     try {
       code = reportNothingChecked('verify-selects', repo)

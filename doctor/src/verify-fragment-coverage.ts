@@ -850,12 +850,14 @@ const main = async (): Promise<void> => {
     }
   }
 
-  console.log(
-    `Checked ${checkedModels} model(s) with both fragments and selects; ` +
-      `${operationScoped.length} select(s) checked per-operation against ${checkedPaths} path(s); ` +
-      `${constants.length} select constant(s) parsed; ` +
-      `${resolvedElsewhere} field(s) skipped as @ResolveField.`,
-  )
+  // Operation-scoped coverage leads: it is where the checking happens in almost every repo. The
+  // model-level count (a fragment and a select for the same Prisma model) is shown only when there is
+  // something to show, instead of leading every report with a zero that each repo had to explain.
+  const summary = [`${operationScoped.length} select(s) per operation against ${checkedPaths} path(s)`]
+  if (checkedModels > 0) summary.push(`${checkedModels} model(s) with both fragments and selects`)
+  summary.push(`${constants.length} select constant(s) parsed`)
+  if (resolvedElsewhere > 0) summary.push(`${resolvedElsewhere} field(s) skipped as @ResolveField`)
+  console.log(`Checked ${summary.join('; ')}.`)
 
   if (missing.length > 0) {
     console.log(`\nMISSING (${missing.length}) — a fragment asks for these and nothing produces them:`)
@@ -919,7 +921,11 @@ const main = async (): Promise<void> => {
     process.exitCode = 0
     return
   }
-  process.exitCode = reportNothingChecked('verify-fragments')
+  process.exitCode = reportNothingChecked(
+    'verify-fragments',
+    process.cwd(),
+    constants.length === 0 ? 'no-select-files' : 'no-checkable-selects',
+  )
 }
 
 // Exported rather than self-invoked: the package's bin calls this, so the parser stays importable

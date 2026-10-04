@@ -26,9 +26,7 @@ const DEFAULT_SELECT_FILE_SUFFIXES = ['.select.ts']
  * It exists because the alternative is editing the checker in place — which one downstream project had to do, and
  * which stops being possible at all once these tools ship as a package.
  */
-const readRepoConfig = (
-  cwd = process.cwd(),
-) => {
+const readRepoConfig = (cwd = process.cwd()) => {
   const configPath = resolve(cwd, REPO_CONFIG_PATH)
   if (!existsSync(configPath)) return { selectFileSuffixes: DEFAULT_SELECT_FILE_SUFFIXES }
 
@@ -63,7 +61,18 @@ const readRepoConfig = (
     throw new Error(`${REPO_CONFIG_PATH}: noSelectFiles must be a non-empty string explaining why this repo has none`)
   }
 
-  return { selectFileSuffixes: declared, noSelectFiles: absent }
+  // The other "checked nothing" state: the repo HAS select files, but none narrow a model or
+  // operation the verifier can check (GraphQL served by generated CRUD and inline selects). It needs
+  // its own declaration: answering it with noSelectFiles would write a false statement into config,
+  // and would also silence the real regression where the select files later disappear.
+  const uncheckable = parsed?.noCheckableSelects
+  if (uncheckable !== undefined && (typeof uncheckable !== 'string' || uncheckable.trim() === '')) {
+    throw new Error(
+      `${REPO_CONFIG_PATH}: noCheckableSelects must be a non-empty string explaining why no select is checkable`,
+    )
+  }
+
+  return { selectFileSuffixes: declared, noSelectFiles: absent, noCheckableSelects: uncheckable }
 }
 
 /**
@@ -73,10 +82,12 @@ const readRepoConfig = (
  * tripping over: the check stops looking and reports clean. A declaration makes the empty state
  * deliberate and visible; its absence makes it a failure with a message naming both ways out.
  */
-const reportNothingChecked = (tool, cwd = process.cwd()) => {
+const reportNothingChecked = (tool, cwd = process.cwd(), state = 'no-select-files') => {
+  // Each state has its own declaration; one cannot stand in for the other.
+  const field = state === 'no-checkable-selects' ? 'noCheckableSelects' : 'noSelectFiles'
   let declared
   try {
-    declared = readRepoConfig(cwd).noSelectFiles
+    declared = readRepoConfig(cwd)[field]
   } catch (error) {
     // A malformed config is its own failure with its own fix. Swallowing it here would print the
     // generic "checked 0 files" advice, which tells the reader to edit the very file that cannot
@@ -89,6 +100,15 @@ const reportNothingChecked = (tool, cwd = process.cwd()) => {
     // the machine-readable output for exactly the automated callers this exit code is for.
     console.error(`\n${tool}: checked nothing, as declared in ${REPO_CONFIG_PATH} — ${declared}`)
     return 0
+  }
+  if (state === 'no-checkable-selects') {
+    console.error(
+      `\n${tool}: select constants were found, but none maps to a model or operation this check can\n` +
+        `  verify, so this run proves nothing. If that is by design (GraphQL served by generated CRUD and\n` +
+        `  inline selects), say so: "noCheckableSelects": "<why>" in ${REPO_CONFIG_PATH}.\n` +
+        `  Exiting non-zero because a check that examined nothing must not report success.`,
+    )
+    return 1
   }
   console.error(
     `\n${tool}: checked 0 files, so this run proves nothing.\n` +
