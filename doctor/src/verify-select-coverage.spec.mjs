@@ -14,7 +14,7 @@ const writeFixture = (workspace, path, contents) => {
   writeFileSync(absolute, contents)
 }
 
-const createWorkspace = selectSource => {
+const createWorkspace = (selectSource) => {
   const workspace = mkdtempSync(join(tmpdir(), 'verify-select-coverage-'))
   workspaces.push(workspace)
 
@@ -73,6 +73,94 @@ afterEach(() => {
 })
 
 describe('verify-select-coverage', () => {
+  const createNonGraphqlWorkspace = (selectSource) => {
+    const workspace = mkdtempSync(join(tmpdir(), 'verify-select-coverage-'))
+    workspaces.push(workspace)
+    writeFixture(
+      workspace,
+      'libs/api/prisma/src/lib/schemas/schema.prisma',
+      [
+        'model User {\n  id    String @id\n  email String\n}',
+        '/// Provider tokens; never on the GraphQL surface.\n/// @skipCrud\nmodel Secret {\n  id    String @id\n  token String\n}',
+        'model Hidden {\n  id   String @id\n  note String\n}',
+      ].join('\n\n') + '\n',
+    )
+    writeFixture(workspace, 'api-schema.graphql', 'type User {\n  id: String!\n  email: String!\n}\n')
+    writeFixture(workspace, 'libs/api/custom/src/lib/user/user.select.ts', selectSource)
+    return workspace
+  }
+
+  it('reports a select over a @skipCrud model as a visible skip, not a failure', () => {
+    const workspace = createNonGraphqlWorkspace(`
+/** @prisma-model Secret */
+export const SECRET_SELECT = { id: true } as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(0)
+    const report = JSON.parse(result.stdout)
+    expect(report.unresolved).toEqual([])
+    expect(report.skipped).toEqual([
+      expect.objectContaining({
+        constant: 'SECRET_SELECT',
+        model: 'Secret',
+        reason: expect.stringContaining('@skipCrud'),
+      }),
+    ])
+  })
+
+  it('accepts @no-graphql-type with a reason, and keeps the reason in the report', () => {
+    const workspace = createNonGraphqlWorkspace(`
+/**
+ * @prisma-model Hidden
+ * @no-graphql-type internal reconciliation state, read only by a scheduled job
+ */
+export const HIDDEN_SELECT = { id: true } as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(0)
+    expect(JSON.parse(result.stdout).skipped).toEqual([
+      expect.objectContaining({
+        constant: 'HIDDEN_SELECT',
+        reason: 'internal reconciliation state, read only by a scheduled job',
+      }),
+    ])
+  })
+
+  it('still fails a select over a non-GraphQL model with no declaration', () => {
+    const workspace = createNonGraphqlWorkspace(`
+/** @prisma-model Hidden */
+export const HIDDEN_SELECT = { id: true } as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(1)
+    expect(JSON.parse(result.stdout).unresolved).toEqual([
+      expect.objectContaining({ constant: 'HIDDEN_SELECT', reason: 'no GraphQL type Hidden' }),
+    ])
+  })
+
+  it('fails a @no-graphql-type declaration once the model has a GraphQL type', () => {
+    const workspace = createNonGraphqlWorkspace(`
+/**
+ * @prisma-model User
+ * @no-graphql-type stale claim
+ */
+export const USER_SELECT = { id: true, email: true } as const
+`)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(1)
+    expect(JSON.parse(result.stdout).staleDeclarations).toEqual([
+      expect.objectContaining({ constant: 'USER_SELECT', model: 'User' }),
+    ])
+  })
+
   it('reads every field of a select written on one line', () => {
     const workspace = createWorkspace(`
 export const USER_SELECT = { id: true, email: true } as const
@@ -187,11 +275,7 @@ export const USER_SELECT = {
       'libs/api/prisma/src/lib/schemas/schema.prisma',
       'enum TrainerType {\n  A\n  B\n}\n\nmodel User {\n  id          String        @id\n  trainerType TrainerType[]\n}\n',
     )
-    writeFixture(
-      workspace,
-      'api-schema.graphql',
-      'type User {\n  id: String!\n  trainerType: [TrainerType!]!\n}\n',
-    )
+    writeFixture(workspace, 'api-schema.graphql', 'type User {\n  id: String!\n  trainerType: [TrainerType!]!\n}\n')
     writeFixture(
       workspace,
       'libs/api/custom/src/lib/user/user.select.ts',

@@ -105,6 +105,13 @@ function run() {
 
   const enumNames = new Set([...datamodel.matchAll(/^enum (\w+) \{/gm)].map((match) => match[1]))
   const modelNames = new Set([...datamodel.matchAll(/^model (\w+) \{/gm)].map((match) => match[1]))
+  // Models kept off GraphQL on purpose (`/// @skipCrud` in the doc comment above the model): a select
+  // over one has no GraphQL type by design, so that absence is declared intent, not a failure.
+  const skipCrudModels = new Set(
+    [...datamodel.matchAll(/((?:^[ \t]*\/\/\/[^\n]*\n)+)^model (\w+) \{/gm)]
+      .filter((match) => /@skipCrud\b/.test(match[1]))
+      .map((match) => match[2]),
+  )
 
   /** model -> set of selectable scalar columns (relations excluded: they need their own select) */
   const prismaScalars = {}
@@ -362,6 +369,10 @@ function run() {
   const problems = []
   const nestedProblems = []
   const unresolved = []
+  /** Selects over a deliberately non-GraphQL model: not checked, but always reported, with the reason. */
+  const skipped = []
+  /** `@no-graphql-type` on a select whose model has since gained a GraphQL type. */
+  const staleDeclarations = []
   const nullableGaps = []
 
   for (const file of [...selectFiles].sort((left, right) => left.localeCompare(right))) {
@@ -381,13 +392,27 @@ function run() {
         continue
       }
       const graphqlType = graphqlTypes[model]
+      const declaredAbsent = annotationFor(source, name, 'no-graphql-type').join(', ')
       if (!graphqlType) {
-        unresolved.push({
-          file: relativePath,
-          constant: name,
-          reason: `no GraphQL type ${model}`,
-        })
+        if (skipCrudModels.has(model) || declaredAbsent) {
+          skipped.push({
+            file: relativePath,
+            constant: name,
+            model,
+            reason: declaredAbsent || `${model} is @skipCrud in the Prisma schema`,
+          })
+        } else {
+          unresolved.push({
+            file: relativePath,
+            constant: name,
+            reason: `no GraphQL type ${model}`,
+          })
+        }
         continue
+      }
+      if (declaredAbsent) {
+        // The declaration must not outlive the fact: once the model is on GraphQL, check it.
+        staleDeclarations.push({ file: relativePath, constant: name, model })
       }
 
       const walkSelect = (currentModel, selectBody, path, depth = 0) => {
@@ -444,6 +469,8 @@ function run() {
           problems,
           nestedProblems,
           unresolved,
+          skipped,
+          staleDeclarations,
           nullableGaps: warnNullable ? nullableGaps : undefined,
         },
         null,
@@ -454,6 +481,14 @@ function run() {
     console.log(`\nverify-select-coverage — ${selectFiles.length} file(s), SDL ${SDL_PATH}\n`)
     for (const entry of unresolved) {
       console.log(`?  ${entry.file} — ${entry.constant}: ${entry.reason}`)
+    }
+    for (const entry of staleDeclarations) {
+      console.log(`✗  ${entry.file} — ${entry.constant}: declares @no-graphql-type, but ${entry.model} now has a`)
+      console.log('     GraphQL type. Remove the annotation so the select is checked.\n')
+    }
+    for (const entry of skipped) {
+      console.log(`-  ${entry.file} — ${entry.constant} [${entry.model}]: NOT CHECKED, no GraphQL type by design`)
+      console.log(`     ${entry.reason}`)
     }
     for (const entry of problems) {
       console.log(`✗  ${entry.file} — ${entry.constant} [${entry.model}]`)
@@ -485,12 +520,16 @@ function run() {
     }
     if (selectFiles.length === 0) {
       // reported below, for both output modes
-    } else if (problems.length === 0 && unresolved.length === 0) {
+    } else if (problems.length === 0 && unresolved.length === 0 && staleDeclarations.length === 0) {
       console.log('every top-level select covers the non-nullable surface of its GraphQL type\n')
     }
   }
 
-  const failed = problems.length > 0 || unresolved.length > 0 || (strictNested && nestedProblems.length > 0)
+  const failed =
+    problems.length > 0 ||
+    unresolved.length > 0 ||
+    staleDeclarations.length > 0 ||
+    (strictNested && nestedProblems.length > 0)
   if (failed) return 1
   // Examining nothing is not the same as finding nothing wrong. Derived from the file count rather
   // than a flag set while rendering, so --json reaches the same verdict as the text output -- the
