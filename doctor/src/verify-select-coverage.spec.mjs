@@ -73,6 +73,22 @@ afterEach(() => {
 })
 
 describe('verify-select-coverage', () => {
+  it('writes a complete --json report through a pipe, even past the 64 KiB pipe buffer', () => {
+    // process.exit() used to run before stdout drained, cutting piped output at the buffer size.
+    const constants = Array.from(
+      { length: 1500 },
+      (_, index) => `export const USER_SELECT_${index} = {\n  id: true,\n} as const\n`,
+    ).join('\n')
+    const workspace = createWorkspace(constants)
+
+    const result = runTool(workspace)
+
+    expect(result.status).toBe(1)
+    expect(result.stdout.length).toBeGreaterThan(65536)
+    const report = JSON.parse(result.stdout)
+    expect(report.problems).toHaveLength(1500)
+  })
+
   it('fails when a top-level select omits a non-nullable GraphQL scalar', () => {
     const workspace = createWorkspace(`
 export const USER_SELECT = {
