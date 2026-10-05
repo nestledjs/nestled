@@ -226,9 +226,24 @@ function writeState(absolute: string, state: FileState): void {
   if (state.kind === 'other') return;
   if (lstatOrNull(absolute)) rmSync(absolute, { recursive: true, force: true });
   if (state.kind === 'absent') return;
-  mkdirSync(dirname(absolute), { recursive: true });
+  makeParentDirs(absolute);
   if (state.kind === 'link') symlinkSync(state.target, absolute);
   else writeFileSync(absolute, state.contents, { mode: state.mode });
+}
+
+/**
+ * Create the directories above `absolute`. Anything a step put where one of them belongs (a file in
+ * place of the user's directory) is removed first: it is in the way of the user's own file.
+ */
+function makeParentDirs(absolute: string): void {
+  const blockers: string[] = [];
+  for (let dir = dirname(absolute); dir !== dirname(dir); dir = dirname(dir)) {
+    const stat = lstatOrNull(dir);
+    if (stat?.isDirectory()) break;
+    if (stat) blockers.push(dir);
+  }
+  blockers.forEach((dir) => rmSync(dir, { force: true }));
+  mkdirSync(dirname(absolute), { recursive: true });
 }
 
 type PriorState = { kind: 'tracked' } | FileState;
@@ -270,15 +285,17 @@ export class RunChanges {
    * Only paths that were clean before that step may be passed. Each was tracked at the start commit,
    * did not exist, or existed but was ignored (`existedIgnored`): a step that changes an ignore rule
    * can surface a file it never wrote. That last kind is not the run's, so it is not recorded and a
-   * rollback leaves it alone.
+   * rollback leaves it alone. Returns the paths among `paths` that the run now owns.
    */
-  didChange(paths: Iterable<string>, existedIgnored: (path: string) => boolean = () => false): void {
-    const fresh = [...new Set(paths)].filter((path) => path && !this.prior.has(path));
+  didChange(paths: Iterable<string>, existedIgnored: (path: string) => boolean = () => false): string[] {
+    const unique = [...new Set(paths)].filter(Boolean);
+    const fresh = unique.filter((path) => !this.prior.has(path));
     const tracked = this.trackedAtStart(fresh);
     for (const path of fresh) {
       if (tracked.has(path)) this.prior.set(path, { kind: 'tracked' });
       else if (!existedIgnored(path)) this.prior.set(path, { kind: 'absent' });
     }
+    return unique.filter((path) => this.prior.has(path));
   }
 
   /**
@@ -381,7 +398,11 @@ export function restoreChangedFiles(root: string, snapshot: UserState): string[]
     if (before.kind === 'other' || sameState(before, readState(absolute))) continue;
     // A directory where the user had nothing was not theirs; leave it.
     if (before.kind === 'absent' && lstatOrNull(absolute)?.isDirectory()) continue;
-    writeState(absolute, before);
+    try {
+      writeState(absolute, before);
+    } catch {
+      // Still reported: the note is blocked and the run rolled back, never recorded as applied.
+    }
     restored.add(path);
   }
   const now = indexEntries(root, [...snapshot.files.keys()]);
@@ -401,7 +422,8 @@ export function restoreChangedFiles(root: string, snapshot: UserState): string[]
 
 /**
  * Commit only `paths`, leaving anything else the user has staged or modified out of the commit and
- * exactly as it was. Returns the new HEAD (short), or the unchanged HEAD when none of `paths` changed.
+ * exactly as it was. Returns the new HEAD (short), the unchanged HEAD when none of `paths` changed,
+ * or '' when staging or committing failed (a commit hook rejecting it, say), like `commitAll`.
  */
 export function commitPaths(root: string, message: string, paths: string[]): string {
   const unique = [...new Set(paths)];
@@ -413,7 +435,7 @@ export function commitPaths(root: string, message: string, paths: string[]): str
         .filter(Boolean),
     );
     const addable = chunk.filter((path) => known.has(path) || lstatOrNull(join(root, path)));
-    if (addable.length) git(root, [LITERAL, 'add', '-A', '--', ...addable]);
+    if (addable.length && git(root, [LITERAL, 'add', '-A', '--', ...addable]).status !== 0) return '';
   }
   // Exactly the paths with something staged: a path that ended up unchanged would fail `--only`.
   // --no-renames: a staged rename must list its source too, or `--only` leaves the deletion behind.
@@ -433,7 +455,7 @@ export function commitPaths(root: string, message: string, paths: string[]): str
       '--pathspec-from-file=-',
       '--pathspec-file-nul',
     ];
-    git(root, [LITERAL, ...args], `${staged.join('\0')}\0`);
+    if (git(root, [LITERAL, ...args], `${staged.join('\0')}\0`).status !== 0) return '';
   }
   return gitOutput(root, ['rev-parse', '--short', 'HEAD']);
 }

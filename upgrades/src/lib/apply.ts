@@ -394,17 +394,29 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   };
   /**
    * Run a step that executes third-party code (an install's lifecycle scripts, git hooks, verification):
-   * whatever it newly dirties is recorded as the run's own, and any file the user had uncommitted
-   * changes in that it rewrote is put back. Returns the step's result and the user files it rewrote.
+   * whatever it newly dirties or commits is recorded as the run's own (and returned as `sideEffects`),
+   * and any file the user had uncommitted changes in that it rewrote is put back (`clobbered`).
    */
   const guarded = <T>(step: () => T): { result: T; sideEffects: string[]; clobbered: string[] } => {
     const dirtyBefore = dirtyPaths(root);
     const ignoredBefore = ignoredPaths(root);
+    const headBefore = gitOutput(root, ['rev-parse', 'HEAD']);
     const userFiles = snapshotFiles(root, dirtyAtStart);
     const result = step();
-    const sideEffects = [...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path));
-    changes.didChange(sideEffects, ignoredBefore);
-    return { result, sideEffects, clobbered: restoreChangedFiles(root, userFiles) };
+    // What it left uncommitted, and what it committed (a script, or a hook, can commit too).
+    const changed = new Set([...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path)));
+    const headAfter = gitOutput(root, ['rev-parse', 'HEAD']);
+    if (headBefore && headAfter && headAfter !== headBefore) {
+      const committed = git(root, ['diff', '--name-only', '-z', '--no-renames', headBefore, headAfter]).stdout;
+      for (const path of committed.split('\0').filter(Boolean)) changed.add(path);
+    }
+    const clobbered = restoreChangedFiles(root, userFiles);
+    // The user's paths are protected above, never taken over as the run's own.
+    const sideEffects = changes.didChange(
+      [...changed].filter((path) => !dirtyAtStart.has(path)),
+      ignoredBefore,
+    );
+    return { result, sideEffects, clobbered };
   };
 
   /**
@@ -499,11 +511,17 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     // On a dirty tree, commit only what this note changed: the user's own edits stay uncommitted.
     const message = `Apply Nestled upgrade ${note.id}`;
     // Commit hooks run third-party code too (formatters, generators), so a dirty run guards them.
-    if (startedClean) commitAll(projectDir, message);
+    let committed: string;
+    if (startedClean) committed = commitAll(projectDir, message);
     else {
-      const { clobbered } = guarded(() => commitPaths(root, message, [...noteTouched]));
-      blocked = uncommittedBlock(note.id, clobbered);
+      const commit = guarded(() => commitPaths(root, message, [...noteTouched]));
+      blocked = uncommittedBlock(note.id, commit.clobbered);
       if (blocked) break;
+      committed = commit.result;
+    }
+    if (!committed) {
+      blocked = { id: note.id, reason: 'Committing the upgrade failed; a commit hook may have rejected it.' };
+      break;
     }
     applied.push({ note, entry });
 

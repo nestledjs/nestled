@@ -799,6 +799,84 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(git(repo, ['status', '--porcelain', '--', 'link']).trim()).toBe('');
   });
 
+  function packageNote(): void {
+    writeFileSync(
+      join(repo, 'package.json'),
+      `${JSON.stringify({ name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`,
+    );
+    writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+    git(repo, ['add', 'package.json', 'package-lock.json']);
+    git(repo, ['commit', '-q', '-m', 'add manifest']);
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+  }
+
+  it('undoes a change an install script committed itself', () => {
+    packageNote();
+    fakeNpm('echo sneaky > other.txt; git add other.txt; git commit -q -m sneaky');
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'other.txt'), 'utf8')).toBe('clean\n');
+    expect(git(repo, ['status', '--porcelain', '--', 'other.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('never commits an ignored file an install merely un-ignored', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    packageNote();
+    fakeNpm(': > .gitignore');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(result.status).toBe('applied');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).not.toContain('draft.md');
+    expect(git(repo, ['status', '--porcelain', '--', 'draft.md']).trim()).toBe('?? draft.md');
+  });
+
+  it('puts back a dirty file whose directory a step replaced with a file', () => {
+    const result = runWithVerification('rm -rf docs; echo x > docs; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('blocks and rolls back when a commit hook rejects the commit', () => {
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = runWithVerification('true');
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.reason).toContain('Committing the upgrade failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(git(repo, ['status', '--porcelain', '--', 'hello.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -839,6 +917,20 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
 });
 
 describe('applyRun on a clean tree', () => {
+  it('blocks and rolls back when a commit hook rejects the commit', () => {
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('blocked');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBe('blocked');
+  });
+
   it('still rolls back every change of a failed multi-note run', () => {
     writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
     writeFileSync(join(repo, 'added.txt'), 'new\n', 'utf8');
