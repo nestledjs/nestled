@@ -908,6 +908,67 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
   });
 
+  it('does not write a package bump through a symlinked directory', () => {
+    writeFileSync(join(repo, '.gitignore'), 'linked\nreal/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore']);
+    const target = `${JSON.stringify({ dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    mkdirSync(join(repo, 'real'));
+    writeFileSync(join(repo, 'real', 'package.json'), target, 'utf8');
+    symlinkSync('real', join(repo, 'linked'));
+    fakeNpm('true');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+          '            manifests:',
+          '              - linked/package.json',
+        ],
+      },
+    ]);
+
+    applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'], allowDirty: true });
+
+    expect(readFileSync(join(repo, 'real', 'package.json'), 'utf8')).toBe(target);
+    expect(lstatSync(join(repo, 'linked')).isSymbolicLink()).toBe(true);
+  });
+
+  it('removes a file a failing step created in a directory it un-ignored, and keeps the user’s', () => {
+    writeFileSync(join(repo, '.gitignore'), 'cache/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore cache']);
+    mkdirSync(join(repo, 'cache'));
+    writeFileSync(join(repo, 'cache', 'mine.txt'), 'kept\n', 'utf8');
+
+    const result = runWithVerification(': > .gitignore; sleep 0.2; echo new > cache/generated.txt; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('cache/\n');
+    expect(existsSync(join(repo, 'cache', 'generated.txt'))).toBe(false);
+    expect(readFileSync(join(repo, 'cache', 'mine.txt'), 'utf8')).toBe('kept\n');
+  });
+
+  it('puts back a directory a step replaced with a symlink, without following the link', () => {
+    writeFileSync(join(repo, '.gitignore'), 'drafts/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    mkdirSync(join(repo, 'drafts'));
+    writeFileSync(join(repo, 'drafts', 'notes.md'), 'an unrelated draft\n', 'utf8');
+
+    const result = runWithVerification('rm -rf docs; ln -s drafts docs; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(lstatSync(join(repo, 'docs')).isDirectory()).toBe(true);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(readFileSync(join(repo, 'drafts', 'notes.md'), 'utf8')).toBe('an unrelated draft\n');
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -949,7 +1010,9 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
 
 describe('applyRun on a clean tree', () => {
   it('blocks and rolls back when a commit hook rejects the commit', () => {
-    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho gen > generated.txt\nexit 1\n', {
+      mode: 0o755,
+    });
     writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
     writeManifest('2026.02.0', '2026.02.0');
     const start = git(repo, ['rev-parse', 'HEAD']).trim();
@@ -960,6 +1023,7 @@ describe('applyRun on a clean tree', () => {
     expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
     expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
     expect(readUpgradeLog(repo).upgrades['note-1']).toBe('blocked');
+    expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
   });
 
   it('still rolls back every change of a failed multi-note run', () => {

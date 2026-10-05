@@ -59,9 +59,11 @@ export function dirtyPaths(cwd: string): Set<string> {
 
 /**
  * Ignored paths that exist right now, as `git status --ignored` reports them: files, and directories
- * (ending in `/`) standing for everything under them. Returns a membership test.
+ * (ending in `/`) standing for everything under them. Returns a test of whether a path existed (as an
+ * ignored file) at this moment. Git collapses an ignored directory to one entry, so for a path inside
+ * one the file's own creation time decides: one created after `since` is new, not pre-existing.
  */
-export function ignoredPaths(cwd: string): (path: string) => boolean {
+export function ignoredPaths(cwd: string): (path: string, since: number) => boolean {
   const result = git(cwd, ['status', '--porcelain=v1', '-z', '--ignored=traditional']);
   if (result.status !== 0) throw new Error(`Unable to list ignored files: ${result.stderr || result.stdout}`);
   const entries = result.stdout
@@ -70,7 +72,13 @@ export function ignoredPaths(cwd: string): (path: string) => boolean {
     .map((entry) => entry.slice(3));
   const files = new Set(entries.filter((entry) => !entry.endsWith('/')));
   const dirs = entries.filter((entry) => entry.endsWith('/'));
-  return (path) => files.has(path) || dirs.some((dir) => path.startsWith(dir));
+  return (path, since) => {
+    if (files.has(path)) return true;
+    if (!dirs.some((dir) => path.startsWith(dir))) return false;
+    const born = lstatOrNull(join(cwd, path))?.birthtimeMs ?? 0;
+    // Where the filesystem keeps no creation time (0), assume it existed: leaving a file behind is safe.
+    return !(born > 0 && born >= since);
+  };
 }
 
 /** C-style unquoting of a path git quoted (`"a/\303\274.txt"`); octal escapes are UTF-8 bytes. */
@@ -79,10 +87,12 @@ function unquote(raw: string): string {
   const bytes: number[] = [];
   const simple: Record<string, number> = { a: 7, b: 8, t: 9, n: 10, v: 11, f: 12, r: 13, '"': 34, '\\': 92 };
   for (let i = 1; i < raw.length; i++) {
-    const ch = raw[i];
+    // Whole code points: with core.quotePath=false an emoji arrives literally, as a surrogate pair.
+    const ch = String.fromCodePoint(raw.codePointAt(i) as number);
     if (ch === '"') break;
     if (ch !== '\\') {
       bytes.push(...Buffer.from(ch, 'utf8'));
+      i += ch.length - 1;
       continue;
     }
     const next = raw[++i];
@@ -199,6 +209,12 @@ type FileState =
   /** A directory or special file: never captured, never overwritten. */
   | { kind: 'other' };
 
+/** A path's state together with the state of each directory above it (a real directory, or a link). */
+interface Captured {
+  state: FileState;
+  ancestors: { absolute: string; state: FileState }[];
+}
+
 function lstatOrNull(absolute: string): Stats | null {
   try {
     return lstatSync(absolute);
@@ -207,6 +223,7 @@ function lstatOrNull(absolute: string): Stats | null {
   }
 }
 
+/** `other` for directories here; `ancestorState` is what tells a directory from a link above a path. */
 function readState(absolute: string): FileState {
   const stat = lstatOrNull(absolute);
   if (!stat) return { kind: 'absent' };
@@ -218,35 +235,77 @@ function readState(absolute: string): FileState {
 function sameState(a: FileState, b: FileState): boolean {
   if (a.kind === 'file' && b.kind === 'file') return a.mode === b.mode && a.contents.equals(b.contents);
   if (a.kind === 'link' && b.kind === 'link') return a.target === b.target;
-  return a.kind === b.kind && a.kind !== 'other';
+  return a.kind === b.kind;
 }
 
-/** Replace whatever is at `absolute` with `state`. */
-function writeState(absolute: string, state: FileState): void {
+/** A directory reads as `other`; anything else in a directory's place reads as what it is. */
+function ancestorState(absolute: string): FileState {
+  const stat = lstatOrNull(absolute);
+  if (!stat) return { kind: 'absent' };
+  if (stat.isSymbolicLink()) return { kind: 'link', target: readlinkSync(absolute) };
+  return stat.isDirectory() ? { kind: 'other' } : { kind: 'file', contents: Buffer.alloc(0), mode: 0 };
+}
+
+function capture(root: string, path: string, state: FileState = readState(join(root, path))): Captured {
+  const ancestors: Captured['ancestors'] = [];
+  let absolute = root;
+  for (const part of path.split('/').slice(0, -1)) {
+    absolute = join(absolute, part);
+    ancestors.push({ absolute, state: ancestorState(absolute) });
+  }
+  return { state, ancestors };
+}
+
+function ancestorsIntact(captured: Captured): boolean {
+  return captured.ancestors.every(({ absolute, state }) => {
+    const now = ancestorState(absolute);
+    return state.kind === 'file' ? now.kind === 'file' : sameState(state, now);
+  });
+}
+
+/**
+ * Put back each directory or directory link above a captured path that a step replaced, top down,
+ * before anything below it is touched: otherwise a link a step put in place of a directory would send
+ * the restore somewhere else entirely. A link the user already had stays. Returns false when the
+ * path had no real parent when captured, so there is nothing to restore it into.
+ */
+function restoreAncestors(captured: Captured): boolean {
+  for (const { absolute, state } of captured.ancestors) {
+    if (state.kind === 'absent' || state.kind === 'file') return false;
+    const now = ancestorState(absolute);
+    if (sameState(state, now)) continue;
+    if (now.kind !== 'absent') rmSync(absolute, { recursive: now.kind === 'other', force: true });
+    if (state.kind === 'link') symlinkSync(state.target, absolute);
+    else mkdirSync(absolute);
+  }
+  return true;
+}
+
+/** Whether `captured` still describes what is at `absolute` and above it. */
+function unchanged(absolute: string, captured: Captured): boolean {
+  return ancestorsIntact(captured) && sameState(captured.state, readState(absolute));
+}
+
+/**
+ * Put `captured` back at `absolute`. An absent path is only cleared while its parents are as they were
+ * (through a replaced parent, the same name means some other file); a directory there is left alone.
+ */
+function restoreCaptured(absolute: string, captured: Captured): void {
+  const { state } = captured;
   if (state.kind === 'other') return;
-  if (lstatOrNull(absolute)) rmSync(absolute, { recursive: true, force: true });
-  if (state.kind === 'absent') return;
-  makeParentDirs(absolute);
+  if (state.kind === 'absent') {
+    const stat = ancestorsIntact(captured) ? lstatOrNull(absolute) : null;
+    if (stat && !stat.isDirectory()) rmSync(absolute, { force: true });
+    return;
+  }
+  if (!restoreAncestors(captured)) return;
+  const stat = lstatOrNull(absolute);
+  if (stat) rmSync(absolute, { recursive: stat.isDirectory(), force: true });
   if (state.kind === 'link') symlinkSync(state.target, absolute);
   else writeFileSync(absolute, state.contents, { mode: state.mode });
 }
 
-/**
- * Create the directories above `absolute`. Anything a step put where one of them belongs (a file in
- * place of the user's directory) is removed first: it is in the way of the user's own file.
- */
-function makeParentDirs(absolute: string): void {
-  const blockers: string[] = [];
-  for (let dir = dirname(absolute); dir !== dirname(dir); dir = dirname(dir)) {
-    const stat = lstatOrNull(dir);
-    if (stat?.isDirectory()) break;
-    if (stat) blockers.push(dir);
-  }
-  blockers.forEach((dir) => rmSync(dir, { force: true }));
-  mkdirSync(dirname(absolute), { recursive: true });
-}
-
-type PriorState = { kind: 'tracked' } | FileState;
+type PriorState = { kind: 'tracked' } | { kind: 'captured'; captured: Captured };
 
 /**
  * The paths one apply run changes, each with how it looked before the run first touched it, so a
@@ -276,7 +335,10 @@ export class RunChanges {
     const tracked = this.trackedAtStart(fresh);
     for (const path of fresh) {
       // Anything not tracked is either absent or a file the user has that git ignores: keep a copy.
-      this.prior.set(path, tracked.has(path) ? { kind: 'tracked' } : readState(join(this.root, path)));
+      this.prior.set(
+        path,
+        tracked.has(path) ? { kind: 'tracked' } : { kind: 'captured', captured: capture(this.root, path) },
+      );
     }
   }
 
@@ -293,7 +355,9 @@ export class RunChanges {
     const tracked = this.trackedAtStart(fresh);
     for (const path of fresh) {
       if (tracked.has(path)) this.prior.set(path, { kind: 'tracked' });
-      else if (!existedIgnored(path)) this.prior.set(path, { kind: 'absent' });
+      else if (!existedIgnored(path)) {
+        this.prior.set(path, { kind: 'captured', captured: capture(this.root, path, { kind: 'absent' }) });
+      }
     }
     return unique.filter((path) => this.prior.has(path));
   }
@@ -314,16 +378,10 @@ export class RunChanges {
       git(this.root, [LITERAL, 'rm', '--cached', '-f', '-q', '--ignore-unmatch', '--', ...chunk]);
     }
     for (const path of others) {
-      const state = this.prior.get(path) as FileState;
-      const absolute = join(this.root, path);
-      if (state.kind === 'absent') {
-        // Something the run created; a directory in its place is not ours to remove.
-        if (!lstatOrNull(absolute) || lstatOrNull(absolute)?.isDirectory()) continue;
-        rmSync(absolute, { force: true });
-        this.pruneEmptyParents(path);
-      } else {
-        writeState(absolute, state);
-      }
+      const prior = this.prior.get(path);
+      if (prior?.kind !== 'captured') continue;
+      restoreCaptured(join(this.root, path), prior.captured);
+      if (prior.captured.state.kind === 'absent') this.pruneEmptyParents(path);
     }
   }
 
@@ -373,15 +431,15 @@ function indexEntries(root: string, paths: string[]): Map<string, string[]> {
 
 /** The user's uncommitted work at a set of paths: what is on disk, and what is staged. */
 export interface UserState {
-  files: Map<string, FileState>;
+  files: Map<string, Captured>;
   index: Map<string, string[]>;
 }
 
 /** Capture `paths` as they are now, on disk and in the index. */
 export function snapshotFiles(root: string, paths: Iterable<string>): UserState {
   const list = [...new Set(paths)];
-  const files = new Map<string, FileState>();
-  for (const path of list) files.set(path, readState(join(root, path)));
+  const files = new Map<string, Captured>();
+  for (const path of list) files.set(path, capture(root, path));
   return { files, index: indexEntries(root, list) };
 }
 
@@ -395,11 +453,11 @@ export function restoreChangedFiles(root: string, snapshot: UserState): string[]
   const restored = new Set<string>();
   for (const [path, before] of snapshot.files) {
     const absolute = join(root, path);
-    if (before.kind === 'other' || sameState(before, readState(absolute))) continue;
+    if (before.state.kind === 'other' || unchanged(absolute, before)) continue;
     // A directory where the user had nothing was not theirs; leave it.
-    if (before.kind === 'absent' && lstatOrNull(absolute)?.isDirectory()) continue;
+    if (before.state.kind === 'absent' && lstatOrNull(absolute)?.isDirectory()) continue;
     try {
-      writeState(absolute, before);
+      restoreCaptured(absolute, before);
     } catch {
       // Still reported: the note is blocked and the run rolled back, never recorded as applied.
     }

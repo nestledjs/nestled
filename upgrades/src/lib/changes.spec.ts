@@ -75,6 +75,19 @@ describe('patchPaths', () => {
     expect(patchPaths(diff).sort()).toEqual(['bin/my tool', 'docs/notes.md']);
   });
 
+  it('decodes literal non-BMP characters in quoted paths', () => {
+    const diff = [
+      'diff --git "a/docs/\u{1F600}\\tx.md" "b/docs/\u{1F600}\\tx.md"',
+      '--- "a/docs/\u{1F600}\\tx.md"',
+      '+++ "b/docs/\u{1F600}\\tx.md"',
+      '@@ -1 +1 @@',
+      '-a',
+      '+b',
+      '',
+    ].join('\n');
+    expect(patchPaths(diff)).toEqual(['docs/\u{1F600}\tx.md']);
+  });
+
   it('never mistakes hunk lines for headers', () => {
     const diff = [
       'diff --git a/README.md b/README.md',

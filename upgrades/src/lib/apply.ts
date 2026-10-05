@@ -1,7 +1,16 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, posix, relative, sep } from 'node:path';
+import { dirname, join, posix, relative, resolve, sep } from 'node:path';
 import {
   commitPaths,
   dirtyPaths,
@@ -187,6 +196,12 @@ function updateLockfile(cwd: string): { status: number; reason: string } {
   };
 }
 
+/** Whether a directory between `cwd` and `path` is a symlink (`path` itself is not checked). */
+function throughLink(cwd: string, path: string): boolean {
+  const expected = resolve(realpathSync(cwd), relative(cwd, dirname(path)));
+  return realpathSync(dirname(path)) !== expected;
+}
+
 function lockfilePath(cwd: string): string | null {
   for (const name of ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json']) {
     if (existsSync(join(cwd, name))) return join(cwd, name);
@@ -209,8 +224,9 @@ function planPackageReleases(cwd: string, note: UpgradeNote): PackagePlan {
   const writes: PackagePlan['writes'] = [];
   const updated: PackagePlan['updated'] = [];
   for (const manifestPath of manifests) {
-    // Writing through a symlink would change a file somewhere else, which no rollback could find.
-    if (lstatSync(manifestPath).isSymbolicLink()) continue;
+    // Writing through a symlink, of the file or of a directory above it, would change a file
+    // somewhere else, which no rollback could find.
+    if (lstatSync(manifestPath).isSymbolicLink() || throughLink(cwd, manifestPath)) continue;
     const pkg = safeReadPackageJson(manifestPath);
     if (!pkg) continue;
     let changed = false;
@@ -402,6 +418,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     const ignoredBefore = ignoredPaths(root);
     const headBefore = gitOutput(root, ['rev-parse', 'HEAD']);
     const userFiles = snapshotFiles(root, dirtyAtStart);
+    const startedAt = Date.now();
     const result = step();
     // What it left uncommitted, and what it committed (a script, or a hook, can commit too).
     const changed = new Set([...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path)));
@@ -417,7 +434,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     // The user's paths are protected above, never taken over as the run's own.
     const sideEffects = changes.didChange(
       [...changed].filter((path) => !dirtyAtStart.has(path)),
-      ignoredBefore,
+      (path) => ignoredBefore(path, startedAt),
     );
     return { result, sideEffects, clobbered: [...clobbered] };
   };
@@ -513,16 +530,13 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
     // On a dirty tree, commit only what this note changed: the user's own edits stay uncommitted.
     const message = `Apply Nestled upgrade ${note.id}`;
-    // Commit hooks run third-party code too (formatters, generators), so a dirty run guards them.
-    let committed: string;
-    if (startedClean) committed = commitAll(projectDir, message);
-    else {
-      const commit = guarded(() => commitPaths(root, message, [...noteTouched]));
-      blocked = uncommittedBlock(note.id, commit.clobbered);
-      if (blocked) break;
-      committed = commit.result;
-    }
-    if (!committed) {
+    // Commit hooks run third-party code too (formatters, generators), so committing is guarded.
+    const commit = guarded(() =>
+      startedClean ? commitAll(projectDir, message) : commitPaths(root, message, [...noteTouched]),
+    );
+    blocked = uncommittedBlock(note.id, commit.clobbered);
+    if (blocked) break;
+    if (!commit.result) {
       blocked = { id: note.id, reason: 'Committing the upgrade failed; a commit hook may have rejected it.' };
       break;
     }
