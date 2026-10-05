@@ -440,8 +440,16 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     ...trackedBookkeeping,
     ...indexedBookkeeping,
   ]);
+  /** User state that could not be put back, and where it was saved instead; reported with any block. */
+  const unrecovered: { path: string; savedTo: string }[] = [];
+  const withRecovery = (info: BlockedInfo): BlockedInfo => {
+    if (!unrecovered.length) return info;
+    const notes = unrecovered.map(({ path, savedTo }) => `could not restore ${path}; its saved state is in ${savedTo}`);
+    return { ...info, reason: `${info.reason} Also: ${notes.join('; ')}.` };
+  };
   const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
-    const overlap = paths.filter((path) => dirtyAtStart.has(path));
+    // The user's: dirty at the start, or a pre-existing ignored file an earlier step surfaced.
+    const overlap = paths.filter((path) => dirtyAtStart.has(path) || changes.isPreserved(path));
     if (!overlap.length) return null;
     const subject = `${overlap.join(', ')} ${overlap.length === 1 ? 'has' : 'have'}`;
     const reason = `${subject} uncommitted changes this upgrade would overwrite; commit or stash them first, then re-run.`;
@@ -467,7 +475,9 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     }
     // A user path the step committed counts as clobbered even when its file and index entry still
     // match: the user's work is now inside a commit, which only a rollback takes back out.
-    const clobbered = new Set(restoreChangedFiles(root, userFiles));
+    const userRestore = restoreChangedFiles(root, userFiles);
+    unrecovered.push(...userRestore.unrecovered);
+    const clobbered = new Set(userRestore.restored);
     [...changed].filter((path) => dirtyAtStart.has(path)).forEach((path) => clobbered.add(path));
     // The user's paths are protected above, never taken over as the run's own.
     const sideEffects = changes.didChange(
@@ -498,7 +508,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
         if (reset.status !== 0) throw new Error(`Rollback could not move HEAD back to ${startCommit}: ${reset.stderr}`);
       }
     }
-    restoreChangedFiles(root, bookkeepingAtStart);
+    unrecovered.push(...restoreChangedFiles(root, bookkeepingAtStart).unrecovered);
   };
 
   const applied: { note: UpgradeNote; entry: AppliedNote }[] = [];
@@ -613,7 +623,14 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     // Held back only by the user's uncommitted work: not a problem with the upgrade, so not recorded.
     if (!blocked.uncommitted) setOutcome(log, blocked.id, 'blocked');
     writeUpgradeLog(projectDir, log);
-    return { status: 'blocked', channel, branch, applied: [], blocked, baselineRelease: log.template.baselineRelease };
+    return {
+      status: 'blocked',
+      channel,
+      branch,
+      applied: [],
+      blocked: withRecovery(blocked),
+      baselineRelease: log.template.baselineRelease,
+    };
   }
 
   // A note's own `verification` takes precedence over the consumer's auto-detected lint/test
@@ -636,7 +653,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       branch,
       applied: [],
       verification,
-      blocked: { id: failed.command, reason: `Verification failed: ${failed.command}` },
+      blocked: withRecovery({ id: failed.command, reason: `Verification failed: ${failed.command}` }),
       baselineRelease: log.template.baselineRelease,
     };
   }
@@ -652,7 +669,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       branch,
       applied: [],
       verification,
-      blocked: verificationBlock,
+      blocked: withRecovery(verificationBlock),
       baselineRelease: log.template.baselineRelease,
     };
   }

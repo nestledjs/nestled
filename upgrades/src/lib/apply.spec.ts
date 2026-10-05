@@ -1191,6 +1191,29 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(git(repo, ['status', '--porcelain=v2', '--', 'draft.md']).split(' ')[1]).toBe('.A');
   });
 
+  it.skipIf(process.getuid?.() === 0)('puts back a dirty file after a step makes its directory read-only', () => {
+    const result = runWithVerification('echo replacement > docs/notes.md; chmod a-w docs; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(lstatSync(join(repo, 'docs')).mode & 0o200).toBe(0o200);
+  });
+
+  it('fails loudly instead of half-rolling back when git cannot update the index', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    expect(() =>
+      applyRun(repo, {
+        manifestFile: join(feedDir, 'manifest.yaml'),
+        verification: ['touch .git/index.lock; false'],
+        allowDirty: true,
+      }),
+    ).toThrow(/Rollback incomplete/);
+    rmSync(join(repo, '.git', 'index.lock'), { force: true });
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -1392,6 +1415,8 @@ describe('applyRun on a clean tree', () => {
       git(upstream, ['commit', '-q', '-m', 'lib']);
       git(repo, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', upstream, 'modules/example']);
       git(repo, ['commit', '-q', '-m', 'add submodule']);
+      // even when configured to hide a submodule's changes
+      git(repo, ['config', 'submodule.modules/example.ignore', 'all']);
       writeFileSync(join(repo, 'modules', 'example', 'lib.txt'), 'my edit\n', 'utf8');
       writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
       writeManifest('2026.02.0', '2026.02.0');
@@ -1448,6 +1473,46 @@ describe('applyRun on a clean tree', () => {
 
     expect(result.status).toBe('verification-failed');
     expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+  });
+
+  it('blocks a later note from writing an ignored file an earlier note surfaced', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(feedDir, 'patches', 'unignore.diff'), makeDiff('.gitignore', ''), 'utf8');
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    const editDraft = [
+      'diff --git a/draft.md b/draft.md',
+      '--- a/draft.md',
+      '+++ b/draft.md',
+      '@@ -1 +1 @@',
+      '-private draft',
+      '+template draft',
+      '',
+    ].join('\n');
+    writeFileSync(join(feedDir, 'patches', 'draft.diff'), editDraft, 'utf8');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-1',
+          '        title: Unignore',
+          '        delivery: code-patch',
+          '        patch: patches/unignore.diff',
+          '      - id: note-2',
+          '        title: Edit draft',
+          '        delivery: code-patch',
+          '        patch: patches/draft.diff',
+        ],
+      },
+    ]);
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['draft.md']);
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
   });
 
   it('still rolls back every change of a failed multi-note run', () => {

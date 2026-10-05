@@ -37,7 +37,8 @@ export function isGitRepo(cwd: string): boolean {
  */
 export function hasUncommittedChanges(cwd: string): boolean {
   // Untracked files count whatever `status.showUntrackedFiles` says: they are the user's work too.
-  const result = git(cwd, ['status', '--porcelain', '--untracked-files=normal']);
+  // Submodule `ignore` settings must not hide edits inside a submodule either.
+  const result = git(cwd, ['status', '--porcelain', '--untracked-files=normal', '--ignore-submodules=none']);
   if (result.status !== 0) throw new Error(`Unable to read the working tree status: ${result.stderr || result.stdout}`);
   return result.stdout
     .split('\n')

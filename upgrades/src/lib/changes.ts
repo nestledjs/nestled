@@ -43,7 +43,7 @@ function isNestledPath(path: string): boolean {
  * `hasUncommittedChanges` makes. Both sides of a staged rename are included.
  */
 export function dirtyPaths(cwd: string): Set<string> {
-  const result = git(cwd, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
+  const result = git(cwd, ['status', '--porcelain=v1', '-z', '--untracked-files=all', '--ignore-submodules=none']);
   // Never fall back to an empty set: that would treat the user's uncommitted work as not there.
   if (result.status !== 0) throw new Error(`Unable to list uncommitted changes: ${result.stderr || result.stdout}`);
   const paths = new Set<string>();
@@ -217,8 +217,8 @@ type FileState =
   | { kind: 'absent' }
   | { kind: 'file'; contents: Buffer; mode: number }
   | { kind: 'link'; target: string }
-  /** A directory or special file: never captured, never overwritten. */
-  | { kind: 'other' };
+  /** A directory or special file: never captured, never overwritten. A directory above a path keeps its mode. */
+  | { kind: 'other'; mode?: number };
 
 /** A path's state together with the state of each directory above it (a real directory, or a link). */
 interface Captured {
@@ -254,7 +254,8 @@ function ancestorState(absolute: string): FileState {
   const stat = lstatOrNull(absolute);
   if (!stat) return { kind: 'absent' };
   if (stat.isSymbolicLink()) return { kind: 'link', target: readlinkSync(absolute) };
-  return stat.isDirectory() ? { kind: 'other' } : { kind: 'file', contents: Buffer.alloc(0), mode: 0 };
+  if (stat.isDirectory()) return { kind: 'other', mode: stat.mode & 0o7777 };
+  return { kind: 'file', contents: Buffer.alloc(0), mode: 0 };
 }
 
 function capture(root: string, path: string, state: FileState = readState(join(root, path))): Captured {
@@ -289,7 +290,13 @@ function restoreAncestors(captured: Captured): boolean {
   for (const { absolute, state } of captured.ancestors) {
     if (state.kind === 'absent' || state.kind === 'file') return false;
     const now = ancestorState(absolute);
-    if (sameState(state, now)) continue;
+    if (sameState(state, now)) {
+      // Same directory, but a step may have made it unwritable (or otherwise changed its mode).
+      if (state.kind === 'other' && now.kind === 'other' && state.mode !== undefined && state.mode !== now.mode) {
+        chmodSync(absolute, state.mode);
+      }
+      continue;
+    }
     if (now.kind !== 'absent') rmSync(absolute, { recursive: now.kind === 'other', force: true });
     if (state.kind === 'link') symlinkSync(state.target, absolute);
     else mkdirSync(absolute);
@@ -339,6 +346,11 @@ export class RunChanges {
   private readonly prior = new Map<string, PriorState>();
   /** Pre-existing ignored files a step surfaced: restored on rollback, never committed as the run's. */
   private readonly preserved = new Set<string>();
+
+  /** A pre-existing ignored file a step surfaced: the user's, so no later note may write it. */
+  isPreserved(path: string): boolean {
+    return this.preserved.has(path);
+  }
 
   /** `root` is the repository root; `startCommit` is HEAD before the run ('' on an unborn branch). */
   constructor(private readonly root: string, private readonly startCommit: string) {}
@@ -396,13 +408,20 @@ export class RunChanges {
     const targets = [...new Set(paths)].filter((path) => this.prior.has(path));
     const tracked = targets.filter((path) => this.prior.get(path)?.kind === 'tracked');
     const others = targets.filter((path) => this.prior.get(path)?.kind !== 'tracked');
+    const must = (args: string[]) => {
+      const result = git(this.root, args);
+      if (result.status !== 0) throw new Error(`Rollback incomplete: git ${args.join(' ')} failed: ${result.stderr}`);
+    };
     for (const chunk of chunks(tracked)) {
       // Hook-free: a post-checkout hook could rewrite the user's uncommitted files mid-rollback.
-      git(this.root, [...NO_HOOKS, LITERAL, 'checkout', this.startCommit, '--', ...chunk]);
+      must([...NO_HOOKS, LITERAL, 'checkout', this.startCommit, '--', ...chunk]);
     }
     // -f: the index entry may match neither HEAD nor the file on disk (staged by us, then rewritten).
     for (const chunk of chunks(others)) {
-      git(this.root, [LITERAL, 'rm', '--cached', '-f', '-q', '--ignore-unmatch', '--', ...chunk]);
+      // Only exact index entries: a path that is now a directory must not match what lies under it.
+      const indexed = new Set(git(this.root, [LITERAL, 'ls-files', '-z', '--', ...chunk]).stdout.split('\0'));
+      const staged = chunk.filter((path) => indexed.has(path));
+      if (staged.length) must([LITERAL, 'rm', '--cached', '-f', '-q', '--', ...staged]);
     }
     for (const path of others) {
       const prior = this.prior.get(path);
@@ -517,8 +536,25 @@ export function snapshotFiles(root: string, paths: Iterable<string>): UserState 
  * package install, verification commands) on a dirty tree, so a script that rewrites, replaces or
  * re-stages a file the user has uncommitted work in cannot cost them that work.
  */
-export function restoreChangedFiles(root: string, snapshot: UserState): string[] {
+export interface RestoreResult {
+  /** Paths found changed and put back (or attempted): the caller blocks on any. */
+  restored: string[];
+  /** Paths that could not be put back, with where their saved state was written instead. */
+  unrecovered: { path: string; savedTo: string }[];
+}
+
+/** Write what could not be restored under `.git/nestled-recovery/`, so it is never lost. */
+function saveForRecovery(root: string, path: string, contents: Buffer | string, suffix = ''): string {
+  const gitDir = gitOutput(root, ['rev-parse', '--absolute-git-dir']) || join(root, '.git');
+  const target = join(gitDir, 'nestled-recovery', `${path}${suffix}`);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, contents);
+  return target;
+}
+
+export function restoreChangedFiles(root: string, snapshot: UserState): RestoreResult {
   const restored = new Set<string>();
+  const unrecovered: RestoreResult['unrecovered'] = [];
   for (const [path, before] of snapshot.files) {
     const absolute = join(root, path);
     if (before.state.kind === 'other' || unchanged(absolute, before)) continue;
@@ -527,7 +563,11 @@ export function restoreChangedFiles(root: string, snapshot: UserState): string[]
     try {
       restoreCaptured(absolute, before);
     } catch {
-      // Still reported: the note is blocked and the run rolled back, never recorded as applied.
+      // Keep the user's work somewhere safe, and say where.
+      const { state } = before;
+      const saved =
+        state.kind === 'file' ? state.contents : state.kind === 'link' ? `symlink -> ${state.target}\n` : '(absent)\n';
+      unrecovered.push({ path, savedTo: saveForRecovery(root, path, saved) });
     }
     restored.add(path);
   }
@@ -536,18 +576,26 @@ export function restoreChangedFiles(root: string, snapshot: UserState): string[]
     (path) => (snapshot.index.get(path) ?? []).join('\n') !== (now.get(path) ?? []).join('\n'),
   );
   if (changed.length) {
+    let ok = true;
     for (const chunk of chunks(changed)) {
-      git(root, [LITERAL, 'update-index', '--force-remove', '--', ...chunk]);
+      ok = git(root, [LITERAL, 'update-index', '--force-remove', '--', ...chunk]).status === 0 && ok;
     }
     const intents = changed.filter((path) => snapshot.index.get(path)?.some((entry) => entry.endsWith(INTENT_TO_ADD)));
     const info = changed
       .filter((path) => !intents.includes(path))
       .flatMap((path) => (snapshot.index.get(path) ?? []).map((entry) => `${entry}\t${path}\0`));
-    if (info.length) git(root, ['update-index', '-z', '--index-info'], info.join(''));
-    for (const chunk of chunks(intents)) git(root, [LITERAL, 'add', '-N', '--', ...chunk]);
+    if (info.length) ok = git(root, ['update-index', '-z', '--index-info'], info.join('')).status === 0 && ok;
+    for (const chunk of chunks(intents)) ok = git(root, [LITERAL, 'add', '-N', '--', ...chunk]).status === 0 && ok;
+    // Verify rather than trust: whatever still differs keeps its saved entries in a recovery file.
+    const after = ok ? indexEntries(root, changed) : new Map<string, string[]>();
+    for (const path of changed) {
+      const saved = (snapshot.index.get(path) ?? []).join('\n');
+      if (ok && saved === (after.get(path) ?? []).join('\n')) continue;
+      unrecovered.push({ path, savedTo: saveForRecovery(root, path, `${saved}\n`, '.index') });
+    }
     changed.forEach((path) => restored.add(path));
   }
-  return [...restored];
+  return { restored: [...restored], unrecovered };
 }
 
 /**
