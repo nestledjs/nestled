@@ -1,4 +1,5 @@
 import {
+  chmodSync,
   lstatSync,
   mkdirSync,
   readdirSync,
@@ -317,7 +318,11 @@ function restoreCaptured(absolute: string, captured: Captured): void {
   const stat = lstatOrNull(absolute);
   if (stat) rmSync(absolute, { recursive: stat.isDirectory(), force: true });
   if (state.kind === 'link') symlinkSync(state.target, absolute);
-  else writeFileSync(absolute, state.contents, { mode: state.mode });
+  else {
+    writeFileSync(absolute, state.contents);
+    // Exactly: a mode passed to writeFileSync is filtered through the process umask.
+    chmodSync(absolute, state.mode);
+  }
 }
 
 type PriorState = { kind: 'tracked' } | { kind: 'captured'; captured: Captured };
@@ -474,9 +479,22 @@ function indexEntries(root: string, paths: string[]): Map<string, string[]> {
       const path = record.slice(tab + 1);
       entries.set(path, [...(entries.get(path) ?? []), record.slice(0, tab)]);
     }
+    // `ls-files -s` shows an intent-to-add entry (`git add -N`) as a staged empty blob; mark it.
+    const status = git(root, [LITERAL, 'status', '--porcelain=v2', '-z', '--untracked-files=no', '--', ...chunk]);
+    for (const record of status.stdout.split('\0')) {
+      const fields = record.split(' ');
+      if (fields[0] !== '1' || fields[1] !== '.A') continue;
+      const path = fields.slice(8).join(' ');
+      entries.set(
+        path,
+        (entries.get(path) ?? []).map((entry) => `${entry} ${INTENT_TO_ADD}`),
+      );
+    }
   }
   return entries;
 }
+
+const INTENT_TO_ADD = 'intent-to-add';
 
 /** The user's uncommitted work at a set of paths: what is on disk, and what is staged. */
 export interface UserState {
@@ -520,8 +538,12 @@ export function restoreChangedFiles(root: string, snapshot: UserState): string[]
     for (const chunk of chunks(changed)) {
       git(root, [LITERAL, 'update-index', '--force-remove', '--', ...chunk]);
     }
-    const info = changed.flatMap((path) => (snapshot.index.get(path) ?? []).map((entry) => `${entry}\t${path}\0`));
+    const intents = changed.filter((path) => snapshot.index.get(path)?.some((entry) => entry.endsWith(INTENT_TO_ADD)));
+    const info = changed
+      .filter((path) => !intents.includes(path))
+      .flatMap((path) => (snapshot.index.get(path) ?? []).map((entry) => `${entry}\t${path}\0`));
     if (info.length) git(root, ['update-index', '-z', '--index-info'], info.join(''));
+    for (const chunk of chunks(intents)) git(root, [LITERAL, 'add', '-N', '--', ...chunk]);
     changed.forEach((path) => restored.add(path));
   }
   return [...restored];

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdirSync,
@@ -1168,6 +1169,28 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     ).toThrow(/in progress \(MERGE_HEAD\)/);
   });
 
+  it('puts back a rewritten dirty file with its exact permissions', () => {
+    chmodSync(join(repo, 'docs', 'notes.md'), 0o664);
+
+    const result = runWithVerification('rm docs/notes.md; echo x > docs/notes.md; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(lstatSync(join(repo, 'docs', 'notes.md')).mode & 0o777).toBe(0o664);
+  });
+
+  it('puts back an intent-to-add entry a failing step staged', () => {
+    writeFileSync(join(repo, 'draft.md'), 'planned\n', 'utf8');
+    git(repo, ['add', '-N', 'draft.md']);
+    const before = git(repo, ['status', '--porcelain=v2', '--', 'draft.md']).split(' ')[1];
+
+    const result = runWithVerification('git add draft.md; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(before).toBe('.A');
+    expect(git(repo, ['status', '--porcelain=v2', '--', 'draft.md']).split(' ')[1]).toBe('.A');
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -1380,6 +1403,21 @@ describe('applyRun on a clean tree', () => {
     } finally {
       rmSync(upstream, { recursive: true, force: true });
     }
+  });
+
+  it('keeps a staged deletion of a bookkeeping file through the hard reset', () => {
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'old: true\n', 'utf8');
+    git(repo, ['add', '.nestled/config.yaml']);
+    git(repo, ['commit', '-q', '-m', 'track config']);
+    git(repo, ['rm', '-q', '.nestled/config.yaml']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, '.nestled', 'config.yaml'))).toBe(false);
+    expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('D  .nestled/config.yaml');
   });
 
   it('still rolls back every change of a failed multi-note run', () => {

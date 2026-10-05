@@ -424,10 +424,16 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   // after any rollback (the upgrade log is then rewritten from memory as usual).
   const bookkeepingDirs = [...new Set([`${prefix}.nestled/`, '.nestled/'])];
   const isBookkeeping = (path: string) => bookkeepingDirs.some((dir) => path.startsWith(dir));
-  const bookkeepingAtStart = snapshotFiles(
-    root,
-    bookkeepingDirs.flatMap((dir) => listFiles(root, dir) ?? []),
-  );
+  // What is on disk, plus what the start commit tracks there (a staged deletion must come back as one).
+  const trackedBookkeeping = startCommit
+    ? git(root, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', startCommit, '--', ...bookkeepingDirs])
+        .stdout.split('\0')
+        .filter(Boolean)
+    : [];
+  const bookkeepingAtStart = snapshotFiles(root, [
+    ...bookkeepingDirs.flatMap((dir) => listFiles(root, dir) ?? []),
+    ...trackedBookkeeping,
+  ]);
   const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
     const overlap = paths.filter((path) => dirtyAtStart.has(path));
     if (!overlap.length) return null;
