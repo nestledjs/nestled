@@ -414,8 +414,9 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   }
 
   const branch = `nestled-update/${channel}-${pending.ceiling}`;
-  // With the user's work in the tree, switch branches without running hooks that could rewrite it.
-  checkoutBranch(projectDir, branch, { hooks: startedClean });
+  // Switch branches without running hooks: on a dirty tree one could rewrite the user's work, and on
+  // any tree it could create files before the run starts tracking what it changes.
+  checkoutBranch(projectDir, branch, { hooks: false });
   const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
   const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
   const changes = new RunChanges(root, startCommit);
@@ -430,9 +431,14 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
         .stdout.split('\0')
         .filter(Boolean)
     : [];
+  // ...and what is only in the index (a staged addition whose file has since been deleted).
+  const indexedBookkeeping = git(root, ['ls-files', '-z', '--full-name', '--', ...bookkeepingDirs])
+    .stdout.split('\0')
+    .filter(Boolean);
   const bookkeepingAtStart = snapshotFiles(root, [
     ...bookkeepingDirs.flatMap((dir) => listFiles(root, dir) ?? []),
     ...trackedBookkeeping,
+    ...indexedBookkeeping,
   ]);
   const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
     const overlap = paths.filter((path) => dirtyAtStart.has(path));

@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { dirtyPaths, patchPaths } from './changes';
+import { dirtyPaths, listFiles, patchPaths } from './changes';
 
 describe('patchPaths', () => {
   it('lists modified, created, deleted and renamed paths', () => {
@@ -128,6 +128,23 @@ describe('dirtyPaths', () => {
     try {
       expect(() => dirtyPaths(dir)).toThrow(/Unable to list uncommitted changes/);
     } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('listFiles', () => {
+  // root can read a 0o000 directory, so the case cannot arise there
+  it.skipIf(process.getuid?.() === 0)('reports an unreadable directory as an incomplete listing', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nestled-list-'));
+    try {
+      mkdirSync(join(dir, 'cache', 'locked'), { recursive: true });
+      writeFileSync(join(dir, 'cache', 'a.txt'), 'a', 'utf8');
+      writeFileSync(join(dir, 'cache', 'locked', 'b.txt'), 'b', 'utf8');
+      chmodSync(join(dir, 'cache', 'locked'), 0o000);
+      expect(listFiles(dir, 'cache/')).toBeNull();
+    } finally {
+      chmodSync(join(dir, 'cache', 'locked'), 0o755);
       rmSync(dir, { recursive: true, force: true });
     }
   });

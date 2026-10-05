@@ -1420,6 +1420,36 @@ describe('applyRun on a clean tree', () => {
     expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('D  .nestled/config.yaml');
   });
 
+  it('keeps a staged bookkeeping file whose copy on disk was deleted, through the hard reset', () => {
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'staged: true\n', 'utf8');
+    git(repo, ['add', '.nestled/config.yaml']);
+    rmSync(join(repo, '.nestled', 'config.yaml'));
+    const staged = git(repo, ['ls-files', '-s', '.nestled/config.yaml']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['ls-files', '-s', '.nestled/config.yaml'])).toBe(staged);
+    expect(existsSync(join(repo, '.nestled', 'config.yaml'))).toBe(false);
+  });
+
+  it('runs no post-checkout hook when switching to the upgrade branch', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    writeFileSync(
+      join(repo, '.git', 'hooks', 'post-checkout'),
+      '#!/bin/sh\n[ "$3" = "1" ] && echo gen > generated.txt\nexit 0\n',
+      { mode: 0o755 },
+    );
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+  });
+
   it('still rolls back every change of a failed multi-note run', () => {
     writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
     writeFileSync(join(repo, 'added.txt'), 'new\n', 'utf8');

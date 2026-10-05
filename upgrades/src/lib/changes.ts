@@ -453,7 +453,8 @@ export function listFiles(root: string, dir: string, limit = Infinity): string[]
     try {
       entries = readdirSync(join(root, relative), { withFileTypes: true });
     } catch {
-      return true;
+      // Unreadable (or gone): an incomplete listing must not pass for a complete one.
+      return false;
     }
     for (const entry of entries) {
       const path = `${relative}${entry.name}`;
