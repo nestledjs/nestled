@@ -35,7 +35,8 @@ export function isGitRepo(cwd: string): boolean {
  * unknown state must never be taken for a clean one, since a clean start permits `reset --hard`.
  */
 export function hasUncommittedChanges(cwd: string): boolean {
-  const result = git(cwd, ['status', '--porcelain']);
+  // Untracked files count whatever `status.showUntrackedFiles` says: they are the user's work too.
+  const result = git(cwd, ['status', '--porcelain', '--untracked-files=normal']);
   if (result.status !== 0) throw new Error(`Unable to read the working tree status: ${result.stderr || result.stdout}`);
   return result.stdout
     .split('\n')

@@ -420,6 +420,26 @@ export class RunChanges {
   }
 }
 
+/** Every file and link under `dir` (repository-root-relative, ending in `/`), as root-relative paths. */
+export function listFiles(root: string, dir: string): string[] {
+  const result: string[] = [];
+  const walk = (relative: string) => {
+    let entries;
+    try {
+      entries = readdirSync(join(root, relative), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const path = `${relative}${entry.name}`;
+      if (entry.isDirectory()) walk(`${path}/`);
+      else result.push(path);
+    }
+  };
+  walk(dir);
+  return result;
+}
+
 /** Index entries (`mode sha stage`, one per stage) of each of `paths`; a path with none is not in the index. */
 function indexEntries(root: string, paths: string[]): Map<string, string[]> {
   const entries = new Map<string, string[]>();

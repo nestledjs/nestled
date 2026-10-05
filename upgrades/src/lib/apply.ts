@@ -15,6 +15,7 @@ import {
   commitPaths,
   dirtyPaths,
   ignoredPaths,
+  listFiles,
   patchPaths,
   restoreChangedFiles,
   RunChanges,
@@ -392,6 +393,11 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   // What the user had uncommitted when we started is theirs: no note may write it, no rollback may revert it.
   const dirtyAtStart = startedClean ? new Set<string>() : dirtyPaths(root);
   const changes = new RunChanges(root, startCommit);
+  // Our own bookkeeping is never the run's to delete, whatever a step or a reset does to it: put it
+  // back after any rollback (the upgrade log is then rewritten from memory as usual).
+  const bookkeeping = `${prefix}.nestled/`;
+  const isBookkeeping = (path: string) => path.startsWith(bookkeeping) || path.startsWith('.nestled/');
+  const bookkeepingAtStart = snapshotFiles(root, listFiles(root, bookkeeping));
   const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
     const overlap = paths.filter((path) => dirtyAtStart.has(path));
     if (!overlap.length) return null;
@@ -412,11 +418,11 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     const startedAt = Date.now();
     const result = step();
     // What it left uncommitted, and what it committed (a script, or a hook, can commit too).
-    const changed = new Set([...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path)));
+    const changed = new Set([...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path) && !isBookkeeping(path)));
     const headAfter = gitOutput(root, ['rev-parse', 'HEAD']);
     if (headBefore && headAfter && headAfter !== headBefore) {
       const committed = git(root, ['diff', '--name-only', '-z', '--no-renames', headBefore, headAfter]).stdout;
-      for (const path of committed.split('\0').filter(Boolean)) changed.add(path);
+      for (const path of committed.split('\0').filter(Boolean)) if (!isBookkeeping(path)) changed.add(path);
     }
     // A user path the step committed counts as clobbered even when its file and index entry still
     // match: the user's work is now inside a commit, which only a rollback takes back out.
@@ -443,6 +449,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       git(root, ['reset', '--soft', startCommit]);
     }
     changes.restore();
+    restoreChangedFiles(root, bookkeepingAtStart);
   };
 
   const applied: { note: UpgradeNote; entry: AppliedNote }[] = [];
@@ -468,6 +475,11 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
     if (includesPackage(note)) {
       const plan = planPackageReleases(projectDir, note);
+      // An install writes through a linked lockfile to a file elsewhere, which no rollback could find.
+      if (plan.lockfile && (lstatSync(plan.lockfile).isSymbolicLink() || throughLink(projectDir, plan.lockfile))) {
+        blocked = { id: note.id, reason: `${fromAbsolute(plan.lockfile)} is a symlink; update the lockfile by hand.` };
+        break;
+      }
       const targets = packageTargets(plan).map(fromAbsolute);
       blocked = uncommittedBlock(note.id, targets);
       if (blocked) break;

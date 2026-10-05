@@ -64,6 +64,49 @@ function writeManifestReleases(ceiling: string, releases: RawRelease[]): void {
   writeFileSync(join(feedDir, 'manifest.yaml'), lines.join('\n'), 'utf8');
 }
 
+/** Run `fn` with a stand-in `npm` on PATH: `view` succeeds, `install` runs `installScript` in the project. */
+function withFakeNpm(installScript: string, fn: () => void): void {
+  const binDir = mkdtempSync(join(tmpdir(), 'nestled-bin-'));
+  const savedPath = process.env.PATH;
+  const script = [
+    '#!/bin/sh',
+    'if [ "$1" = "view" ]; then echo \'"2.0.0"\'; exit 0; fi',
+    `if [ "$1" = "install" ]; then ${installScript}; exit 0; fi`,
+    'exit 1',
+    '',
+  ].join('\n');
+  writeFileSync(join(binDir, 'npm'), script, { mode: 0o755 });
+  process.env.PATH = `${binDir}:${savedPath}`;
+  try {
+    fn();
+  } finally {
+    process.env.PATH = savedPath;
+    rmSync(binDir, { recursive: true, force: true });
+  }
+}
+
+/** A committed package.json consuming example-lib, a lockfile, and a feed note bumping it. */
+function packageBumpNote(): void {
+  const manifest = { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } };
+  writeFileSync(join(repo, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  if (!existsSync(join(repo, 'package-lock.json'))) writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+  git(repo, ['add', 'package.json', 'package-lock.json']);
+  git(repo, ['commit', '-q', '-m', 'add manifest']);
+  writeManifestReleases('2026.02.0', [
+    {
+      id: '2026.02.0',
+      notes: [
+        '      - id: note-pkg',
+        '        title: Bump example-lib',
+        '        delivery: package-release',
+        '        packageReleases:',
+        '          - name: example-lib',
+        '            targetVersion: 2.0.0',
+      ],
+    },
+  ]);
+}
+
 beforeEach(() => {
   repo = mkdtempSync(join(tmpdir(), 'nestled-repo-'));
   feedDir = mkdtempSync(join(tmpdir(), 'nestled-feed-'));
@@ -990,6 +1033,27 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(git(repo, ['status', '--porcelain', '--untracked-files=all']).includes('new-dir')).toBe(false);
   });
 
+  it('blocks a package bump whose lockfile is a symlink, before installing', () => {
+    writeFileSync(join(repo, '.gitignore'), 'lock-target.json\n', 'utf8');
+    writeFileSync(join(repo, 'lock-target.json'), '{"mine":true}\n', 'utf8');
+    symlinkSync('lock-target.json', join(repo, 'package-lock.json'));
+    git(repo, ['add', '.gitignore', 'package-lock.json']);
+    git(repo, ['commit', '-q', '-m', 'linked lockfile']);
+    packageBumpNote();
+
+    withFakeNpm('echo overwritten > package-lock.json', () => {
+      const result = applyRun(repo, {
+        manifestFile: join(feedDir, 'manifest.yaml'),
+        verification: ['false'],
+        allowDirty: true,
+      });
+      expect(result.status).toBe('blocked');
+      expect(result.blocked?.reason).toContain('package-lock.json is a symlink');
+    });
+
+    expect(readFileSync(join(repo, 'lock-target.json'), 'utf8')).toBe('{"mine":true}\n');
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -1087,6 +1151,30 @@ describe('applyRun on a clean tree', () => {
       process.env.PATH = savedPath;
       rmSync(binDir, { recursive: true, force: true });
     }
+  });
+
+  it('keeps untracked bookkeeping a step committed, through the hard reset', () => {
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'mine: true\n', 'utf8');
+    packageBumpNote();
+
+    withFakeNpm('git add -A .nestled && git commit -q -m sneaky', () => {
+      const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+      expect(result.status).toBe('verification-failed');
+    });
+
+    expect(readFileSync(join(repo, '.nestled', 'config.yaml'), 'utf8')).toBe('mine: true\n');
+    expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('?? .nestled/config.yaml');
+  });
+
+  it('refuses a tree with untracked files even when git is configured to hide them', () => {
+    git(repo, ['config', 'status.showUntrackedFiles', 'no']);
+    writeFileSync(join(repo, 'notes.txt'), 'untracked work\n', 'utf8');
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    expect(() => applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] })).toThrow(
+      /uncommitted changes/,
+    );
   });
 
   it('still rolls back every change of a failed multi-note run', () => {
