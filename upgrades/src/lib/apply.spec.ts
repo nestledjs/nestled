@@ -1219,6 +1219,81 @@ describe('applyRun on a clean tree', () => {
     expect(git(repo, ['status', '--porcelain', '--ignored', '--', 'draft.md']).trim()).toBe('!! draft.md');
   });
 
+  it('keeps an ignored file a patch un-ignored and a failing step then committed', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('.gitignore', ''), 'utf8');
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['git add draft.md && git commit -q -m verify; false'],
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+  });
+
+  it('keeps the repository root’s bookkeeping when the project is a subdirectory', () => {
+    const project = join(repo, 'apps', 'example');
+    mkdirSync(project, { recursive: true });
+    const manifest = { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } };
+    writeFileSync(join(project, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    writeFileSync(join(project, 'package-lock.json'), '{}\n');
+    git(repo, ['add', '-A', 'apps']);
+    git(repo, ['commit', '-q', '-m', 'add project']);
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'mine: true\n', 'utf8');
+    initBaseline(project, { at: '2026.01.0', channel: 'stable' });
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    withFakeNpm('git add -A ../../.nestled && git commit -q -m sneaky', () => {
+      const result = applyRun(project, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+      expect(result.status).toBe('verification-failed');
+    });
+
+    expect(readFileSync(join(repo, '.nestled', 'config.yaml'), 'utf8')).toBe('mine: true\n');
+    expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('?? .nestled/config.yaml');
+  });
+
+  it('refuses an --allow-dirty run with uncommitted changes inside a submodule', () => {
+    const upstream = mkdtempSync(join(tmpdir(), 'nestled-sub-'));
+    try {
+      git(upstream, ['init', '-q']);
+      git(upstream, ['config', 'user.email', 'test@example.com']);
+      git(upstream, ['config', 'user.name', 'Test']);
+      writeFileSync(join(upstream, 'lib.txt'), 'lib\n', 'utf8');
+      git(upstream, ['add', '-A']);
+      git(upstream, ['commit', '-q', '-m', 'lib']);
+      git(repo, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', upstream, 'modules/example']);
+      git(repo, ['commit', '-q', '-m', 'add submodule']);
+      writeFileSync(join(repo, 'modules', 'example', 'lib.txt'), 'my edit\n', 'utf8');
+      writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+      writeManifest('2026.02.0', '2026.02.0');
+
+      expect(() =>
+        applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true }),
+      ).toThrow(/modules\/example is a submodule or nested repository with uncommitted changes/);
+      expect(readFileSync(join(repo, 'modules', 'example', 'lib.txt'), 'utf8')).toBe('my edit\n');
+    } finally {
+      rmSync(upstream, { recursive: true, force: true });
+    }
+  });
+
   it('still rolls back every change of a failed multi-note run', () => {
     writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
     writeFileSync(join(repo, 'added.txt'), 'new\n', 'utf8');

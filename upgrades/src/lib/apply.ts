@@ -377,11 +377,6 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     throw new Error('Project has uncommitted changes. Commit them, or re-run with --allow-dirty.');
   }
 
-  const branch = `nestled-update/${channel}-${pending.ceiling}`;
-  checkoutBranch(projectDir, branch);
-  const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
-  const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
-
   // Everything below works in repository-root-relative paths, the form `git status` reports. Patch
   // paths already are (git apply resolves them from the root, skipping any outside this directory).
   const root = gitOutput(projectDir, ['rev-parse', '--show-toplevel']) || projectDir;
@@ -392,12 +387,29 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   };
   // What the user had uncommitted when we started is theirs: no note may write it, no rollback may revert it.
   const dirtyAtStart = startedClean ? new Set<string>() : dirtyPaths(root);
+  // Git reports a dirty submodule (or other nested repository) as one directory, whose contents no
+  // snapshot here can protect from what a step might run inside it. Refuse before touching anything.
+  const isDir = (path: string) => lstatSync(join(root, path), { throwIfNoEntry: false })?.isDirectory();
+  const nested = [...dirtyAtStart].filter(isDir);
+  if (nested.length) {
+    const what = nested.length === 1 ? 'is a submodule or nested repository' : 'are submodules or nested repositories';
+    throw new Error(`${nested.join(', ')} ${what} with uncommitted changes; commit or stash them first.`);
+  }
+
+  const branch = `nestled-update/${channel}-${pending.ceiling}`;
+  checkoutBranch(projectDir, branch);
+  const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
+  const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
   const changes = new RunChanges(root, startCommit);
-  // Our own bookkeeping is never the run's to delete, whatever a step or a reset does to it: put it
-  // back after any rollback (the upgrade log is then rewritten from memory as usual).
-  const bookkeeping = `${prefix}.nestled/`;
-  const isBookkeeping = (path: string) => path.startsWith(bookkeeping) || path.startsWith('.nestled/');
-  const bookkeepingAtStart = snapshotFiles(root, listFiles(root, bookkeeping));
+  // Our own bookkeeping (the project's `.nestled/`, and the repository root's when the project is a
+  // subdirectory) is never the run's to delete, whatever a step or a reset does to it: put it back
+  // after any rollback (the upgrade log is then rewritten from memory as usual).
+  const bookkeepingDirs = [...new Set([`${prefix}.nestled/`, '.nestled/'])];
+  const isBookkeeping = (path: string) => bookkeepingDirs.some((dir) => path.startsWith(dir));
+  const bookkeepingAtStart = snapshotFiles(
+    root,
+    bookkeepingDirs.flatMap((dir) => listFiles(root, dir)),
+  );
   const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
     const overlap = paths.filter((path) => dirtyAtStart.has(path));
     if (!overlap.length) return null;
@@ -516,7 +528,12 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       if (blocked) break;
       changes.willTouch(paths);
       paths.forEach((path) => noteTouched.add(path));
-      const patch = tryApplyPatch(projectDir, diff, () => changes.restore(paths));
+      // Guarded like any other step: a patch that drops an ignore rule surfaces the user's ignored files,
+      // which must be known as theirs before a later step can commit them.
+      const patchStep = guarded(() => tryApplyPatch(projectDir, diff, () => changes.restore(paths)));
+      blocked = uncommittedBlock(note.id, patchStep.clobbered);
+      if (blocked) break;
+      const patch = patchStep.result;
       if (!patch.applied && !patch.alreadyApplied) {
         blocked = {
           id: note.id,
