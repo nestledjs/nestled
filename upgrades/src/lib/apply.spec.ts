@@ -997,6 +997,21 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readFileSync(join(repo, 'cache', 'mine.txt'), 'utf8')).toBe('kept\n');
   });
 
+  it('keeps an ignored file a failing step un-ignored and atomically replaced', () => {
+    writeFileSync(join(repo, '.gitignore'), 'cache/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore cache']);
+    mkdirSync(join(repo, 'cache'));
+    writeFileSync(join(repo, 'cache', 'mine.txt'), 'kept\n', 'utf8');
+
+    const result = runWithVerification(
+      ': > .gitignore; sleep 0.2; echo kept > cache/tmp && mv cache/tmp cache/mine.txt; false',
+    );
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'cache', 'mine.txt'), 'utf8')).toBe('kept\n');
+  });
+
   it('puts back a directory a step replaced with a symlink, without following the link', () => {
     writeFileSync(join(repo, '.gitignore'), 'drafts/\n', 'utf8');
     git(repo, ['add', '.gitignore']);

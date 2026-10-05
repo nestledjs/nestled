@@ -57,13 +57,16 @@ export function dirtyPaths(cwd: string): Set<string> {
   return new Set([...paths].filter((path) => !isNestledPath(path)));
 }
 
+/** How many files `ignoredPaths` lists inside collapsed ignored directories before giving up on one. */
+const IGNORED_SCAN_LIMIT = 20000;
+
 /**
- * Ignored paths that exist right now, as `git status --ignored` reports them: files, and directories
- * (ending in `/`) standing for everything under them. Returns a test of whether a path existed (as an
- * ignored file) at this moment. Git collapses an ignored directory to one entry, so for a path inside
- * one the file's own creation time decides: one created after `since` is new, not pre-existing.
+ * Ignored paths that exist right now, as `git status --ignored` reports them, as a test of whether a
+ * path existed (as an ignored file) at this moment. Git collapses an ignored directory to one entry,
+ * so its files are listed here directly, up to a limit; inside a directory too large to list (a
+ * `node_modules`), every path counts as pre-existing, which can only ever leave a file behind.
  */
-export function ignoredPaths(cwd: string): (path: string, since: number) => boolean {
+export function ignoredPaths(cwd: string): (path: string) => boolean {
   // --untracked-files: ignored files are only listed while untracked ones are, whatever the config says.
   const result = git(cwd, ['status', '--porcelain=v1', '-z', '--ignored=traditional', '--untracked-files=normal']);
   if (result.status !== 0) throw new Error(`Unable to list ignored files: ${result.stderr || result.stdout}`);
@@ -72,14 +75,18 @@ export function ignoredPaths(cwd: string): (path: string, since: number) => bool
     .filter((entry) => entry.startsWith('!! '))
     .map((entry) => entry.slice(3));
   const files = new Set(entries.filter((entry) => !entry.endsWith('/')));
-  const dirs = entries.filter((entry) => entry.endsWith('/'));
-  return (path, since) => {
-    if (files.has(path)) return true;
-    if (!dirs.some((dir) => path.startsWith(dir))) return false;
-    const born = lstatOrNull(join(cwd, path))?.birthtimeMs ?? 0;
-    // Where the filesystem keeps no creation time (0), assume it existed: leaving a file behind is safe.
-    return !(born > 0 && born >= since);
-  };
+  const unlisted: string[] = [];
+  let budget = IGNORED_SCAN_LIMIT;
+  for (const dir of entries.filter((entry) => entry.endsWith('/'))) {
+    const found = budget > 0 ? listFiles(cwd, dir, budget) : null;
+    if (!found) {
+      unlisted.push(dir);
+      continue;
+    }
+    budget -= found.length;
+    found.forEach((path) => files.add(path));
+  }
+  return (path) => files.has(path) || unlisted.some((dir) => path.startsWith(dir));
 }
 
 /** C-style unquoting of a path git quoted (`"a/\303\274.txt"`); octal escapes are UTF-8 bytes. */
@@ -427,24 +434,31 @@ export class RunChanges {
   }
 }
 
-/** Every file and link under `dir` (repository-root-relative, ending in `/`), as root-relative paths. */
-export function listFiles(root: string, dir: string): string[] {
+/**
+ * Every file and link under `dir` (repository-root-relative, ending in `/`), as root-relative paths,
+ * without following directory links. With `limit`, null once more than that many are found.
+ */
+export function listFiles(root: string, dir: string, limit = Infinity): string[] | null {
   const result: string[] = [];
-  const walk = (relative: string) => {
+  const walk = (relative: string): boolean => {
     let entries;
     try {
       entries = readdirSync(join(root, relative), { withFileTypes: true });
     } catch {
-      return;
+      return true;
     }
     for (const entry of entries) {
       const path = `${relative}${entry.name}`;
-      if (entry.isDirectory()) walk(`${path}/`);
-      else result.push(path);
+      if (entry.isDirectory()) {
+        if (!walk(`${path}/`)) return false;
+      } else {
+        result.push(path);
+        if (result.length > limit) return false;
+      }
     }
+    return true;
   };
-  walk(dir);
-  return result;
+  return walk(dir) ? result : null;
 }
 
 /** Index entries (`mode sha stage`, one per stage) of each of `paths`; a path with none is not in the index. */

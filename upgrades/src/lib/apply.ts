@@ -408,7 +408,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   const isBookkeeping = (path: string) => bookkeepingDirs.some((dir) => path.startsWith(dir));
   const bookkeepingAtStart = snapshotFiles(
     root,
-    bookkeepingDirs.flatMap((dir) => listFiles(root, dir)),
+    bookkeepingDirs.flatMap((dir) => listFiles(root, dir) ?? []),
   );
   const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
     const overlap = paths.filter((path) => dirtyAtStart.has(path));
@@ -427,7 +427,6 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     const ignoredBefore = ignoredPaths(root);
     const headBefore = gitOutput(root, ['rev-parse', 'HEAD']);
     const userFiles = snapshotFiles(root, dirtyAtStart);
-    const startedAt = Date.now();
     const result = step();
     // What it left uncommitted, and what it committed (a script, or a hook, can commit too).
     const changed = new Set([...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path) && !isBookkeeping(path)));
@@ -443,7 +442,7 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     // The user's paths are protected above, never taken over as the run's own.
     const sideEffects = changes.didChange(
       [...changed].filter((path) => !dirtyAtStart.has(path)),
-      (path) => ignoredBefore(path, startedAt),
+      ignoredBefore,
     );
     return { result, sideEffects, clobbered: [...clobbered] };
   };
