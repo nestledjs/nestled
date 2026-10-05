@@ -1,6 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readlinkSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { applyRun } from './apply';
@@ -18,7 +29,7 @@ let feedDir: string;
 /** Build a valid unified diff by making the edit, capturing `git diff`, reverting. */
 function makeDiff(file: string, contents: string): string {
   writeFileSync(join(repo, file), contents, 'utf8');
-  const diff = git(repo, ['diff']);
+  const diff = git(repo, ['diff', '--', file]);
   git(repo, ['checkout', '--', file]);
   return diff;
 }
@@ -52,6 +63,49 @@ function writeManifestReleases(ceiling: string, releases: RawRelease[]): void {
     lines.push(`  - id: "${release.id}"`, '    templateCommit: abc123', '    notes:', ...release.notes);
   }
   writeFileSync(join(feedDir, 'manifest.yaml'), lines.join('\n'), 'utf8');
+}
+
+/** Run `fn` with a stand-in `npm` on PATH: `view` succeeds, `install` runs `installScript` in the project. */
+function withFakeNpm(installScript: string, fn: () => void): void {
+  const binDir = mkdtempSync(join(tmpdir(), 'nestled-bin-'));
+  const savedPath = process.env.PATH;
+  const script = [
+    '#!/bin/sh',
+    'if [ "$1" = "view" ]; then echo \'"2.0.0"\'; exit 0; fi',
+    `if [ "$1" = "install" ]; then ${installScript}; exit 0; fi`,
+    'exit 1',
+    '',
+  ].join('\n');
+  writeFileSync(join(binDir, 'npm'), script, { mode: 0o755 });
+  process.env.PATH = `${binDir}:${savedPath}`;
+  try {
+    fn();
+  } finally {
+    process.env.PATH = savedPath;
+    rmSync(binDir, { recursive: true, force: true });
+  }
+}
+
+/** A committed package.json consuming example-lib, a lockfile, and a feed note bumping it. */
+function packageBumpNote(): void {
+  const manifest = { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } };
+  writeFileSync(join(repo, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  if (!existsSync(join(repo, 'package-lock.json'))) writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+  git(repo, ['add', 'package.json', 'package-lock.json']);
+  git(repo, ['commit', '-q', '-m', 'add manifest']);
+  writeManifestReleases('2026.02.0', [
+    {
+      id: '2026.02.0',
+      notes: [
+        '      - id: note-pkg',
+        '        title: Bump example-lib',
+        '        delivery: package-release',
+        '        packageReleases:',
+        '          - name: example-lib',
+        '            targetVersion: 2.0.0',
+      ],
+    },
+  ]);
 }
 
 beforeEach(() => {
@@ -327,5 +381,1184 @@ describe('applyRun', () => {
 
     expect(result.status).toBe('applied');
     expect(result.verification).toEqual([{ command: 'true', status: 0, output: '', error: '' }]);
+  });
+});
+
+describe('applyRun --allow-dirty', () => {
+  const NOTES = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', ''].join('\n');
+  const USER_EDIT = 'my own unfinished edit\n';
+
+  /** A committed, unrelated file the user then edits without committing. */
+  function dirtyUnrelatedFile(): void {
+    mkdirSync(join(repo, 'docs'), { recursive: true });
+    writeFileSync(join(repo, 'docs', 'notes.md'), NOTES, 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add notes']);
+    writeFileSync(join(repo, 'docs', 'notes.md'), NOTES + USER_EDIT, 'utf8');
+  }
+
+  function untrackedUnrelatedFile(): void {
+    mkdirSync(join(repo, 'docs'), { recursive: true });
+    writeFileSync(join(repo, 'docs', 'draft.md'), 'not committed yet\n', 'utf8');
+  }
+
+  /** A patch for hello.txt that will not apply, because hello.txt is then committed with other content. */
+  function conflictingPatch(name: string, { withBlob = true } = {}): void {
+    let diff = makeDiff('hello.txt', 'hello world\n');
+    // Without the `index` line, --3way has no base blob to merge from and fails outright.
+    if (!withBlob) diff = diff.replace(/^index .*\n/m, '');
+    writeFileSync(join(feedDir, 'patches', name), diff, 'utf8');
+  }
+
+  function divergeHello(): void {
+    writeFileSync(join(repo, 'hello.txt'), 'completely different\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'diverge']);
+  }
+
+  function codePatchNote(id: string, patch: string): string[] {
+    return [
+      `      - id: ${id}`,
+      `        title: ${id}`,
+      '        delivery: code-patch',
+      `        patch: patches/${patch}`,
+    ];
+  }
+
+  const status = (path: string) => git(repo, ['status', '--porcelain', '--', path]).trim();
+  const run = (extra: Record<string, unknown> = {}) =>
+    applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true, ...extra });
+
+  it('keeps an unrelated uncommitted edit when a failed 3-way attempt is undone', () => {
+    conflictingPatch('change.diff');
+    divergeHello();
+    dirtyUnrelatedFile();
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.reason).toContain('did not apply cleanly');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    // the 3-way attempt's conflict markers are gone
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('completely different\n');
+    expect(status('hello.txt')).toBe('');
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBe('blocked');
+  });
+
+  it('keeps an unrelated uncommitted edit when a patch without a 3-way base fails', () => {
+    conflictingPatch('change.diff', { withBlob: false });
+    divergeHello();
+    dirtyUnrelatedFile();
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('completely different\n');
+  });
+
+  it('rolls back earlier notes of the run but not the user’s edits, tracked or untracked', () => {
+    writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    // note-2 creates a file and edits hello.txt against content it will not find
+    writeFileSync(join(repo, 'added.txt'), 'from the template\n', 'utf8');
+    git(repo, ['add', '-N', 'added.txt']);
+    writeFileSync(join(repo, 'hello.txt'), 'something else\n', 'utf8');
+    const bad = git(repo, ['diff']).replace(/^index .*\n/gm, (line) => (line.includes('0000000') ? line : ''));
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'added.txt'));
+    git(repo, ['checkout', '--', 'hello.txt']);
+    writeFileSync(join(feedDir, 'patches', 'bad.diff'), bad.replace('-hello', '-not what is there'), 'utf8');
+    writeManifestReleases('2026.02.0', [
+      { id: '2026.02.0', notes: [...codePatchNote('note-1', 'good.diff'), ...codePatchNote('note-2', 'bad.diff')] },
+    ]);
+    dirtyUnrelatedFile();
+    untrackedUnrelatedFile();
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-2');
+    // the run's own work is gone: note-1's commit and change, note-2's partial state
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(existsSync(join(repo, 'added.txt'))).toBe(false);
+    // the user's work is exactly as it was, and still uncommitted
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(status('docs/notes.md')).toBe('M docs/notes.md');
+    expect(readFileSync(join(repo, 'docs', 'draft.md'), 'utf8')).toBe('not committed yet\n');
+    expect(status('docs/draft.md')).toBe('?? docs/draft.md');
+  });
+
+  it('keeps the user’s edits when verification fails, and commits none of them on success', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    dirtyUnrelatedFile();
+    untrackedUnrelatedFile();
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const failed = run({ verification: ['false'] });
+
+    expect(failed.status).toBe('verification-failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(status('docs/draft.md')).toBe('?? docs/draft.md');
+
+    // once the note is unheld, a passing run commits only the upgrade
+    const log = readUpgradeLog(repo);
+    delete log.upgrades['note-1'];
+    writeUpgradeLog(repo, log);
+    const passed = run();
+
+    expect(passed.status).toBe('applied');
+    expect(git(repo, ['show', '--name-only', '--format=', 'HEAD']).trim()).toBe('hello.txt');
+    expect(status('docs/notes.md')).toBe('M docs/notes.md');
+    expect(status('docs/draft.md')).toBe('?? docs/draft.md');
+  });
+
+  it('blocks a note whose patch touches a file with uncommitted changes, and leaves the file alone', () => {
+    dirtyUnrelatedFile();
+    // the patch edits line one; the user's uncommitted edit is at the end, so it would apply on top
+    git(repo, ['stash', '-q']);
+    writeFileSync(
+      join(feedDir, 'patches', 'change.diff'),
+      makeDiff('docs/notes.md', NOTES.replace('one', 'ONE')),
+      'utf8',
+    );
+    git(repo, ['stash', 'pop', '-q']);
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-1');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(result.blocked?.reason).toContain('docs/notes.md has uncommitted changes');
+    expect(result.blocked?.reason).toContain('commit or stash them first');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(NOTES + USER_EDIT);
+    expect(status('docs/notes.md')).toBe('M docs/notes.md');
+    // held back by the user's work, not by the upgrade: nothing recorded, so a later run retries it
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBeUndefined();
+  });
+
+  it('blocks a package bump whose manifest has uncommitted changes, before writing anything', () => {
+    writeFileSync(join(repo, 'package.json'), `${JSON.stringify({ name: 'consumer', dependencies: {} }, null, 2)}\n`);
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add package.json']);
+    const userManifest = `${JSON.stringify(
+      { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } },
+      null,
+      2,
+    )}\n`;
+    writeFileSync(join(repo, 'package.json'), userManifest);
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    const result = run();
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['package.json']);
+    expect(readFileSync(join(repo, 'package.json'), 'utf8')).toBe(userManifest);
+  });
+});
+
+describe('applyRun --allow-dirty with third-party steps and layouts', () => {
+  const USER_NOTES = 'one\ntwo\nmy own unfinished edit\n';
+  let binDir: string;
+  let savedPath: string | undefined;
+
+  beforeEach(() => {
+    binDir = mkdtempSync(join(tmpdir(), 'nestled-bin-'));
+    savedPath = process.env.PATH;
+    mkdirSync(join(repo, 'docs'), { recursive: true });
+    writeFileSync(join(repo, 'docs', 'notes.md'), 'one\ntwo\n', 'utf8');
+    writeFileSync(join(repo, 'other.txt'), 'clean\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add files']);
+    writeFileSync(join(repo, 'docs', 'notes.md'), USER_NOTES, 'utf8');
+  });
+
+  afterEach(() => {
+    process.env.PATH = savedPath;
+    rmSync(binDir, { recursive: true, force: true });
+  });
+
+  /** A stand-in `npm` whose `view` succeeds and whose `install` runs `installScript`, like a postinstall would. */
+  function fakeNpm(installScript: string): void {
+    const script = [
+      '#!/bin/sh',
+      'if [ "$1" = "view" ]; then echo \'"2.0.0"\'; exit 0; fi',
+      'if [ "$1" = "install" ]; then',
+      installScript,
+      'exit 0; fi',
+      'exit 1',
+      '',
+    ].join('\n');
+    writeFileSync(join(binDir, 'npm'), script, { mode: 0o755 });
+    process.env.PATH = `${binDir}:${savedPath}`;
+  }
+
+  it('puts back a dirty file an install script rewrote, and blocks the bump', () => {
+    const manifest = `${JSON.stringify({ name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    writeFileSync(join(repo, 'package.json'), manifest);
+    writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+    git(repo, ['add', 'package.json', 'package-lock.json']);
+    git(repo, ['commit', '-q', '-m', 'add manifest']);
+    fakeNpm('echo "rewritten by a script" > docs/notes.md; echo "{\\"v\\":2}" > package-lock.json; echo x > other.txt');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    // the bump, the lockfile and the script's other write are all undone
+    expect(readFileSync(join(repo, 'package.json'), 'utf8')).toBe(manifest);
+    expect(readFileSync(join(repo, 'package-lock.json'), 'utf8')).toBe('{}\n');
+    expect(readFileSync(join(repo, 'other.txt'), 'utf8')).toBe('clean\n');
+  });
+
+  it('undoes what failing verification wrote, without touching the user’s edits', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['echo x > other.txt; echo y > docs/notes.md; echo z > generated.txt; false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'other.txt'), 'utf8')).toBe('clean\n');
+    expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('commits both sides of a renamed file', () => {
+    git(repo, ['mv', 'other.txt', 'renamed.txt']);
+    const rename = git(repo, ['diff', '--cached', '-M']);
+    git(repo, ['reset', '-q', '--', 'other.txt', 'renamed.txt']);
+    rmSync(join(repo, 'renamed.txt'));
+    git(repo, ['checkout', '--', 'other.txt']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), rename, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('applied');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).not.toContain('other.txt');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).toContain('renamed.txt');
+    expect(git(repo, ['status', '--porcelain', '--', 'other.txt', 'renamed.txt']).trim()).toBe('');
+    expect(git(repo, ['status', '--porcelain', '--', 'docs/notes.md']).trim()).toBe('M docs/notes.md');
+  });
+
+  it('checks patch paths from the repository root when the project is a subdirectory', () => {
+    const project = join(repo, 'apps', 'example');
+    mkdirSync(project, { recursive: true });
+    writeFileSync(join(project, 'file.txt'), 'base\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add project']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('apps/example/file.txt', 'base\nmore\n'), 'utf8');
+    writeFileSync(join(project, 'file.txt'), 'base\nmine\n', 'utf8');
+    initBaseline(project, { at: '2026.01.0', channel: 'stable' });
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(project, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['apps/example/file.txt']);
+    expect(readFileSync(join(project, 'file.txt'), 'utf8')).toBe('base\nmine\n');
+  });
+
+  function runWithVerification(command: string) {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    return applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [command], allowDirty: true });
+  }
+
+  it('puts back the staged version of a partially staged file that a step re-stages', () => {
+    writeFileSync(join(repo, 'docs', 'notes.md'), 'one\ntwo\nstaged\n', 'utf8');
+    git(repo, ['add', 'docs/notes.md']);
+    writeFileSync(join(repo, 'docs', 'notes.md'), USER_NOTES, 'utf8');
+    const stagedBefore = git(repo, ['ls-files', '-s', 'docs/notes.md']);
+
+    const result = runWithVerification('git add docs/notes.md; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['ls-files', '-s', 'docs/notes.md'])).toBe(stagedBefore);
+    expect(git(repo, ['show', ':docs/notes.md'])).toBe('one\ntwo\nstaged\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('removes a file a note created even after a failing step rewrote it', () => {
+    writeFileSync(join(repo, 'added.txt'), 'from the template\n', 'utf8');
+    git(repo, ['add', '-N', 'added.txt']);
+    const create = git(repo, ['diff', '--', 'added.txt']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'added.txt'));
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), create, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['echo changed > added.txt; false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, 'added.txt'))).toBe(false);
+    expect(git(repo, ['status', '--porcelain', '--', 'added.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('puts back a dirty file a step replaced with a directory', () => {
+    const result = runWithVerification('rm docs/notes.md; mkdir -p docs/notes.md/inner; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(lstatSync(join(repo, 'docs', 'notes.md')).isFile()).toBe(true);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('puts back dirty symlinks, valid and dangling, that a step replaced', () => {
+    symlinkSync('notes.md', join(repo, 'docs', 'valid-link'));
+    symlinkSync('missing-target', join(repo, 'docs', 'dangling-link'));
+
+    const result = runWithVerification(
+      'rm docs/valid-link docs/dangling-link; echo x > docs/valid-link; ln -s elsewhere docs/dangling-link; false',
+    );
+
+    expect(result.status).toBe('verification-failed');
+    expect(readlinkSync(join(repo, 'docs', 'valid-link'))).toBe('notes.md');
+    expect(readlinkSync(join(repo, 'docs', 'dangling-link'))).toBe('missing-target');
+  });
+
+  it('does not write a package bump through a symlinked manifest', () => {
+    writeFileSync(join(repo, '.gitignore'), 'linked/\ntarget.json\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore']);
+    const target = `${JSON.stringify({ dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    writeFileSync(join(repo, 'target.json'), target, 'utf8');
+    mkdirSync(join(repo, 'linked'));
+    symlinkSync('../target.json', join(repo, 'linked', 'package.json'));
+    fakeNpm('true');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(readFileSync(join(repo, 'target.json'), 'utf8')).toBe(target);
+  });
+
+  it('blocks and puts back a dirty file a commit hook rewrote', () => {
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho hooked > docs/notes.md\n', {
+      mode: 0o755,
+    });
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = runWithVerification('true');
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+  });
+
+  it('leaves alone an ignored file a failing step merely un-ignored', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+
+    const result = runWithVerification(': > .gitignore; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+  });
+
+  it('commits a dangling symlink a patch creates', () => {
+    symlinkSync('does-not-exist', join(repo, 'link'));
+    git(repo, ['add', '-N', 'link']);
+    const create = git(repo, ['diff', '--', 'link']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'link'));
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), create, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(result.status).toBe('applied');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).toContain('link');
+    expect(git(repo, ['status', '--porcelain', '--', 'link']).trim()).toBe('');
+  });
+
+  function packageNote(): void {
+    writeFileSync(
+      join(repo, 'package.json'),
+      `${JSON.stringify({ name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`,
+    );
+    writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+    git(repo, ['add', 'package.json', 'package-lock.json']);
+    git(repo, ['commit', '-q', '-m', 'add manifest']);
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+  }
+
+  it('undoes a change an install script committed itself', () => {
+    packageNote();
+    fakeNpm('echo sneaky > other.txt; git add other.txt; git commit -q -m sneaky');
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'other.txt'), 'utf8')).toBe('clean\n');
+    expect(git(repo, ['status', '--porcelain', '--', 'other.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('undoes an install script committing the user’s already-staged edit', () => {
+    packageNote();
+    git(repo, ['add', 'docs/notes.md']);
+    fakeNpm('git commit -q -m sneaky -- docs/notes.md');
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+    const stagedBefore = git(repo, ['ls-files', '-s', 'docs/notes.md']);
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(git(repo, ['ls-files', '-s', 'docs/notes.md'])).toBe(stagedBefore);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('undoes the run when passing verification commits the user’s edit', () => {
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = runWithVerification('git add docs/notes.md && git commit -q -m verify');
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(git(repo, ['status', '--porcelain', '--', 'docs/notes.md']).trim()).toBe('M docs/notes.md');
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBeUndefined();
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
+  });
+
+  it('never commits an ignored file an install merely un-ignored', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    packageNote();
+    fakeNpm(': > .gitignore');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(result.status).toBe('applied');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).not.toContain('draft.md');
+    expect(git(repo, ['status', '--porcelain', '--', 'draft.md']).trim()).toBe('?? draft.md');
+  });
+
+  it('puts back a dirty file whose directory a step replaced with a file', () => {
+    const result = runWithVerification('rm -rf docs; echo x > docs; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('blocks and rolls back when a commit hook rejects the commit', () => {
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\nexit 1\n', { mode: 0o755 });
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = runWithVerification('true');
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.reason).toContain('Committing the upgrade failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(git(repo, ['status', '--porcelain', '--', 'hello.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
+  });
+
+  it('does not write a package bump through a symlinked directory', () => {
+    writeFileSync(join(repo, '.gitignore'), 'linked\nreal/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore']);
+    const target = `${JSON.stringify({ dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    mkdirSync(join(repo, 'real'));
+    writeFileSync(join(repo, 'real', 'package.json'), target, 'utf8');
+    symlinkSync('real', join(repo, 'linked'));
+    fakeNpm('true');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+          '            manifests:',
+          '              - linked/package.json',
+        ],
+      },
+    ]);
+
+    applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'], allowDirty: true });
+
+    expect(readFileSync(join(repo, 'real', 'package.json'), 'utf8')).toBe(target);
+    expect(lstatSync(join(repo, 'linked')).isSymbolicLink()).toBe(true);
+  });
+
+  it('removes a file a failing step created in a directory it un-ignored, and keeps the user’s', () => {
+    writeFileSync(join(repo, '.gitignore'), 'cache/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore cache']);
+    mkdirSync(join(repo, 'cache'));
+    writeFileSync(join(repo, 'cache', 'mine.txt'), 'kept\n', 'utf8');
+
+    const result = runWithVerification(': > .gitignore; sleep 0.2; echo new > cache/generated.txt; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('cache/\n');
+    expect(existsSync(join(repo, 'cache', 'generated.txt'))).toBe(false);
+    expect(readFileSync(join(repo, 'cache', 'mine.txt'), 'utf8')).toBe('kept\n');
+  });
+
+  it('keeps an ignored file a failing step un-ignored and atomically replaced', () => {
+    writeFileSync(join(repo, '.gitignore'), 'cache/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore cache']);
+    mkdirSync(join(repo, 'cache'));
+    writeFileSync(join(repo, 'cache', 'mine.txt'), 'kept\n', 'utf8');
+
+    const result = runWithVerification(
+      ': > .gitignore; sleep 0.2; echo kept > cache/tmp && mv cache/tmp cache/mine.txt; false',
+    );
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'cache', 'mine.txt'), 'utf8')).toBe('kept\n');
+  });
+
+  it('puts back a directory a step replaced with a symlink, without following the link', () => {
+    writeFileSync(join(repo, '.gitignore'), 'drafts/\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    mkdirSync(join(repo, 'drafts'));
+    writeFileSync(join(repo, 'drafts', 'notes.md'), 'an unrelated draft\n', 'utf8');
+
+    const result = runWithVerification('rm -rf docs; ln -s drafts docs; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(lstatSync(join(repo, 'docs')).isDirectory()).toBe(true);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(readFileSync(join(repo, 'drafts', 'notes.md'), 'utf8')).toBe('an unrelated draft\n');
+  });
+
+  it('removes a file a note created in a new directory when the run fails', () => {
+    mkdirSync(join(repo, 'new-dir'));
+    writeFileSync(join(repo, 'new-dir', 'added.txt'), 'from the template\n', 'utf8');
+    git(repo, ['add', '-N', 'new-dir/added.txt']);
+    const create = git(repo, ['diff', '--', 'new-dir/added.txt']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'new-dir'), { recursive: true });
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), create, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, 'new-dir'))).toBe(false);
+    expect(git(repo, ['status', '--porcelain', '--untracked-files=all']).includes('new-dir')).toBe(false);
+  });
+
+  it('blocks a package bump whose lockfile is a symlink, before installing', () => {
+    writeFileSync(join(repo, '.gitignore'), 'lock-target.json\n', 'utf8');
+    writeFileSync(join(repo, 'lock-target.json'), '{"mine":true}\n', 'utf8');
+    symlinkSync('lock-target.json', join(repo, 'package-lock.json'));
+    git(repo, ['add', '.gitignore', 'package-lock.json']);
+    git(repo, ['commit', '-q', '-m', 'linked lockfile']);
+    packageBumpNote();
+
+    withFakeNpm('echo overwritten > package-lock.json', () => {
+      const result = applyRun(repo, {
+        manifestFile: join(feedDir, 'manifest.yaml'),
+        verification: ['false'],
+        allowDirty: true,
+      });
+      expect(result.status).toBe('blocked');
+      expect(result.blocked?.reason).toContain('package-lock.json is a symlink');
+    });
+
+    expect(readFileSync(join(repo, 'lock-target.json'), 'utf8')).toBe('{"mine":true}\n');
+  });
+
+  it('keeps an ignored file a step force-added and committed, through the soft reset', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+
+    const result = runWithVerification('git add -f draft.md && git commit -q -m sneaky; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(git(repo, ['status', '--porcelain', '--ignored', '--', 'draft.md']).trim()).toBe('!! draft.md');
+  });
+
+  it('keeps an un-ignored file when git is configured to hide untracked files', () => {
+    git(repo, ['config', 'status.showUntrackedFiles', 'no']);
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+
+    const result = runWithVerification(': > .gitignore; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+  });
+
+  it('switches branches without a post-checkout hook rewriting the user’s files', () => {
+    writeFileSync(
+      join(repo, '.git', 'hooks', 'post-checkout'),
+      '#!/bin/sh\n[ "$3" = "1" ] && echo hooked > docs/notes.md\nexit 0\n',
+      { mode: 0o755 },
+    );
+
+    const result = runWithVerification('true');
+
+    expect(result.status).toBe('applied');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('rolls back files without a post-checkout hook rewriting the user’s files', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    // installed after the setup above, which checks a file out itself
+    writeFileSync(
+      join(repo, '.git', 'hooks', 'post-checkout'),
+      '#!/bin/sh\n[ "$3" = "0" ] && echo hooked > docs/notes.md\nexit 0\n',
+      { mode: 0o755 },
+    );
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('rolls back fully when failing verification leaves a merge conflict', () => {
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+    git(repo, ['branch', 'side']);
+    git(repo, ['worktree', 'add', '-q', join(repo, '..', `side-${Date.now()}`), 'side']);
+    const sideDir = git(repo, ['worktree', 'list', '--porcelain'])
+      .split('\n')
+      .filter((line) => line.startsWith('worktree ') && line.includes('side-'))[0]
+      .slice('worktree '.length);
+    writeFileSync(join(sideDir, 'hello.txt'), 'from side\n', 'utf8');
+    git(sideDir, ['commit', '-q', '-am', 'side change']);
+
+    const result = runWithVerification('git merge -q side; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(existsSync(join(repo, '.git', 'MERGE_HEAD'))).toBe(false);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(git(repo, ['status', '--porcelain', '--', 'hello.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    rmSync(sideDir, { recursive: true, force: true });
+  });
+
+  it('refuses to start while a merge is in progress', () => {
+    git(repo, ['checkout', '-q', '-b', 'side']);
+    writeFileSync(join(repo, 'other.txt'), 'side\n', 'utf8');
+    git(repo, ['commit', '-q', '-am', 'side']);
+    git(repo, ['checkout', '-q', '-']);
+    git(repo, ['stash', '-q']);
+    writeFileSync(join(repo, 'other.txt'), 'main\n', 'utf8');
+    git(repo, ['commit', '-q', '-am', 'main']);
+    spawnSync('git', ['merge', '-q', 'side'], { cwd: repo });
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    expect(() =>
+      applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true }),
+    ).toThrow(/in progress \(MERGE_HEAD\)/);
+  });
+
+  it('puts back a rewritten dirty file with its exact permissions', () => {
+    chmodSync(join(repo, 'docs', 'notes.md'), 0o664);
+
+    const result = runWithVerification('rm docs/notes.md; echo x > docs/notes.md; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(lstatSync(join(repo, 'docs', 'notes.md')).mode & 0o777).toBe(0o664);
+  });
+
+  it('puts back an intent-to-add entry a failing step staged', () => {
+    writeFileSync(join(repo, 'draft.md'), 'planned\n', 'utf8');
+    git(repo, ['add', '-N', 'draft.md']);
+    const before = git(repo, ['status', '--porcelain=v2', '--', 'draft.md']).split(' ')[1];
+
+    const result = runWithVerification('git add draft.md; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(before).toBe('.A');
+    expect(git(repo, ['status', '--porcelain=v2', '--', 'draft.md']).split(' ')[1]).toBe('.A');
+  });
+
+  it.skipIf(process.getuid?.() === 0)('puts back a dirty file after a step makes its directory read-only', () => {
+    const result = runWithVerification('echo replacement > docs/notes.md; chmod a-w docs; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(lstatSync(join(repo, 'docs')).mode & 0o200).toBe(0o200);
+  });
+
+  it('fails loudly instead of half-rolling back when git cannot update the index', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    expect(() =>
+      applyRun(repo, {
+        manifestFile: join(feedDir, 'manifest.yaml'),
+        verification: ['touch .git/index.lock; false'],
+        allowDirty: true,
+      }),
+    ).toThrow(/Rollback incomplete/);
+    rmSync(join(repo, '.git', 'index.lock'), { force: true });
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('resolves a manifest outside the project directory against the repository root', () => {
+    const project = join(repo, 'apps', 'example');
+    mkdirSync(project, { recursive: true });
+    mkdirSync(join(repo, 'shared'), { recursive: true });
+    writeFileSync(join(project, 'keep.txt'), 'x\n', 'utf8');
+    writeFileSync(join(repo, 'shared', 'package.json'), '{}\n', 'utf8');
+    git(repo, ['add', '-A']);
+    git(repo, ['commit', '-q', '-m', 'add shared manifest']);
+    const userManifest = `${JSON.stringify({ dependencies: { 'example-lib': '^1.0.0' } }, null, 2)}\n`;
+    writeFileSync(join(repo, 'shared', 'package.json'), userManifest, 'utf8');
+    initBaseline(project, { at: '2026.01.0', channel: 'stable' });
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+          '            manifests:',
+          '              - ../../shared/package.json',
+        ],
+      },
+    ]);
+
+    const result = applyRun(project, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: [],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['shared/package.json']);
+    expect(readFileSync(join(repo, 'shared', 'package.json'), 'utf8')).toBe(userManifest);
+  });
+});
+
+describe('applyRun on a clean tree', () => {
+  it('blocks and rolls back when a commit hook rejects the commit', () => {
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho gen > generated.txt\nexit 1\n', {
+      mode: 0o755,
+    });
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('blocked');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBe('blocked');
+    expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+  });
+
+  it('keeps an ignored file an install un-ignored when verification then fails', () => {
+    const binDir = mkdtempSync(join(tmpdir(), 'nestled-bin-'));
+    const savedPath = process.env.PATH;
+    try {
+      writeFileSync(
+        join(binDir, 'npm'),
+        '#!/bin/sh\nif [ "$1" = "view" ]; then echo \'"2.0.0"\'; exit 0; fi\nif [ "$1" = "install" ]; then : > .gitignore; exit 0; fi\nexit 1\n',
+        { mode: 0o755 },
+      );
+      process.env.PATH = `${binDir}:${savedPath}`;
+      writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+      const manifest = { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } };
+      writeFileSync(join(repo, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+      git(repo, ['add', '-A']);
+      git(repo, ['commit', '-q', '-m', 'setup']);
+      writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+      writeManifestReleases('2026.02.0', [
+        {
+          id: '2026.02.0',
+          notes: [
+            '      - id: note-pkg',
+            '        title: Bump example-lib',
+            '        delivery: package-release',
+            '        packageReleases:',
+            '          - name: example-lib',
+            '            targetVersion: 2.0.0',
+          ],
+        },
+      ]);
+
+      const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+      expect(result.status).toBe('verification-failed');
+      expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+      expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+    } finally {
+      process.env.PATH = savedPath;
+      rmSync(binDir, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps untracked bookkeeping a step committed, through the hard reset', () => {
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'mine: true\n', 'utf8');
+    packageBumpNote();
+
+    withFakeNpm('git add -A .nestled && git commit -q -m sneaky', () => {
+      const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+      expect(result.status).toBe('verification-failed');
+    });
+
+    expect(readFileSync(join(repo, '.nestled', 'config.yaml'), 'utf8')).toBe('mine: true\n');
+    expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('?? .nestled/config.yaml');
+  });
+
+  it('refuses a tree with untracked files even when git is configured to hide them', () => {
+    git(repo, ['config', 'status.showUntrackedFiles', 'no']);
+    writeFileSync(join(repo, 'notes.txt'), 'untracked work\n', 'utf8');
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    expect(() => applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] })).toThrow(
+      /uncommitted changes/,
+    );
+  });
+
+  it('keeps an ignored file a step force-added and committed, through the hard reset', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    packageBumpNote();
+
+    withFakeNpm('git add -f draft.md && git commit -q -m sneaky', () => {
+      const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+      expect(result.status).toBe('verification-failed');
+    });
+
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(git(repo, ['status', '--porcelain', '--ignored', '--', 'draft.md']).trim()).toBe('!! draft.md');
+  });
+
+  it('keeps an ignored file a patch un-ignored and a failing step then committed', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('.gitignore', ''), 'utf8');
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['git add draft.md && git commit -q -m verify; false'],
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+  });
+
+  it('keeps the repository root’s bookkeeping when the project is a subdirectory', () => {
+    const project = join(repo, 'apps', 'example');
+    mkdirSync(project, { recursive: true });
+    const manifest = { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } };
+    writeFileSync(join(project, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    writeFileSync(join(project, 'package-lock.json'), '{}\n');
+    git(repo, ['add', '-A', 'apps']);
+    git(repo, ['commit', '-q', '-m', 'add project']);
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'mine: true\n', 'utf8');
+    initBaseline(project, { at: '2026.01.0', channel: 'stable' });
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-pkg',
+          '        title: Bump example-lib',
+          '        delivery: package-release',
+          '        packageReleases:',
+          '          - name: example-lib',
+          '            targetVersion: 2.0.0',
+        ],
+      },
+    ]);
+
+    withFakeNpm('git add -A ../../.nestled && git commit -q -m sneaky', () => {
+      const result = applyRun(project, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+      expect(result.status).toBe('verification-failed');
+    });
+
+    expect(readFileSync(join(repo, '.nestled', 'config.yaml'), 'utf8')).toBe('mine: true\n');
+    expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('?? .nestled/config.yaml');
+  });
+
+  it('refuses an --allow-dirty run with uncommitted changes inside a submodule', () => {
+    const upstream = mkdtempSync(join(tmpdir(), 'nestled-sub-'));
+    try {
+      git(upstream, ['init', '-q']);
+      git(upstream, ['config', 'user.email', 'test@example.com']);
+      git(upstream, ['config', 'user.name', 'Test']);
+      writeFileSync(join(upstream, 'lib.txt'), 'lib\n', 'utf8');
+      git(upstream, ['add', '-A']);
+      git(upstream, ['commit', '-q', '-m', 'lib']);
+      git(repo, ['-c', 'protocol.file.allow=always', 'submodule', 'add', '-q', upstream, 'modules/example']);
+      git(repo, ['commit', '-q', '-m', 'add submodule']);
+      // even when configured to hide a submodule's changes
+      git(repo, ['config', 'submodule.modules/example.ignore', 'all']);
+      writeFileSync(join(repo, 'modules', 'example', 'lib.txt'), 'my edit\n', 'utf8');
+      writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+      writeManifest('2026.02.0', '2026.02.0');
+
+      expect(() =>
+        applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true }),
+      ).toThrow(/modules\/example is a submodule or nested repository with uncommitted changes/);
+      expect(readFileSync(join(repo, 'modules', 'example', 'lib.txt'), 'utf8')).toBe('my edit\n');
+    } finally {
+      rmSync(upstream, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps a staged deletion of a bookkeeping file through the hard reset', () => {
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'old: true\n', 'utf8');
+    git(repo, ['add', '.nestled/config.yaml']);
+    git(repo, ['commit', '-q', '-m', 'track config']);
+    git(repo, ['rm', '-q', '.nestled/config.yaml']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, '.nestled', 'config.yaml'))).toBe(false);
+    expect(git(repo, ['status', '--porcelain', '--', '.nestled/config.yaml']).trim()).toBe('D  .nestled/config.yaml');
+  });
+
+  it('keeps a staged bookkeeping file whose copy on disk was deleted, through the hard reset', () => {
+    writeFileSync(join(repo, '.nestled', 'config.yaml'), 'staged: true\n', 'utf8');
+    git(repo, ['add', '.nestled/config.yaml']);
+    rmSync(join(repo, '.nestled', 'config.yaml'));
+    const staged = git(repo, ['ls-files', '-s', '.nestled/config.yaml']);
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['ls-files', '-s', '.nestled/config.yaml'])).toBe(staged);
+    expect(existsSync(join(repo, '.nestled', 'config.yaml'))).toBe(false);
+  });
+
+  it('runs no post-checkout hook when switching to the upgrade branch', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    writeFileSync(
+      join(repo, '.git', 'hooks', 'post-checkout'),
+      '#!/bin/sh\n[ "$3" = "1" ] && echo gen > generated.txt\nexit 0\n',
+      { mode: 0o755 },
+    );
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+  });
+
+  it('blocks a later note from writing an ignored file an earlier note surfaced', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(feedDir, 'patches', 'unignore.diff'), makeDiff('.gitignore', ''), 'utf8');
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    const editDraft = [
+      'diff --git a/draft.md b/draft.md',
+      '--- a/draft.md',
+      '+++ b/draft.md',
+      '@@ -1 +1 @@',
+      '-private draft',
+      '+template draft',
+      '',
+    ].join('\n');
+    writeFileSync(join(feedDir, 'patches', 'draft.diff'), editDraft, 'utf8');
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-1',
+          '        title: Unignore',
+          '        delivery: code-patch',
+          '        patch: patches/unignore.diff',
+          '      - id: note-2',
+          '        title: Edit draft',
+          '        delivery: code-patch',
+          '        patch: patches/draft.diff',
+        ],
+      },
+    ]);
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['draft.md']);
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+  });
+
+  it('still rolls back every change of a failed multi-note run', () => {
+    writeFileSync(join(feedDir, 'patches', 'good.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeFileSync(join(repo, 'added.txt'), 'new\n', 'utf8');
+    git(repo, ['add', '-N', 'added.txt']);
+    const create = git(repo, ['diff']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'added.txt'));
+    writeFileSync(join(feedDir, 'patches', 'create.diff'), create, 'utf8');
+    writeFileSync(
+      join(feedDir, 'patches', 'bad.diff'),
+      makeDiff('hello.txt', 'other\n').replace('-hello', '-nope'),
+      'utf8',
+    );
+    writeManifestReleases('2026.02.0', [
+      {
+        id: '2026.02.0',
+        notes: [
+          '      - id: note-1',
+          '        title: Change hello',
+          '        delivery: code-patch',
+          '        patch: patches/good.diff',
+          '      - id: note-2',
+          '        title: Add a file',
+          '        delivery: code-patch',
+          '        patch: patches/create.diff',
+          '      - id: note-3',
+          '        title: Will not apply',
+          '        delivery: code-patch',
+          '        patch: patches/bad.diff',
+        ],
+      },
+    ]);
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.id).toBe('note-3');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(existsSync(join(repo, 'added.txt'))).toBe(false);
+    const dirty = git(repo, ['status', '--porcelain'])
+      .split('\n')
+      .filter((line) => line.trim() && !line.includes('.nestled/'));
+    expect(dirty).toEqual([]);
   });
 });

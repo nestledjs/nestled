@@ -1,7 +1,26 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, relative } from 'node:path';
+import { dirname, join, posix, relative, resolve, sep } from 'node:path';
+import {
+  commitPaths,
+  dirtyPaths,
+  ignoredPaths,
+  listFiles,
+  patchPaths,
+  restoreChangedFiles,
+  RunChanges,
+  snapshotFiles,
+} from './changes';
 import { compareReleaseId, Manifest, PackageRelease, UpgradeNote } from './manifest';
 import {
   advanceBaseline,
@@ -17,13 +36,14 @@ import { computePending, PendingResult } from './pending';
 import { resolveFeed, ResolveFeedOptions } from './feed';
 import {
   checkoutBranch,
-  commitAll,
   git,
   gitOutput,
   hasUncommittedChanges,
   isGitRepo,
+  operationsInProgress,
   PrResult,
   pushAndCreatePR,
+  quitOperations,
 } from './git';
 
 /** A patch must never touch our own bookkeeping. */
@@ -46,6 +66,12 @@ export interface BlockedInfo {
   id: string;
   reason: string;
   output?: string;
+  /**
+   * Set when the note was held back only because it would touch these paths, which had uncommitted
+   * changes when the run started. Nothing is wrong with the upgrade itself, so it is not recorded as
+   * `blocked` in the ledger: commit or stash the paths and run again.
+   */
+  uncommitted?: string[];
 }
 
 export interface VerificationResult {
@@ -89,7 +115,11 @@ interface PatchAttempt {
   output?: string;
 }
 
-function tryApplyPatch(cwd: string, diffText: string): PatchAttempt {
+/**
+ * `undoPartial` puts back the patch's own paths after a failed 3-way attempt (which can leave conflict
+ * markers and index entries behind); it must touch nothing else.
+ */
+function tryApplyPatch(cwd: string, diffText: string, undoPartial: () => void): PatchAttempt {
   const excludeArgs = PATCH_EXCLUDES.map((pattern) => `--exclude=${pattern}`);
   const dir = mkdtempSync(join(tmpdir(), 'nestled-upd-'));
   const file = join(dir, 'change.diff');
@@ -101,8 +131,8 @@ function tryApplyPatch(cwd: string, diffText: string): PatchAttempt {
       if (reverse.status === 0) return { applied: false, alreadyApplied: true };
       const threeWay = git(cwd, ['apply', '--3way', ...excludeArgs, file]);
       if (threeWay.status === 0) return { applied: true, via3way: true };
-      // 3-way may have left partial state on this (uncommitted) note only.
-      git(cwd, ['checkout', '--', '.']);
+      // 3-way may have left partial state, but only on this note's own paths.
+      undoPartial();
       return { applied: false, output: check.stderr || check.stdout };
     }
     const apply = git(cwd, ['apply', ...excludeArgs, file]);
@@ -168,20 +198,37 @@ function updateLockfile(cwd: string): { status: number; reason: string } {
   };
 }
 
-function applyPackageReleases(cwd: string, note: UpgradeNote): PackageApplyResult {
+/** Whether a directory between `cwd` and `path` is a symlink (`path` itself is not checked). */
+function throughLink(cwd: string, path: string): boolean {
+  const expected = resolve(realpathSync(cwd), relative(cwd, dirname(path)));
+  return realpathSync(dirname(path)) !== expected;
+}
+
+function lockfilePath(cwd: string): string | null {
+  for (const name of ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json']) {
+    if (existsSync(join(cwd, name))) return join(cwd, name);
+  }
+  return null;
+}
+
+interface PackagePlan {
+  /** Absolute paths of the manifests the bump rewrites, with their new contents. */
+  writes: { path: string; contents: string }[];
+  updated: { manifest: string; name: string; version: string }[];
+  /** The lockfile the install step rewrites (absolute), when there are manifests to change. */
+  lockfile: string | null;
+}
+
+/** Work out what a package bump would write, without writing anything. */
+function planPackageReleases(cwd: string, note: UpgradeNote): PackagePlan {
   const releases = note.packageReleases ?? [];
-  if (releases.some((release) => !release.targetVersion && !release.versionRange)) {
-    return { status: 'blocked', reason: 'Package release is missing targetVersion and versionRange (pending release).' };
-  }
-  for (const release of releases) {
-    const version = release.targetVersion ?? release.versionRange;
-    if (!verifyPublishedPackage(release.name, version)) {
-      return { status: 'blocked', reason: `Cannot verify published version for ${release.name}@${version}.` };
-    }
-  }
   const manifests = findPackageManifests(cwd, releases);
-  const updated: { manifest: string; name: string; version: string }[] = [];
+  const writes: PackagePlan['writes'] = [];
+  const updated: PackagePlan['updated'] = [];
   for (const manifestPath of manifests) {
+    // Writing through a symlink, of the file or of a directory above it, would change a file
+    // somewhere else, which no rollback could find.
+    if (lstatSync(manifestPath).isSymbolicLink() || throughLink(cwd, manifestPath)) continue;
     const pkg = safeReadPackageJson(manifestPath);
     if (!pkg) continue;
     let changed = false;
@@ -195,8 +242,29 @@ function applyPackageReleases(cwd: string, note: UpgradeNote): PackageApplyResul
         }
       }
     }
-    if (changed) writeFileSync(manifestPath, `${JSON.stringify(pkg, null, 2)}\n`);
+    if (changed) writes.push({ path: manifestPath, contents: `${JSON.stringify(pkg, null, 2)}\n` });
   }
+  return { writes, updated, lockfile: writes.length ? lockfilePath(cwd) : null };
+}
+
+/** Absolute paths the package step of `note` would write: changed manifests and the lockfile. */
+function packageTargets(plan: PackagePlan): string[] {
+  return [...plan.writes.map((write) => write.path), ...(plan.lockfile ? [plan.lockfile] : [])];
+}
+
+function applyPackageReleases(cwd: string, note: UpgradeNote, plan: PackagePlan): PackageApplyResult {
+  const releases = note.packageReleases ?? [];
+  if (releases.some((release) => !release.targetVersion && !release.versionRange)) {
+    return { status: 'blocked', reason: 'Package release is missing targetVersion and versionRange (pending release).' };
+  }
+  for (const release of releases) {
+    const version = release.targetVersion ?? release.versionRange;
+    if (!verifyPublishedPackage(release.name, version)) {
+      return { status: 'blocked', reason: `Cannot verify published version for ${release.name}@${version}.` };
+    }
+  }
+  const { updated } = plan;
+  for (const write of plan.writes) writeFileSync(write.path, write.contents);
   if (updated.length === 0) {
     const names = releases.map((r) => r.name).join(', ') || 'the referenced packages';
     return { status: 'not-applicable', reason: `Project does not consume ${names}.` };
@@ -319,14 +387,128 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     throw new Error('Project has uncommitted changes. Commit them, or re-run with --allow-dirty.');
   }
 
+  // Everything below works in repository-root-relative paths, the form `git status` reports. Patch
+  // paths already are (git apply resolves them from the root, skipping any outside this directory).
+  const root = gitOutput(projectDir, ['rev-parse', '--show-toplevel']) || projectDir;
+  const prefix = gitOutput(projectDir, ['rev-parse', '--show-prefix']);
+  const fromAbsolute = (path: string) => {
+    const fromHere = relative(projectDir, path);
+    return posix.normalize(`${prefix}${sep === '/' ? fromHere : fromHere.split(sep).join('/')}`);
+  };
+  // What the user had uncommitted when we started is theirs: no note may write it, no rollback may revert it.
+  const dirtyAtStart = startedClean ? new Set<string>() : dirtyPaths(root);
+  // Git reports a dirty submodule (or other nested repository) as one directory, whose contents no
+  // snapshot here can protect from what a step might run inside it. Refuse before touching anything.
+  const isDir = (path: string) => lstatSync(join(root, path), { throwIfNoEntry: false })?.isDirectory();
+  const nested = [...dirtyAtStart].filter(isDir);
+  if (nested.length) {
+    const what = nested.length === 1 ? 'is a submodule or nested repository' : 'are submodules or nested repositories';
+    throw new Error(`${nested.join(', ')} ${what} with uncommitted changes; commit or stash them first.`);
+  }
+
+  // A merge, cherry-pick, revert or rebase in progress is not a state to build upgrade commits on, and
+  // rolling back would have to guess which part of it was ours.
+  const inProgress = operationsInProgress(projectDir);
+  if (inProgress.length) {
+    throw new Error(`A git operation is in progress (${inProgress.join(', ')}); finish or abort it first.`);
+  }
+
   const branch = `nestled-update/${channel}-${pending.ceiling}`;
-  checkoutBranch(projectDir, branch);
+  // Switch branches without running hooks: on a dirty tree one could rewrite the user's work, and on
+  // any tree it could create files before the run starts tracking what it changes.
+  checkoutBranch(projectDir, branch, { hooks: false });
   const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
   const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
+  const changes = new RunChanges(root, startCommit);
+  // Our own bookkeeping (the project's `.nestled/`, and the repository root's when the project is a
+  // subdirectory) is never the run's to delete, whatever a step or a reset does to it: put it back
+  // after any rollback (the upgrade log is then rewritten from memory as usual).
+  const bookkeepingDirs = [...new Set([`${prefix}.nestled/`, '.nestled/'])];
+  const isBookkeeping = (path: string) => bookkeepingDirs.some((dir) => path.startsWith(dir));
+  // What is on disk, plus what the start commit tracks there (a staged deletion must come back as one).
+  const trackedBookkeeping = startCommit
+    ? git(root, ['ls-tree', '-r', '-z', '--name-only', '--full-tree', startCommit, '--', ...bookkeepingDirs])
+        .stdout.split('\0')
+        .filter(Boolean)
+    : [];
+  // ...and what is only in the index (a staged addition whose file has since been deleted).
+  const indexedBookkeeping = git(root, ['ls-files', '-z', '--full-name', '--', ...bookkeepingDirs])
+    .stdout.split('\0')
+    .filter(Boolean);
+  const bookkeepingAtStart = snapshotFiles(root, [
+    ...bookkeepingDirs.flatMap((dir) => listFiles(root, dir) ?? []),
+    ...trackedBookkeeping,
+    ...indexedBookkeeping,
+  ]);
+  /** User state that could not be put back, and where it was saved instead; reported with any block. */
+  const unrecovered: { path: string; savedTo: string }[] = [];
+  const withRecovery = (info: BlockedInfo): BlockedInfo => {
+    if (!unrecovered.length) return info;
+    const notes = unrecovered.map(({ path, savedTo }) => `could not restore ${path}; its saved state is in ${savedTo}`);
+    return { ...info, reason: `${info.reason} Also: ${notes.join('; ')}.` };
+  };
+  const uncommittedBlock = (id: string, paths: string[]): BlockedInfo | null => {
+    // The user's: dirty at the start, or a pre-existing ignored file an earlier step surfaced.
+    const overlap = paths.filter((path) => dirtyAtStart.has(path) || changes.isPreserved(path));
+    if (!overlap.length) return null;
+    const subject = `${overlap.join(', ')} ${overlap.length === 1 ? 'has' : 'have'}`;
+    const reason = `${subject} uncommitted changes this upgrade would overwrite; commit or stash them first, then re-run.`;
+    return { id, reason, uncommitted: overlap };
+  };
+  /**
+   * Run a step that executes third-party code (an install's lifecycle scripts, git hooks, verification):
+   * whatever it newly dirties or commits is recorded as the run's own (and returned as `sideEffects`),
+   * and any file the user had uncommitted changes in that it rewrote is put back (`clobbered`).
+   */
+  const guarded = <T>(step: () => T): { result: T; sideEffects: string[]; clobbered: string[] } => {
+    const dirtyBefore = dirtyPaths(root);
+    const ignoredBefore = ignoredPaths(root);
+    const headBefore = gitOutput(root, ['rev-parse', 'HEAD']);
+    const userFiles = snapshotFiles(root, dirtyAtStart);
+    const result = step();
+    // What it left uncommitted, and what it committed (a script, or a hook, can commit too).
+    const changed = new Set([...dirtyPaths(root)].filter((path) => !dirtyBefore.has(path) && !isBookkeeping(path)));
+    const headAfter = gitOutput(root, ['rev-parse', 'HEAD']);
+    if (headBefore && headAfter && headAfter !== headBefore) {
+      const committed = git(root, ['diff', '--name-only', '-z', '--no-renames', headBefore, headAfter]).stdout;
+      for (const path of committed.split('\0').filter(Boolean)) if (!isBookkeeping(path)) changed.add(path);
+    }
+    // A user path the step committed counts as clobbered even when its file and index entry still
+    // match: the user's work is now inside a commit, which only a rollback takes back out.
+    const userRestore = restoreChangedFiles(root, userFiles);
+    unrecovered.push(...userRestore.unrecovered);
+    const clobbered = new Set(userRestore.restored);
+    [...changed].filter((path) => dirtyAtStart.has(path)).forEach((path) => clobbered.add(path));
+    // The user's paths are protected above, never taken over as the run's own.
+    const sideEffects = changes.didChange(
+      [...changed].filter((path) => !dirtyAtStart.has(path)),
+      ignoredBefore,
+    );
+    return { result, sideEffects, clobbered: [...clobbered] };
+  };
 
+  /**
+   * Undo the run: drop its commits and put back exactly the paths it touched. Every other file,
+   * including everything uncommitted at the start of an `--allow-dirty` run, is left as it is.
+   */
   const rollback = () => {
-    if (startedClean && startCommit) git(projectDir, ['reset', '--hard', startCommit]);
-    else git(projectDir, ['checkout', '--', '.']);
+    // None was in progress at the start, so any merge (or similar) a step left behind is the run's.
+    quitOperations(root);
+    if (startedClean && startCommit) {
+      // The tree was clean (outside `.nestled/`) when we started, so nothing here is anyone else's work.
+      const reset = git(projectDir, ['reset', '--hard', startCommit]);
+      if (reset.status !== 0) throw new Error(`Rollback could not reset to ${startCommit}: ${reset.stderr}`);
+      changes.restore();
+    } else {
+      // Keep the index and working tree: they hold the user's uncommitted changes as well as ours. Put
+      // the run's own paths back first, which also clears any conflict entries a step left on them.
+      changes.restore();
+      if (startCommit) {
+        const reset = git(root, ['reset', '--soft', startCommit]);
+        if (reset.status !== 0) throw new Error(`Rollback could not move HEAD back to ${startCommit}: ${reset.stderr}`);
+      }
+    }
+    unrecovered.push(...restoreChangedFiles(root, bookkeepingAtStart).unrecovered);
   };
 
   const applied: { note: UpgradeNote; entry: AppliedNote }[] = [];
@@ -348,9 +530,25 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       break;
     }
     const entry: AppliedNote = { id: note.id, title: note.title, delivery: note.delivery };
+    const noteTouched = new Set<string>();
 
     if (includesPackage(note)) {
-      const result = applyPackageReleases(projectDir, note);
+      const plan = planPackageReleases(projectDir, note);
+      // An install writes through a linked lockfile to a file elsewhere, which no rollback could find.
+      if (plan.lockfile && (lstatSync(plan.lockfile).isSymbolicLink() || throughLink(projectDir, plan.lockfile))) {
+        blocked = { id: note.id, reason: `${fromAbsolute(plan.lockfile)} is a symlink; update the lockfile by hand.` };
+        break;
+      }
+      const targets = packageTargets(plan).map(fromAbsolute);
+      blocked = uncommittedBlock(note.id, targets);
+      if (blocked) break;
+      changes.willTouch(targets);
+      targets.forEach((path) => noteTouched.add(path));
+      // The install may write more than the lockfile, and its scripts may write anything.
+      const { result, sideEffects, clobbered } = guarded(() => applyPackageReleases(projectDir, note, plan));
+      sideEffects.forEach((path) => noteTouched.add(path));
+      blocked = uncommittedBlock(note.id, clobbered);
+      if (blocked) break;
       if (result.status === 'blocked') {
         blocked = { id: note.id, reason: result.reason ?? 'Package release blocked.' };
         break;
@@ -372,7 +570,17 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
         blocked = { id: note.id, reason: `Patch not found in feed: ${note.patch}` };
         break;
       }
-      const patch = tryApplyPatch(projectDir, diff);
+      const paths = patchPaths(diff, PATCH_EXCLUDES).filter((path) => path.startsWith(prefix));
+      blocked = uncommittedBlock(note.id, paths);
+      if (blocked) break;
+      changes.willTouch(paths);
+      paths.forEach((path) => noteTouched.add(path));
+      // Guarded like any other step: a patch that drops an ignore rule surfaces the user's ignored files,
+      // which must be known as theirs before a later step can commit them.
+      const patchStep = guarded(() => tryApplyPatch(projectDir, diff, () => changes.restore(paths)));
+      blocked = uncommittedBlock(note.id, patchStep.clobbered);
+      if (blocked) break;
+      const patch = patchStep.result;
       if (!patch.applied && !patch.alreadyApplied) {
         blocked = {
           id: note.id,
@@ -387,11 +595,21 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
     if (note.review) entry.review = note.review;
 
-    commitAll(projectDir, `Apply Nestled upgrade ${note.id}`);
+    const message = `Apply Nestled upgrade ${note.id}`;
+    // Commit hooks run third-party code too (formatters, generators), so committing is guarded.
+    // Only the note's own paths, even on a clean start: `add -A` would also sweep in an ignored file a
+    // step merely un-ignored, which a later `reset --hard` would then delete.
+    const commit = guarded(() => commitPaths(root, message, [...noteTouched]));
+    blocked = uncommittedBlock(note.id, commit.clobbered);
+    if (blocked) break;
+    if (!commit.result) {
+      blocked = { id: note.id, reason: 'Committing the upgrade failed; a commit hook may have rejected it.' };
+      break;
+    }
     applied.push({ note, entry });
 
     // A note with no mechanical component at all (pure `intent-only`) still reaches here with
-    // nothing to commit beyond a no-op; `commitAll` is a no-op when nothing changed. Either way,
+    // nothing to commit beyond a no-op; committing is a no-op when nothing changed. Either way,
     // stop climbing the release ladder here: later notes may build on the judgment call this one
     // is waiting on, so they stay pending rather than applying past it.
     if (entry.review) {
@@ -402,9 +620,17 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
   if (blocked) {
     rollback();
-    setOutcome(log, blocked.id, 'blocked');
+    // Held back only by the user's uncommitted work: not a problem with the upgrade, so not recorded.
+    if (!blocked.uncommitted) setOutcome(log, blocked.id, 'blocked');
     writeUpgradeLog(projectDir, log);
-    return { status: 'blocked', channel, branch, applied: [], blocked, baselineRelease: log.template.baselineRelease };
+    return {
+      status: 'blocked',
+      channel,
+      branch,
+      applied: [],
+      blocked: withRecovery(blocked),
+      baselineRelease: log.template.baselineRelease,
+    };
   }
 
   // A note's own `verification` takes precedence over the consumer's auto-detected lint/test
@@ -414,7 +640,8 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   const noteVerification = [...new Set(applied.flatMap(({ note }) => note.verification ?? []))];
   const commands =
     options.verification ?? (noteVerification.length ? noteVerification : config.verification ?? inferVerification(projectDir));
-  const verification = applied.length ? runVerification(projectDir, commands) : [];
+  const guardedVerification = applied.length ? guarded(() => runVerification(projectDir, commands)) : null;
+  const verification = guardedVerification?.result ?? [];
   const failed = verification.find((item) => item.status !== 0);
   if (failed) {
     rollback();
@@ -426,7 +653,23 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       branch,
       applied: [],
       verification,
-      blocked: { id: failed.command, reason: `Verification failed: ${failed.command}` },
+      blocked: withRecovery({ id: failed.command, reason: `Verification failed: ${failed.command}` }),
+      baselineRelease: log.template.baselineRelease,
+    };
+  }
+  // Verification passed, but rewrote or committed the user's uncommitted work: undo the run rather than
+  // ship it. Like any block caused by the user's work, it is not recorded against the notes.
+  const verificationBlock = uncommittedBlock(commands.join('; '), guardedVerification?.clobbered ?? []);
+  if (verificationBlock) {
+    rollback();
+    writeUpgradeLog(projectDir, log);
+    return {
+      status: 'blocked',
+      channel,
+      branch,
+      applied: [],
+      verification,
+      blocked: withRecovery(verificationBlock),
       baselineRelease: log.template.baselineRelease,
     };
   }

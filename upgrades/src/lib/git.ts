@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 export interface GitResult {
   status: number;
@@ -6,8 +7,14 @@ export interface GitResult {
   stderr: string;
 }
 
-export function git(cwd: string, args: string[]): GitResult {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8' });
+/**
+ * Room for `git status` of a large tree: past Node's 1 MiB default, output is cut off and the call
+ * reports failure, which a caller must never mistake for "nothing there".
+ */
+const MAX_OUTPUT = 512 * 1024 * 1024;
+
+export function git(cwd: string, args: string[], input?: string): GitResult {
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', input, maxBuffer: MAX_OUTPUT });
   return {
     status: result.status ?? 1,
     stdout: result.stdout ?? '',
@@ -24,9 +31,16 @@ export function isGitRepo(cwd: string): boolean {
   return gitOutput(cwd, ['rev-parse', '--is-inside-work-tree']) === 'true';
 }
 
-/** Uncommitted changes, ignoring our own `.nestled/` bookkeeping. */
+/**
+ * Uncommitted changes, ignoring our own `.nestled/` bookkeeping. Throws when git cannot say: an
+ * unknown state must never be taken for a clean one, since a clean start permits `reset --hard`.
+ */
 export function hasUncommittedChanges(cwd: string): boolean {
-  return gitOutput(cwd, ['status', '--porcelain'])
+  // Untracked files count whatever `status.showUntrackedFiles` says: they are the user's work too.
+  // Submodule `ignore` settings must not hide edits inside a submodule either.
+  const result = git(cwd, ['status', '--porcelain', '--untracked-files=normal', '--ignore-submodules=none']);
+  if (result.status !== 0) throw new Error(`Unable to read the working tree status: ${result.stderr || result.stdout}`);
+  return result.stdout
     .split('\n')
     .filter(Boolean)
     .some((line) => !line.includes('.nestled/'));
@@ -36,10 +50,44 @@ export function currentBranch(cwd: string): string {
   return gitOutput(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
 }
 
-export function checkoutBranch(cwd: string, branch: string): void {
+/** In-progress operations, by the state file git keeps for each, and how to abandon one in place. */
+const IN_PROGRESS: { state: string; quit: string[] }[] = [
+  { state: 'MERGE_HEAD', quit: ['merge', '--quit'] },
+  { state: 'CHERRY_PICK_HEAD', quit: ['cherry-pick', '--quit'] },
+  { state: 'REVERT_HEAD', quit: ['revert', '--quit'] },
+  { state: 'rebase-merge', quit: ['rebase', '--quit'] },
+  { state: 'rebase-apply', quit: ['rebase', '--quit'] },
+];
+
+/** The merge, cherry-pick, revert or rebase in progress, if any, by the name of its state file. */
+export function operationsInProgress(cwd: string): string[] {
+  return IN_PROGRESS.filter(({ state }) => {
+    const path = gitOutput(cwd, ['rev-parse', '--path-format=absolute', '--git-path', state]);
+    return path !== '' && existsSync(path);
+  }).map(({ state }) => state);
+}
+
+/**
+ * Abandon any merge, cherry-pick, revert or rebase in progress without touching the index or the
+ * working tree (`--quit`), so that HEAD can be moved back.
+ */
+export function quitOperations(cwd: string): void {
+  for (const state of operationsInProgress(cwd)) {
+    const entry = IN_PROGRESS.find((item) => item.state === state);
+    if (entry) git(cwd, entry.quit);
+  }
+}
+
+/**
+ * Global options that keep git from running the repository's hooks, for checkouts we make on a tree
+ * holding the user's uncommitted work: a `post-checkout` hook there could rewrite it.
+ */
+export const NO_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
+
+export function checkoutBranch(cwd: string, branch: string, options: { hooks?: boolean } = {}): void {
   const existing = git(cwd, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]);
   const args = existing.status === 0 ? ['checkout', branch] : ['checkout', '-b', branch];
-  const result = git(cwd, args);
+  const result = git(cwd, options.hooks === false ? [...NO_HOOKS, ...args] : args);
   if (result.status !== 0) {
     throw new Error(`Unable to checkout ${branch}: ${result.stderr || result.stdout}`);
   }
@@ -58,7 +106,11 @@ export function commitAll(cwd: string, message: string): string {
  * Restore a working tree that we dirtied, safe only when the caller verified the
  * tree was clean before starting: reverts tracked edits and removes files our
  * patches added, but preserves `.nestled/` so the log we are about to write
- * survives. Never call this when the run started `--allow-dirty`.
+ * survives. Never call this when the run started `--allow-dirty`: it reverts and
+ * deletes every uncommitted change in the repository, the user's included.
+ *
+ * @deprecated `applyRun` no longer uses it; it rolls back only the paths a run
+ * touched (see `RunChanges`). Kept for API compatibility.
  */
 export function resetWorktree(cwd: string): void {
   git(cwd, ['checkout', '--', '.']);
