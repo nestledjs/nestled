@@ -33,16 +33,7 @@ import {
 } from './baseline';
 import { computePending, PendingResult } from './pending';
 import { resolveFeed, ResolveFeedOptions } from './feed';
-import {
-  checkoutBranch,
-  commitAll,
-  git,
-  gitOutput,
-  hasUncommittedChanges,
-  isGitRepo,
-  PrResult,
-  pushAndCreatePR,
-} from './git';
+import { checkoutBranch, git, gitOutput, hasUncommittedChanges, isGitRepo, PrResult, pushAndCreatePR } from './git';
 
 /** A patch must never touch our own bookkeeping. */
 const PATCH_EXCLUDES = ['.nestled/**'];
@@ -528,12 +519,11 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
 
     if (note.review) entry.review = note.review;
 
-    // On a dirty tree, commit only what this note changed: the user's own edits stay uncommitted.
     const message = `Apply Nestled upgrade ${note.id}`;
     // Commit hooks run third-party code too (formatters, generators), so committing is guarded.
-    const commit = guarded(() =>
-      startedClean ? commitAll(projectDir, message) : commitPaths(root, message, [...noteTouched]),
-    );
+    // Only the note's own paths, even on a clean start: `add -A` would also sweep in an ignored file a
+    // step merely un-ignored, which a later `reset --hard` would then delete.
+    const commit = guarded(() => commitPaths(root, message, [...noteTouched]));
     blocked = uncommittedBlock(note.id, commit.clobbered);
     if (blocked) break;
     if (!commit.result) {

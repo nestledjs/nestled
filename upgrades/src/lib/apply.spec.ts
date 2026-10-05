@@ -969,6 +969,27 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readFileSync(join(repo, 'drafts', 'notes.md'), 'utf8')).toBe('an unrelated draft\n');
   });
 
+  it('removes a file a note created in a new directory when the run fails', () => {
+    mkdirSync(join(repo, 'new-dir'));
+    writeFileSync(join(repo, 'new-dir', 'added.txt'), 'from the template\n', 'utf8');
+    git(repo, ['add', '-N', 'new-dir/added.txt']);
+    const create = git(repo, ['diff', '--', 'new-dir/added.txt']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'new-dir'), { recursive: true });
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), create, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(existsSync(join(repo, 'new-dir'))).toBe(false);
+    expect(git(repo, ['status', '--porcelain', '--untracked-files=all']).includes('new-dir')).toBe(false);
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -1024,6 +1045,48 @@ describe('applyRun on a clean tree', () => {
     expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
     expect(readUpgradeLog(repo).upgrades['note-1']).toBe('blocked');
     expect(existsSync(join(repo, 'generated.txt'))).toBe(false);
+  });
+
+  it('keeps an ignored file an install un-ignored when verification then fails', () => {
+    const binDir = mkdtempSync(join(tmpdir(), 'nestled-bin-'));
+    const savedPath = process.env.PATH;
+    try {
+      writeFileSync(
+        join(binDir, 'npm'),
+        '#!/bin/sh\nif [ "$1" = "view" ]; then echo \'"2.0.0"\'; exit 0; fi\nif [ "$1" = "install" ]; then : > .gitignore; exit 0; fi\nexit 1\n',
+        { mode: 0o755 },
+      );
+      process.env.PATH = `${binDir}:${savedPath}`;
+      writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+      const manifest = { name: 'consumer', dependencies: { 'example-lib': '^1.0.0' } };
+      writeFileSync(join(repo, 'package.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+      writeFileSync(join(repo, 'package-lock.json'), '{}\n');
+      git(repo, ['add', '-A']);
+      git(repo, ['commit', '-q', '-m', 'setup']);
+      writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+      writeManifestReleases('2026.02.0', [
+        {
+          id: '2026.02.0',
+          notes: [
+            '      - id: note-pkg',
+            '        title: Bump example-lib',
+            '        delivery: package-release',
+            '        packageReleases:',
+            '          - name: example-lib',
+            '            targetVersion: 2.0.0',
+          ],
+        },
+      ]);
+
+      const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+
+      expect(result.status).toBe('verification-failed');
+      expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+      expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+    } finally {
+      process.env.PATH = savedPath;
+      rmSync(binDir, { recursive: true, force: true });
+    }
   });
 
   it('still rolls back every change of a failed multi-note run', () => {

@@ -256,9 +256,14 @@ function capture(root: string, path: string, state: FileState = readState(join(r
   return { state, ancestors };
 }
 
+/**
+ * Whether every parent is as captured. A parent that did not exist may since have become a real
+ * directory (the run creating `new-dir/file`), but never a link or a file.
+ */
 function ancestorsIntact(captured: Captured): boolean {
   return captured.ancestors.every(({ absolute, state }) => {
     const now = ancestorState(absolute);
+    if (state.kind === 'absent') return now.kind === 'absent' || now.kind === 'other';
     return state.kind === 'file' ? now.kind === 'file' : sameState(state, now);
   });
 }
