@@ -64,7 +64,8 @@ export function dirtyPaths(cwd: string): Set<string> {
  * one the file's own creation time decides: one created after `since` is new, not pre-existing.
  */
 export function ignoredPaths(cwd: string): (path: string, since: number) => boolean {
-  const result = git(cwd, ['status', '--porcelain=v1', '-z', '--ignored=traditional']);
+  // --untracked-files: ignored files are only listed while untracked ones are, whatever the config says.
+  const result = git(cwd, ['status', '--porcelain=v1', '-z', '--ignored=traditional', '--untracked-files=normal']);
   if (result.status !== 0) throw new Error(`Unable to list ignored files: ${result.stderr || result.stdout}`);
   const entries = result.stdout
     .split('\0')
@@ -322,6 +323,8 @@ type PriorState = { kind: 'tracked' } | { kind: 'captured'; captured: Captured }
  */
 export class RunChanges {
   private readonly prior = new Map<string, PriorState>();
+  /** Pre-existing ignored files a step surfaced: restored on rollback, never committed as the run's. */
+  private readonly preserved = new Set<string>();
 
   /** `root` is the repository root; `startCommit` is HEAD before the run ('' on an unborn branch). */
   constructor(private readonly root: string, private readonly startCommit: string) {}
@@ -350,9 +353,10 @@ export class RunChanges {
   /**
    * Record paths something the run did has already changed (an install's or a hook's side effects).
    * Only paths that were clean before that step may be passed. Each was tracked at the start commit,
-   * did not exist, or existed but was ignored (`existedIgnored`): a step that changes an ignore rule
-   * can surface a file it never wrote. That last kind is not the run's, so it is not recorded and a
-   * rollback leaves it alone. Returns the paths among `paths` that the run now owns.
+   * did not exist, or existed but was ignored (`existedIgnored`): a step that changes an ignore rule,
+   * or force-adds and commits, can surface a file it never wrote. That last kind is the user's: it is
+   * kept as it is now and, after a rollback, put back the same way, unstaged. Returns the paths among
+   * `paths` that the run now owns, which never include the user's.
    */
   didChange(paths: Iterable<string>, existedIgnored: (path: string) => boolean = () => false): string[] {
     const unique = [...new Set(paths)].filter(Boolean);
@@ -360,11 +364,14 @@ export class RunChanges {
     const tracked = this.trackedAtStart(fresh);
     for (const path of fresh) {
       if (tracked.has(path)) this.prior.set(path, { kind: 'tracked' });
-      else if (!existedIgnored(path)) {
+      else if (existedIgnored(path)) {
+        this.prior.set(path, { kind: 'captured', captured: capture(this.root, path) });
+        this.preserved.add(path);
+      } else {
         this.prior.set(path, { kind: 'captured', captured: capture(this.root, path, { kind: 'absent' }) });
       }
     }
-    return unique.filter((path) => this.prior.has(path));
+    return unique.filter((path) => this.prior.has(path) && !this.preserved.has(path));
   }
 
   /**

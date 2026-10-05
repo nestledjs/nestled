@@ -1054,6 +1054,32 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readFileSync(join(repo, 'lock-target.json'), 'utf8')).toBe('{"mine":true}\n');
   });
 
+  it('keeps an ignored file a step force-added and committed, through the soft reset', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+
+    const result = runWithVerification('git add -f draft.md && git commit -q -m sneaky; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(git(repo, ['status', '--porcelain', '--ignored', '--', 'draft.md']).trim()).toBe('!! draft.md');
+  });
+
+  it('keeps an un-ignored file when git is configured to hide untracked files', () => {
+    git(repo, ['config', 'status.showUntrackedFiles', 'no']);
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+
+    const result = runWithVerification(': > .gitignore; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
@@ -1175,6 +1201,22 @@ describe('applyRun on a clean tree', () => {
     expect(() => applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [] })).toThrow(
       /uncommitted changes/,
     );
+  });
+
+  it('keeps an ignored file a step force-added and committed, through the hard reset', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+    packageBumpNote();
+
+    withFakeNpm('git add -f draft.md && git commit -q -m sneaky', () => {
+      const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: ['false'] });
+      expect(result.status).toBe('verification-failed');
+    });
+
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+    expect(git(repo, ['status', '--porcelain', '--ignored', '--', 'draft.md']).trim()).toBe('!! draft.md');
   });
 
   it('still rolls back every change of a failed multi-note run', () => {
