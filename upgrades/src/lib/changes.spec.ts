@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { patchPaths } from './changes';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { dirtyPaths, patchPaths } from './changes';
 
 describe('patchPaths', () => {
   it('lists modified, created, deleted and renamed paths', () => {
@@ -103,5 +106,16 @@ describe('patchPaths', () => {
       '',
     ].join('\n');
     expect(patchPaths(diff, ['.nestled/**'])).toEqual(['src/a.ts']);
+  });
+});
+
+describe('dirtyPaths', () => {
+  it('throws rather than reporting nothing when git cannot list changes', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'nestled-not-a-repo-'));
+    try {
+      expect(() => dirtyPaths(dir)).toThrow(/Unable to list uncommitted changes/);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

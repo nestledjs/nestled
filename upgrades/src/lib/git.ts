@@ -6,8 +6,14 @@ export interface GitResult {
   stderr: string;
 }
 
+/**
+ * Room for `git status` of a large tree: past Node's 1 MiB default, output is cut off and the call
+ * reports failure, which a caller must never mistake for "nothing there".
+ */
+const MAX_OUTPUT = 512 * 1024 * 1024;
+
 export function git(cwd: string, args: string[], input?: string): GitResult {
-  const result = spawnSync('git', args, { cwd, encoding: 'utf8', input });
+  const result = spawnSync('git', args, { cwd, encoding: 'utf8', input, maxBuffer: MAX_OUTPUT });
   return {
     status: result.status ?? 1,
     stdout: result.stdout ?? '',
@@ -24,9 +30,14 @@ export function isGitRepo(cwd: string): boolean {
   return gitOutput(cwd, ['rev-parse', '--is-inside-work-tree']) === 'true';
 }
 
-/** Uncommitted changes, ignoring our own `.nestled/` bookkeeping. */
+/**
+ * Uncommitted changes, ignoring our own `.nestled/` bookkeeping. Throws when git cannot say: an
+ * unknown state must never be taken for a clean one, since a clean start permits `reset --hard`.
+ */
 export function hasUncommittedChanges(cwd: string): boolean {
-  return gitOutput(cwd, ['status', '--porcelain'])
+  const result = git(cwd, ['status', '--porcelain']);
+  if (result.status !== 0) throw new Error(`Unable to read the working tree status: ${result.stderr || result.stdout}`);
+  return result.stdout
     .split('\n')
     .filter(Boolean)
     .some((line) => !line.includes('.nestled/'));

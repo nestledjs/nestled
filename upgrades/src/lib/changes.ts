@@ -1,5 +1,4 @@
 import {
-  existsSync,
   lstatSync,
   mkdirSync,
   readdirSync,
@@ -44,8 +43,9 @@ function isNestledPath(path: string): boolean {
  */
 export function dirtyPaths(cwd: string): Set<string> {
   const result = git(cwd, ['status', '--porcelain=v1', '-z', '--untracked-files=all']);
+  // Never fall back to an empty set: that would treat the user's uncommitted work as not there.
+  if (result.status !== 0) throw new Error(`Unable to list uncommitted changes: ${result.stderr || result.stdout}`);
   const paths = new Set<string>();
-  if (result.status !== 0) return paths;
   const entries = result.stdout.split('\0');
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
@@ -55,6 +55,22 @@ export function dirtyPaths(cwd: string): Set<string> {
     if (/[RC]/.test(entry.slice(0, 2)) && entries[i + 1]) paths.add(entries[++i]);
   }
   return new Set([...paths].filter((path) => !isNestledPath(path)));
+}
+
+/**
+ * Ignored paths that exist right now, as `git status --ignored` reports them: files, and directories
+ * (ending in `/`) standing for everything under them. Returns a membership test.
+ */
+export function ignoredPaths(cwd: string): (path: string) => boolean {
+  const result = git(cwd, ['status', '--porcelain=v1', '-z', '--ignored=traditional']);
+  if (result.status !== 0) throw new Error(`Unable to list ignored files: ${result.stderr || result.stdout}`);
+  const entries = result.stdout
+    .split('\0')
+    .filter((entry) => entry.startsWith('!! '))
+    .map((entry) => entry.slice(3));
+  const files = new Set(entries.filter((entry) => !entry.endsWith('/')));
+  const dirs = entries.filter((entry) => entry.endsWith('/'));
+  return (path) => files.has(path) || dirs.some((dir) => path.startsWith(dir));
 }
 
 /** C-style unquoting of a path git quoted (`"a/\303\274.txt"`); octal escapes are UTF-8 bytes. */
@@ -250,14 +266,19 @@ export class RunChanges {
   }
 
   /**
-   * Record paths something the run did has already changed (a package install's side effects).
-   * Only paths that were clean before that step may be passed: each is either tracked at the start
-   * commit, or did not exist.
+   * Record paths something the run did has already changed (an install's or a hook's side effects).
+   * Only paths that were clean before that step may be passed. Each was tracked at the start commit,
+   * did not exist, or existed but was ignored (`existedIgnored`): a step that changes an ignore rule
+   * can surface a file it never wrote. That last kind is not the run's, so it is not recorded and a
+   * rollback leaves it alone.
    */
-  didChange(paths: Iterable<string>): void {
+  didChange(paths: Iterable<string>, existedIgnored: (path: string) => boolean = () => false): void {
     const fresh = [...new Set(paths)].filter((path) => path && !this.prior.has(path));
     const tracked = this.trackedAtStart(fresh);
-    for (const path of fresh) this.prior.set(path, tracked.has(path) ? { kind: 'tracked' } : { kind: 'absent' });
+    for (const path of fresh) {
+      if (tracked.has(path)) this.prior.set(path, { kind: 'tracked' });
+      else if (!existedIgnored(path)) this.prior.set(path, { kind: 'absent' });
+    }
   }
 
   /**
@@ -391,7 +412,7 @@ export function commitPaths(root: string, message: string, paths: string[]): str
         .stdout.split('\0')
         .filter(Boolean),
     );
-    const addable = chunk.filter((path) => known.has(path) || existsSync(join(root, path)));
+    const addable = chunk.filter((path) => known.has(path) || lstatOrNull(join(root, path)));
     if (addable.length) git(root, [LITERAL, 'add', '-A', '--', ...addable]);
   }
   // Exactly the paths with something staged: a path that ended up unchanged would fail `--only`.

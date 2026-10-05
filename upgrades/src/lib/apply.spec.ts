@@ -755,6 +755,50 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readFileSync(join(repo, 'target.json'), 'utf8')).toBe(target);
   });
 
+  it('blocks and puts back a dirty file a commit hook rewrote', () => {
+    writeFileSync(join(repo, '.git', 'hooks', 'pre-commit'), '#!/bin/sh\necho hooked > docs/notes.md\n', {
+      mode: 0o755,
+    });
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = runWithVerification('true');
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+  });
+
+  it('leaves alone an ignored file a failing step merely un-ignored', () => {
+    writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
+    git(repo, ['add', '.gitignore']);
+    git(repo, ['commit', '-q', '-m', 'ignore drafts']);
+    writeFileSync(join(repo, 'draft.md'), 'private draft\n', 'utf8');
+
+    const result = runWithVerification(': > .gitignore; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, '.gitignore'), 'utf8')).toBe('draft.md\n');
+    expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
+  });
+
+  it('commits a dangling symlink a patch creates', () => {
+    symlinkSync('does-not-exist', join(repo, 'link'));
+    git(repo, ['add', '-N', 'link']);
+    const create = git(repo, ['diff', '--', 'link']);
+    git(repo, ['reset', '-q']);
+    rmSync(join(repo, 'link'));
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), create, 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(result.status).toBe('applied');
+    expect(git(repo, ['ls-tree', '--name-only', 'HEAD']).split('\n')).toContain('link');
+    expect(git(repo, ['status', '--porcelain', '--', 'link']).trim()).toBe('');
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });
