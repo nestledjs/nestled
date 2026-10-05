@@ -11,7 +11,7 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { git, gitOutput } from './git';
+import { git, gitOutput, NO_HOOKS } from './git';
 
 /**
  * Bookkeeping for which paths an apply run changes, so that undoing the run touches those paths and
@@ -80,6 +80,8 @@ export function ignoredPaths(cwd: string): (path: string) => boolean {
   for (const dir of entries.filter((entry) => entry.endsWith('/'))) {
     const found = budget > 0 ? listFiles(cwd, dir, budget) : null;
     if (!found) {
+      // Out of allowance (or over it here): this and every later directory get the cautious answer.
+      budget = 0;
       unlisted.push(dir);
       continue;
     }
@@ -390,7 +392,8 @@ export class RunChanges {
     const tracked = targets.filter((path) => this.prior.get(path)?.kind === 'tracked');
     const others = targets.filter((path) => this.prior.get(path)?.kind !== 'tracked');
     for (const chunk of chunks(tracked)) {
-      git(this.root, [LITERAL, 'checkout', this.startCommit, '--', ...chunk]);
+      // Hook-free: a post-checkout hook could rewrite the user's uncommitted files mid-rollback.
+      git(this.root, [...NO_HOOKS, LITERAL, 'checkout', this.startCommit, '--', ...chunk]);
     }
     // -f: the index entry may match neither HEAD nor the file on disk (staged by us, then rewritten).
     for (const chunk of chunks(others)) {

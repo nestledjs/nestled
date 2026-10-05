@@ -1095,6 +1095,79 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readFileSync(join(repo, 'draft.md'), 'utf8')).toBe('private draft\n');
   });
 
+  it('switches branches without a post-checkout hook rewriting the user’s files', () => {
+    writeFileSync(
+      join(repo, '.git', 'hooks', 'post-checkout'),
+      '#!/bin/sh\n[ "$3" = "1" ] && echo hooked > docs/notes.md\nexit 0\n',
+      { mode: 0o755 },
+    );
+
+    const result = runWithVerification('true');
+
+    expect(result.status).toBe('applied');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('rolls back files without a post-checkout hook rewriting the user’s files', () => {
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+    // installed after the setup above, which checks a file out itself
+    writeFileSync(
+      join(repo, '.git', 'hooks', 'post-checkout'),
+      '#!/bin/sh\n[ "$3" = "0" ] && echo hooked > docs/notes.md\nexit 0\n',
+      { mode: 0o755 },
+    );
+
+    const result = applyRun(repo, {
+      manifestFile: join(feedDir, 'manifest.yaml'),
+      verification: ['false'],
+      allowDirty: true,
+    });
+
+    expect(result.status).toBe('verification-failed');
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('rolls back fully when failing verification leaves a merge conflict', () => {
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+    git(repo, ['branch', 'side']);
+    git(repo, ['worktree', 'add', '-q', join(repo, '..', `side-${Date.now()}`), 'side']);
+    const sideDir = git(repo, ['worktree', 'list', '--porcelain'])
+      .split('\n')
+      .filter((line) => line.startsWith('worktree ') && line.includes('side-'))[0]
+      .slice('worktree '.length);
+    writeFileSync(join(sideDir, 'hello.txt'), 'from side\n', 'utf8');
+    git(sideDir, ['commit', '-q', '-am', 'side change']);
+
+    const result = runWithVerification('git merge -q side; false');
+
+    expect(result.status).toBe('verification-failed');
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(existsSync(join(repo, '.git', 'MERGE_HEAD'))).toBe(false);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(git(repo, ['status', '--porcelain', '--', 'hello.txt']).trim()).toBe('');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    rmSync(sideDir, { recursive: true, force: true });
+  });
+
+  it('refuses to start while a merge is in progress', () => {
+    git(repo, ['checkout', '-q', '-b', 'side']);
+    writeFileSync(join(repo, 'other.txt'), 'side\n', 'utf8');
+    git(repo, ['commit', '-q', '-am', 'side']);
+    git(repo, ['checkout', '-q', '-']);
+    git(repo, ['stash', '-q']);
+    writeFileSync(join(repo, 'other.txt'), 'main\n', 'utf8');
+    git(repo, ['commit', '-q', '-am', 'main']);
+    spawnSync('git', ['merge', '-q', 'side'], { cwd: repo });
+    writeFileSync(join(feedDir, 'patches', 'change.diff'), makeDiff('hello.txt', 'hello world\n'), 'utf8');
+    writeManifest('2026.02.0', '2026.02.0');
+
+    expect(() =>
+      applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true }),
+    ).toThrow(/in progress \(MERGE_HEAD\)/);
+  });
+
   it('resolves a manifest outside the project directory against the repository root', () => {
     const project = join(repo, 'apps', 'example');
     mkdirSync(project, { recursive: true });

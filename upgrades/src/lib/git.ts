@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 
 export interface GitResult {
   status: number;
@@ -48,10 +49,44 @@ export function currentBranch(cwd: string): string {
   return gitOutput(cwd, ['rev-parse', '--abbrev-ref', 'HEAD']);
 }
 
-export function checkoutBranch(cwd: string, branch: string): void {
+/** In-progress operations, by the state file git keeps for each, and how to abandon one in place. */
+const IN_PROGRESS: { state: string; quit: string[] }[] = [
+  { state: 'MERGE_HEAD', quit: ['merge', '--quit'] },
+  { state: 'CHERRY_PICK_HEAD', quit: ['cherry-pick', '--quit'] },
+  { state: 'REVERT_HEAD', quit: ['revert', '--quit'] },
+  { state: 'rebase-merge', quit: ['rebase', '--quit'] },
+  { state: 'rebase-apply', quit: ['rebase', '--quit'] },
+];
+
+/** The merge, cherry-pick, revert or rebase in progress, if any, by the name of its state file. */
+export function operationsInProgress(cwd: string): string[] {
+  return IN_PROGRESS.filter(({ state }) => {
+    const path = gitOutput(cwd, ['rev-parse', '--path-format=absolute', '--git-path', state]);
+    return path !== '' && existsSync(path);
+  }).map(({ state }) => state);
+}
+
+/**
+ * Abandon any merge, cherry-pick, revert or rebase in progress without touching the index or the
+ * working tree (`--quit`), so that HEAD can be moved back.
+ */
+export function quitOperations(cwd: string): void {
+  for (const state of operationsInProgress(cwd)) {
+    const entry = IN_PROGRESS.find((item) => item.state === state);
+    if (entry) git(cwd, entry.quit);
+  }
+}
+
+/**
+ * Global options that keep git from running the repository's hooks, for checkouts we make on a tree
+ * holding the user's uncommitted work: a `post-checkout` hook there could rewrite it.
+ */
+export const NO_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
+
+export function checkoutBranch(cwd: string, branch: string, options: { hooks?: boolean } = {}): void {
   const existing = git(cwd, ['show-ref', '--verify', '--quiet', `refs/heads/${branch}`]);
   const args = existing.status === 0 ? ['checkout', branch] : ['checkout', '-b', branch];
-  const result = git(cwd, args);
+  const result = git(cwd, options.hooks === false ? [...NO_HOOKS, ...args] : args);
   if (result.status !== 0) {
     throw new Error(`Unable to checkout ${branch}: ${result.stderr || result.stdout}`);
   }

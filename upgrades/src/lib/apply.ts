@@ -34,7 +34,17 @@ import {
 } from './baseline';
 import { computePending, PendingResult } from './pending';
 import { resolveFeed, ResolveFeedOptions } from './feed';
-import { checkoutBranch, git, gitOutput, hasUncommittedChanges, isGitRepo, PrResult, pushAndCreatePR } from './git';
+import {
+  checkoutBranch,
+  git,
+  gitOutput,
+  hasUncommittedChanges,
+  isGitRepo,
+  operationsInProgress,
+  PrResult,
+  pushAndCreatePR,
+  quitOperations,
+} from './git';
 
 /** A patch must never touch our own bookkeeping. */
 const PATCH_EXCLUDES = ['.nestled/**'];
@@ -396,8 +406,16 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
     throw new Error(`${nested.join(', ')} ${what} with uncommitted changes; commit or stash them first.`);
   }
 
+  // A merge, cherry-pick, revert or rebase in progress is not a state to build upgrade commits on, and
+  // rolling back would have to guess which part of it was ours.
+  const inProgress = operationsInProgress(projectDir);
+  if (inProgress.length) {
+    throw new Error(`A git operation is in progress (${inProgress.join(', ')}); finish or abort it first.`);
+  }
+
   const branch = `nestled-update/${channel}-${pending.ceiling}`;
-  checkoutBranch(projectDir, branch);
+  // With the user's work in the tree, switch branches without running hooks that could rewrite it.
+  checkoutBranch(projectDir, branch, { hooks: startedClean });
   const startCommit = gitOutput(projectDir, ['rev-parse', 'HEAD']);
   const forked = new Set(options.forkedAreas ?? config.forkedAreas ?? []);
   const changes = new RunChanges(root, startCommit);
@@ -452,14 +470,22 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
    * including everything uncommitted at the start of an `--allow-dirty` run, is left as it is.
    */
   const rollback = () => {
+    // None was in progress at the start, so any merge (or similar) a step left behind is the run's.
+    quitOperations(root);
     if (startedClean && startCommit) {
       // The tree was clean (outside `.nestled/`) when we started, so nothing here is anyone else's work.
-      git(projectDir, ['reset', '--hard', startCommit]);
-    } else if (startCommit) {
-      // Keep the index and working tree: they hold the user's uncommitted changes as well as ours.
-      git(root, ['reset', '--soft', startCommit]);
+      const reset = git(projectDir, ['reset', '--hard', startCommit]);
+      if (reset.status !== 0) throw new Error(`Rollback could not reset to ${startCommit}: ${reset.stderr}`);
+      changes.restore();
+    } else {
+      // Keep the index and working tree: they hold the user's uncommitted changes as well as ours. Put
+      // the run's own paths back first, which also clears any conflict entries a step left on them.
+      changes.restore();
+      if (startCommit) {
+        const reset = git(root, ['reset', '--soft', startCommit]);
+        if (reset.status !== 0) throw new Error(`Rollback could not move HEAD back to ${startCommit}: ${reset.stderr}`);
+      }
     }
-    changes.restore();
     restoreChangedFiles(root, bookkeepingAtStart);
   };
 
