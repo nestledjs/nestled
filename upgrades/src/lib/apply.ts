@@ -410,13 +410,16 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       const committed = git(root, ['diff', '--name-only', '-z', '--no-renames', headBefore, headAfter]).stdout;
       for (const path of committed.split('\0').filter(Boolean)) changed.add(path);
     }
-    const clobbered = restoreChangedFiles(root, userFiles);
+    // A user path the step committed counts as clobbered even when its file and index entry still
+    // match: the user's work is now inside a commit, which only a rollback takes back out.
+    const clobbered = new Set(restoreChangedFiles(root, userFiles));
+    [...changed].filter((path) => dirtyAtStart.has(path)).forEach((path) => clobbered.add(path));
     // The user's paths are protected above, never taken over as the run's own.
     const sideEffects = changes.didChange(
       [...changed].filter((path) => !dirtyAtStart.has(path)),
       ignoredBefore,
     );
-    return { result, sideEffects, clobbered };
+    return { result, sideEffects, clobbered: [...clobbered] };
   };
 
   /**
@@ -550,7 +553,8 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
   const noteVerification = [...new Set(applied.flatMap(({ note }) => note.verification ?? []))];
   const commands =
     options.verification ?? (noteVerification.length ? noteVerification : config.verification ?? inferVerification(projectDir));
-  const verification = applied.length ? guarded(() => runVerification(projectDir, commands)).result : [];
+  const guardedVerification = applied.length ? guarded(() => runVerification(projectDir, commands)) : null;
+  const verification = guardedVerification?.result ?? [];
   const failed = verification.find((item) => item.status !== 0);
   if (failed) {
     rollback();
@@ -563,6 +567,22 @@ export function applyRun(projectDir: string, options: ApplyOptions = {}): ApplyR
       applied: [],
       verification,
       blocked: { id: failed.command, reason: `Verification failed: ${failed.command}` },
+      baselineRelease: log.template.baselineRelease,
+    };
+  }
+  // Verification passed, but rewrote or committed the user's uncommitted work: undo the run rather than
+  // ship it. Like any block caused by the user's work, it is not recorded against the notes.
+  const verificationBlock = uncommittedBlock(commands.join('; '), guardedVerification?.clobbered ?? []);
+  if (verificationBlock) {
+    rollback();
+    writeUpgradeLog(projectDir, log);
+    return {
+      status: 'blocked',
+      channel,
+      branch,
+      applied: [],
+      verification,
+      blocked: verificationBlock,
       baselineRelease: log.template.baselineRelease,
     };
   }

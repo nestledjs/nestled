@@ -840,6 +840,37 @@ describe('applyRun --allow-dirty with third-party steps and layouts', () => {
     expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
   });
 
+  it('undoes an install script committing the user’s already-staged edit', () => {
+    packageNote();
+    git(repo, ['add', 'docs/notes.md']);
+    fakeNpm('git commit -q -m sneaky -- docs/notes.md');
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+    const stagedBefore = git(repo, ['ls-files', '-s', 'docs/notes.md']);
+
+    const result = applyRun(repo, { manifestFile: join(feedDir, 'manifest.yaml'), verification: [], allowDirty: true });
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(git(repo, ['ls-files', '-s', 'docs/notes.md'])).toBe(stagedBefore);
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+  });
+
+  it('undoes the run when passing verification commits the user’s edit', () => {
+    const start = git(repo, ['rev-parse', 'HEAD']).trim();
+
+    const result = runWithVerification('git add docs/notes.md && git commit -q -m verify');
+
+    expect(result.status).toBe('blocked');
+    expect(result.blocked?.uncommitted).toEqual(['docs/notes.md']);
+    expect(git(repo, ['rev-parse', 'HEAD']).trim()).toBe(start);
+    expect(readFileSync(join(repo, 'hello.txt'), 'utf8')).toBe('hello\n');
+    expect(readFileSync(join(repo, 'docs', 'notes.md'), 'utf8')).toBe(USER_NOTES);
+    expect(git(repo, ['status', '--porcelain', '--', 'docs/notes.md']).trim()).toBe('M docs/notes.md');
+    expect(readUpgradeLog(repo).upgrades['note-1']).toBeUndefined();
+    expect(readUpgradeLog(repo).template.baselineRelease).toBe('2026.01.0');
+  });
+
   it('never commits an ignored file an install merely un-ignored', () => {
     writeFileSync(join(repo, '.gitignore'), 'draft.md\n', 'utf8');
     git(repo, ['add', '.gitignore']);
