@@ -105,10 +105,15 @@ import { CorePagingInput } from '@<%= npmScope %>/api/core/data-access'
 const regularFields = model.fields.filter(field => !field.relationName || field.relationName.length === 0);
 const virtualRelationFields = getVirtualRelationFields(model);
 const allFields = [...regularFields, ...virtualRelationFields];
+const writableModel = { ...model, fields: model.fields.filter(field => !field.isCrudReadOnly) };
+const writeFields = [
+    ...writableModel.fields.filter(field => !field.relationName || field.relationName.length === 0),
+    ...getVirtualRelationFields(writableModel),
+];
 %>
 @InputType()
 export class Create<%= model.modelName %>Input {
-<% for (const field of allFields) { %>
+<% for (const field of writeFields) { %>
   <%
     let baseGqlType;
     let tsType;
@@ -152,7 +157,7 @@ export class Create<%= model.modelName %>Input {
 
 @InputType()
 export class Update<%= model.modelName %>Input {
-<% for (const field of allFields) { %>
+<% for (const field of writeFields) { %>
   <%
     let baseGqlType;
     let tsType;

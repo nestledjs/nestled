@@ -9,6 +9,7 @@ export interface ModelField {
   isUnique?: boolean
   isList?: boolean
   isReadOnly?: boolean
+  isCrudReadOnly?: boolean
   hasDefaultValue?: boolean
   default?: unknown
   relationName?: string

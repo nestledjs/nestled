@@ -142,6 +142,7 @@ function getForeignKeyRelationFields(model) {
 
 // Helper function to generate relation handling code
 function generateRelationHandling(model, operation) {
+  model = { ...model, fields: model.fields.filter(field => !field.isCrudReadOnly) };
   const virtualRelationFields = getVirtualRelationFields(model);
   const foreignKeyFields = getForeignKeyRelationFields(model);
   const allRelationFields = [...virtualRelationFields, ...foreignKeyFields];

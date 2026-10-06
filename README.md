@@ -106,6 +106,7 @@ The codegen generators honor annotations written as Prisma triple-slash (`///`) 
 | ------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@skipCrud`        | model      | Excludes the model from all generated output (`crud`, `sdk`, `models`) and strips inbound relation fields that point at it from other models. Use for types that must never appear in the GraphQL schema. |
 | `@graphqlOmit`     | field      | Omits the field from the generated `@ObjectType` (`models`), client operations (`sdk`), and CRUD inputs (`crud`). Use for secrets/columns that must never be exposed through the API.                     |
+| `@crudReadOnly`    | field      | Keeps the field readable and filterable but omits it from generated create/update inputs. The admin browser treats it as read-only. Relation annotations also protect their foreign keys and inverse write aliases. |
 | `@graphqlNullable` | field      | Makes the generated `@ObjectType` field nullable in GraphQL and TypeScript, even when Prisma requires it. Database columns and CRUD input requirements remain unchanged.                                  |
 
 ```prisma
