@@ -23,6 +23,7 @@ import {
 import { libraryGenerator } from '@nx/js'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 import { getDMMF } from '@prisma/internals'
+import { markCrudReadOnlyFields } from '../crud/write-fields'
 
 const SCALAR_TYPES = ['String', 'Int', 'Boolean', 'Float', 'DateTime', 'Json', 'BigInt', 'Decimal', 'Bytes']
 
@@ -172,7 +173,7 @@ export async function sdkGeneratorLogic(
     ...model,
     fields: model.fields.filter((f: any) => !f.documentation?.includes('@graphqlOmit')),
   }))
-  const databaseModelContent = generateDatabaseModelContent(allModelsForDbFiltered)
+  const databaseModelContent = generateDatabaseModelContent(markCrudReadOnlyFields(allModelsForDbFiltered))
   tree.write('libs/shared/sdk/src/lib/database-models.ts', databaseModelContent)
 
   // 5. For each model, generate admin files (always overwrite). Per-model and feature operations

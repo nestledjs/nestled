@@ -63,3 +63,11 @@ Run `nx build generators` to build the library.
 ## Running unit tests
 
 Run `nx test generators` to execute the unit tests via [Vitest](https://vitest.dev/).
+# Read-only CRUD fields
+
+Put `/// @crudReadOnly` above a Prisma field whose writes belong to an explicit application workflow.
+It remains in generated GraphQL output, SDK fragments and filters, but is absent from both generated
+mutation inputs. Generated browser metadata sets `isReadOnly` so existing browsers omit its editor.
+On a relation or foreign key, the annotation also removes the relation's other write aliases,
+including inverse `...Id`/`...Ids` inputs. It does not change Prisma or handwritten application APIs.
+Required fields without defaults still need an application create path that supplies their value.

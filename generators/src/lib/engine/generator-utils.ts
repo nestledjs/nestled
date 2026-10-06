@@ -856,6 +856,7 @@ export interface DatabaseField {
   isUnique?: boolean
   isList?: boolean
   isReadOnly?: boolean
+  isCrudReadOnly?: boolean
   hasDefaultValue?: boolean
   default?: unknown
   relationName?: string

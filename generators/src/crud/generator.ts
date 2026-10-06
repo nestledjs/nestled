@@ -13,6 +13,7 @@ import {
 } from '../lib/engine'
 import { GenerateCrudGeneratorSchema } from './schema'
 import { generateFilterInputs } from './filter-inputs'
+import { markCrudReadOnlyFields } from './write-fields'
 import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
 
 // STEP 1: DEFINE INTERFACES FOR DATA AND DEPENDENCIES
@@ -127,13 +128,9 @@ export function generateResolverContent(
   // organization-context preload on every call, then override the class's @AdminOnly() with its own
   // @Authenticated() -- leaving each root declaring a weaker level than the guard enforces.
   const readPermission =
-    posture === 'admin'
-      ? "  @RequirePlatformPermissionUnderClassGuard('platform.data-browser.read')\n"
-      : ''
+    posture === 'admin' ? "  @RequirePlatformPermissionUnderClassGuard('platform.data-browser.read')\n" : ''
   const managePermission =
-    posture === 'admin'
-      ? "  @RequirePlatformPermissionUnderClassGuard('platform.data-browser.manage')\n"
-      : ''
+    posture === 'admin' ? "  @RequirePlatformPermissionUnderClassGuard('platform.data-browser.manage')\n" : ''
 
   return `import { UseGuards } from '@nestjs/common'
 import { Args, Mutation, Query, Resolver, Info } from '@nestjs/graphql'
@@ -365,7 +362,7 @@ export async function generateCrudLogic(
   // Main Orchestration Logic
   const name = schema.name || 'generated-crud'
   assertCorePagingInputHasNoFilters(tree)
-  const models = await getAllPrismaModels(tree)
+  const models = markCrudReadOnlyFields(await getAllPrismaModels(tree))
   if (models.length === 0) {
     console.error('No Prisma models found')
     return // Return early for the test case
