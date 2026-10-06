@@ -4,6 +4,7 @@ import graphqlFields from 'graphql-fields'
 import type { GraphQLResolveInfo } from 'graphql'
 import { DATABASE_MODELS_BY_NAME, DatabaseField, DatabaseModel } from './database-models'
 import * as dto from './dto'
+import { retryWrite } from './retry-write'
 
 type FieldTree = Record<string, unknown>
 type SelectTree = Record<string, true | { select: SelectTree }>
@@ -331,10 +332,10 @@ export class ApiCrudDataAccessService {
   async create<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, input: dto.Create<%= model.modelName %>Input) {
 <%- generateRelationHandling(model, 'create') %>
 
-    return this.data['<%= model.modelPropertyName %>'].create({
+    return retryWrite(() => this.data['<%= model.modelPropertyName %>'].create({
       data,
       select: buildAdminSelect(info),
-    });
+    }));
   }
 
   async <%= (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).charAt(0).toLowerCase() + (model.pluralModelName === model.modelName ? model.pluralModelName + 'List' : model.pluralModelName).slice(1) %>(info: GraphQLResolveInfo, input?: dto.List<%= model.modelName %>Input) {
@@ -378,17 +379,17 @@ export class ApiCrudDataAccessService {
   async update<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(info: GraphQLResolveInfo, id: <%= model.idFieldType === 'BigInt' ? 'bigint' : 'string' %>, input: dto.Update<%= model.modelName %>Input) {
 <%- generateRelationHandling(model, 'update') %>
 
-    return this.data['<%= model.modelPropertyName %>'].update({
+    return retryWrite(() => this.data['<%= model.modelPropertyName %>'].update({
       where: { id },
       data,
       select: buildAdminSelect(info),
-    });
+    }));
   }
 
   async delete<%= model.modelName.charAt(0).toUpperCase() + model.modelName.slice(1) %>(id: <%= model.idFieldType === 'BigInt' ? 'bigint' : 'string' %>) {
-    return this.data['<%= model.modelPropertyName %>'].delete({
+    return retryWrite(() => this.data['<%= model.modelPropertyName %>'].delete({
       where: { id }
-    });
+    }));
   }
 <% } %>
 }
