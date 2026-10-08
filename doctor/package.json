@@ -1,6 +1,6 @@
 {
   "name": "@nestledjs/doctor",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "type": "commonjs",
   "main": "./src/index.js",
   "types": "./src/index.d.ts",
