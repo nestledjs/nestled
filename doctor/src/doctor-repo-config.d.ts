@@ -2,6 +2,7 @@ export declare const REPO_CONFIG_PATH: string
 export declare const DEFAULT_SELECT_FILE_SUFFIXES: string[]
 export declare const readRepoConfig: (cwd?: string) => {
   selectFileSuffixes: string[]
+  auditModels?: string[]
   noSelectFiles?: string
   noCheckableSelects?: string
 }

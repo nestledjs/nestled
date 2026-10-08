@@ -1,4 +1,6 @@
 import ts from 'typescript'
+import { hasCallerScope } from './doctor-operation-analysis'
+import { calledAccessHelpers } from './doctor-inline-access'
 import { hasAuthenticationGuard, type AuthOperation } from './doctor-auth-analysis'
 import { declaredGuardsOn, type DeclaredGuards } from './doctor-declared-guards'
 import { decoratorName, decoratorsOf, unwrapExpression } from './doctor-typescript-analysis'
@@ -35,13 +37,6 @@ const policyDecorators = new Map<string, AccessPolicyScope>([
 ])
 /** Exposed so doctor-auth-analysis can assert it recognizes the same decorators. */
 export const POLICY_DECORATOR_NAMES: readonly string[] = [...policyDecorators.keys()]
-
-const inlineAccessCalls = new Set([
-  'assertPermission',
-  'hasAnyPermissionInNamespace',
-  'hasPermission',
-  'requirePermission',
-])
 
 const methodName = (method: ts.MethodDeclaration, sourceFile: ts.SourceFile): string =>
   ts.isIdentifier(method.name) || ts.isStringLiteral(method.name) ? method.name.text : method.name.getText(sourceFile)
@@ -97,24 +92,6 @@ const policyDeclarations = (
     ]
   })
 
-const calledAccessHelpers = (method: ts.MethodDeclaration): string[] => {
-  const calls = new Set<string>()
-  if (!method.body) return []
-
-  const visit = (node: ts.Node) => {
-    if (ts.isCallExpression(node)) {
-      const expression = node.expression
-      let name = ''
-      if (ts.isIdentifier(expression)) name = expression.text
-      if (ts.isPropertyAccessExpression(expression)) name = expression.name.text
-      if (inlineAccessCalls.has(name)) calls.add(name)
-    }
-    ts.forEachChild(node, visit)
-  }
-  visit(method.body)
-  return [...calls].sort((left, right) => left.localeCompare(right))
-}
-
 /** Read literal string properties only from one named top-level object-array declaration. */
 export const readStringObjectArray = (
   source: string,
@@ -164,29 +141,6 @@ export const readStringObjectArray = (
     return properties.every((property) => entry[property]) ? [entry] : []
   })
 }
-
-/**
- * Evidence that an operation answers "is this row yours" rather than "do you hold permission X":
- * it takes the caller, or reaches for the caller's identity when querying. Mirrors the anchor the
- * resolver-scope review uses.
- */
-// Any @Ctx* parameter decorator: the template ships CtxUser, CtxOrganization AND
-// CtxOrganizationId, and repos add their own (one downstream project has CtxOrganizationIdCached). Matching the
-// SHAPE rather than an enumerated list is both correct and the only version that stays
-// repo-agnostic — an allowlist of names would have to grow every time a repo adds one, which is
-// repo-specific knowledge in a tool eleven repos share.
-//
-// The earlier pattern required `@CtxOrganization()` exactly, so `@CtxOrganizationId()` — the
-// template's own decorator, and the better one, since it hands a resolver only the id instead of a
-// context object carrying `permissions` — failed to match. One downstream project uses it 195 times and had 382
-// findings claiming its scoped resolvers were unscoped.
-//
-// `@Ctx` is a literal prefix, so NestJS's own `@Context()` does not match.
-//
-// `[a-z]` rather than `[A-Za-z]`: the /i flag already makes them equivalent, and spelling both
-// ranges is a duplicated character class (S5869). The decorators are PascalCase and still match.
-const CALLER_SCOPE_ANCHOR =
-  /@Ctx[a-z]*\s*\(|@InheritedParentAuthorization\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i
 
 export type UndeclaredAccessOperation = {
   className: string
@@ -292,13 +246,11 @@ export const analyzeAccessPolicies = (source: string, fileName = 'source.ts') =>
       const name = methodName(member, sourceFile)
       const methodPolicies = policyDeclarations(decoratorsOf(member), sourceFile, className, name)
       declarations.push(...methodPolicies)
-      // Whole method text, parameters included: @CtxUser() is a PARAMETER decorator, so any
-      // detection that reads only the method's own decorators or its body misses it.
       operations.push({
         className,
         name,
         line: sourceFile.getLineAndCharacterOfPosition(member.name.getStart(sourceFile)).line + 1,
-        callerScoped: CALLER_SCOPE_ANCHOR.test(member.getText(sourceFile)),
+        callerScoped: hasCallerScope(member),
       })
 
       const calls = calledAccessHelpers(member)

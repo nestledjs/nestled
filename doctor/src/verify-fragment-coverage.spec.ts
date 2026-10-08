@@ -562,3 +562,21 @@ describe('selectFilesIn', () => {
     expect(selectFilesIn(workspace)).toHaveLength(1)
   })
 })
+
+describe('configured select suffixes', () => {
+  it('uses the same explicit suffix list as the select verifiers', () => {
+    const root = createSelectWorkspace('export const EXAMPLE_SELECT = { id: true }')
+    mkdirSync(join(root, '.nestled-updates'), { recursive: true })
+    writeFileSync(
+      join(root, '.nestled-updates/doctor.config.json'),
+      JSON.stringify({ selectFileSuffixes: ['.projection.ts'] }),
+    )
+    const custom = join(root, 'libs/api/custom/src/lib/example/example.projection.ts')
+    writeFileSync(custom, 'export const EXAMPLE_SELECT = { id: true }')
+    writeFileSync(
+      join(root, 'libs/api/custom/src/lib/example/example.resolver.ts'),
+      'export const OTHER_SELECT = { id: true }',
+    )
+    expect(selectFilesIn(root)).toEqual([custom])
+  })
+})

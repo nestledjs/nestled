@@ -67,7 +67,7 @@ import {
   type GraphqlSource,
   type PrismaSelect,
 } from './doctor-sdk-contract-analysis'
-import { reportNothingChecked } from './doctor-repo-config'
+import { readRepoConfig, reportNothingChecked } from './doctor-repo-config'
 
 /**
  * Load DATABASE_MODELS from the consuming repo's TypeScript source.
@@ -102,7 +102,6 @@ const usage = `Usage:
 Reports SDK fragment fields that no resolver select produces. Exits non-zero on MISSING.`
 
 const SEARCH_ROOTS = ['libs/api/custom/src', 'libs/api/core', 'apps/api/src']
-const SELECT_FILE_SUFFIXES = ['.select.ts', '.resolver.ts', '.service.ts']
 // Discovery has to match what findConstantBody can READ, or a constant it would happily parse is
 // never offered to it — a silent skip that reports as a clean run. So: the optional type annotation
 // (`const USER_SELECT: Prisma.UserSelect = {`) and let/var, both of which findConstantBody accepts.
@@ -573,10 +572,12 @@ const readConstantsFromFile = (
 }
 
 /** Select files under the search roots: the same discovery readSelectConstants uses. */
-export const selectFilesIn = (repo: string): string[] =>
-  SEARCH_ROOTS.flatMap((root) =>
-    walk(join(repo, root), (path) => SELECT_FILE_SUFFIXES.some((s) => path.endsWith(s))),
+export const selectFilesIn = (repo: string): string[] => {
+  const { selectFileSuffixes } = readRepoConfig(repo)
+  return SEARCH_ROOTS.flatMap((root) =>
+    walk(join(repo, root), (path) => selectFileSuffixes.some((suffix) => path.endsWith(suffix))),
   ).filter((absolute) => !absolute.includes('.spec.'))
+}
 
 export const readSelectConstants = (repo: string, models: readonly DatabaseModelMetadata[]): SelectConstant[] =>
   selectFilesIn(repo).flatMap((absolute) => readConstantsFromFile(repo, absolute, models))
