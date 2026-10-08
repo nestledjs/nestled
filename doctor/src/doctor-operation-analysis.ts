@@ -53,7 +53,7 @@ const hasThrow = (node: ts.Node): boolean => {
 
 const scopeReference = (node: ts.Node, names: ReadonlySet<string>): boolean => {
   if (
-    ts.isPropertyAssignment(node) &&
+    (ts.isPropertyAssignment(node) || ts.isShorthandPropertyAssignment(node)) &&
     /^(?:actor|actorId|actorUserId|performedBy|performedById)$/i.test(propertyName(node.name))
   )
     return false
@@ -91,7 +91,9 @@ export const hasCallerScope = (method: ts.MethodDeclaration): boolean => {
 
 const dataMethods = new Set([
   'findFirst',
+  'findFirstOrThrow',
   'findUnique',
+  'findUniqueOrThrow',
   'findMany',
   'update',
   'updateMany',

@@ -24,6 +24,8 @@ describe('caller input and scope', () => {
 
   it.each([
     'return this.data.item.findMany({ where: { organizationId: input.id } })',
+    'return this.data.item.findFirstOrThrow({ where: { organizationId: input.id } })',
+    'return this.data.item.findUniqueOrThrow({ where: { organizationId: input.id } })',
     'const where = { organizationId: input.id }; return this.data.item.findMany({ where })',
     'const ownerId = input.id; return this.data.item.update({ where: { userId: ownerId }, data: {} })',
   ])('detects caller-controlled filters: %s', (body) => {
@@ -47,6 +49,8 @@ describe('caller input and scope', () => {
     'this.logger.info(principal.id); return this.data.item.findMany()',
     'return this.service.save({ data: { actorUserId: principal.id } })',
     'return this.service.save({ actorId: principal.id })',
+    'const actorId = principal.id; return this.service.save({ actorId })',
+    'const performedById = principal.id; return this.service.save({ data: { performedById } })',
   ])('does not treat identity injection or attribution as scope: %s', (body) => {
     expect(analyzeAccessPolicies(operation(body, '@CtxUser() principal: User')).operations[0].callerScoped).toBe(false)
   })
@@ -68,6 +72,7 @@ describe('inline permission predicates', () => {
     "const all = this.hasAnyPermissionInNamespace('items'); return this.data.item.findMany({ where: all ? {} : { ownerId } })",
     "if (this.hasAnyPermissionInNamespace('items')) return this.service.listAll(); return this.service.listOwn()",
     "return this.hasPermission('items.read')",
+    "if (this.hasPermission('items.read')) return this.service.all(); return this.service.own(); throw new Error()",
   ])('allows scope widening or returning a capability: %s', (body) => {
     expect(analyzeAccessPolicies(operation(body)).inlineViolations).toEqual([])
   })
@@ -77,6 +82,8 @@ describe('inline permission predicates', () => {
     "const allowed = this.hasPermission('items.read'); if (!allowed) return false; return this.service.list()",
     "const allowed = this.hasPermission('items.read'); const access = allowed; if (access) return this.service.list(); else throw new ForbiddenException()",
     "this.assertPermission('items.read'); return this.service.list()",
+    "const allowed = this.hasPermission('items.read'); if (allowed) return this.service.list(); throw new ForbiddenException()",
+    "if (this.hasAnyPermissionInNamespace('items')) { return this.service.list() }; this.logger.info('denied'); return false",
   ])('still reports checks that deny operation access: %s', (body) => {
     expect(analyzeAccessPolicies(operation(body)).inlineViolations).toHaveLength(1)
   })

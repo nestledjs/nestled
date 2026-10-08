@@ -24,6 +24,30 @@ const denies = (node: ts.Node): boolean => {
   return ts.forEachChild(node, (child) => denies(child) || undefined) ?? false
 }
 
+const returnsFromBranch = (node: ts.Statement): boolean => {
+  if (ts.isReturnStatement(node)) return true
+  if (ts.isBlock(node)) {
+    const last = node.statements[node.statements.length - 1]
+    return last ? returnsFromBranch(last) : false
+  }
+  return (
+    ts.isIfStatement(node) &&
+    !!node.elseStatement &&
+    returnsFromBranch(node.thenStatement) &&
+    returnsFromBranch(node.elseStatement)
+  )
+}
+
+/** A successful conditional return followed by a denial is equivalent to an else-denial. */
+const hasFallthroughDenial = (node: ts.IfStatement): boolean => {
+  if (!returnsFromBranch(node.thenStatement) || node.elseStatement || !ts.isBlock(node.parent)) return false
+  const siblings = node.parent.statements
+  const following = siblings.slice(siblings.indexOf(node) + 1)
+  // A successful return before a throw makes the latter unreachable.
+  const terminal = following.find((statement) => ts.isThrowStatement(statement) || ts.isReturnStatement(statement))
+  return terminal ? denies(terminal) : false
+}
+
 /** Boolean permission probes used to widen row scope do not gate access to the operation. */
 export const calledAccessHelpers = (method: ts.MethodDeclaration): string[] => {
   if (!method.body) return []
@@ -41,7 +65,10 @@ export const calledAccessHelpers = (method: ts.MethodDeclaration): string[] => {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && node.initializer) {
       aliases.set(node.name.text, helpersIn(node.initializer))
     }
-    if (ts.isIfStatement(node) && (denies(node.thenStatement) || (node.elseStatement && denies(node.elseStatement)))) {
+    if (
+      ts.isIfStatement(node) &&
+      (denies(node.thenStatement) || (node.elseStatement && denies(node.elseStatement)) || hasFallthroughDenial(node))
+    ) {
       helpersIn(node.expression).forEach((helper) => calls.add(helper))
     }
     ts.forEachChild(node, visit)
