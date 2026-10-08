@@ -154,6 +154,47 @@ describe('getAuthOperations', () => {
     expect(getGuardRank(getOperationGuardNames(operations[0]))).toBe(3)
   })
 
+  it('credits only the policy guard under an authenticating admin class', () => {
+    const [operation] = getAuthOperations(`
+      @Resolver() @AdminOnly() @UseGuards(GqlAuthAdminGuard)
+      class BillingResolver {
+        @Query() @RequirePlatformPermissionUnderClassGuard('platform.billing.read')
+        subscriptions() {}
+      }
+    `)
+    expect(operation.guardNames).toEqual(['AccessPolicyGuard', 'GqlAuthAdminGuard'])
+    expect(declaresAuthLevel(operation)).toBe(true)
+    expect(hasAuthenticationGuard(operation)).toBe(true)
+    expect(getGuardRank(operation.guardNames)).toBe(3)
+  })
+
+  it('does not invent authentication or an auth level for the under-class policy decorator alone', () => {
+    const [operation] = getAuthOperations(`
+      @Resolver()
+      class BillingResolver {
+        @Query() @RequirePlatformPermissionUnderClassGuard('platform.billing.read')
+        subscriptions() {}
+      }
+    `)
+    expect(operation.guardNames).toEqual(['AccessPolicyGuard'])
+    expect(declaresAuthLevel(operation)).toBe(false)
+    expect(hasAuthenticationGuard(operation)).toBe(false)
+    expect(getGuardRank(operation.guardNames)).toBe(0)
+  })
+
+  it('does not treat a literal policy guard as the authentication an admin declaration requires', () => {
+    const [operation] = getAuthOperations(`
+      @Resolver() @AdminOnly()
+      class BillingResolver {
+        @Query() @UseGuards(AccessPolicyGuard)
+        subscriptions() {}
+      }
+    `)
+    expect(declaresAuthLevel(operation)).toBe(true)
+    expect(hasAuthenticationGuard(operation)).toBe(false)
+    expect(getGuardRank(operation.guardNames)).toBe(0)
+  })
+
   it('accepts inherited parent authorization only for GraphQL field resolvers', () => {
     const operations = getAuthOperations(`
       @Resolver(() => User)

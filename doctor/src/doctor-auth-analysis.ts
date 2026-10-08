@@ -34,7 +34,13 @@ const accessPolicyDecorators = new Set([
 /** Exposed so the spec can assert this stays in step with the access-policy map. */
 export const ACCESS_POLICY_DECORATOR_NAMES: readonly string[] = [...accessPolicyDecorators]
 
-const authLevelDecorators = new Set(['Public', 'Authenticated', 'AdminOnly', ...accessPolicyDecorators])
+const underClassPolicyDecorator = 'RequirePlatformPermissionUnderClassGuard'
+const authLevelDecorators = new Set([
+  'Public',
+  'Authenticated',
+  'AdminOnly',
+  ...[...accessPolicyDecorators].filter((name) => name !== underClassPolicyDecorator),
+])
 const nonAuthGuardPattern = /Throttler|RateLimit/
 const guardNamePattern = /^[A-Z]\w*Guard$/
 
@@ -74,8 +80,12 @@ export const guardNamesIn = (node: ts.Node): string[] => {
   return [...guards]
 }
 
-/** The guards each access-policy decorator applies, as `getAuthOperations` attributes them. */
+/** Guards applied by the policy decorators that also authenticate the caller. */
 export const ACCESS_POLICY_DECORATOR_GUARDS: readonly string[] = ['AccessPolicyGuard', 'GqlAuthGuard']
+
+/** The under-class variant adds policy enforcement only; its class supplies authentication. */
+export const accessPolicyDecoratorGuards = (name: string): readonly string[] =>
+  name === underClassPolicyDecorator ? ['AccessPolicyGuard'] : ACCESS_POLICY_DECORATOR_GUARDS
 
 /**
  * Decorator name -> the guards it applies, for repo-local decorators that compose `UseGuards` with
@@ -96,7 +106,7 @@ const getGuardNames = (
   for (const decorator of decorators) {
     const decoratorName = getDecoratorName(decorator)
     if (accessPolicyDecorators.has(decoratorName)) {
-      for (const guard of ACCESS_POLICY_DECORATOR_GUARDS) guards.add(guard)
+      for (const guard of accessPolicyDecoratorGuards(decoratorName)) guards.add(guard)
       continue
     }
     // A decorator that applies its guards through applyDecorators enforces exactly what the same
@@ -120,11 +130,13 @@ const getGuardNames = (
 const hasAuthLevelDecorator = (decorators: readonly ts.Decorator[]): boolean =>
   decorators.some((decorator) => authLevelDecorators.has(getDecoratorName(decorator)))
 
-export const isAuthenticationGuardName = (guard: string): boolean => !nonAuthGuardPattern.test(guard)
+export const isAuthenticationGuardName = (guard: string): boolean =>
+  guard !== 'AccessPolicyGuard' && !nonAuthGuardPattern.test(guard)
 
 export const getGuardRank = (guards: string[]): number => {
   const authenticationGuards = guards.filter(isAuthenticationGuardName)
-  if (authenticationGuards.includes('AccessPolicyGuard')) return 3
+  if (authenticationGuards.length === 0) return 0
+  if (guards.includes('AccessPolicyGuard')) return 3
   if (authenticationGuards.includes('GqlAuthAdminGuard')) return 3
   if (authenticationGuards.some((guard) => guard.includes('Scoped') || guard.includes('Owner'))) {
     return 2

@@ -1,3 +1,8 @@
+## 0.6.4
+
+- Model RequirePlatformPermissionUnderClassGuard as policy enforcement only, including composed wrappers.
+- Preserve class authentication and access declarations without crediting an extra authentication guard; report a missing authenticating guard when only AccessPolicyGuard remains.
+
 ## 0.6.3
 
 - Analyze caller-input filters, identity use, permission gates, API prefixes, and emulation entry points as TypeScript syntax.
