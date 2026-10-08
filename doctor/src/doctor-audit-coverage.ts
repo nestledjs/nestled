@@ -7,8 +7,28 @@ import ts from 'typescript'
  * or `Audit` as a later camel-case segment. Case-sensitive on purpose, so a word that merely
  * contains the letters (`plaudit`, `PLAUDIT`, `PLaudit`) does not count.
  */
-export const hasAuditMarker = (source: string): boolean =>
-  /(?<![A-Za-z0-9])(?:audit|AUDIT|securityEvent|SECURITY_EVENT)|Audit|SecurityEvent/.test(source)
+const auditIdentifier = (name: string): boolean =>
+  /^(?:audit|AUDIT|securityEvent|SECURITY_EVENT)|_audit|_AUDIT|Audit|SecurityEvent/.test(name)
+
+/** Only syntax identifiers count, never prose in comments, strings, or template-literal text. */
+export const hasAuditMarker = (source: string, auditModels: readonly string[] = []): boolean => {
+  const file = ts.createSourceFile('body.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const models = new Set(auditModels)
+  const visit = (node: ts.Node): boolean => {
+    if (ts.isIdentifier(node) && auditIdentifier(node.text)) return true
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      const call = node.expression
+      if (
+        ['create', 'createMany', 'createManyAndReturn'].includes(call.name.text) &&
+        ts.isPropertyAccessExpression(call.expression) &&
+        models.has(call.expression.name.text)
+      )
+        return true
+    }
+    return ts.forEachChild(node, (child) => visit(child) || undefined) ?? false
+  }
+  return visit(file)
+}
 
 interface ClassInfo {
   /** Injected or declared fields and the class they are typed as, e.g. `orders` -> `OrdersService`. */
@@ -64,15 +84,30 @@ export const readClasses = (source: string): Map<string, ClassInfo> => {
 }
 
 /** Calls in a body: `this.method(` (field undefined) and `this.field.method(`. */
-const callsIn = (body: string): { field?: string; method: string }[] =>
-  [...body.matchAll(/\bthis\.(?:(\w+)\.)?(\w+)\s*\(/g)].map((match) => ({ field: match[1], method: match[2] }))
-
-const MAX_CALL_DEPTH = 3
+const callsIn = (body: string): { field?: string; method: string }[] => {
+  const file = ts.createSourceFile('body.ts', body, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const calls: { field?: string; method: string }[] = []
+  const visit = (node: ts.Node): void => {
+    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
+      const callee = node.expression
+      if (callee.expression.kind === ts.SyntaxKind.ThisKeyword) calls.push({ method: callee.name.text })
+      if (
+        ts.isPropertyAccessExpression(callee.expression) &&
+        callee.expression.expression.kind === ts.SyntaxKind.ThisKeyword
+      ) {
+        calls.push({ field: callee.expression.name.text, method: callee.name.text })
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(file)
+  return calls
+}
 
 /**
  * Mutations in a resolver file that write no audit record, judged per operation. A mutation counts
  * as audited when its own body has an audit marker, or a method it calls does. A call is followed
- * only to the method it actually reaches, up to three calls deep:
+ * only to the method it actually reaches, with cycle protection:
  *
  *   - `this.helper(...)` -> `helper` on the same class;
  *   - `this.orders.update(...)` -> `update` on the class `orders` is typed as (constructor
@@ -82,11 +117,12 @@ const MAX_CALL_DEPTH = 3
  * mutation calling `this.orders.update()` is not audited because some other service has an audited
  * `update()`. An audit call elsewhere in the file or service never counts either.
  *
- * Sources should already have comments stripped, so a marker in a comment doesn't count.
+ * Comments and string literal text never count as audit evidence.
  */
 export const unauditedMutations = (
   resolverSource: string,
   serviceSources: string[],
+  auditModels: readonly string[] = [],
 ): { name: string; line: number }[] => {
   const resolverClasses = readClasses(resolverSource)
   const classes = new Map(resolverClasses)
@@ -94,19 +130,25 @@ export const unauditedMutations = (
     for (const [name, info] of readClasses(source)) if (!classes.has(name)) classes.set(name, info)
   }
 
-  const audits = (className: string, body: string, depth: number, seen: Set<string>): boolean => {
-    if (hasAuditMarker(body)) return true
-    if (depth === 0) return false
-    const owner = classes.get(className)
-    if (!owner) return false
-    for (const { field, method } of callsIn(body)) {
-      const targetClass = field === undefined ? className : owner.fields.get(field)
-      if (!targetClass) continue
-      const key = `${targetClass}.${method}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      const bodies = classes.get(targetClass)?.methods.get(method) ?? []
-      if (bodies.some((callee) => audits(targetClass, callee, depth - 1, seen))) return true
+  const audits = (className: string, body: string): boolean => {
+    const pending = [{ className, body }]
+    const seen = new Set<string>()
+    while (pending.length) {
+      const current = pending.pop()
+      if (!current) break
+      if (hasAuditMarker(current.body, auditModels)) return true
+      const owner = classes.get(current.className)
+      if (!owner) continue
+      for (const { field, method } of callsIn(current.body)) {
+        const targetClass = field === undefined ? current.className : owner.fields.get(field)
+        if (!targetClass) continue
+        const key = `${targetClass}.${method}`
+        if (seen.has(key)) continue
+        seen.add(key)
+        for (const callee of classes.get(targetClass)?.methods.get(method) ?? []) {
+          pending.push({ className: targetClass, body: callee })
+        }
+      }
     }
     return false
   }
@@ -114,7 +156,7 @@ export const unauditedMutations = (
   const unaudited: { name: string; line: number }[] = []
   for (const [className, info] of resolverClasses) {
     for (const mutation of info.mutations) {
-      if (!audits(className, mutation.body, MAX_CALL_DEPTH, new Set())) {
+      if (!audits(className, mutation.body)) {
         unaudited.push({ name: mutation.name, line: mutation.line })
       }
     }

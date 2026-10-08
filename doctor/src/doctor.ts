@@ -64,6 +64,22 @@ import {
   type DeclaredGuards,
 } from './doctor-declared-guards'
 import { findRawNulLines, RAW_NUL_SOURCE_PATTERN } from './doctor-raw-nul-bytes'
+import { createFileDiscovery } from './doctor-file-discovery'
+import {
+  guardOperationSelections,
+  mergeGuardBaseline,
+  missingGuardOperations,
+  type GuardBaseline,
+} from './doctor-guard-baseline'
+import {
+  callsEmulationEntry,
+  declaresEmulationEntry,
+  isEmulationEntryName,
+  readApiPrefixes,
+  resolverScopeFindings,
+} from './doctor-operation-analysis'
+import { parseReasonedExemptions, type ReasonedExemptions } from './doctor-reasoned-exemptions'
+import { readRepoConfig, REPO_CONFIG_PATH } from './doctor-repo-config'
 
 type Finding = {
   check: string
@@ -84,6 +100,7 @@ const guardBaselinePath = '.nestled-updates/security/guard-baseline.json'
 const publicOperationsPath = '.nestled-updates/security/public-operations.json'
 const permissionExemptionsPath = '.nestled-updates/security/permission-exemptions.json'
 const auditExemptionsPath = '.nestled-updates/security/audit-exemptions.json'
+const resolverScopeExemptionsPath = '.nestled-updates/security/resolver-scope-exemptions.json'
 const permissionCatalogs = readPermissionCatalogConfig()
 const platformPermissionCatalogPath = permissionCatalogs.config.platform.path
 const organizationPermissionCatalogPath = permissionCatalogs.config.organization.path
@@ -99,8 +116,6 @@ const shouldUpdateGuardBaseline = process.argv.includes('--update-guard-baseline
 const fullRun = process.argv.includes('--full')
 const shouldUpdateSdkContractBaseline = process.argv.includes('--update-sdk-contract-baseline')
 const sourceTemplateRemotePattern = /github\.com[:/]nestledjs\/nestled-(?:dev-)?template(?:\.git)?$/
-
-type GuardBaseline = Record<string, Record<string, string[]>>
 
 // file -> operation name -> reason the operation is intentionally reachable without a guard.
 type PublicOperationAllowlist = Record<string, Record<string, string>>
@@ -225,14 +240,6 @@ const getChangedFiles = (): string[] => {
   return Array.from(files).sort((left, right) => left.localeCompare(right))
 }
 
-const safeReadDir = (dir: string): string[] => {
-  try {
-    return readdirSync(dir)
-  } catch {
-    return []
-  }
-}
-
 const safeStat = (path: string) => {
   try {
     return statSync(path)
@@ -241,41 +248,8 @@ const safeStat = (path: string) => {
   }
 }
 
-const walkFiles = (dir: string, predicate: (path: string) => boolean): string[] => {
-  if (!existsSync(dir)) return []
-
-  const files: string[] = []
-  for (const entry of safeReadDir(dir)) {
-    const path = join(dir, entry)
-    const stat = safeStat(path)
-    if (!stat) continue
-
-    if (stat.isDirectory()) {
-      if (
-        entry === 'node_modules' ||
-        entry === 'dist' ||
-        entry === 'build' ||
-        entry === '.nx' ||
-        entry === '.git' ||
-        entry === '.claude'
-      ) {
-        continue
-      }
-      files.push(...walkFiles(path, predicate))
-    } else if (stat.isFile() && predicate(path)) {
-      files.push(path)
-    }
-  }
-  return files
-}
-
-const directFiles = (dir: string, predicate: (path: string) => boolean): string[] => {
-  if (!existsSync(dir)) return []
-
-  return safeReadDir(dir)
-    .map((entry) => join(dir, entry))
-    .filter((path) => safeStat(path)?.isFile() === true && predicate(path))
-}
+const walkFiles = createFileDiscovery()
+const directFiles = (dir: string, predicate: (path: string) => boolean): string[] => walkFiles(dir, predicate, false)
 
 const getRegexMatches = (pattern: RegExp, source: string): RegExpExecArray[] => {
   pattern.lastIndex = 0
@@ -479,14 +453,13 @@ const getAllowedApiPrefixes = (): string[] => {
     return []
   }
 
-  const source = stripComments(readFileSync(mainPath, 'utf8'))
-  const match = /const\s+VALID_API_PREFIXES\s*=\s*\[([\s\S]*?)\]/.exec(source)
-  if (!match) {
+  const prefixes = readApiPrefixes(readFileSync(mainPath, 'utf8'))
+  if (!prefixes) {
     fail('api-routes', 'VALID_API_PREFIXES could not be found', mainPath)
     return []
   }
 
-  return getRegexMatches(/['"`]([^'"`]+)['"`]/g, match[1]).map((item) => normalizePath(item[1]))
+  return prefixes.map(normalizePath)
 }
 
 const isControllerCandidateFile = (path: string): boolean =>
@@ -1332,6 +1305,13 @@ const checkGuardRegressions = () => {
   if (!baseline) return
 
   const current = getApiGuardMap()
+  for (const { file, method } of missingGuardOperations(baseline, current)) {
+    fail(
+      'guard-regression',
+      `API operation ${method} is missing from the guard baseline; review its guards, then run --update-guard-baseline --guard-operation '${file}::${method}'`,
+      file,
+    )
+  }
   for (const [file, methods] of Object.entries(baseline)) {
     if (!existsSync(file)) continue
 
@@ -1378,9 +1358,8 @@ const reportStalePublicOperations = (allowlist: PublicOperationAllowlist, unguar
   }
 }
 
-// `checkGuardRegressions` only walks the baseline, so it can catch a guard being *downgraded* but
-// never a brand-new operation that shipped with no guard at all. Check GraphQL resolvers and REST
-// controllers together: every API operation must carry an auth guard or be allowlisted as public.
+// A baseline records the expected guards; independently require authentication or a reasoned
+// public declaration, so adding a baseline entry cannot certify an unguarded operation.
 const checkUnguardedRootOperations = () => {
   const allowlist = readPublicOperationAllowlist()
   const unguarded = new Set<string>()
@@ -1408,9 +1387,13 @@ const checkUnguardedRootOperations = () => {
   reportStalePublicOperations(allowlist, unguarded)
 }
 
-const updateGuardBaseline = () => {
+const updateGuardBaseline = (selections: string[]) => {
+  const baseline = existsSync(guardBaselinePath)
+    ? (JSON.parse(readFileSync(guardBaselinePath, 'utf8')) as GuardBaseline)
+    : {}
+  const updated = mergeGuardBaseline(baseline, getApiGuardMap(), selections)
   mkdirSync(dirname(guardBaselinePath), { recursive: true })
-  writeFileSync(guardBaselinePath, `${JSON.stringify(getApiGuardMap(), null, 2)}\n`)
+  writeFileSync(guardBaselinePath, `${JSON.stringify(updated, null, 2)}\n`)
   try {
     execSync(`pnpm exec prettier --write ${guardBaselinePath}`, { stdio: 'ignore' })
   } catch {
@@ -1511,33 +1494,36 @@ const checkUpgradeNoteImpactGate = () => {
   }
 }
 
-// Same @Ctx* family as CALLER_SCOPE_ANCHOR in doctor-access-policy-analysis — see the note there.
-// This copy was narrower still: it matched only @CtxUser(), so every organization-scoped resolver
-// read as unanchored.
-const hasContextScopeAnchor = (source: string): boolean =>
-  /@Ctx[a-z]*\s*\(|\buser\.(?:id|organizationId|currentOrganizationId)\b|currentUser|organizationScoped/i.test(source)
-
-const usesInputIdInPrismaWhere = (source: string): boolean =>
-  /\b(?:userId|organizationId|teamId|roleId|memberId|inviteId|subscriptionId|tokenId)\b/.test(source) &&
-  /\b(?:findFirst|findUnique|findMany|update|updateMany|delete|deleteMany|create)\s*\(/.test(source)
-
 const checkResolverScopeAnchoring = () => {
-  const resolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
-
-  for (const file of resolverFiles) {
-    const source = stripComments(readFileSync(file, 'utf8'))
-    for (const operation of getGraphqlOperationMethods(source)) {
-      // The whole method, not decorators+body: @CtxUser() lives in the parameter list.
-      const operationSource = operation.text
-      if (!/@Args\s*\(/.test(operationSource) || !usesInputIdInPrismaWhere(operationSource)) continue
-      if (hasContextScopeAnchor(operationSource)) continue
-
+  let exemptions: ReasonedExemptions = {}
+  try {
+    if (existsSync(resolverScopeExemptionsPath))
+      exemptions = parseReasonedExemptions(readFileSync(resolverScopeExemptionsPath, 'utf8'))
+  } catch (error) {
+    fail('resolver-scope', error instanceof Error ? error.message : String(error), resolverScopeExemptionsPath)
+    return
+  }
+  const unscoped = new Set<string>()
+  for (const file of walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))) {
+    for (const operation of resolverScopeFindings(readFileSync(file, 'utf8'))) {
+      unscoped.add(`${file}::${operation.name}`)
+      if (exemptions[file]?.[operation.name]) continue
       review(
         'resolver-scope',
-        `Review ${operation.name}: resolver uses caller-supplied IDs in data access without an obvious @CtxUser scope anchor`,
+        `Review ${operation.name}: caller-supplied data-access filters have no obvious caller scope; declare intentional cross-account access in ${resolverScopeExemptionsPath} with a reason`,
         file,
         operation.line,
       )
+    }
+  }
+  for (const [file, operations] of Object.entries(exemptions)) {
+    for (const name of Object.keys(operations)) {
+      if (!unscoped.has(`${file}::${name}`))
+        warn(
+          'resolver-scope',
+          `Scope exemption for ${file}::${name} no longer applies; remove the stale entry`,
+          resolverScopeExemptionsPath,
+        )
     }
   }
 }
@@ -1587,6 +1573,13 @@ const readAuditExemptions = (): AuditExemptions => {
 const checkAuditCoverageHeuristic = () => {
   const resolverFiles = walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.resolver.ts'))
   const exemptions = readAuditExemptions()
+  let auditModels: string[]
+  try {
+    auditModels = readRepoConfig().auditModels ?? []
+  } catch (error) {
+    fail('audit-coverage', error instanceof Error ? error.message : String(error), REPO_CONFIG_PATH)
+    return
+  }
   const unaudited = new Set<string>()
 
   for (const file of resolverFiles) {
@@ -1594,7 +1587,7 @@ const checkAuditCoverageHeuristic = () => {
 
     const source = stripComments(readFileSync(file, 'utf8'))
     // Judged per mutation: an audit call elsewhere in the file or service no longer counts.
-    for (const mutation of unauditedMutations(source, siblingServiceSources(file))) {
+    for (const mutation of unauditedMutations(source, siblingServiceSources(file), auditModels)) {
       unaudited.add(`${file}::${mutation.name}`)
       if (exemptions[file]?.[mutation.name]) continue
       review(
@@ -1626,9 +1619,7 @@ type GraphqlOperation = ReturnType<typeof getGraphqlOperationMethods>[number]
 
 const isEmulationMutation = (operation: GraphqlOperation): boolean =>
   /@Mutation\b/.test(operation.decorators) &&
-  (/\b(emulat|impersonat)/i.test(operation.name) ||
-    /\b\w+\.emulate\w*\s*\(/i.test(operation.body) ||
-    /\b\w+\.impersonate\w*\s*\(/i.test(operation.body))
+  (isEmulationEntryName(operation.name) || callsEmulationEntry(operation.body))
 
 const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
@@ -1660,7 +1651,7 @@ const checkEmulationResolverFile = (file: string) => {
 
 const checkEmulationServiceFile = (file: string) => {
   const source = stripComments(readFileSync(file, 'utf8'))
-  if (!/\b(emulat|impersonat)/i.test(source) || hasPrivilegeCeiling(source)) return
+  if ((!declaresEmulationEntry(source) && !callsEmulationEntry(source)) || hasPrivilegeCeiling(source)) return
   fail('emulation-security', 'Emulation/impersonation service code must enforce an explicit privilege ceiling', file)
 }
 
@@ -2333,8 +2324,20 @@ const cleanDownstreamAgentsMd = () => {
   console.log('Removed template-only upgrade note section from AGENTS.md — review and commit the change.')
 }
 
+let guardSelections: string[]
+try {
+  guardSelections = guardOperationSelections(process.argv.slice(2))
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error))
+  process.exit(1)
+}
 if (shouldUpdateGuardBaseline) {
-  updateGuardBaseline()
+  try {
+    updateGuardBaseline(guardSelections)
+  } catch (error) {
+    console.error(error instanceof Error ? error.message : String(error))
+    process.exit(1)
+  }
   console.log(`Updated ${guardBaselinePath}`)
   process.exit(0)
 }
