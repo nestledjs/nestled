@@ -49,6 +49,7 @@ describe('caller input and scope', () => {
     'this.logger.info(principal.id); return this.data.item.findMany()',
     'return this.service.save({ data: { actorUserId: principal.id } })',
     'return this.service.save({ actorId: principal.id })',
+    'return this.service.listAll().map(item => ({ item, actorId: principal.id }))',
     'const actorId = principal.id; return this.service.save({ actorId })',
     'const performedById = principal.id; return this.service.save({ data: { performedById } })',
   ])('does not treat identity injection or attribution as scope: %s', (body) => {
@@ -58,6 +59,8 @@ describe('caller input and scope', () => {
   it('still recognizes the principal passed to a service and direct self-service returns', () => {
     for (const body of [
       'return this.service.list(principal.id)',
+      'return (await this.service.list(principal.id)).map(mapItem)',
+      'return this.service.list(principal.id).then(mapItems)',
       'return this.securityEventsService.getUserEvents(principal.id)',
       'return principal',
       'const identity = principal as User; if (!identity.isEmulating) throw new Error(); return this.service.end(token)',

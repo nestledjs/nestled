@@ -79,7 +79,7 @@ export const hasCallerScope = (method: ts.MethodDeclaration): boolean => {
       return true
     if (ts.isCallExpression(node)) {
       if (auditOrLogCall(node)) return false
-      return node.arguments.some((argument) => scopeReference(argument, names))
+      return node.arguments.some((argument) => scopeReference(argument, names)) || visit(node.expression)
     }
     // A self-service resolver may return the authenticated principal directly.
     if (ts.isReturnStatement(node) && node.expression && !ts.isCallExpression(node.expression))
