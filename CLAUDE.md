@@ -16,7 +16,7 @@ operators we don't know, on installations we must never identify.
 ## Repository Structure
 
 This is an Nx workspace that publishes a **single package: `@nestledjs/generators`**
-(at `generators/`) — an Nx plugin with six generators (four ongoing codegen/scaffolding
+(at `generators/`) — an Nx plugin with six generators (five ongoing codegen/scaffolding
 generators plus a one-time workspace bootstrap):
 
 - `crud` — CRUD resolvers/services from Prisma models
