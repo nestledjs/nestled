@@ -12,6 +12,13 @@
 | `flightdesk_project_id` | `92691b61-d070-4460-98f9-6c3b7ce1ee47`                                                                                                            |
 | `sdk_command`           | `none`                                                                                                                                            |
 
+## Agents
+
+`agents/pipeline/` is the only agent folder in this repo and the only one Qalatra registers; its
+`agent.config` runs FlightDesk turns. Do not add another `agent.config` under `agents/`. Plans
+live on the FlightDesk task (`flightdesk plan submit`) — this repo has no `plans/` directory and
+plan files are not committed.
+
 ## Deployment
 
 | Field            | Value                                                                                                                                                  |
