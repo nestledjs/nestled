@@ -65,6 +65,7 @@ import {
 } from './doctor-declared-guards'
 import { findRawNulLines, RAW_NUL_SOURCE_PATTERN } from './doctor-raw-nul-bytes'
 import { createFileDiscovery } from './doctor-file-discovery'
+import { readEnvValue } from './doctor-env'
 import {
   guardOperationSelections,
   mergeGuardBaseline,
@@ -1670,22 +1671,6 @@ const checkEmulationPrivilegeCeiling = () => {
   walkFiles('libs/api/custom/src/lib', (path) => path.endsWith('.service.ts') && !path.endsWith('.spec.ts')).forEach(
     checkEmulationServiceFile,
   )
-}
-
-// Read one key out of an already-loaded `.env` body. Shared by every check that inspects local
-// env pairings, so the quoting/comment rules stay in one place.
-const readEnvValue = (env: string, key: string): string => {
-  const line = env.split('\n').find((l) => l.startsWith(`${key}=`))
-  const raw = line ? line.slice(key.length + 1).trim() : ''
-  // Quoted value: strip the surrounding quotes and keep it verbatim. Unquoted
-  // value: drop a dotenv-style inline ` # comment` so the parsed value matches
-  // what dotenv actually loads. (String ops, not regex — avoids backtracking.)
-  const quote = raw[0]
-  if ((quote === '"' || quote === "'") && raw.length >= 2 && raw.endsWith(quote)) {
-    return raw.slice(1, -1)
-  }
-  const commentAt = raw.indexOf(' #')
-  return (commentAt === -1 ? raw : raw.slice(0, commentAt)).trim()
 }
 
 const checkCookieDomainConfig = () => {
