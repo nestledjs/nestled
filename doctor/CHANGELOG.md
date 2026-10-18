@@ -1,4 +1,4 @@
-## Unreleased
+## 0.6.5
 
 - Resolve a key assigned more than once in `.env` to its last assignment, as docker compose does, instead of the first.
 - Accept an `export ` prefix, treat `KEY= # comment` as empty, and drop a comment after a closing quote.
