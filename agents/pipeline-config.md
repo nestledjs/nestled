@@ -23,7 +23,7 @@ plan files are not committed.
 
 | Field            | Value                                                                                                                                                                                                  |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `auto_merge`     | `true` — the adversarial verifier `MERGE` verdict is the approval; the pipeline merges + deploys directly with no human approval gate (dangerous mode)                                                 |
+| `auto_merge`     | `true` — green CI on the current head is the approval; the pipeline merges directly with no human approval gate (dangerous mode). There is no separate verifier step.                                  |
 | `deploy_command` | `none` — library — merge only; npm release stays a manual human step                                                                                                                                   |
 | `merge_command`  | `gh pr merge <prNumber> --repo nestledjs/nestled --squash --delete-branch` — `--squash` because the `Develop` ruleset allows only squash/rebase and requires linear history; a merge commit is refused |
 
