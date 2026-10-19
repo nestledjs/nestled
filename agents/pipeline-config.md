@@ -21,11 +21,11 @@ plan files are not committed.
 
 ## Deployment
 
-| Field            | Value                                                                                                                                                                                                                                     |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `auto_merge`     | `true` — green CI on the current head is the approval; the pipeline merges + deploys directly with no human approval gate (dangerous mode). There is no verifier step: FlightDesk dropped it on 2026-10-06 (pirateandfox/flightdesk#346). |
-| `deploy_command` | `none` — library — merge only; npm release stays a manual human step                                                                                                                                                                      |
-| `merge_command`  | `gh pr merge <prNumber> --repo nestledjs/nestled --squash --delete-branch` — `--squash` because the `Develop` ruleset allows only squash/rebase and requires linear history; a merge commit is refused                                    |
+| Field            | Value                                                                                                                                                                                                                           |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `auto_merge`     | `true` — green CI on the current head is the approval; the pipeline merges directly with no human approval gate (dangerous mode). There is no verifier step: FlightDesk dropped it on 2026-10-06 (pirateandfox/flightdesk#346). |
+| `deploy_command` | `none` — library — merge only; npm release stays a manual human step                                                                                                                                                            |
+| `merge_command`  | `gh pr merge <prNumber> --repo nestledjs/nestled --squash --delete-branch` — `--squash` because the `Develop` ruleset allows only squash/rebase and requires linear history; a merge commit is refused                          |
 
 ## Quality Gates
 
