@@ -199,3 +199,53 @@ describe('hasAuditMarker', () => {
     }
   })
 })
+
+describe('audit evidence precision', () => {
+  it('ignores comment and string markers, including fabricated service calls', () => {
+    for (const source of [
+      '// audit this later',
+      'logger.info("audit: updated")',
+      'logger.info(`SecurityEvent: updated`)',
+      'const label = "this.audit.log()"',
+    ])
+      expect(hasAuditMarker(source), source).toBe(false)
+    expect(
+      unauditedMutations(
+        `class Example {
+      @Mutation() save() { return "this.finish()" }
+      finish() { this.audit.record() }
+    }`,
+        [],
+      ).map((item) => item.name),
+    ).toEqual(['save'])
+  })
+
+  it('sees real calls inside template interpolations', () => {
+    expect(hasAuditMarker('return `result: ${this.audit.record()}`')).toBe(true)
+  })
+
+  it('recognizes only writes to explicitly declared audit models', () => {
+    const source = (body: string) => `class Example { @Mutation() erase() { ${body} } }`
+    expect(
+      unauditedMutations(source('return this.data.deletionRequest.create({ data: input })'), [], ['deletionRequest']),
+    ).toEqual([])
+    expect(unauditedMutations(source('return this.data.deletionRequest.create({ data: input })'), [])).toHaveLength(1)
+    expect(
+      unauditedMutations(source('return this.data.deletionRequest.findMany()'), [], ['deletionRequest']),
+    ).toHaveLength(1)
+  })
+
+  it('follows a long reachable call chain, including cycles, without certifying an unrelated method', () => {
+    const source = `class Example {
+      @Mutation() save() { return this.one() }
+      @Mutation() missed() { return this.loop() }
+      one() { this.two() }
+      two() { this.three() }
+      three() { this.one(); this.four() }
+      four() { this.five() }
+      five() { this.audit.record() }
+      loop() { this.loop() }
+    }`
+    expect(unauditedMutations(source, []).map((item) => item.name)).toEqual(['missed'])
+  })
+})

@@ -72,7 +72,15 @@ const readRepoConfig = (cwd = process.cwd()) => {
     )
   }
 
-  return { selectFileSuffixes: declared, noSelectFiles: absent, noCheckableSelects: uncheckable }
+  const auditModels = parsed.auditModels === undefined ? [] : parsed.auditModels
+  if (
+    !Array.isArray(auditModels) ||
+    auditModels.some((model) => typeof model !== 'string' || !/^[A-Za-z_$][\w$]*$/.test(model))
+  ) {
+    throw new Error(`${REPO_CONFIG_PATH}: auditModels must be an array of Prisma model delegate names`)
+  }
+
+  return { selectFileSuffixes: declared, noSelectFiles: absent, noCheckableSelects: uncheckable, auditModels }
 }
 
 /**

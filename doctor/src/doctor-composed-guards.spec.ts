@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { getAuthOperations, getGuardRank } from './doctor-auth-analysis'
+import { getAuthOperations, getGuardRank, hasAuthenticationGuard } from './doctor-auth-analysis'
 import {
   discoverComposedGuardDecorators,
   getComposedGuardDecorators,
@@ -121,6 +121,28 @@ describe('getComposedGuardDecorators', () => {
     ])
 
     expect(composedGuards.get('CanManageBilling')).toEqual(['AccessPolicyGuard', 'GqlAuthGuard'])
+  })
+
+  it('keeps an under-class policy wrapper separate from authentication', () => {
+    const composedGuards = getComposedGuardDecorators([
+      {
+        file: 'policy.ts',
+        source: "export const CanReadBilling = () => RequirePlatformPermissionUnderClassGuard('platform.billing.read')",
+      },
+    ])
+    expect(composedGuards.get('CanReadBilling')).toEqual(['AccessPolicyGuard'])
+    const [withoutClassGuard] = getAuthOperations(restRoute('@CanReadBilling()'), 'route.ts', { composedGuards })
+    expect(hasAuthenticationGuard(withoutClassGuard)).toBe(false)
+    const [withClassGuard] = getAuthOperations(
+      `
+      @Resolver() @AdminOnly() @UseGuards(GqlAuthAdminGuard)
+      class BillingResolver { @Query() @CanReadBilling() subscriptions() {} }
+    `,
+      'resolver.ts',
+      { composedGuards },
+    )
+    expect(withClassGuard.guardNames).toEqual(['AccessPolicyGuard', 'GqlAuthAdminGuard'])
+    expect(hasAuthenticationGuard(withClassGuard)).toBe(true)
   })
 
   it('leaves the access-policy decorators to their existing modelling', () => {

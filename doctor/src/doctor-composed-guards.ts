@@ -1,6 +1,6 @@
 import ts from 'typescript'
 import {
-  ACCESS_POLICY_DECORATOR_GUARDS,
+  accessPolicyDecoratorGuards,
   ACCESS_POLICY_DECORATOR_NAMES,
   guardNamesIn,
   type ComposedGuardDecorators,
@@ -189,7 +189,7 @@ export const getComposedGuardDecorators = (sources: readonly ComposedGuardSource
   const resolved = new Map<string, Set<string>>()
 
   const resolve = (name: string, visiting: Set<string>): Set<string> => {
-    if (accessPolicyDecoratorNames.has(name)) return new Set(ACCESS_POLICY_DECORATOR_GUARDS)
+    if (accessPolicyDecoratorNames.has(name)) return new Set(accessPolicyDecoratorGuards(name))
     const cached = resolved.get(name)
     if (cached) return cached
     const definitions = definitionsByName.get(name)

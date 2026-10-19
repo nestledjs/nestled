@@ -179,7 +179,7 @@ describe('getUndeclaredAccessOperations', () => {
   // detector matches the @Ctx* shape. Getting this wrong produced 382 findings against that
   // project claiming its scoped resolvers were unscoped.
   it.each([
-    ['@CtxOrganization()', '@CtxOrganization() org: OrganizationContext'],
+    ['@CtxOrganization()', '@CtxOrganization() organizationId: string'],
     ['@CtxOrganizationId()', '@CtxOrganizationId() organizationId: string'],
     ['a repo-local variant', '@CtxOrganizationIdCached() organizationId: string'],
   ])('treats %s as caller scoping', (_label, parameter) => {
@@ -458,7 +458,7 @@ describe('getUnauthorizedAccessOperations', () => {
         @Resolver()
         class MeResolver {
           @Query(() => Boolean)
-          me(@CtxUser() user: User) {}
+          me(@CtxUser() user: User) { return user }
         }
       `),
     ).toEqual([])

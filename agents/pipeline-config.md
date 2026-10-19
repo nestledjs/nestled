@@ -12,13 +12,20 @@
 | `flightdesk_project_id` | `92691b61-d070-4460-98f9-6c3b7ce1ee47`                                                                                                            |
 | `sdk_command`           | `none`                                                                                                                                            |
 
+## Agents
+
+`agents/pipeline/` is the only agent folder in this repo and the only one Qalatra registers; its
+`agent.config` runs FlightDesk turns. Do not add another `agent.config` under `agents/`. Plans
+live on the FlightDesk task (`flightdesk plan submit`) — this repo has no `plans/` directory and
+plan files are not committed.
+
 ## Deployment
 
 | Field            | Value                                                                                                                                                                                                                                     |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `auto_merge`     | `true` — green CI on the current head is the approval; the pipeline merges + deploys directly with no human approval gate (dangerous mode). There is no verifier step: FlightDesk dropped it on 2026-10-06 (pirateandfox/flightdesk#346). |
 | `deploy_command` | `none` — library — merge only; npm release stays a manual human step                                                                                                                                                                      |
-| `merge_command`  | `gh pr merge <prNumber> --repo nestledjs/nestled --merge --delete-branch`                                                                                                                                                                 |
+| `merge_command`  | `gh pr merge <prNumber> --repo nestledjs/nestled --squash --delete-branch` — `--squash` because the `Develop` ruleset allows only squash/rebase and requires linear history; a merge commit is refused                                    |
 
 ## Quality Gates
 
