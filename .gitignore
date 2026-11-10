@@ -58,3 +58,4 @@ tmp.html
 migrations.json
 
 .nx/migrate-runs
+.nx/polygraph
