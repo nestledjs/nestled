@@ -1,8 +1,12 @@
 const tsParser = require('@typescript-eslint/parser')
 const jsonParser = require('jsonc-eslint-parser')
 const path = require('path')
+const baseConfig = require('../eslint.config.js')
 
+// ESLint resolves the nearest config file, so this one has to carry the root config itself;
+// without the spread, generators was linted with no rules at all.
 module.exports = [
+  ...baseConfig,
   {
     files: ['src/**/*.ts'],
     languageOptions: {

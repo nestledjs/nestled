@@ -17,6 +17,14 @@ module.exports = [
     ignores: ['**/dist', '**/vite.config.*.timestamp*', '**/vitest.config.*.timestamp*'],
   },
   {
+    // ESLint 10's new core rules, pinned to error whatever the recommended set does later.
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'],
+    rules: {
+      'no-useless-assignment': 'error',
+      'preserve-caught-error': 'error',
+    },
+  },
+  {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],
     rules: {
       '@nx/enforce-module-boundaries': [
