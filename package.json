@@ -134,7 +134,7 @@
     "ts-jest": "29.4.9",
     "ts-node": "10.9.1",
     "tslib": "^2.3.0",
-    "typescript": "5.7.3",
+    "typescript": "6.0.3",
     "typescript-eslint": "8.72.2",
     "verdaccio": "6.9.3",
     "vite": "7.1.9",
