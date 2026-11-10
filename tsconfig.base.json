@@ -2,6 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "rootDir": ".",
+    "strict": false,
     "sourceMap": true,
     "declaration": false,
     "moduleResolution": "nodeNext",
@@ -11,13 +12,12 @@
     "target": "es2015",
     "module": "nodeNext",
     "esModuleInterop": true,
-    "lib": ["es2021", "dom"],
+    "lib": ["es2021", "es2022.error", "dom"],
     "skipLibCheck": true,
     "skipDefaultLibCheck": true,
-    "baseUrl": ".",
     "paths": {
-      "@nestledjs/generators": ["generators/src/index.ts"],
-      "@nestledjs/upgrades": ["upgrades/src/index.ts"]
+      "@nestledjs/generators": ["./generators/src/index.ts"],
+      "@nestledjs/upgrades": ["./upgrades/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

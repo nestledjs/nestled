@@ -3,3 +3,6 @@
 /coverage
 /.nx/cache
 /.nx/workspace-data
+.nx/self-healing
+# Nx migrate writes these prompts verbatim
+/tools/ai-migrations

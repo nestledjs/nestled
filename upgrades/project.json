@@ -3,8 +3,8 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "upgrades/src",
   "projectType": "library",
-  "tags": [],
   "publishable": true,
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
@@ -29,7 +29,20 @@
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint"
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.js",
+        "{workspaceRoot}/tools/eslint-rules/**/*"
+      ],
+      "options": {
+        "cwd": "upgrades",
+        "command": "eslint ."
+      }
     }
   }
 }

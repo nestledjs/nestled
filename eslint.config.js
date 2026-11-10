@@ -1,5 +1,5 @@
 // For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
-const storybook = require("eslint-plugin-storybook");
+const storybook = require('eslint-plugin-storybook')
 const nx = require('@nx/eslint-plugin')
 
 module.exports = [
@@ -15,6 +15,14 @@ module.exports = [
   ...storybook.configs['flat/recommended'],
   {
     ignores: ['**/dist', '**/vite.config.*.timestamp*', '**/vitest.config.*.timestamp*'],
+  },
+  {
+    // ESLint 10's new core rules, pinned to error whatever the recommended set does later.
+    files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx', '**/*.mjs', '**/*.cjs'],
+    rules: {
+      'no-useless-assignment': 'error',
+      'preserve-caught-error': 'error',
+    },
   },
   {
     files: ['**/*.ts', '**/*.tsx', '**/*.js', '**/*.jsx'],

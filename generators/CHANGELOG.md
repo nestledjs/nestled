@@ -1,3 +1,18 @@
+## 4.0.0
+
+### ⚠️ Breaking
+
+- **Requires Nx 24.** `@nx/devkit`, `@nx/js` and `@nx/nest` move from 22.0.2 to 24.0.5, and the
+  generators import `getNpmScope` from `@nx/js/internal` (Nx 23+ no longer exposes `@nx/js/src/*`).
+  A workspace still on Nx 22 should stay on 3.4.x until it moves to Nx 24.
+
+### Changed
+
+- Built and tested with TypeScript 6.0.3 and ESLint 10. Generated output is unchanged: `crud`,
+  `models`, `sdk` and `custom` produce byte-identical files to 3.4.1 on a template workspace.
+- `workspace-setup` attaches the original error as `cause` when it rethrows a failed step; the
+  message is unchanged.
+
 ## 3.3.0 (2026-09-25)
 
 ### 🚀 Features

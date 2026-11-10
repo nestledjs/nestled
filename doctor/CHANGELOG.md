@@ -1,3 +1,9 @@
+## 0.7.0
+
+- Accept TypeScript 6: the `typescript` dependency widens from `^5.9.0` to `^5.9.0 || ^6.0.0`. The
+  TypeScript-API checks are unchanged and pass their suite on TypeScript 6.0.3.
+- Built with Nx 24, TypeScript 6.0.3 and ESLint 10.
+
 ## 0.6.5
 
 - Resolve a key assigned more than once in `.env` to its last assignment, as docker compose does, instead of the first.

@@ -117,7 +117,7 @@ export async function ensureDockerComposeIsRunning() {
   try {
     execSync('pnpm run docker:up', { stdio: 'inherit', cwd: workspaceRoot })
   } catch (e) {
-    throw new Error(`Failed to start Docker Compose: ${e.message}`)
+    throw new Error(`Failed to start Docker Compose: ${e.message}`, { cause: e })
   }
 
   try {
@@ -149,7 +149,7 @@ export function runPrismaSetup() {
     return true
   } catch (e) {
     execSync('pnpm run docker:logs', { stdio: 'inherit', cwd: workspaceRoot })
-    throw new Error(`There was an issue running 'pnpm prisma:apply': ${e.message}`)
+    throw new Error(`There was an issue running 'pnpm prisma:apply': ${e.message}`, { cause: e })
   }
 }
 
@@ -162,7 +162,7 @@ export function runPrismaGenerate() {
     log('Prisma Client generation is done')
     return true
   } catch (e) {
-    throw new Error(`There was an issue running 'pnpm prisma:generate': ${e.message}`)
+    throw new Error(`There was an issue running 'pnpm prisma:generate': ${e.message}`, { cause: e })
   }
 }
 
@@ -173,7 +173,7 @@ export function runPrismaSeed() {
     return true
   } catch (e) {
     console.error('Prisma Seed Error:', e.message)
-    throw new Error(`There was an issue running 'pnpm prisma:seed': ${e.message}`)
+    throw new Error(`There was an issue running 'pnpm prisma:seed': ${e.message}`, { cause: e })
   }
 }
 
@@ -184,7 +184,7 @@ export function runGraphQLTypeGeneration() {
     return true
   } catch (e) {
     console.error('GraphQL types generation error:', e.message)
-    throw new Error(`There was an issue running 'pnpm generate:models': ${e.message}`)
+    throw new Error(`There was an issue running 'pnpm generate:models': ${e.message}`, { cause: e })
   }
 }
 

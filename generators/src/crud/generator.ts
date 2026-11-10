@@ -14,7 +14,7 @@ import {
 import { GenerateCrudGeneratorSchema } from './schema'
 import { generateFilterInputs } from './filter-inputs'
 import { markCrudReadOnlyFields } from './write-fields'
-import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
+import { getNpmScope } from '@nx/js/internal'
 
 // STEP 1: DEFINE INTERFACES FOR DATA AND DEPENDENCIES
 

@@ -1,6 +1,6 @@
 import { formatFiles, generateFiles, joinPathFragments, names, Tree } from '@nx/devkit'
 import { getDMMF } from '@prisma/internals'
-import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
+import { getNpmScope } from '@nx/js/internal'
 import {
   addToModules,
   assertNoCrudAuthAnnotations,

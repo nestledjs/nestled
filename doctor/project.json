@@ -3,14 +3,12 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "doctor/src",
   "projectType": "library",
-  "tags": [],
   "publishable": true,
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/doctor",
         "main": "doctor/src/index.ts",
@@ -41,16 +39,26 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
+      "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
-        "reportsDirectory": "../coverage/doctor"
+        "coverage.reportsDirectory": "../coverage/doctor"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint"
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": [
+        "default",
+        "^default",
+        "{workspaceRoot}/.eslintrc.json",
+        "{workspaceRoot}/.eslintignore",
+        "{workspaceRoot}/eslint.config.js",
+        "{workspaceRoot}/tools/eslint-rules/**/*"
+      ],
+      "options": {
+        "cwd": "doctor",
+        "command": "eslint ."
+      }
     }
   }
 }

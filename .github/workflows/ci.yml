@@ -12,7 +12,9 @@ permissions:
 
 jobs:
   main:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.56 cannot install browsers for, so
+    # the postinstall fails before anything runs.
+    runs-on: ubuntu-24.04
     env:
       NODE_OPTIONS: "--max-old-space-size=4096"
       # Nx Cloud, per Nx's recommendation: pushes use the read-write token; pull requests use the

@@ -1,15 +1,11 @@
 import { defineConfig } from 'vite'
-import { nxViteTsPaths } from '@nx/vite/plugins/nx-tsconfig-paths.plugin'
-import { nxCopyAssetsPlugin } from '@nx/vite/plugins/nx-copy-assets.plugin'
 
+// Nx 24 removed the nxViteTsPaths / nxCopyAssetsPlugin helpers. Neither was load-bearing here:
+// the specs import no tsconfig path aliases, and the package is built by @nx/js:tsc (which copies
+// *.md itself), so vite only runs vitest.
 export default defineConfig(() => ({
   root: __dirname,
   cacheDir: '../node_modules/.vite/generators',
-  plugins: [nxViteTsPaths(), nxCopyAssetsPlugin(['*.md'])],
-  // Uncomment this if you are using workers.
-  // worker: {
-  //  plugins: [ nxViteTsPaths() ],
-  // },
   test: {
     watch: false,
     globals: true,
