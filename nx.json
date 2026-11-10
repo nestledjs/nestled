@@ -43,10 +43,6 @@
       "options": {
         "packageRoot": "dist/{projectRoot}"
       }
-    },
-    "@nx/vitest:test": {
-      "cache": true,
-      "inputs": ["default", "^production"]
     }
   },
   "release": {
@@ -107,7 +103,8 @@
     {
       "plugin": "@nx/vitest",
       "options": {
-        "testTargetName": "test"
+        "testTargetName": "test",
+        "testMode": "run"
       }
     },
     {

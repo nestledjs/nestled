@@ -39,10 +39,9 @@
       }
     },
     "test": {
-      "executor": "@nx/vitest:test",
-      "outputs": ["{options.reportsDirectory}"],
+      "outputs": ["{projectRoot}/{options.coverage.reportsDirectory}", "{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
-        "reportsDirectory": "../coverage/doctor"
+        "coverage.reportsDirectory": "../coverage/doctor"
       }
     },
     "lint": {
