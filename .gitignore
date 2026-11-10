@@ -56,3 +56,5 @@ storybook-static
 tmp.html
 /static/
 migrations.json
+
+.nx/migrate-runs
