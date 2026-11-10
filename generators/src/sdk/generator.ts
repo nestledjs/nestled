@@ -21,7 +21,7 @@ import {
   getSkippedModelNames,
 } from '../lib/engine'
 import { libraryGenerator } from '@nx/js'
-import { getNpmScope } from '@nx/js/src/utils/package-json/get-npm-scope'
+import { getNpmScope } from '@nx/js/internal'
 import { getDMMF } from '@prisma/internals'
 import { markCrudReadOnlyFields } from '../crud/write-fields'
 
