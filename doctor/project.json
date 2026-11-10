@@ -3,14 +3,12 @@
   "$schema": "../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "doctor/src",
   "projectType": "library",
-  "tags": [],
   "publishable": true,
+  "tags": [],
   "targets": {
     "build": {
       "executor": "@nx/js:tsc",
-      "outputs": [
-        "{options.outputPath}"
-      ],
+      "outputs": ["{options.outputPath}"],
       "options": {
         "outputPath": "dist/doctor",
         "main": "doctor/src/index.ts",
@@ -41,10 +39,8 @@
       }
     },
     "test": {
-      "executor": "@nx/vite:test",
-      "outputs": [
-        "{options.reportsDirectory}"
-      ],
+      "executor": "@nx/vitest:test",
+      "outputs": ["{options.reportsDirectory}"],
       "options": {
         "reportsDirectory": "../coverage/doctor"
       }
