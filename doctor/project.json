@@ -53,10 +53,7 @@
         "{workspaceRoot}/.eslintrc.json",
         "{workspaceRoot}/.eslintignore",
         "{workspaceRoot}/eslint.config.js",
-        "{workspaceRoot}/tools/eslint-rules/**/*",
-        {
-          "externalDependencies": ["eslint"]
-        }
+        "{workspaceRoot}/tools/eslint-rules/**/*"
       ],
       "options": {
         "cwd": "doctor",
